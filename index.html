@@ -738,7 +738,45 @@ if(typeof google==='undefined'||!google.accounts){return}
 if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){console.warn('Google Calendar disabled: set GCAL_CLIENT_ID');return}
 try{gcalTokenClient=google.accounts.oauth2.initTokenClient({client_id:GCAL_CLIENT_ID,scope:GCAL_SCOPES,callback:''});gcalGisReady=true;tryGcalInit()}
 catch(e){console.error('gis init err:',e)}}
-function tryGcalInit(){if(gcalGapiReady&&gcalGisReady){updateGcalUI()}}
+function tryGcalInit(){if(gcalGapiReady&&gcalGisReady){updateGcalUI();tryGcalAutoReconnect()}}
+
+// Silent reconnect on page load if previously connected (token expires every 1h)
+function tryGcalAutoReconnect(){
+if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0)return;
+if(!gcalTokenClient||gcalToken)return;
+if(localStorage.getItem('gcalConnectedBefore')!=='true')return;
+gcalTokenClient.callback=async(resp)=>{
+if(resp.error){console.log('Silent reconnect failed:',resp.error);return}
+gcalToken=resp.access_token;
+await gcalLoadCalendars();updateGcalUI();
+scheduleGcalRefresh();
+// Restore auto-sync state if it was on
+if(localStorage.getItem('gcalAutoSync')==='true'){
+let chk=document.getElementById('gcalAuto');if(chk){chk.checked=true;gcalToggleAuto()}}
+else if(gcalCalendarId){gcalSync()}};
+try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){console.log('Silent reconnect error:',e)}}
+
+// Refresh token every 50 min (tokens expire at 60 min)
+let gcalRefreshTimer=null;
+function scheduleGcalRefresh(){
+clearInterval(gcalRefreshTimer);
+gcalRefreshTimer=setInterval(()=>{
+if(!gcalTokenClient||!gcalToken)return;
+gcalTokenClient.callback=(resp)=>{
+if(resp.error){console.log('Token refresh failed:',resp.error);return}
+gcalToken=resp.access_token;
+console.log('Token refreshed silently')};
+try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){console.log('Refresh error:',e)}
+},50*60*1000)}
+
+// Returns Promise<bool> — refreshes token silently
+function gcalRefreshTokenNow(){
+return new Promise(resolve=>{
+if(!gcalTokenClient){resolve(false);return}
+gcalTokenClient.callback=resp=>{
+if(resp.error){resolve(false);return}
+gcalToken=resp.access_token;resolve(true)};
+try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){resolve(false)}})}
 // Wait for scripts (loaded async) — poll until they appear
 let _gcalPoll=setInterval(()=>{
 if(typeof gapi!=='undefined'&&!gcalGapiReady){gapiLoaded()}
@@ -756,6 +794,8 @@ if(!gcalTokenClient){showToast('&#9888; Google API not ready yet, try again in a
 gcalTokenClient.callback=async(resp)=>{
 if(resp.error){showToast('&#10005; Google sign-in failed: '+resp.error,'err');return}
 gcalToken=resp.access_token;
+localStorage.setItem('gcalConnectedBefore','true');
+scheduleGcalRefresh();
 showToast('&#10003; Connected to Google Calendar');
 await gcalLoadCalendars();updateGcalUI();
 // Auto-sync after connect if a calendar is already chosen
@@ -765,6 +805,9 @@ gcalTokenClient.requestAccessToken({prompt:gcalToken?'':'consent'})}
 function gcalDisconnect(){
 if(gcalToken&&google&&google.accounts&&google.accounts.oauth2){google.accounts.oauth2.revoke(gcalToken,()=>{})}
 gcalToken=null;clearInterval(gcalAutoTimer);gcalAutoTimer=null;
+clearInterval(gcalRefreshTimer);gcalRefreshTimer=null;
+localStorage.removeItem('gcalConnectedBefore');
+localStorage.removeItem('gcalAutoSync');
 showToast('Disconnected from Google Calendar');updateGcalUI()}
 
 async function gcalLoadCalendars(){
@@ -847,9 +890,14 @@ let allEvents=[];let pageToken=null;let nextSync=null;
 do{if(pageToken)params.pageToken=pageToken;
 let res;try{res=await gapi.client.calendar.events.list(params)}
 catch(e){
+// 401 = token expired/invalid, try silent refresh and retry once
+if(e.status===401){
+let refreshed=await gcalRefreshTokenNow();
+if(refreshed){res=await gapi.client.calendar.events.list(params)}
+else{btn.classList.remove('syncing');showToast('&#9888; Session expired — please reconnect','warn');gcalToken=null;updateGcalUI();return}}
 // 410 GONE = sync token expired, do a full re-sync
-if(e.status===410){gcalSyncToken=null;dbGcal.update({syncToken:null});btn.classList.remove('syncing');return gcalSync()}
-throw e}
+else if(e.status===410){gcalSyncToken=null;dbGcal.update({syncToken:null});btn.classList.remove('syncing');return gcalSync()}
+else throw e}
 allEvents=allEvents.concat(res.result.items||[]);
 pageToken=res.result.nextPageToken;
 if(res.result.nextSyncToken)nextSync=res.result.nextSyncToken
@@ -872,6 +920,23 @@ showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.update
 }catch(e){console.error('sync err:',e);showToast('&#10005; Sync failed: '+(e.result?e.result.error.message:e.message),'err');gcalStats.errors++}
 btn.classList.remove('syncing')}
 
+// Returns true if a calendar event title is clearly a label/note, not a real delivery
+function isNonDeliveryTitle(name){
+if(!name)return true;
+let n=String(name).trim();
+if(/^COLOR\s*[=:]/i.test(n))return true;        // COLOR = SLOT NOT AVAILABLE, COLOR=Non
+if(/^WEEK\s+[AB]\b/i.test(n))return true;        // WEEK A Chem. Maint.
+if(/^\*+/.test(n))return true;                   // **PM MUST BE CLOSE**
+if(/^OPEN\s+HERE/i.test(n))return true;
+if(/MEMORIAL\s+DAY/i.test(n))return true;
+if(/HOLIDAY/i.test(n))return true;
+if(/CHEM(ICAL)?\s+(MAINT|CLASS)/i.test(n))return true;
+if(/^(AM|PM|ALL\s*DAY)?[\s\-+]*SERVICE([\s\-]|$)/i.test(n))return true;  // SERVICE-ALL DAY, PM-Service
+if(/AWAITING\s+CONFIRMATION/i.test(n))return true;
+if(/SLOT\s+NOT\s+AVAILABLE/i.test(n))return true;
+if(/STANDARD\s+DEL/i.test(n))return true;
+return false}
+
 async function processGcalEvent(ev){
 try{
 // Deleted event -> if mapped, mark the local delivery (we don't auto-delete; just leave a note)
@@ -885,6 +950,8 @@ if(ai>=0){ADDED[ai].dn=note.trim();saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};EDITS[mappedId].dn=note.trim();saveE()}
 gcalStats.updated++}}
 return}
+// Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.)
+if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 let parsed=parseGcalTitle(ev.summary);
 let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
 // Skip weekend events (Saturday=6, Sunday=0) — these are usually personal/maintenance, not deliveries
@@ -932,14 +999,29 @@ catch(e){console.error('processGcalEvent err:',e);gcalStats.errors++}}
 
 function gcalToggleAuto(){
 let on=document.getElementById('gcalAuto').checked;
+localStorage.setItem('gcalAutoSync',on?'true':'false');
 if(on){gcalSync();gcalAutoTimer=setInterval(gcalSync,60000)}
 else{clearInterval(gcalAutoTimer);gcalAutoTimer=null}}
 
 function gcalCleanImported(){
-// Find ADDED records that came from gcal and haven't been touched (cn still says "Auto-created from Google Calendar event")
-let candidates=ADDED.filter(r=>r.gcalId&&r.cn==='Auto-created from Google Calendar event'&&!r.co&&!r.dl);
-if(!candidates.length){showToast('Nothing to clean — no untouched auto-imported records found','warn');return}
-if(!confirm('Remove '+candidates.length+' auto-imported records that have not been edited? This will also reset the calendar mapping so they can be re-synced cleanly.'))return;
+// Find ALL ADDED records that came from gcal AND are either:
+//  (a) weekend dates (Sat/Sun), or
+//  (b) non-delivery labels (COLOR, WEEK, MEMORIAL, etc.), or
+//  (c) untouched auto-imports (cn still says auto-created)
+let isWeekend=function(dd){let d=parseDate(dd);if(!d||isNaN(d))return false;let dow=d.getDay();return dow===0||dow===6};
+let candidates=ADDED.filter(r=>r.gcalId&&!r.co&&!r.dl&&(
+isWeekend(r.dd)||
+isNonDeliveryTitle(r.n)||
+r.cn==='Auto-created from Google Calendar event'));
+if(!candidates.length){showToast('Nothing to clean — no problematic auto-imported records found','warn');return}
+// Show summary of what will be deleted
+let weekend=candidates.filter(r=>isWeekend(r.dd)).length;
+let labels=candidates.filter(r=>isNonDeliveryTitle(r.n)).length;
+let msg='Remove '+candidates.length+' auto-imported records?\n\n';
+if(weekend)msg+='• '+weekend+' weekend events (Sat/Sun)\n';
+if(labels)msg+='• '+labels+' calendar labels (COLOR, WEEK, etc.)\n';
+msg+='\nOnly records NOT yet completed/delivered are removed.\nThis also resets the calendar mapping so they can be re-synced cleanly.';
+if(!confirm(msg))return;
 // Remove from ADDED
 let idsToRemove=new Set(candidates.map(r=>r.i));
 ADDED=ADDED.filter(r=>!idsToRemove.has(r.i));
@@ -951,7 +1033,7 @@ Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(gcalMap[eventId])){upd
 updates['gcal_config/syncToken']=null;
 db.ref().update(updates);
 gcalSyncToken=null;
-showToast('&#10003; Cleaned '+candidates.length+' imported records');
+showToast('&#10003; Cleaned '+candidates.length+' imported records'+(weekend?' ('+weekend+' weekends)':'')+(labels?' ('+labels+' labels)':''));
 renderAll()}
 
 // === CALENDAR ===
