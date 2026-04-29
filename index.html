@@ -249,6 +249,10 @@ th,td{padding:7px 6px}
 .gcal-stat{display:inline-block;font-size:11px;font-weight:700;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:6px}
 .gcal-stat.ok{color:#059669;background:#dcfce7}
 .gcal-stat.err{color:#dc2626;background:#fef2f2}
+.gcal-cf{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#374151;cursor:pointer;padding:4px 9px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;user-select:none}
+.gcal-cf:hover{border-color:#4285F4}
+.gcal-cf input{margin:0;cursor:pointer}
+.gcal-cf .cf-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,0.1)}
 @media(max-width:700px){.gcal-panel{margin:0 14px 10px;padding:14px}.gcal-btn{font-size:11px;padding:7px 10px}}
 /* Toast notification */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);background:#059669;color:#fff;padding:14px 22px;border-radius:10px;font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;transition:transform .3s,opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
@@ -326,6 +330,14 @@ th,td{padding:7px 6px}
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
 <label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
 <button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
+</div>
+<div class="row" id="gcalRowColors" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;background:#f9fafb;padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb">
+<span style="font-size:12px;font-weight:800;color:#374151">Sync only events with these colors:</span>
+<label class="gcal-cf"><input type="checkbox" data-color="11" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#d50000"></span> Standard 8' (red)</label>
+<label class="gcal-cf"><input type="checkbox" data-color="10" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#0b8043"></span> 7' or Smaller (green)</label>
+<label class="gcal-cf"><input type="checkbox" data-color="6" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#f4511e"></span> Non-Standard (orange)</label>
+<label class="gcal-cf"><input type="checkbox" data-color="8" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#616161"></span> Awaiting Conf. (gray)</label>
+<label class="gcal-cf"><input type="checkbox" data-color="5" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#e4c441"></span> Slot N/A (yellow)</label>
 </div>
 <div class="row" id="gcalRowStatus" style="display:none">
 <span class="gcal-stat" id="gcalLastSync">Never synced</span>
@@ -727,6 +739,29 @@ let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
 let gcalMap={}; // {gcalEventId: localDeliveryId}
 let gcalStats={created:0,updated:0,skipped:0,errors:0};
 
+// Allowed colorIds for delivery events. Default: red, green, orange, gray (Awaiting Conf).
+const GCAL_DEFAULT_COLORS=['11','10','6','8'];
+function getGcalColors(){
+let s=localStorage.getItem('gcalAllowedColors');
+if(s){try{let a=JSON.parse(s);if(Array.isArray(a))return a}catch(e){}}
+return GCAL_DEFAULT_COLORS.slice()}
+function setGcalColors(arr){localStorage.setItem('gcalAllowedColors',JSON.stringify(arr))}
+function isAllowedColor(colorId){
+if(!colorId)return false; // events without explicit color use calendar default = not a delivery
+return getGcalColors().includes(String(colorId))}
+function gcalToggleColor(cb){
+let allowed=getGcalColors();
+let cid=cb.dataset.color;
+if(cb.checked){if(!allowed.includes(cid))allowed.push(cid)}
+else{allowed=allowed.filter(c=>c!==cid)}
+setGcalColors(allowed);
+// Reset sync token so next sync re-evaluates from start
+gcalSyncToken=null;dbGcal.update({syncToken:null});
+showToast('&#10003; Color filter updated. Click "Sync Now" to apply.','warn')}
+function refreshGcalColorCheckboxes(){
+let allowed=getGcalColors();
+document.querySelectorAll('.gcal-cf input[data-color]').forEach(cb=>{cb.checked=allowed.includes(cb.dataset.color)})}
+
 dbGcal.on('value',snap=>{let c=snap.val()||{};if(c.calendarId)gcalCalendarId=c.calendarId;if(c.syncToken)gcalSyncToken=c.syncToken;updateGcalUI()});
 dbGcalMap.on('value',snap=>{gcalMap=snap.val()||{}});
 
@@ -837,7 +872,9 @@ btn.classList.toggle('connected',connected);
 lbl.textContent=connected?'Calendar Synced':'Google Calendar';
 document.getElementById('gcalRowConnect').style.display=connected?'none':'flex';
 document.getElementById('gcalRowControls').style.display=connected?'flex':'none';
+document.getElementById('gcalRowColors').style.display=connected?'flex':'none';
 document.getElementById('gcalRowStatus').style.display=connected?'flex':'none';
+if(connected)refreshGcalColorCheckboxes();
 if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){
 document.getElementById('gcalInfo').innerHTML='<strong style="color:#dc2626">&#9888; Setup required:</strong> Open the source code and replace <code>GCAL_CLIENT_ID</code> with your Google OAuth Client ID. See instructions in the code comments.'}}
 
@@ -950,13 +987,12 @@ if(ai>=0){ADDED[ai].dn=note.trim();saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};EDITS[mappedId].dn=note.trim();saveE()}
 gcalStats.updated++}}
 return}
-// Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.)
+// Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) — these are recurring legend items
 if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
+// Skip events whose color is not in the allowed delivery-color list (set in panel)
+if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 let parsed=parseGcalTitle(ev.summary);
 let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
-// Skip weekend events (Saturday=6, Sunday=0) — these are usually personal/maintenance, not deliveries
-let dParsed=parseDate(newDD);
-if(dParsed){let dow=dParsed.getDay();if(dow===0||dow===6){gcalStats.skipped=(gcalStats.skipped||0)+1;return}}
 let mappedId=gcalMap[ev.id];
 if(mappedId){
 // UPDATE existing delivery if date changed
@@ -991,7 +1027,7 @@ pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
 tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
 dl:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,
-gcalId:ev.id};
+gcalId:ev.id,gcalColorId:ev.colorId||null};
 ADDED.push(rec);saveA();
 let updates={};updates['gcal_map/'+ev.id]=newId;db.ref().update(updates);
 gcalStats.created++}
@@ -1004,36 +1040,31 @@ if(on){gcalSync();gcalAutoTimer=setInterval(gcalSync,60000)}
 else{clearInterval(gcalAutoTimer);gcalAutoTimer=null}}
 
 function gcalCleanImported(){
-// Find ALL ADDED records that came from gcal AND are either:
-//  (a) weekend dates (Sat/Sun), or
-//  (b) non-delivery labels (COLOR, WEEK, MEMORIAL, etc.), or
-//  (c) untouched auto-imports (cn still says auto-created)
-let isWeekend=function(dd){let d=parseDate(dd);if(!d||isNaN(d))return false;let dow=d.getDay();return dow===0||dow===6};
+// Find ALL ADDED records that came from gcal AND meet any cleanup criteria:
+//  (a) non-delivery label title (COLOR, WEEK, MEMORIAL, etc.), or
+//  (b) untouched auto-imports (cn still says auto-created), or
+//  (c) saved gcalColorId is not in the currently-allowed list
 let candidates=ADDED.filter(r=>r.gcalId&&!r.co&&!r.dl&&(
-isWeekend(r.dd)||
 isNonDeliveryTitle(r.n)||
-r.cn==='Auto-created from Google Calendar event'));
+r.cn==='Auto-created from Google Calendar event'||
+(r.gcalColorId&&!isAllowedColor(r.gcalColorId))));
 if(!candidates.length){showToast('Nothing to clean — no problematic auto-imported records found','warn');return}
-// Show summary of what will be deleted
-let weekend=candidates.filter(r=>isWeekend(r.dd)).length;
 let labels=candidates.filter(r=>isNonDeliveryTitle(r.n)).length;
+let badColor=candidates.filter(r=>r.gcalColorId&&!isAllowedColor(r.gcalColorId)).length;
 let msg='Remove '+candidates.length+' auto-imported records?\n\n';
-if(weekend)msg+='• '+weekend+' weekend events (Sat/Sun)\n';
 if(labels)msg+='• '+labels+' calendar labels (COLOR, WEEK, etc.)\n';
+if(badColor)msg+='• '+badColor+' events with non-delivery colors\n';
 msg+='\nOnly records NOT yet completed/delivered are removed.\nThis also resets the calendar mapping so they can be re-synced cleanly.';
 if(!confirm(msg))return;
-// Remove from ADDED
 let idsToRemove=new Set(candidates.map(r=>r.i));
 ADDED=ADDED.filter(r=>!idsToRemove.has(r.i));
 saveA();
-// Clean gcal_map: remove any mapping that points to a removed id
 let updates={};
 Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(gcalMap[eventId])){updates['gcal_map/'+eventId]=null}});
-// Reset sync token so next sync re-imports cleanly
 updates['gcal_config/syncToken']=null;
 db.ref().update(updates);
 gcalSyncToken=null;
-showToast('&#10003; Cleaned '+candidates.length+' imported records'+(weekend?' ('+weekend+' weekends)':'')+(labels?' ('+labels+' labels)':''));
+showToast('&#10003; Cleaned '+candidates.length+' imported records');
 renderAll()}
 
 // === CALENDAR ===
