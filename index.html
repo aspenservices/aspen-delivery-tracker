@@ -13,6 +13,9 @@
 <title>Aspen Spas — Delivery Tracker</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- Google Calendar API (Identity Services + GAPI) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f3f4f6;color:#1f2937;font-size:15px;-webkit-text-size-adjust:100%;-webkit-overflow-scrolling:touch}
@@ -223,6 +226,30 @@ th,td{padding:7px 6px}
 .ld-text{margin-top:14px;font-size:15px;font-weight:700;color:#6b7280;font-family:'Segoe UI',system-ui,sans-serif}
 .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:6px;vertical-align:middle}
 .sync-dot.on{background:#059669}.sync-dot.off{background:#dc2626}
+/* Google Calendar Sync */
+.gcal-btn{padding:7px 14px;border-radius:8px;border:2px solid #4285F4;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#4285F4;display:flex;align-items:center;gap:6px;transition:all .15s}
+.gcal-btn:hover{background:#4285F4;color:#fff}
+.gcal-btn.connected{background:#4285F4;color:#fff}
+.gcal-btn.connected:hover{background:#3367d6;border-color:#3367d6}
+.gcal-btn .gcal-dot{width:8px;height:8px;border-radius:50%;background:#dc2626}
+.gcal-btn.connected .gcal-dot{background:#34a853}
+.gcal-btn.syncing .gcal-dot{background:#fbbc04;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.gcal-panel{background:#fff;border:2px solid #e5e7eb;border-radius:14px;padding:18px;margin:0 24px 16px;display:none}
+.gcal-panel.open{display:block}
+.gcal-panel h3{font-size:15px;font-weight:800;color:#111827;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.gcal-panel .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.gcal-panel .info{font-size:12px;color:#6b7280;line-height:1.5}
+.gcal-panel select,.gcal-panel input{padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px;color:#1f2937;outline:none;font-family:inherit}
+.gcal-panel select:focus,.gcal-panel input:focus{border-color:#4285F4}
+.gcal-panel .pbtn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#4285F4;color:#fff}
+.gcal-panel .pbtn:hover{background:#3367d6}
+.gcal-panel .pbtn.danger{background:#dc2626}.gcal-panel .pbtn.danger:hover{background:#b91c1c}
+.gcal-panel .pbtn.gray{background:#6b7280}.gcal-panel .pbtn.gray:hover{background:#4b5563}
+.gcal-stat{display:inline-block;font-size:11px;font-weight:700;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:6px}
+.gcal-stat.ok{color:#059669;background:#dcfce7}
+.gcal-stat.err{color:#dc2626;background:#fef2f2}
+@media(max-width:700px){.gcal-panel{margin:0 14px 10px;padding:14px}.gcal-btn{font-size:11px;padding:7px 10px}}
 /* Toast notification */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);background:#059669;color:#fff;padding:14px 22px;border-radius:10px;font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;transition:transform .3s,opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -284,7 +311,28 @@ th,td{padding:7px 6px}
 <button class="tab-btn act" id="tbBoard" onclick="setTab('board')">Board</button>
 <button class="tab-btn" id="tbTable" onclick="setTab('table')">Table</button>
 <button class="tab-btn" id="tbCal" onclick="setTab('cal')">&#128197; Calendar</button>
+<button class="gcal-btn" id="gcalBtn" onclick="toggleGcalPanel()" title="Google Calendar Sync"><span class="gcal-dot"></span><span id="gcalBtnLabel">Google Calendar</span></button>
 </div></div>
+<div class="gcal-panel" id="gcalPanel">
+<h3>&#128197; Google Calendar Sync — Aspen Service</h3>
+<div class="info" id="gcalInfo">Connect your Google account to auto-sync deliveries from the Aspen Service calendar. New events become Upcoming deliveries; date changes update the existing record.</div>
+<div class="row" id="gcalRowConnect">
+<button class="pbtn" id="gcalConnectBtn" onclick="gcalConnect()">&#128274; Connect Google Account</button>
+</div>
+<div class="row" id="gcalRowControls" style="display:none">
+<label style="font-size:12px;font-weight:700;color:#374151">Calendar:</label>
+<select id="gcalSelect" style="min-width:200px"></select>
+<button class="pbtn" id="gcalSyncBtn" onclick="gcalSync()">&#128260; Sync Now</button>
+<label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
+<button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
+</div>
+<div class="row" id="gcalRowStatus" style="display:none">
+<span class="gcal-stat" id="gcalLastSync">Never synced</span>
+<span class="gcal-stat ok" id="gcalCreated" style="display:none">0 created</span>
+<span class="gcal-stat ok" id="gcalUpdated" style="display:none">0 updated</span>
+<span class="gcal-stat err" id="gcalErrors" style="display:none">0 errors</span>
+</div>
+</div>
 <div class="kpis" id="kpis"></div>
 <div class="drill" id="drill"><div class="drill-box" id="drillBox"></div></div>
 <div class="filters"><input class="search" id="searchBox" placeholder="Search name, spa, SN, address, phone, email..." oninput="search=this.value;renderBoard();renderTable()"><div id="filterBtns" style="display:flex;gap:8px;flex-wrap:wrap"></div><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button></div>
@@ -321,6 +369,8 @@ const db=firebase.database();
 const dbEdits=db.ref('edits');
 const dbAdded=db.ref('added');
 const dbOpts=db.ref('custom_opts');
+const dbGcal=db.ref('gcal_config');     // calendar id, last sync token
+const dbGcalMap=db.ref('gcal_map');     // maps {gcalEventId -> deliveryId}
 
 let EDITS={},ADDED=[];
 let fbReady=false;
@@ -336,15 +386,21 @@ function checkReady(){_loadCount++;if(_loadCount>=3){fbReady=true;renderAll();
 let lo=document.getElementById('loading-ov');lo.classList.add('hide');setTimeout(()=>lo.remove(),400);
 document.getElementById('syncDot').className='sync-dot on';document.getElementById('syncDot').title='Connected'}}
 
-dbEdits.on('value',snap=>{EDITS=snap.val()||{};if(fbReady)renderAll();else checkReady()});
-dbAdded.on('value',snap=>{ADDED=snap.val()||[];if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);if(fbReady)renderAll();else checkReady()});
+// Safety timeout: if Firebase takes more than 8s, show app anyway with a warning
+setTimeout(()=>{if(!fbReady){fbReady=true;renderAll();
+let lo=document.getElementById('loading-ov');if(lo){lo.classList.add('hide');setTimeout(()=>lo.remove(),400)}
+document.getElementById('syncDot').className='sync-dot off';document.getElementById('syncDot').title='Database connection slow — check internet';
+showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn')}},8000);
+
+dbEdits.on('value',snap=>{EDITS=snap.val()||{};if(fbReady)renderAll();else checkReady()},err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
+dbAdded.on('value',snap=>{ADDED=snap.val()||[];if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);if(fbReady)renderAll();else checkReady()},err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
 dbOpts.on('value',snap=>{let c=snap.val()||{};
 if(c.tb)c.tb.forEach(v=>{if(!OPT_TB.includes(v))OPT_TB.push(v)});
 if(c.ss)c.ss.forEach(v=>{if(!OPT_SS.includes(v))OPT_SS.push(v)});
 if(c.lf)c.lf.forEach(v=>{if(!OPT_LF.includes(v))OPT_LF.push(v)});
 if(c.cv)c.cv.forEach(v=>{if(!OPT_CV.includes(v))OPT_CV.push(v)});
 if(c.su)c.su.forEach(v=>{if(!OPT_SU.includes(v))OPT_SU.push(v)});
-if(fbReady)renderAll();else checkReady()});
+if(fbReady)renderAll();else checkReady()},err=>{console.error('dbOpts error:',err);if(!fbReady)checkReady()});
 
 let search="",statusF="all",tab="board",drillType=null,sortCol="date",sortDir="desc",drillSortDir="desc";
 function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
@@ -359,7 +415,11 @@ if(mdy4)return new Date(+mdy4[3],+mdy4[1]-1,+mdy4[2]);
 let mdy2=/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(clean);
 if(mdy2){let yr=+mdy2[3];yr=yr<50?2000+yr:1900+yr;return new Date(yr,+mdy2[1]-1,+mdy2[2])}
 let md=/^(\d{1,2})\/(\d{1,2})$/.exec(clean);
-if(md){let m=+md[1],d=+md[2],yr=m>=10?2025:2026;return new Date(yr,m-1,d)}
+if(md){let m=+md[1],d=+md[2];
+// Dynamic year: if month already passed this year, assume next year
+let now=new Date(),curY=now.getFullYear(),curM=now.getMonth()+1;
+let yr=(m<curM-1)?curY+1:curY;
+return new Date(yr,m-1,d)}
 return null}
 function fmtDate(dd){let d=parseDate(dd);if(!d||isNaN(d))return dd||'TBD';
 return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -424,11 +484,11 @@ function toggleDateSort(){sortCol="date";sortDir=sortDir==="desc"?"asc":"desc";
 let arrow=document.getElementById("dateSortArrow");if(arrow)arrow.textContent=sortDir==="desc"?"▼ Newest":"▲ Oldest";
 render()}
 function toggleDrillSort(){drillSortDir=drillSortDir==="desc"?"asc":"desc";renderDrill()}
-function renderBoard(){let h="";fil().forEach(r=>{let s=st(r);h+='<div class="card" onclick="openDet('+r.i+')"><div class="sbar '+s+'"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><span class="badge '+s+'">'+sL(s)+'</span></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.pr>0?'<span>&#128176; '+fmt(r.pr)+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; '+fmt(r.bl)+'</span>':'')+'</div><div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
-if(!fil().length)h='<div class="empty">No deliveries match.</div>';document.getElementById("board").innerHTML=h}
+function renderBoard(){let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<div class="card" onclick="openDet('+r.i+')"><div class="sbar '+s+'"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><span class="badge '+s+'">'+sL(s)+'</span></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.pr>0?'<span>&#128176; '+fmt(r.pr)+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; '+fmt(r.bl)+'</span>':'')+'</div><div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
+if(!list.length)h='<div class="empty">No deliveries match.</div>';document.getElementById("board").innerHTML=h}
 function thH(label,col){let active=sortCol===col;let arrow=active?(sortDir==="desc"?"▼":"▲"):"⇅";return'<th class="'+(active?"act-sort":"")+'" onclick="toggleSort(\''+col+'\')">'+label+' <span class="srt">'+arrow+'</span></th>'}
 function renderTable(){document.getElementById("th").innerHTML="<tr>"+thH("Status","status")+thH("Customer","name")+thH("Spa","name")+thH("Date","date")+thH("Price","price")+thH("Balance","balance")+"<th>Pre</th><th>Post</th><th>Cover</th><th>Lift</th></tr>";
-let h="";fil().forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:#111827;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.n+'</td><td style="color:#6b7280">'+(r.sp||"—")+'</td><td style="color:#6b7280;white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:#7c3aed;font-weight:700">'+(r.pr>0?fmt(r.pr):"—")+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:#6b7280;font-size:12px">'+(r.cv||"—")+'</td><td style="color:#6b7280;font-size:12px">'+(r.lf||"—")+'</td></tr>'});
+let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:#111827;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.n+'</td><td style="color:#6b7280">'+(r.sp||"—")+'</td><td style="color:#6b7280;white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:#7c3aed;font-weight:700">'+(r.pr>0?fmt(r.pr):"—")+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:#6b7280;font-size:12px">'+(r.cv||"—")+'</td><td style="color:#6b7280;font-size:12px">'+(r.lf||"—")+'</td></tr>'});
 document.getElementById("tb").innerHTML=h}
 function renderCharts(){let mo={},md={};AD().filter(r=>r.dd&&r.n).forEach(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return;let k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");mo[k]=(mo[k]||0)+1});
 AD().filter(r=>r.sp&&r.n).forEach(r=>{let b=r.sp.split(",")[0].trim();md[b]=(md[b]||0)+1});
@@ -443,7 +503,8 @@ function closeOv(){document.getElementById("ov").classList.add("hidden")}
 function toggleEdit(){renderModal()}
 
 function renderModal(){let r=curRec,s=st(r);
-let h='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px"><div><h2>'+r.n+'</h2><p class="sub">'+(r.sp||"")+(r.sn?" &bull; SN: "+r.sn:"")+'</p></div><button class="xbtn" onclick="closeOv()">&#10005;</button></div>';
+let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
+let h='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px"><div><h2>'+esc(r.n)+'</h2><p class="sub">'+esc(r.sp||"")+(r.sn?" &bull; SN: "+esc(r.sn):"")+'</p></div><button class="xbtn" onclick="closeOv()">&#10005;</button></div>';
 h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap"><span class="badge '+s+'">'+sL(s)+'</span>';
 if(s!=='complete'){let canCompl=r.cl&&(r.gb||r.ngb);
 h+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete Ticket':'&#9888; Complete (Call + G.B./N.G.B. Required)')+'</button>';}
@@ -645,6 +706,218 @@ let blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
 let a=document.createElement('a');a.href=URL.createObjectURL(blob);
 a.download='TechVisit_'+r.n.replace(/[^a-zA-Z0-9]/g,'_')+'.ics';a.click();URL.revokeObjectURL(a.href)}
 
+
+// === GOOGLE CALENDAR INTEGRATION ===
+// IMPORTANT: To enable, replace GCAL_CLIENT_ID below with your OAuth Client ID from Google Cloud Console.
+// Setup steps (one-time):
+//   1. https://console.cloud.google.com/  →  Create/select project
+//   2. APIs & Services  →  Enable "Google Calendar API"
+//   3. Credentials  →  Create OAuth 2.0 Client ID (Web application)
+//   4. Authorized JavaScript origins:  https://aspenservices.github.io
+//   5. Paste the Client ID here:
+const GCAL_CLIENT_ID='865767728073-rssaksss70dpo4rqfivq0lf24qsle7t59.apps.googleusercontent.com';
+const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.readonly';
+const GCAL_DISCOVERY='https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+const GCAL_DEFAULT_NAME='Aspen Service'; // calendar name to auto-select
+
+let gcalTokenClient=null,gcalToken=null,gcalGapiReady=false,gcalGisReady=false;
+let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
+let gcalMap={}; // {gcalEventId: localDeliveryId}
+let gcalStats={created:0,updated:0,errors:0};
+
+dbGcal.on('value',snap=>{let c=snap.val()||{};if(c.calendarId)gcalCalendarId=c.calendarId;if(c.syncToken)gcalSyncToken=c.syncToken;updateGcalUI()});
+dbGcalMap.on('value',snap=>{gcalMap=snap.val()||{}});
+
+function gapiLoaded(){gapi.load('client',async()=>{
+try{await gapi.client.init({discoveryDocs:[GCAL_DISCOVERY]});gcalGapiReady=true;tryGcalInit()}
+catch(e){console.error('gapi init err:',e)}})}
+function gisLoaded(){
+if(typeof google==='undefined'||!google.accounts){return}
+if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){console.warn('Google Calendar disabled: set GCAL_CLIENT_ID');return}
+try{gcalTokenClient=google.accounts.oauth2.initTokenClient({client_id:GCAL_CLIENT_ID,scope:GCAL_SCOPES,callback:''});gcalGisReady=true;tryGcalInit()}
+catch(e){console.error('gis init err:',e)}}
+function tryGcalInit(){if(gcalGapiReady&&gcalGisReady){updateGcalUI()}}
+// Wait for scripts (loaded async) — poll until they appear
+let _gcalPoll=setInterval(()=>{
+if(typeof gapi!=='undefined'&&!gcalGapiReady){gapiLoaded()}
+if(typeof google!=='undefined'&&google.accounts&&!gcalGisReady){gisLoaded()}
+if(gcalGapiReady&&gcalGisReady){clearInterval(_gcalPoll)}
+},400);
+setTimeout(()=>clearInterval(_gcalPoll),20000);
+
+function toggleGcalPanel(){let p=document.getElementById('gcalPanel');p.classList.toggle('open')}
+
+function gcalConnect(){
+if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){
+showToast('&#9888; Google Calendar not configured. Edit GCAL_CLIENT_ID in the code.','err');return}
+if(!gcalTokenClient){showToast('&#9888; Google API not ready yet, try again in a moment','warn');return}
+gcalTokenClient.callback=async(resp)=>{
+if(resp.error){showToast('&#10005; Google sign-in failed: '+resp.error,'err');return}
+gcalToken=resp.access_token;
+showToast('&#10003; Connected to Google Calendar');
+await gcalLoadCalendars();updateGcalUI();
+// Auto-sync after connect if a calendar is already chosen
+if(gcalCalendarId)gcalSync()};
+gcalTokenClient.requestAccessToken({prompt:gcalToken?'':'consent'})}
+
+function gcalDisconnect(){
+if(gcalToken&&google&&google.accounts&&google.accounts.oauth2){google.accounts.oauth2.revoke(gcalToken,()=>{})}
+gcalToken=null;clearInterval(gcalAutoTimer);gcalAutoTimer=null;
+showToast('Disconnected from Google Calendar');updateGcalUI()}
+
+async function gcalLoadCalendars(){
+try{let res=await gapi.client.calendar.calendarList.list({maxResults:50});
+gcalCalendars=res.result.items||[];
+let sel=document.getElementById('gcalSelect');
+sel.innerHTML=gcalCalendars.map(c=>'<option value="'+c.id+'">'+(c.summary||c.id)+'</option>').join('');
+// Auto-pick saved one, else find by name "Aspen Service"
+let pick=gcalCalendarId||(gcalCalendars.find(c=>(c.summary||'').toLowerCase().includes('aspen service'))||{}).id;
+if(pick){sel.value=pick;gcalCalendarId=pick;dbGcal.update({calendarId:pick})}
+sel.onchange=function(){gcalCalendarId=this.value;dbGcal.update({calendarId:gcalCalendarId,syncToken:null});gcalSyncToken=null}}
+catch(e){console.error('loadCalendars:',e);showToast('&#10005; Could not load calendars: '+(e.result?e.result.error.message:e.message),'err')}}
+
+function updateGcalUI(){
+let btn=document.getElementById('gcalBtn'),lbl=document.getElementById('gcalBtnLabel');
+let connected=!!gcalToken;
+btn.classList.toggle('connected',connected);
+lbl.textContent=connected?'Calendar Synced':'Google Calendar';
+document.getElementById('gcalRowConnect').style.display=connected?'none':'flex';
+document.getElementById('gcalRowControls').style.display=connected?'flex':'none';
+document.getElementById('gcalRowStatus').style.display=connected?'flex':'none';
+if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){
+document.getElementById('gcalInfo').innerHTML='<strong style="color:#dc2626">&#9888; Setup required:</strong> Open the source code and replace <code>GCAL_CLIENT_ID</code> with your Google OAuth Client ID. See instructions in the code comments.'}}
+
+// Parse calendar event title patterns like:
+//   "AM-Vargon-30593-Crestwood"
+//   "ALL DAY+Haul-Jayne-30726-Innsbr"
+//   "PM-Wolfe-30933-Webster"
+//   "AM - Sellers - 30155 - Chesterfield"
+function parseGcalTitle(title){
+let t=String(title||'').trim();
+let slot='am';let slotM=t.match(/^(ALL\s*DAY(\+Haul)?|AM|PM)/i);
+if(slotM){let s=slotM[1].toUpperCase();slot=s.indexOf('PM')===0?'pm':(s.indexOf('ALL')===0?'allday':'am');t=t.replace(slotM[0],'').replace(/^[\s\-+]+/,'')}
+// Try to extract a 4-5 digit serial number anywhere
+let snM=t.match(/\b(\d{4,6})\b/);let sn=snM?snM[1]:null;
+// Split on - or | with spaces
+let parts=t.split(/\s*[-|]\s*/).map(p=>p.trim()).filter(Boolean);
+let name=parts[0]||t;let city=null;
+if(parts.length>=3)city=parts[parts.length-1];
+else if(parts.length===2)city=parts[1];
+// If name looks like a number, fall back
+if(/^\d+$/.test(name))name=t;
+return{name:name,sn:sn,city:city,slot:slot}}
+
+function gcalEventToDate(ev){
+if(ev.start&&ev.start.date)return ev.start.date; // YYYY-MM-DD all-day
+if(ev.start&&ev.start.dateTime){let d=new Date(ev.start.dateTime);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+return null}
+
+function gcalDeliveryDD(ev,parsed){
+let iso=gcalEventToDate(ev);if(!iso)return null;
+let slot=parsed.slot;
+// If event has a specific time (not all-day), infer am/pm
+if(ev.start&&ev.start.dateTime){let h=new Date(ev.start.dateTime).getHours();slot=h<12?'am':'pm'}
+let label={am:' am',pm:' pm',allday:' all day'}[slot]||' am';
+return iso+label}
+
+async function gcalSync(){
+if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
+if(!gcalCalendarId){showToast('&#9888; Choose a calendar','warn');return}
+let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
+gcalStats={created:0,updated:0,errors:0};
+try{
+let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,showDeleted:true};
+if(gcalSyncToken){params.syncToken=gcalSyncToken}
+else{// First sync: pull last 60 days and forward 6 months
+let now=new Date();let from=new Date(now);from.setDate(from.getDate()-60);
+params.timeMin=from.toISOString();
+params.orderBy='startTime'}
+let allEvents=[];let pageToken=null;let nextSync=null;
+do{if(pageToken)params.pageToken=pageToken;
+let res;try{res=await gapi.client.calendar.events.list(params)}
+catch(e){
+// 410 GONE = sync token expired, do a full re-sync
+if(e.status===410){gcalSyncToken=null;dbGcal.update({syncToken:null});btn.classList.remove('syncing');return gcalSync()}
+throw e}
+allEvents=allEvents.concat(res.result.items||[]);
+pageToken=res.result.nextPageToken;
+if(res.result.nextSyncToken)nextSync=res.result.nextSyncToken
+}while(pageToken);
+
+for(let ev of allEvents){await processGcalEvent(ev)}
+
+if(nextSync){gcalSyncToken=nextSync;dbGcal.update({syncToken:nextSync,lastSync:Date.now()})}
+else{dbGcal.update({lastSync:Date.now()})}
+
+let now=new Date();let stamp=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+document.getElementById('gcalLastSync').textContent='Last sync: '+stamp;
+['Created','Updated','Errors'].forEach((k,i)=>{
+let key=['created','updated','errors'][i];
+let el=document.getElementById('gcal'+k);
+if(gcalStats[key]>0){el.style.display='inline-block';el.textContent=gcalStats[key]+' '+key.toLowerCase()}else{el.style.display='none'}});
+showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.updated+' updated'+(gcalStats.errors?', '+gcalStats.errors+' errors':''));
+}catch(e){console.error('sync err:',e);showToast('&#10005; Sync failed: '+(e.result?e.result.error.message:e.message),'err');gcalStats.errors++}
+btn.classList.remove('syncing')}
+
+async function processGcalEvent(ev){
+try{
+// Deleted event -> if mapped, mark the local delivery (we don't auto-delete; just leave a note)
+if(ev.status==='cancelled'){
+let mappedId=gcalMap[ev.id];if(mappedId){
+let local=AD().find(r=>r.i===mappedId);
+if(local&&!local.co){
+let note=(local.dn||'')+'\n[GCAL] Event removed from calendar on '+new Date().toLocaleDateString();
+let ai=ADDED.findIndex(x=>x.i===mappedId);
+if(ai>=0){ADDED[ai].dn=note.trim();saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};EDITS[mappedId].dn=note.trim();saveE()}
+gcalStats.updated++}}
+return}
+let parsed=parseGcalTitle(ev.summary);
+let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
+let mappedId=gcalMap[ev.id];
+if(mappedId){
+// UPDATE existing delivery if date changed
+let local=AD().find(r=>r.i===mappedId);if(!local)return;
+if(local.dd!==newDD){
+let ai=ADDED.findIndex(x=>x.i===mappedId);
+if(ai>=0){ADDED[ai].dd=newDD;saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};EDITS[mappedId].dd=newDD;saveE()}
+gcalStats.updated++}
+return}
+// Look up by SN first (most reliable)
+let existing=null;
+if(parsed.sn){existing=AD().find(r=>r.n&&String(r.sn||'').replace(/\.0$/,'')===parsed.sn)}
+// Fallback: match by last-name + nearby date
+if(!existing&&parsed.name){
+let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
+existing=AD().find(r=>{if(!r.n)return false;let rn=r.n.toLowerCase();return rn.indexOf(nameKey)>=0&&!r.co})}
+if(existing){
+// Link this event to the existing delivery
+let updates={};updates['gcal_map/'+ev.id]=existing.i;db.ref().update(updates);
+if(existing.dd!==newDD){
+let ai=ADDED.findIndex(x=>x.i===existing.i);
+if(ai>=0){ADDED[ai].dd=newDD;saveA()}
+else{if(!EDITS[existing.i])EDITS[existing.i]={};EDITS[existing.i].dd=newDD;saveE()}
+gcalStats.updated++}
+return}
+// Create a new Upcoming delivery
+let newId=Date.now()+Math.floor(Math.random()*1000);
+let rec={i:newId,n:parsed.name,sp:null,sn:parsed.sn||null,dd:newDD,
+st:parsed.city||null,ph:null,em:null,cn:'Auto-created from Google Calendar event',
+pr:0,py:0,bl:0,ck:false,
+pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
+tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
+dl:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,
+gcalId:ev.id};
+ADDED.push(rec);saveA();
+let updates={};updates['gcal_map/'+ev.id]=newId;db.ref().update(updates);
+gcalStats.created++}
+catch(e){console.error('processGcalEvent err:',e);gcalStats.errors++}}
+
+function gcalToggleAuto(){
+let on=document.getElementById('gcalAuto').checked;
+if(on){gcalSync();gcalAutoTimer=setInterval(gcalSync,60000)}
+else{clearInterval(gcalAutoTimer);gcalAutoTimer=null}}
 
 // === CALENDAR ===
 let calView="month",calDate=new Date();
