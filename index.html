@@ -766,14 +766,23 @@ gcalToken=null;clearInterval(gcalAutoTimer);gcalAutoTimer=null;
 showToast('Disconnected from Google Calendar');updateGcalUI()}
 
 async function gcalLoadCalendars(){
-try{let res=await gapi.client.calendar.calendarList.list({maxResults:50});
+try{let res=await gapi.client.calendar.calendarList.list({maxResults:250,showHidden:true,minAccessRole:'reader'});
 gcalCalendars=res.result.items||[];
 let sel=document.getElementById('gcalSelect');
-sel.innerHTML=gcalCalendars.map(c=>'<option value="'+c.id+'">'+(c.summary||c.id)+'</option>').join('');
-// Auto-pick saved one, else find by name "Aspen Service"
-let pick=gcalCalendarId||(gcalCalendars.find(c=>(c.summary||'').toLowerCase().includes('aspen service'))||{}).id;
+// Sort: primary first, then by summary; mark shared calendars
+gcalCalendars.sort((a,b)=>{if(a.primary&&!b.primary)return -1;if(!a.primary&&b.primary)return 1;return (a.summary||'').localeCompare(b.summary||'')});
+sel.innerHTML=gcalCalendars.map(c=>{
+let label=c.summary||c.id;
+if(c.primary)label+=' (Primary)';
+else if(c.accessRole==='reader')label+=' (Read-only)';
+return '<option value="'+c.id+'">'+label+'</option>'}).join('');
+// Auto-pick saved one, else find by name "Aspen Service" (case-insensitive, partial match)
+let pick=gcalCalendarId;
+if(!pick){let m=gcalCalendars.find(c=>(c.summary||'').toLowerCase().includes('aspen service'));if(m)pick=m.id}
+if(!pick){let m=gcalCalendars.find(c=>(c.summary||'').toLowerCase().includes('aspen'));if(m)pick=m.id}
 if(pick){sel.value=pick;gcalCalendarId=pick;dbGcal.update({calendarId:pick})}
-sel.onchange=function(){gcalCalendarId=this.value;dbGcal.update({calendarId:gcalCalendarId,syncToken:null});gcalSyncToken=null}}
+sel.onchange=function(){gcalCalendarId=this.value;dbGcal.update({calendarId:gcalCalendarId,syncToken:null});gcalSyncToken=null};
+console.log('Calendars loaded:',gcalCalendars.map(c=>c.summary+' ['+c.accessRole+']').join(', '))}
 catch(e){console.error('loadCalendars:',e);showToast('&#10005; Could not load calendars: '+(e.result?e.result.error.message:e.message),'err')}}
 
 function updateGcalUI(){
