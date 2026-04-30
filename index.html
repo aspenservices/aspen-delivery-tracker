@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-title" content="Aspen Spas">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a1410">
-<!-- Aspen Spas branded icon: black rounded square with gradient orange leaf -->
-<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23fbbf24'/><stop offset='50%25' stop-color='%23e67e2e'/><stop offset='100%25' stop-color='%23c4631e'/></linearGradient><linearGradient id='h' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' stop-color='%23ffffff' stop-opacity='0.4'/><stop offset='100%25' stop-color='%23ffffff' stop-opacity='0'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='%231a1410'/><path d='M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z' fill='url(%23g)'/><path d='M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z' fill='url(%23h)'/></svg>">
-<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23fbbf24'/><stop offset='50%25' stop-color='%23e67e2e'/><stop offset='100%25' stop-color='%23c4631e'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='%231a1410'/><path d='M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z' fill='url(%23g)'/></svg>">
+<!-- Aspen Spas branded icon: black rounded square with orange leaf -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1410'/><path d='M68 18 C 44 24, 28 42, 26 64 C 24 80, 32 88, 38 86 C 38 72, 40 58, 46 44 C 41 56, 38 70, 38 84 C 38 64, 46 44, 62 28 C 70 22, 74 18, 68 18 Z' fill='%23e67e2e'/></svg>">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1410'/><path d='M68 18 C 44 24, 28 42, 26 64 C 24 80, 32 88, 38 86 C 38 72, 40 58, 46 44 C 41 56, 38 70, 38 84 C 38 64, 46 44, 62 28 C 70 22, 74 18, 68 18 Z' fill='%23e67e2e'/></svg>">
 <title>Aspen Spas — Delivery Tracker</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -44,7 +44,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;
 .aspen-leaf{width:40px;height:40px;flex-shrink:0}
 .aspen-logo-text{font-size:24px;font-weight:800;letter-spacing:.04em;color:#fff;line-height:1}
 .aspen-user{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:13px;letter-spacing:.05em;background:rgba(255,255,255,.06);padding:8px 14px;border-radius:20px}
-.aspen-subtitle{margin-top:14px;text-align:center;color:var(--aspen-orange);font-size:11px;font-weight:700;letter-spacing:.35em}
+.aspen-subtitle{margin-top:14px;text-align:center;color:var(--aspen-orange);font-size:11px;font-weight:700;letter-spacing:.35em;display:flex;align-items:center;justify-content:center;gap:10px}
+.delivery-icon{width:28px;height:23px;flex-shrink:0}
 .sync-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .sync-dot.on{background:#10b981}.sync-dot.off{background:#ef4444}
 
@@ -354,11 +355,13 @@ th,td{padding:7px 6px}
 .auth-card{background:#fff;border-radius:16px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 .auth-leaf{width:56px;height:56px;margin:0 auto 12px;display:block}
 .auth-card h1{font-size:24px;font-weight:800;letter-spacing:.04em;color:var(--text-primary);margin-bottom:4px}
-.auth-subtitle{color:var(--aspen-orange);font-size:11px;font-weight:700;letter-spacing:.3em;margin-bottom:24px}
+.auth-subtitle{color:var(--aspen-orange);font-size:11px;font-weight:700;letter-spacing:.3em;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:10px}
 .auth-form{display:flex;flex-direction:column;gap:12px;text-align:left}
 .auth-form label{font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:.05em;text-transform:uppercase}
 .auth-form input{padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
 .auth-form input:focus{border-color:var(--aspen-orange)}
+.auth-form .auth-select{padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;width:100%;background:#fff;cursor:pointer;color:var(--text-primary);-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%236b6357' d='M6 8L0 0h12z'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.auth-form .auth-select:focus{border-color:var(--aspen-orange)}
 .auth-form button{padding:12px 20px;background:var(--aspen-orange);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.02em;transition:background .15s}
 .auth-form button:hover{background:var(--aspen-orange-dark)}
 .auth-form .auth-link{background:transparent;color:var(--aspen-orange);padding:6px;font-size:12px;font-weight:600;text-decoration:underline}
@@ -391,8 +394,12 @@ th,td{padding:7px 6px}
 
 .tech-card{background:#fff;border:1px solid var(--border-soft);border-left:5px solid var(--aspen-orange);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow-card);transition:all .15s}
 .tech-card:hover{box-shadow:var(--shadow-card-hover)}
+.tech-card.mine{border-left-color:#059669;background:linear-gradient(to right,#f0fdf4 0%,#fff 30%)}
 .tech-card.delivered{border-left-color:#059669;opacity:.85}
 .tech-card.delivered::after{content:"✓ DELIVERED";float:right;font-size:10px;font-weight:800;color:#059669;background:#dcfce7;padding:3px 8px;border-radius:5px}
+.assign-pill{display:inline-block;font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.04em;margin-left:8px;vertical-align:middle}
+.assign-pill.mine{background:#dcfce7;color:#059669;border:1px solid #22c55e}
+.assign-pill.other{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
 .tech-card .name{font-size:17px;font-weight:700;margin-bottom:6px}
 .tech-card .row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);margin-bottom:4px}
 .tech-card .icon{width:14px;display:inline-block;flex-shrink:0;opacity:.7}
@@ -476,22 +483,10 @@ th,td{padding:7px 6px}
 <div id="auth-screen" class="auth-screen hidden">
 <div class="auth-card">
 <svg class="auth-leaf" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<defs>
-<linearGradient id="leafGradAuth" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stop-color="#fbbf24"/>
-<stop offset="50%" stop-color="#e67e2e"/>
-<stop offset="100%" stop-color="#c4631e"/>
-</linearGradient>
-<linearGradient id="leafShineAuth" x1="0%" y1="0%" x2="0%" y2="100%">
-<stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
-<stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
-</linearGradient>
-</defs>
-<path d="M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z" fill="url(#leafGradAuth)"/>
-<path d="M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z" fill="url(#leafShineAuth)"/>
+<path d="M68 18 C 44 24, 28 42, 26 64 C 24 80, 32 88, 38 86 C 38 72, 40 58, 46 44 C 41 56, 38 70, 38 84 C 38 64, 46 44, 62 28 C 70 22, 74 18, 68 18 Z" fill="#e67e2e"/>
 </svg>
 <h1>ASPEN <span style="font-weight:300">SPAS</span></h1>
-<div class="auth-subtitle">DELIVERY TRACKER</div>
+<div class="auth-subtitle"><svg class="delivery-icon" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="#e67e2e"><rect x="3" y="6" width="20" height="28" rx="1"/><line x1="23" y1="20" x2="35" y2="42" stroke="#e67e2e" stroke-width="2.5"/><circle cx="11" cy="42" r="4"/><circle cx="42" cy="14" r="3.5"/><line x1="42" y1="17.5" x2="42" y2="32" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="22" x2="33" y2="26" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="32" x2="38" y2="44" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="32" x2="46" y2="44" stroke="#e67e2e" stroke-width="2.5"/></g></svg><span>DELIVERY TRACKER</span></div>
 <div id="auth-form-area"></div>
 <div id="auth-msg"></div>
 </div>
@@ -503,16 +498,9 @@ th,td{padding:7px 6px}
 <div class="tech-hdr-inner">
 <div class="aspen-logo" style="gap:10px">
 <svg class="aspen-leaf" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<defs>
-<linearGradient id="leafGradTech" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stop-color="#fbbf24"/>
-<stop offset="50%" stop-color="#e67e2e"/>
-<stop offset="100%" stop-color="#c4631e"/>
-</linearGradient>
-</defs>
-<path d="M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z" fill="url(#leafGradTech)"/>
+<path d="M68 18 C 44 24, 28 42, 26 64 C 24 80, 32 88, 38 86 C 38 72, 40 58, 46 44 C 41 56, 38 70, 38 84 C 38 64, 46 44, 62 28 C 70 22, 74 18, 68 18 Z" fill="#e67e2e"/>
 </svg>
-<div><div style="font-size:18px;font-weight:800;letter-spacing:.04em">ASPEN <span style="font-weight:300">SPAS</span></div><div style="font-size:10px;color:var(--aspen-orange);font-weight:700;letter-spacing:.2em">TECH PORTAL</div></div>
+<div><div style="font-size:18px;font-weight:800;letter-spacing:.04em">ASPEN <span style="font-weight:300">SPAS</span></div><div style="font-size:10px;color:var(--aspen-orange);font-weight:700;letter-spacing:.2em;display:flex;align-items:center;gap:6px;margin-top:2px"><svg viewBox="0 0 60 50" width="24" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="#e67e2e"><rect x="3" y="6" width="20" height="28" rx="1"/><line x1="23" y1="20" x2="35" y2="42" stroke="#e67e2e" stroke-width="2.5"/><circle cx="11" cy="42" r="4"/><circle cx="42" cy="14" r="3.5"/><line x1="42" y1="17.5" x2="42" y2="32" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="22" x2="33" y2="26" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="32" x2="38" y2="44" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="32" x2="46" y2="44" stroke="#e67e2e" stroke-width="2.5"/></g></svg><span>TECH PORTAL</span></div></div>
 </div>
 <div style="display:flex;align-items:center;gap:8px">
 <span id="tech-user-label" style="font-size:13px;font-weight:600;color:#fff;opacity:.9"></span>
@@ -545,25 +533,13 @@ th,td{padding:7px 6px}
 <div class="aspen-hdr-inner">
 <div class="aspen-logo">
 <svg class="aspen-leaf" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<defs>
-<linearGradient id="leafGradMain" x1="0%" y1="0%" x2="100%" y2="100%">
-<stop offset="0%" stop-color="#fbbf24"/>
-<stop offset="50%" stop-color="#e67e2e"/>
-<stop offset="100%" stop-color="#c4631e"/>
-</linearGradient>
-<linearGradient id="leafShineMain" x1="0%" y1="0%" x2="0%" y2="100%">
-<stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
-<stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
-</linearGradient>
-</defs>
-<path d="M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z" fill="url(#leafGradMain)"/>
-<path d="M50 18 C 28 30, 22 50, 28 68 C 34 82, 50 86, 50 86 C 50 70, 53 48, 64 32 C 58 38, 53 50, 50 68 C 50 48, 58 30, 76 22 C 66 22, 56 20, 50 18 Z" fill="url(#leafShineMain)"/>
+<path d="M68 18 C 44 24, 28 42, 26 64 C 24 80, 32 88, 38 86 C 38 72, 40 58, 46 44 C 41 56, 38 70, 38 84 C 38 64, 46 44, 62 28 C 70 22, 74 18, 68 18 Z" fill="#e67e2e"/>
 </svg>
 <span class="aspen-logo-text">ASPEN <span style="font-weight:300">SPAS</span></span>
 </div>
 <div class="aspen-user" title="Database status"><span class="sync-dot off" id="syncDot"></span><span id="userInitials">—</span><span id="userRoleBadge" class="role-badge"></span><button class="logout-btn-hdr" onclick="doLogout()" title="Sign out">&#x21AA;</button></div>
 </div>
-<div class="aspen-subtitle">DELIVERY TRACKER</div>
+<div class="aspen-subtitle"><svg class="delivery-icon" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="#e67e2e"><rect x="3" y="6" width="20" height="28" rx="1"/><line x1="23" y1="20" x2="35" y2="42" stroke="#e67e2e" stroke-width="2.5"/><circle cx="11" cy="42" r="4"/><circle cx="42" cy="14" r="3.5"/><line x1="42" y1="17.5" x2="42" y2="32" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="22" x2="33" y2="26" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="32" x2="38" y2="44" stroke="#e67e2e" stroke-width="2.5"/><line x1="42" y1="32" x2="46" y2="44" stroke="#e67e2e" stroke-width="2.5"/></g></svg><span>DELIVERY TRACKER</span></div>
 </div>
 <div class="aspen-tabs-bar">
 <div class="aspen-tabs" id="aspenTabs"></div>
@@ -704,14 +680,32 @@ area.innerHTML='<div class="auth-form">'+
 '<div class="auth-help">The setup code is provided to the person installing the app. Once created, the admin can add other users from the Users panel.</div>'+
 '</div>'}
 else{
+// Build sorted user list: admin first, then organizer, then tech, alphabetical within each group
+let order={admin:0,organizer:1,tech:2};
+let userArr=Object.entries(USERS).sort((a,b)=>{
+let oa=order[a[1].role]==null?9:order[a[1].role];
+let ob=order[b[1].role]==null?9:order[b[1].role];
+if(oa!==ob)return oa-ob;
+return (a[1].name||'').localeCompare(b[1].name||'')});
+let lastSelected=localStorage.getItem('aspen_last_user')||'';
+let optsHtml='<option value="">— Select your name —</option>'+userArr.map(([id,u])=>{
+let label=escHtml(u.name||'(no name)')+' · '+(u.role||'').toUpperCase();
+return '<option value="'+escHtml(u.name||'')+'"'+(u.name===lastSelected?' selected':'')+'>'+label+'</option>'
+}).join('');
 area.innerHTML='<div class="auth-form">'+
-'<label>Name</label><input type="text" id="lo_name" placeholder="Your name" autocomplete="username" autocapitalize="words">'+
+'<label>Name</label><select id="lo_name" class="auth-select">'+optsHtml+'</select>'+
 '<label>4-digit PIN</label><input type="password" id="lo_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="current-password">'+
 '<button onclick="doLogin()">Sign In</button>'+
 '</div>'}
 // Submit on Enter
-area.querySelectorAll('input').forEach(inp=>{inp.addEventListener('keydown',e=>{if(e.key==='Enter'){let btn=area.querySelector('button');if(btn)btn.click()}})});
-let firstInput=area.querySelector('input');if(firstInput)setTimeout(()=>firstInput.focus(),50)}
+area.querySelectorAll('input,select').forEach(inp=>{inp.addEventListener('keydown',e=>{if(e.key==='Enter'){let btn=area.querySelector('button');if(btn)btn.click()}})});
+// Auto-focus PIN if a user is pre-selected (from last login), else focus the user selector
+let nameSel=document.getElementById('lo_name');
+let pinInp=document.getElementById('lo_pin');
+if(nameSel&&nameSel.value&&pinInp){setTimeout(()=>pinInp.focus(),50)}
+else{let firstInput=area.querySelector('input,select');if(firstInput)setTimeout(()=>firstInput.focus(),50)}
+// When a name is picked, jump to PIN
+if(nameSel&&pinInp){nameSel.addEventListener('change',()=>{if(nameSel.value)pinInp.focus()})}}
 
 function setAuthMsg(msg,type){
 let el=document.getElementById('auth-msg');
@@ -739,12 +733,14 @@ catch(e){setAuthMsg('&#10005; Error: '+e.message,'err')}}
 async function doLogin(){
 let name=document.getElementById('lo_name').value.trim();
 let pin=document.getElementById('lo_pin').value.trim();
-if(!name||!pin){setAuthMsg('&#9888; Enter your name and PIN','err');return}
+if(!name||!pin){setAuthMsg('&#9888; Select your name and enter PIN','err');return}
 setAuthMsg('Signing in...','info');
 let user=await authenticate(name,pin);
-if(!user){setAuthMsg('&#10005; Wrong name or PIN','err');return}
+if(!user){setAuthMsg('&#10005; Wrong PIN for '+name,'err');return}
 currentUser=user;
 saveSession(currentUser);
+// Remember last used name so dropdown defaults to it next time
+try{localStorage.setItem('aspen_last_user',user.name||'')}catch(e){}
 setAuthMsg('&#10003; Welcome, '+user.name+'!','ok');
 setTimeout(()=>{document.getElementById('auth-screen').classList.add('hidden');applyRoleUI()},400)}
 
@@ -790,17 +786,24 @@ let today=new Date();today.setHours(0,0,0,0);
 let label=techDate.toLocaleDateString(undefined,opts);
 if(techDate.getTime()===today.getTime())label+=' &middot; Today';
 lbl.innerHTML=label;
-// Filter deliveries assigned to this tech, on this date
+// Filter deliveries on this date (excluding fully completed ones)
 let dateKey=techDate.getFullYear()+'-'+String(techDate.getMonth()+1).padStart(2,'0')+'-'+String(techDate.getDate()).padStart(2,'0');
 let mine=AD().filter(r=>{
 if(!r.n||!r.dd)return false;
-if(r.assigned_to!==currentUser.id)return false;
+// Skip fully completed - tech already finished those
+if(st(r)==='complete')return false;
 let d=parseDate(r.dd);if(!d||isNaN(d))return false;
 let k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 return k===dateKey});
-// Sort: undelivered first, then by time slot
+// Sort: pending first (yours assigned > unassigned > others assigned), then by time slot
 mine.sort((a,b)=>{
+// Delivered to bottom
 if(a.dl!==b.dl)return a.dl?1:-1;
+// "Mine" (assigned to me) first, then unassigned, then others
+let priA=a.assigned_to===currentUser.id?0:(a.assigned_to?2:1);
+let priB=b.assigned_to===currentUser.id?0:(b.assigned_to?2:1);
+if(priA!==priB)return priA-priB;
+// Then by time slot
 let sa=(a.dd||'').match(/(am|pm|all\s*day)/i);let sb=(b.dd||'').match(/(am|pm|all\s*day)/i);
 let oa={am:0,'all day':1,pm:2,allday:1}[sa?sa[0].toLowerCase().replace(/\s+/,''):''+'']||0;
 let ob={am:0,'all day':1,pm:2,allday:1}[sb?sb[0].toLowerCase().replace(/\s+/,''):''+'']||0;
@@ -813,8 +816,13 @@ mine.forEach(r=>{
 let slot=(r.dd||'').match(/(am|pm|all\s*day)/i);
 let timeLabel=slot?slot[0].toUpperCase().replace(/\s+/,' '):'';
 let addrShort=(r.st||'').split('\n')[0].substring(0,60);
-html+='<div class="tech-card'+(r.dl?' delivered':'')+'" onclick="techOpenDetail('+r.i+')">'+
-'<div class="name">'+escHtml(r.n)+'</div>'+
+// Assignment badge logic
+let assignBadge='';
+let cardCls=r.dl?' delivered':'';
+if(r.assigned_to===currentUser.id){assignBadge='<span class="assign-pill mine">&#9733; Mine</span>';cardCls+=' mine'}
+else if(r.assigned_to&&USERS[r.assigned_to]){assignBadge='<span class="assign-pill other">&#9888; '+escHtml(USERS[r.assigned_to].name)+'</span>'}
+html+='<div class="tech-card'+cardCls+'" onclick="techOpenDetail('+r.i+')">'+
+'<div class="name">'+escHtml(r.n)+assignBadge+'</div>'+
 (timeLabel?'<div class="row"><span class="time-pill">'+timeLabel+'</span></div>':'')+
 (r.sp?'<div class="row">&#129716; '+escHtml(r.sp)+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>':'')+
 (addrShort?'<div class="row">&#128205; '+escHtml(addrShort)+'</div>':'')+
@@ -1200,6 +1208,10 @@ el.innerHTML=h}
 
 function setStatusFilter(s){
 statusF=s;
+// Smart default sort: Upcoming shows oldest first (next delivery), others show newest first
+if(sortCol==='date'){
+sortDir=(s==='upcoming')?'asc':'desc';
+let arrow=document.getElementById('dateSortArrow');if(arrow)arrow.textContent=sortDir==='desc'?'▼ Newest':'▲ Oldest';}
 renderKPIs();renderCtxHdr();
 if(tab==='cal')renderCalendar();else render()}
 
