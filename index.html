@@ -110,6 +110,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;
 .c-note{margin-top:10px;font-size:12px;color:var(--text-secondary);background:var(--bg-cream);border-radius:8px;padding:8px 11px;border-left:3px solid var(--aspen-orange);line-height:1.4}
 .c-chips{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 10px}
 .c-chip{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:5px;background:var(--bg-cream);color:var(--text-secondary);border:1px solid var(--border-soft)}
+.svc-tag{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
+.svc-tag.svc-req{background:#fef3c7;color:#92400e;border:1px solid #fbbf24}
+.svc-tag.svc-asg{background:#dbeafe;color:#1e40af;border:1px solid #3b82f6}
+.svc-tag.svc-prog{background:#ede9fe;color:#6d28d9;border:1px solid #8b5cf6}
+.svc-tag.svc-done{background:#dcfce7;color:#166534;border:1px solid #22c55e}
 .twrap{padding:0 40px 40px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{padding:9px 10px;text-align:left;color:#6b7280;font-weight:800;font-size:10px;text-transform:uppercase;border-bottom:3px solid #e5e7eb;background:#f9fafb;cursor:pointer;user-select:none;white-space:nowrap}
@@ -195,12 +200,15 @@ tbody tr{cursor:pointer}
 .mbtn-complete.disabled:hover{background:#d1d5db}
 .nbtn-save{background:#2563eb;color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}
 .nbtn-save:hover{background:#1d4ed8}
-.tv-section{background:#f0fdf4;border:2px solid #bbf7d0;border-radius:12px;padding:14px;margin-bottom:16px}
-.tv-section h4{font-size:13px;font-weight:800;color:#166534;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.tv-section{background:#fef9f3;border:2px solid #fbd39b;border-radius:12px;padding:14px;margin-bottom:16px}
+.tv-section h4{font-size:13px;font-weight:800;color:var(--aspen-orange);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.svc-status{padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;line-height:1.4}
+.svc-status .svc-stamp{font-size:11px;font-weight:500;opacity:.75;margin-top:2px}
 .tv-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .tv-row .ib{flex:1;min-width:140px}
-.tv-dl{background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
-.tv-dl:hover{background:#047857}
+.tv-dl{background:var(--aspen-orange);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;font-family:inherit;transition:background .15s}
+.tv-dl:hover{background:var(--aspen-orange-dark)}
+.tv-dl.danger{background:#dc2626}.tv-dl.danger:hover{background:#b91c1c}
 .tv-dl.disabled{background:#d1d5db;color:#9ca3af;cursor:not-allowed}
 .hidden{display:none}
 .empty{grid-column:1/-1;text-align:center;padding:50px;color:#6b7280;font-size:15px}
@@ -340,10 +348,175 @@ th,td{padding:7px 6px}
 .cal-wk-ev .ev-time{font-size:11px;color:#6b7280;font-weight:600}
 .cal-wk-ev .ev-spa{font-size:11px;color:#6b7280;min-width:80px}
 @media(max-width:768px){.cal-cell{min-height:60px;padding:2px 3px}.cal-dn{font-size:11px}.cal-ev{font-size:9px;padding:1px 3px}.cal-title{font-size:15px}.cal-wk-row{grid-template-columns:55px 1fr}.cal-wk-label .cw-day{font-size:18px}}
+/* === AUTH SCREEN === */
+.auth-screen{position:fixed;inset:0;background:var(--aspen-black);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px}
+.auth-card{background:#fff;border-radius:16px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.auth-leaf{width:48px;height:56px;margin:0 auto 12px;display:block}
+.auth-card h1{font-size:24px;font-weight:800;letter-spacing:.04em;color:var(--text-primary);margin-bottom:4px}
+.auth-subtitle{color:var(--aspen-orange);font-size:11px;font-weight:700;letter-spacing:.3em;margin-bottom:24px}
+.auth-form{display:flex;flex-direction:column;gap:12px;text-align:left}
+.auth-form label{font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:.05em;text-transform:uppercase}
+.auth-form input{padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+.auth-form input:focus{border-color:var(--aspen-orange)}
+.auth-form button{padding:12px 20px;background:var(--aspen-orange);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.02em;transition:background .15s}
+.auth-form button:hover{background:var(--aspen-orange-dark)}
+.auth-form .auth-link{background:transparent;color:var(--aspen-orange);padding:6px;font-size:12px;font-weight:600;text-decoration:underline}
+.auth-form .auth-link:hover{background:transparent;color:var(--aspen-orange-dark)}
+#auth-msg{margin-top:14px;font-size:13px;font-weight:600;min-height:18px}
+#auth-msg.err{color:#dc2626}
+#auth-msg.ok{color:#059669}
+#auth-msg.info{color:var(--text-secondary)}
+.auth-help{font-size:11px;color:var(--text-tertiary);margin-top:14px;line-height:1.5}
+
+.role-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.18);color:#fff;margin-left:4px}
+.logout-btn-hdr,.logout-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:background .15s;padding:0}
+.logout-btn-hdr:hover,.logout-btn:hover{background:rgba(255,255,255,.2)}
+
+/* === TECH VIEW === */
+.tech-view{position:fixed;inset:0;background:var(--bg-cream);z-index:50;display:flex;flex-direction:column;overflow:hidden}
+.tech-hdr{background:var(--aspen-black);color:#fff;padding:14px 18px;flex-shrink:0}
+.tech-hdr-inner{display:flex;justify-content:space-between;align-items:center;max-width:600px;margin:0 auto}
+.tech-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:600px;margin:0 auto;width:100%;padding:14px;padding-bottom:40px}
+.tech-date-bar{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:10px;margin-bottom:14px;box-shadow:var(--shadow-card)}
+.tech-nav{padding:8px 14px;background:var(--bg-cream);border:1px solid var(--border-soft);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-primary);font-family:inherit}
+.tech-nav:hover{background:var(--border-soft)}
+.tech-nav.today{background:var(--aspen-orange);color:#fff;border-color:var(--aspen-orange);font-size:12px;font-weight:700}
+.tech-nav.today:hover{background:var(--aspen-orange-dark)}
+
+.tech-empty{padding:60px 24px;text-align:center;color:var(--text-secondary)}
+.tech-empty .icon{font-size:54px;margin-bottom:14px}
+.tech-empty .title{font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px}
+.tech-empty .sub{font-size:13px;color:var(--text-tertiary)}
+
+.tech-card{background:#fff;border:1px solid var(--border-soft);border-left:5px solid var(--aspen-orange);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow-card);transition:all .15s}
+.tech-card:hover{box-shadow:var(--shadow-card-hover)}
+.tech-card.delivered{border-left-color:#059669;opacity:.85}
+.tech-card.delivered::after{content:"✓ DELIVERED";float:right;font-size:10px;font-weight:800;color:#059669;background:#dcfce7;padding:3px 8px;border-radius:5px}
+.tech-card .name{font-size:17px;font-weight:700;margin-bottom:6px}
+.tech-card .row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);margin-bottom:4px}
+.tech-card .icon{width:14px;display:inline-block;flex-shrink:0;opacity:.7}
+.tech-card .time-pill{display:inline-block;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;letter-spacing:.04em}
+
+/* Tech Detail full-screen */
+.tech-detail{position:fixed;inset:0;background:var(--bg-cream);z-index:55;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.tech-detail-inner{max-width:600px;margin:0 auto;padding:0 0 80px}
+.tech-detail .back-bar{position:sticky;top:0;background:var(--aspen-black);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:5}
+.tech-detail .back-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600}
+.tech-detail .back-btn:hover{background:rgba(255,255,255,.2)}
+.tech-detail .tech-section{background:#fff;border-radius:12px;margin:14px;padding:16px 18px;border:1px solid var(--border-soft);box-shadow:var(--shadow-card)}
+.tech-detail h2{font-size:20px;font-weight:800;margin-bottom:6px;line-height:1.2}
+.tech-detail .meta{font-size:13px;color:var(--text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.tech-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px;max-width:600px;margin:0 auto}
+.tech-action-btn{padding:18px 12px;background:#fff;border:1.5px solid var(--border-soft);border-radius:14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-primary);transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;box-shadow:var(--shadow-card)}
+.tech-action-btn:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
+.tech-action-btn .ico{font-size:28px}
+.tech-action-btn.maps{border-color:#3b82f6;color:#1e40af}
+.tech-action-btn.phone{border-color:#10b981;color:#047857}
+.tech-action-btn.photo{border-color:#8b5cf6;color:#6d28d9}
+.tech-action-btn.deliver{border-color:#059669;color:#047857;background:#f0fdf4}
+.tech-action-btn.deliver.done{background:#dcfce7;cursor:default}
+.tech-spec-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f3f4f6;gap:14px}
+.tech-spec-row:last-child{border:none}
+.tech-spec-row .lbl{color:var(--text-tertiary);font-weight:600;flex-shrink:0}
+.tech-spec-row .val{color:var(--text-primary);font-weight:500;text-align:right;word-break:break-word}
+.tech-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:10px}
+.tech-photo{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--bg-cream);cursor:pointer}
+.tech-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.tech-photo .del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+.tech-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}
+.tech-modal .box{background:#fff;border-radius:14px;max-width:380px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.tech-modal h3{font-size:17px;font-weight:800;margin-bottom:6px}
+.tech-modal .sub{font-size:13px;color:var(--text-secondary);margin-bottom:16px}
+.tech-modal .btns{display:flex;flex-direction:column;gap:8px}
+.tech-modal .mbig{padding:14px;background:var(--aspen-orange);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.tech-modal .mbig:hover{background:var(--aspen-orange-dark)}
+.tech-modal .mbig.green{background:#059669}.tech-modal .mbig.green:hover{background:#047857}
+.tech-modal .mbig.gray{background:#6b7280}.tech-modal .mbig.gray:hover{background:#4b5563}
+.tech-modal textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:14px;font-family:inherit;outline:none;resize:vertical;min-height:90px;margin-bottom:12px}
+.tech-modal textarea:focus{border-color:var(--aspen-orange)}
+
+/* Photos in admin modal */
+.admin-photos-section{margin:12px 0;padding:12px;background:var(--bg-cream);border-radius:10px;border:1px solid var(--border-soft)}
+
+/* === USERS MODAL === */
+.users-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.user-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:#fff}
+.user-row .u-avatar{width:36px;height:36px;border-radius:50%;background:var(--aspen-orange);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.user-row .u-info{flex:1;min-width:0}
+.user-row .u-name{font-size:14px;font-weight:700;color:var(--text-primary)}
+.user-row .u-email{font-size:11.5px;color:var(--text-secondary)}
+.user-row .u-role{font-size:10px;font-weight:800;padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
+.user-row .u-role.admin{background:#fef2f2;color:#dc2626}
+.user-row .u-role.organizer{background:#eff6ff;color:#2563eb}
+.user-row .u-role.tech{background:#f0fdf4;color:#059669}
+.user-row .u-actions{display:flex;gap:4px;flex-shrink:0}
+.user-row .u-btn{background:transparent;border:1px solid var(--border-soft);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+.user-row .u-btn:hover{background:var(--bg-cream)}
+.user-row .u-btn.danger:hover{background:#fef2f2;color:#dc2626;border-color:#dc2626}
+
+@media(max-width:700px){
+.tech-action-grid{grid-template-columns:1fr 1fr;gap:8px}
+.tech-action-btn{padding:14px 8px;font-size:12px}
+.tech-action-btn .ico{font-size:24px}
+.tech-detail h2{font-size:18px}
+.tech-card .name{font-size:16px}
+.auth-card{padding:28px 22px}
+.auth-card h1{font-size:20px}
+.tech-hdr-inner .aspen-leaf{width:30px;height:35px}
+.tech-hdr-inner div div:first-child{font-size:16px}
+}
 </style>
 </head>
 <body>
 <div id="loading-ov"><div class="ld-spinner"></div><div class="ld-text">Connecting to database...</div></div>
+
+<!-- LOGIN / AUTH SCREEN -->
+<div id="auth-screen" class="auth-screen hidden">
+<div class="auth-card">
+<svg class="auth-leaf" viewBox="0 0 60 80"><path d="M30 5 C 12 18, 8 38, 14 55 C 20 70, 30 75, 30 75 C 30 60, 32 40, 42 25 C 36 32, 32 42, 30 55 C 30 38, 36 22, 50 12 C 42 12, 35 8, 30 5 Z" fill="#e67e2e"/></svg>
+<h1>ASPEN <span style="font-weight:300">SPAS</span></h1>
+<div class="auth-subtitle">DELIVERY TRACKER</div>
+<div id="auth-form-area"></div>
+<div id="auth-msg"></div>
+</div>
+</div>
+
+<!-- TECH VIEW (only shown for role=tech) -->
+<div id="tech-view" class="tech-view hidden">
+<div class="tech-hdr">
+<div class="tech-hdr-inner">
+<div class="aspen-logo" style="gap:10px">
+<svg class="aspen-leaf" viewBox="0 0 60 80"><path d="M30 5 C 12 18, 8 38, 14 55 C 20 70, 30 75, 30 75 C 30 60, 32 40, 42 25 C 36 32, 32 42, 30 55 C 30 38, 36 22, 50 12 C 42 12, 35 8, 30 5 Z" fill="#e67e2e"/></svg>
+<div><div style="font-size:18px;font-weight:800;letter-spacing:.04em">ASPEN <span style="font-weight:300">SPAS</span></div><div style="font-size:10px;color:var(--aspen-orange);font-weight:700;letter-spacing:.2em">TECH PORTAL</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px">
+<span id="tech-user-label" style="font-size:13px;font-weight:600;color:#fff;opacity:.9"></span>
+<button class="logout-btn" onclick="doLogout()" title="Sign out">&#x21AA;</button>
+</div>
+</div>
+</div>
+<div class="tech-body">
+<div class="tech-date-bar">
+<button class="tech-nav" onclick="techDateNav(-1)">&#9664;</button>
+<div id="tech-date-label" style="font-weight:700;font-size:15px;text-align:center;flex:1"></div>
+<button class="tech-nav" onclick="techDateNav(1)">&#9654;</button>
+<button class="tech-nav today" onclick="techDateNav(0)">Today</button>
+</div>
+<div id="tech-list"></div>
+</div>
+<!-- Tech detail screen (slides in over list) -->
+<div id="tech-detail" class="tech-detail hidden"></div>
+<!-- Tech delivered modal -->
+<div id="tech-deliver-modal" class="tech-modal hidden"></div>
+<!-- Tech phone modal -->
+<div id="tech-phone-modal" class="tech-modal hidden"></div>
+</div>
+
+<!-- Admin: User Management Modal -->
+<div id="users-modal" class="ov hidden" onclick="closeUsersModal(event)">
+<div class="mdl" id="users-mdl" onclick="event.stopPropagation()" style="max-width:640px"></div>
+</div>
 <div class="aspen-hdr">
 <div class="aspen-hdr-inner">
 <div class="aspen-logo">
@@ -352,7 +525,7 @@ th,td{padding:7px 6px}
 </svg>
 <span class="aspen-logo-text">ASPEN <span style="font-weight:300">SPAS</span></span>
 </div>
-<div class="aspen-user" title="Database status"><span class="sync-dot off" id="syncDot"></span><span id="userInitials">AL</span></div>
+<div class="aspen-user" title="Database status"><span class="sync-dot off" id="syncDot"></span><span id="userInitials">AL</span><span id="userRoleBadge" class="role-badge"></span><button class="logout-btn-hdr" onclick="doLogout()" title="Sign out">&#x21AA;</button></div>
 </div>
 <div class="aspen-subtitle">DELIVERY TRACKER</div>
 </div>
@@ -365,6 +538,7 @@ th,td{padding:7px 6px}
 <button class="vt-btn" id="tbTable" onclick="setTab('table')" title="Table view">&#8801;</button>
 <button class="vt-btn" id="tbCal" onclick="setTab('cal')" title="Calendar view">&#128197;</button>
 </div>
+<button class="aspen-action-btn outline" id="usersBtn" onclick="openUsersPanel()" style="display:none" title="Manage Users">&#128100; Users</button>
 <button class="aspen-action-btn outline" id="gcalBtn" onclick="toggleGcalPanel()" title="Google Calendar Sync"><span class="gcal-dot"></span><span id="gcalBtnLabel">Google Calendar</span></button>
 </div>
 </div>
@@ -435,6 +609,429 @@ const dbAdded=db.ref('added');
 const dbOpts=db.ref('custom_opts');
 const dbGcal=db.ref('gcal_config');     // calendar id, last sync token
 const dbGcalMap=db.ref('gcal_map');     // maps {gcalEventId -> deliveryId}
+const dbSvcReq=db.ref('service_requests');  // service requests sent to Service Log (TECH-TICKETS)
+const dbUsers=db.ref('users');              // user accounts {id: {email, name, role, pin}}
+
+// === AUTH STATE ===
+let currentUser=null;        // {id, email, name, role, pin}
+let USERS={};                // all users (only visible to admin/organizer)
+const SETUP_CODE='ASPEN-SETUP-2026';
+const ROLES=['admin','organizer','tech'];
+
+// Listen for users (admin/organizer can see all; tech can only see themselves)
+dbUsers.on('value',snap=>{USERS=snap.val()||{};
+// Refresh assignment dropdown if modal is open
+if(curRec&&document.getElementById('e_assigned')){populateTechDropdown()}
+// Refresh users panel if open
+if(!document.getElementById('users-modal').classList.contains('hidden'))renderUsersPanel();
+// Refresh tech list if tech is logged in (in case data changed)
+if(currentUser&&currentUser.role==='tech'){renderTechList()}
+},err=>console.error('users listener:',err));
+
+// SHA-256 hashing for PINs (browser-native, no library)
+async function hashPin(pin){
+let buf=new TextEncoder().encode(String(pin)+'|aspen-spas-salt-2026');
+let hash=await crypto.subtle.digest('SHA-256',buf);
+return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('')}
+
+// Returns user matching email + pin, or null
+async function authenticate(email,pin){
+let h=await hashPin(pin);
+let target=String(email||'').trim().toLowerCase();
+for(let id in USERS){let u=USERS[id];
+if(u.email&&u.email.toLowerCase()===target&&u.pinHash===h)return Object.assign({id:id},u)}
+return null}
+
+function saveSession(user){localStorage.setItem('aspen_session',JSON.stringify({id:user.id,email:user.email,ts:Date.now()}))}
+function loadSession(){try{let s=JSON.parse(localStorage.getItem('aspen_session'));if(!s)return null;
+// Session lasts 14 days
+if(Date.now()-s.ts>14*24*3600*1000)return null;
+return s}catch(e){return null}}
+function clearSession(){localStorage.removeItem('aspen_session')}
+
+function doLogout(){
+if(!confirm('Sign out?'))return;
+clearSession();currentUser=null;location.reload()}
+
+// Show the login or setup form depending on whether any users exist yet
+function showAuthScreen(){
+document.getElementById('auth-screen').classList.remove('hidden');
+let hasUsers=Object.keys(USERS).length>0;
+let area=document.getElementById('auth-form-area');
+if(!hasUsers){
+area.innerHTML='<div class="auth-form">'+
+'<div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;line-height:1.5"><strong>First time setup.</strong> Create the admin account.</div>'+
+'<label>Setup code</label><input type="text" id="su_code" placeholder="ASPEN-SETUP-2026" autocomplete="off">'+
+'<label>Full name</label><input type="text" id="su_name" placeholder="Alberto" autocomplete="name">'+
+'<label>Email</label><input type="email" id="su_email" placeholder="alberto@aspenspas.com" autocomplete="email">'+
+'<label>4-digit PIN (you will use this to log in)</label><input type="password" id="su_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="new-password">'+
+'<button onclick="doSetupAdmin()">Create Admin Account</button>'+
+'<div class="auth-help">The setup code is provided to the person installing the app. Once created, the admin can add other users from the Users panel.</div>'+
+'</div>'}
+else{
+area.innerHTML='<div class="auth-form">'+
+'<label>Email</label><input type="email" id="lo_email" placeholder="you@aspenspas.com" autocomplete="email">'+
+'<label>4-digit PIN</label><input type="password" id="lo_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="current-password">'+
+'<button onclick="doLogin()">Sign In</button>'+
+'</div>'}
+// Submit on Enter
+area.querySelectorAll('input').forEach(inp=>{inp.addEventListener('keydown',e=>{if(e.key==='Enter'){let btn=area.querySelector('button');if(btn)btn.click()}})});
+let firstInput=area.querySelector('input');if(firstInput)setTimeout(()=>firstInput.focus(),50)}
+
+function setAuthMsg(msg,type){
+let el=document.getElementById('auth-msg');
+el.className=type||'';el.innerHTML=msg||''}
+
+async function doSetupAdmin(){
+let code=document.getElementById('su_code').value.trim();
+let name=document.getElementById('su_name').value.trim();
+let email=document.getElementById('su_email').value.trim().toLowerCase();
+let pin=document.getElementById('su_pin').value.trim();
+if(code!==SETUP_CODE){setAuthMsg('&#10005; Wrong setup code','err');return}
+if(!name||!email||!pin){setAuthMsg('&#9888; Fill all fields','err');return}
+if(!/^\d{4}$/.test(pin)){setAuthMsg('&#9888; PIN must be 4 digits','err');return}
+if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAuthMsg('&#9888; Invalid email','err');return}
+setAuthMsg('Creating account...','info');
+let id='user_'+Date.now();
+let pinHash=await hashPin(pin);
+try{
+await dbUsers.child(id).set({email,name,role:'admin',pinHash,created_at:Date.now()});
+currentUser={id,email,name,role:'admin',pinHash};
+saveSession(currentUser);
+setAuthMsg('&#10003; Welcome, '+name+'!','ok');
+setTimeout(()=>{document.getElementById('auth-screen').classList.add('hidden');applyRoleUI()},500)}
+catch(e){setAuthMsg('&#10005; Error: '+e.message,'err')}}
+
+async function doLogin(){
+let email=document.getElementById('lo_email').value.trim().toLowerCase();
+let pin=document.getElementById('lo_pin').value.trim();
+if(!email||!pin){setAuthMsg('&#9888; Enter email and PIN','err');return}
+setAuthMsg('Signing in...','info');
+let user=await authenticate(email,pin);
+if(!user){setAuthMsg('&#10005; Wrong email or PIN','err');return}
+currentUser=user;
+saveSession(currentUser);
+setAuthMsg('&#10003; Welcome, '+user.name+'!','ok');
+setTimeout(()=>{document.getElementById('auth-screen').classList.add('hidden');applyRoleUI()},400)}
+
+// After login: configure UI based on role
+function applyRoleUI(){
+if(!currentUser)return;
+// Set initials in header
+let initials=(currentUser.name||currentUser.email||'??').split(/[\s.@]+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+let initEl=document.getElementById('userInitials');if(initEl)initEl.textContent=initials;
+let roleEl=document.getElementById('userRoleBadge');if(roleEl){roleEl.textContent=currentUser.role;roleEl.style.background=currentUser.role==='admin'?'#dc2626':(currentUser.role==='organizer'?'#2563eb':'#059669')}
+let techLbl=document.getElementById('tech-user-label');if(techLbl)techLbl.textContent=currentUser.name;
+// Show admin-only features
+let usersBtn=document.getElementById('usersBtn');if(usersBtn)usersBtn.style.display=currentUser.role==='admin'?'flex':'none';
+// Tech sees a different view entirely
+if(currentUser.role==='tech'){
+document.getElementById('tech-view').classList.remove('hidden');
+// Hide the admin/organizer UI
+document.querySelector('.aspen-hdr').style.display='none';
+document.querySelector('.aspen-tabs-bar').style.display='none';
+document.getElementById('ctxHdr').style.display='none';
+document.querySelector('.filters').style.display='none';
+document.getElementById('board').style.display='none';
+let charts=document.getElementById('charts');if(charts)charts.style.display='none';
+techDate=new Date();techDate.setHours(0,0,0,0);renderTechList()}
+else{
+// Admin/organizer: show normal UI
+document.getElementById('tech-view').classList.add('hidden');
+renderAll()}}
+
+// === TECH VIEW LOGIC ===
+let techDate=new Date();techDate.setHours(0,0,0,0);
+
+function techDateNav(dir){
+if(dir===0){techDate=new Date();techDate.setHours(0,0,0,0)}
+else{techDate.setDate(techDate.getDate()+dir)}
+renderTechList()}
+
+function renderTechList(){
+if(!currentUser||currentUser.role!=='tech')return;
+let lbl=document.getElementById('tech-date-label');
+let opts={weekday:'long',month:'long',day:'numeric'};
+let today=new Date();today.setHours(0,0,0,0);
+let label=techDate.toLocaleDateString(undefined,opts);
+if(techDate.getTime()===today.getTime())label+=' &middot; Today';
+lbl.innerHTML=label;
+// Filter deliveries assigned to this tech, on this date
+let dateKey=techDate.getFullYear()+'-'+String(techDate.getMonth()+1).padStart(2,'0')+'-'+String(techDate.getDate()).padStart(2,'0');
+let mine=AD().filter(r=>{
+if(!r.n||!r.dd)return false;
+if(r.assigned_to!==currentUser.id)return false;
+let d=parseDate(r.dd);if(!d||isNaN(d))return false;
+let k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+return k===dateKey});
+// Sort: undelivered first, then by time slot
+mine.sort((a,b)=>{
+if(a.dl!==b.dl)return a.dl?1:-1;
+let sa=(a.dd||'').match(/(am|pm|all\s*day)/i);let sb=(b.dd||'').match(/(am|pm|all\s*day)/i);
+let oa={am:0,'all day':1,pm:2,allday:1}[sa?sa[0].toLowerCase().replace(/\s+/,''):''+'']||0;
+let ob={am:0,'all day':1,pm:2,allday:1}[sb?sb[0].toLowerCase().replace(/\s+/,''):''+'']||0;
+return oa-ob});
+let listEl=document.getElementById('tech-list');
+if(!mine.length){
+listEl.innerHTML='<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">No deliveries '+(techDate.getTime()===today.getTime()?'today':'on this day')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
+let html='';
+mine.forEach(r=>{
+let slot=(r.dd||'').match(/(am|pm|all\s*day)/i);
+let timeLabel=slot?slot[0].toUpperCase().replace(/\s+/,' '):'';
+let addrShort=(r.st||'').split('\n')[0].substring(0,60);
+html+='<div class="tech-card'+(r.dl?' delivered':'')+'" onclick="techOpenDetail('+r.i+')">'+
+'<div class="name">'+escHtml(r.n)+'</div>'+
+(timeLabel?'<div class="row"><span class="time-pill">'+timeLabel+'</span></div>':'')+
+(r.sp?'<div class="row">&#129716; '+escHtml(r.sp)+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>':'')+
+(addrShort?'<div class="row">&#128205; '+escHtml(addrShort)+'</div>':'')+
+(r.ph?'<div class="row" style="color:var(--aspen-orange);font-weight:600">&#128222; '+escHtml(r.ph)+'</div>':'')+
+'</div>'});
+listEl.innerHTML=html}
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function techOpenDetail(id){
+let r=AD().find(x=>x.i===id);if(!r)return;
+let det=document.getElementById('tech-detail');
+det.classList.remove('hidden');
+let h='<div class="back-bar"><button class="back-btn" onclick="techCloseDetail()">&#9664; Back</button><div style="font-size:13px;font-weight:600;flex:1;text-align:center">'+escHtml(r.n)+'</div></div>';
+h+='<div class="tech-detail-inner">';
+// Customer info
+h+='<div class="tech-section"><h2>'+escHtml(r.n)+'</h2>';
+if(r.dd)h+='<div class="meta">&#128197; '+escHtml(fmtDate(r.dd))+escHtml(dateNote(r.dd))+'</div>';
+if(r.sp||r.sn)h+='<div class="meta">&#129716; '+escHtml(r.sp||'—')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>';
+if(r.bl>0)h+='<div class="meta" style="color:#dc2626;font-weight:700">&#9888; Balance Due: '+fmt(r.bl)+'</div>';
+h+='</div>';
+// ACTION BUTTONS
+h+='<div class="tech-action-grid">';
+if(r.st)h+='<button class="tech-action-btn maps" onclick="techOpenMaps('+r.i+')"><span class="ico">&#128205;</span><div>Get Directions</div></button>';
+if(r.ph)h+='<button class="tech-action-btn phone" onclick="techPhoneOptions('+r.i+')"><span class="ico">&#128222;</span><div>Call / Message</div></button>';
+h+='<button class="tech-action-btn photo" onclick="techPhotoUpload('+r.i+')"><span class="ico">&#128247;</span><div>Add Photos'+(r.photos&&r.photos.length?' ('+r.photos.length+')':'')+'</div></button>';
+if(!r.dl){h+='<button class="tech-action-btn deliver" onclick="techMarkDelivered('+r.i+')"><span class="ico">&#9989;</span><div>Mark Delivered</div></button>'}
+else{h+='<button class="tech-action-btn deliver done"><span class="ico">&#9989;</span><div>Delivered</div></button>'}
+h+='</div>';
+// Address
+if(r.st){h+='<div class="tech-section"><div class="tech-spec-row"><span class="lbl">Address</span><span class="val">'+escHtml(r.st).replace(/\n/g,'<br>')+'</span></div></div>'}
+// Spa Specs (read-only)
+let specs=[];
+if(r.yr)specs.push(['Year',r.yr]);
+if(r.vt)specs.push(['Voltage',r.vt]);
+if(r.jt)specs.push(['Total Jets',r.jt]);
+if(r.jm)specs.push(['Jet Material',r.jm]);
+if(r.p1)specs.push(['Pump 1',r.p1]);
+if(r.p2)specs.push(['Pump 2',r.p2]);
+if(r.pks)specs.push(['Spa Pack',r.pks]);
+if(r.ts)specs.push(['Top Side',r.ts]);
+if(r.tsn)specs.push(['Top Side Notes',r.tsn]);
+if(r.lg)specs.push(['Lighting',r.lg]);
+if(r.wf)specs.push(['Water Features',r.wf]);
+if(r.oz==='yes')specs.push(['Ozonator','Yes']);
+if(r.pl)specs.push(['Pillows',r.pl]);
+if(r.ft)specs.push(['Filter',r.ft]);
+if(r.vl)specs.push(['Valves',r.vl]);
+if(r.sd==='yes')specs.push(['Spa Drain','Yes']);
+if(r.sb)specs.push(['Spa Base',r.sb]);
+if(r.cb)specs.push(['Cabinet',r.cb]);
+if(r.dr)specs.push(['Doors',r.dr]);
+if(specs.length){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Spa Description</div>';
+specs.forEach(([l,v])=>{h+='<div class="tech-spec-row"><span class="lbl">'+escHtml(l)+'</span><span class="val">'+escHtml(v)+'</span></div>'});
+h+='</div>'}
+// Customer instructions / notes
+if(r.di||r.cn||r.en){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Notes for Tech</div>';
+if(r.di)h+='<div style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap">'+escHtml(r.di)+'</div>';
+if(r.cn)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap"><strong>Contact:</strong> '+escHtml(r.cn)+'</div>';
+if(r.en)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;white-space:pre-wrap"><strong>Extra:</strong> '+escHtml(r.en)+'</div>';
+h+='</div>'}
+// Photos preview
+if(r.photos&&r.photos.length){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Photos</div><div class="tech-photos">';
+r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
+h+='</div></div>'}
+// Delivered notes (if delivered)
+if(r.dl&&r.dn){
+h+='<div class="tech-section" style="background:#f0fdf4;border-color:#bbf7d0"><div style="font-size:11px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Delivered Notes</div>'+
+'<div style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap">'+escHtml(r.dn)+'</div></div>'}
+h+='</div>';
+det.innerHTML=h;det.scrollTop=0}
+
+function techCloseDetail(){document.getElementById('tech-detail').classList.add('hidden')}
+
+function techOpenMaps(id){
+let r=AD().find(x=>x.i===id);if(!r||!r.st)return;
+let addr=encodeURIComponent(r.st.replace(/\n/g,', '));
+// Universal link works on iOS, Android, web - the OS picks the right app
+let url='https://www.google.com/maps/dir/?api=1&destination='+addr;
+window.open(url,'_blank')}
+
+function techPhoneOptions(id){
+let r=AD().find(x=>x.i===id);if(!r||!r.ph)return;
+let modal=document.getElementById('tech-phone-modal');
+let cleanPh=String(r.ph).replace(/[^\d+]/g,'');
+let firstName=(r.n||'Customer').split(/[\s,]+/)[0];
+let techName=currentUser&&currentUser.name?currentUser.name.split(/\s+/)[0]:'your technician';
+let msg='Hi '+firstName+', this is '+techName+' from Aspen Spas. Your spa is loaded and we\'re heading to your home now. We\'ll be there shortly!';
+modal.innerHTML='<div class="box"><h3>'+escHtml(r.n)+'</h3><div class="sub">&#128222; '+escHtml(r.ph)+'</div>'+
+'<div class="btns">'+
+'<a class="mbig green" href="tel:'+cleanPh+'" style="text-decoration:none">&#128222; Call '+escHtml(firstName)+'</a>'+
+'<a class="mbig" href="sms:'+cleanPh+'?&body='+encodeURIComponent(msg)+'" style="text-decoration:none">&#128241; Send "On the way" SMS</a>'+
+'<button class="mbig gray" onclick="document.getElementById(\'tech-phone-modal\').classList.add(\'hidden\')">Cancel</button>'+
+'</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:10px;line-height:1.4"><strong>SMS message:</strong><br>"'+escHtml(msg)+'"</div></div>';
+modal.classList.remove('hidden')}
+
+function techMarkDelivered(id){
+let r=AD().find(x=>x.i===id);if(!r||r.dl)return;
+let modal=document.getElementById('tech-deliver-modal');
+modal.innerHTML='<div class="box"><h3>Mark as Delivered?</h3><div class="sub">'+escHtml(r.n)+'</div>'+
+'<label style="font-size:11px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:5px">Optional: notes about delivery</label>'+
+'<textarea id="tdv_notes" placeholder="e.g. Customer was happy. Slight scratch on cabinet noted. Cover keys handed over.">'+escHtml(r.dn||'')+'</textarea>'+
+'<div class="btns">'+
+'<button class="mbig green" onclick="techConfirmDelivered('+id+')">&#10003; Confirm Delivered</button>'+
+'<button class="mbig gray" onclick="document.getElementById(\'tech-deliver-modal\').classList.add(\'hidden\')">Cancel</button>'+
+'</div></div>';
+modal.classList.remove('hidden');setTimeout(()=>{let t=document.getElementById('tdv_notes');if(t)t.focus()},80)}
+
+function techConfirmDelivered(id){
+let notes=document.getElementById('tdv_notes').value.trim()||null;
+let updates={dl:true,dn:notes};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+document.getElementById('tech-deliver-modal').classList.add('hidden');
+showToast('&#10003; Delivery confirmed!');
+techCloseDetail();renderTechList()}
+
+function techPhotoUpload(id){
+let inp=document.createElement('input');
+inp.type='file';inp.accept='image/*';inp.capture='environment';inp.multiple=true;
+inp.onchange=async function(e){
+let files=Array.from(e.target.files||[]);
+if(!files.length)return;
+let r=AD().find(x=>x.i===id);if(!r)return;
+let existing=r.photos||[];
+if(existing.length+files.length>5){alert('Max 5 photos per delivery. Currently '+existing.length+', trying to add '+files.length+'.');return}
+showToast('Compressing photos...');
+let added=[];
+for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
+if(!added.length)return;
+let newPhotos=existing.concat(added);
+let updates={photos:newPhotos};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
+techOpenDetail(id)};
+inp.click()}
+
+// Compress image to reasonable base64 size
+function compressImage(file,maxDim,quality){
+return new Promise((res,rej)=>{
+let img=new Image();let url=URL.createObjectURL(file);
+img.onload=function(){
+let w=img.width,h=img.height;
+if(w>maxDim||h>maxDim){let r=Math.min(maxDim/w,maxDim/h);w=Math.round(w*r);h=Math.round(h*r)}
+let canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+let ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);
+URL.revokeObjectURL(url);
+res(canvas.toDataURL('image/jpeg',quality||0.7))};
+img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('Could not load image'))};
+img.src=url})}
+
+function techDeletePhoto(id,idx){
+if(!confirm('Delete this photo?'))return;
+let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
+let newPhotos=r.photos.slice();newPhotos.splice(idx,1);
+let updates={photos:newPhotos.length?newPhotos:null};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+techOpenDetail(id)}
+
+function techViewPhoto(id,idx){
+let r=AD().find(x=>x.i===id);if(!r||!r.photos||!r.photos[idx])return;
+let modal=document.createElement('div');modal.className='tech-modal';modal.style.zIndex=100;modal.style.padding=0;
+modal.innerHTML='<div style="position:relative;max-width:95vw;max-height:95vh"><img src="'+r.photos[idx]+'" style="max-width:95vw;max-height:95vh;border-radius:12px;display:block"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px">&#10005;</button></div>';
+modal.onclick=function(e){if(e.target===modal)modal.remove()};
+document.body.appendChild(modal)}
+
+// === ADMIN: USER MANAGEMENT ===
+function openUsersPanel(){
+if(!currentUser||currentUser.role!=='admin'){alert('Only admins can manage users');return}
+document.getElementById('users-modal').classList.remove('hidden');
+renderUsersPanel()}
+
+function closeUsersModal(e){
+if(e&&e.target.id!=='users-modal')return;
+document.getElementById('users-modal').classList.add('hidden')}
+
+function renderUsersPanel(){
+let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:18px;font-weight:800">&#128100; User Management</h2><button class="xbtn" onclick="closeUsersModal({target:{id:\'users-modal\'}})">&#10005;</button></div>';
+h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">Add team members and assign roles. Tech accounts only see their assigned deliveries.</div>';
+h+='<button class="aspen-action-btn primary" onclick="openUserForm()" style="margin-bottom:10px">+ Add User</button>';
+h+='<div class="users-list">';
+let userArr=Object.entries(USERS).sort((a,b)=>{let order={admin:0,organizer:1,tech:2};return (order[a[1].role]||9)-(order[b[1].role]||9)});
+if(!userArr.length){h+='<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">No users yet</div>'}
+userArr.forEach(([id,u])=>{
+let initials=(u.name||u.email||'??').split(/[\s.@]+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+let isMe=id===currentUser.id;
+h+='<div class="user-row">'+
+'<div class="u-avatar">'+initials+'</div>'+
+'<div class="u-info"><div class="u-name">'+escHtml(u.name||'(no name)')+(isMe?' <span style="font-size:10px;color:var(--text-tertiary)">(you)</span>':'')+'</div><div class="u-email">'+escHtml(u.email||'')+'</div></div>'+
+'<span class="u-role '+u.role+'">'+u.role+'</span>'+
+'<div class="u-actions">'+
+'<button class="u-btn" onclick="openUserForm(\''+id+'\')" title="Edit">&#9998;</button>'+
+(isMe?'':'<button class="u-btn danger" onclick="deleteUser(\''+id+'\')" title="Delete">&#128465;</button>')+
+'</div></div>'});
+h+='</div>';
+document.getElementById('users-mdl').innerHTML=h}
+
+function openUserForm(id){
+let u=id?USERS[id]:{name:'',email:'',role:'tech'};
+let isEdit=!!id;
+let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:18px;font-weight:800">'+(isEdit?'Edit User':'Add User')+'</h2><button class="xbtn" onclick="renderUsersPanel()">&#10005;</button></div>';
+h+='<div class="auth-form" style="text-align:left">'+
+'<label>Full Name</label><input type="text" id="uf_name" value="'+escHtml(u.name||'')+'" placeholder="Jarred">'+
+'<label>Email</label><input type="email" id="uf_email" value="'+escHtml(u.email||'')+'" placeholder="jarred@aspenspas.com" '+(isEdit?'disabled style="opacity:.6"':'')+'>'+
+'<label>Role</label><select id="uf_role" style="padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;background:#fff">'+
+ROLES.map(r=>'<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+r.charAt(0).toUpperCase()+r.slice(1)+'</option>').join('')+'</select>'+
+'<label>'+(isEdit?'New 4-digit PIN (leave blank to keep current)':'4-digit PIN')+'</label><input type="password" id="uf_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="new-password">'+
+'<div style="display:flex;gap:8px;margin-top:14px"><button onclick="saveUser('+(isEdit?'\''+id+'\'':'null')+')">Save</button><button class="auth-link" onclick="renderUsersPanel()">Cancel</button></div>'+
+'<div id="uf_msg" style="font-size:12px;font-weight:600;min-height:18px"></div>'+
+'</div>';
+document.getElementById('users-mdl').innerHTML=h;setTimeout(()=>{let f=document.getElementById('uf_name');if(f)f.focus()},50)}
+
+async function saveUser(id){
+let name=document.getElementById('uf_name').value.trim();
+let email=document.getElementById('uf_email').value.trim().toLowerCase();
+let role=document.getElementById('uf_role').value;
+let pin=document.getElementById('uf_pin').value.trim();
+let msg=document.getElementById('uf_msg');
+if(!name||!email){msg.textContent='Name and email are required';msg.style.color='#dc2626';return}
+if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Invalid email';msg.style.color='#dc2626';return}
+if(!id&&!pin){msg.textContent='PIN is required for new users';msg.style.color='#dc2626';return}
+if(pin&&!/^\d{4}$/.test(pin)){msg.textContent='PIN must be 4 digits';msg.style.color='#dc2626';return}
+// Check email uniqueness for new users
+if(!id){for(let u of Object.values(USERS)){if(u.email&&u.email.toLowerCase()===email){msg.textContent='Email already exists';msg.style.color='#dc2626';return}}}
+let payload={name,email,role};
+if(pin){payload.pinHash=await hashPin(pin)}
+if(id){await dbUsers.child(id).update(payload);showToast('&#10003; User updated')}
+else{let newId='user_'+Date.now();payload.created_at=Date.now();await dbUsers.child(newId).set(payload);showToast('&#10003; User '+name+' added')}
+renderUsersPanel()}
+
+async function deleteUser(id){
+let u=USERS[id];if(!u)return;
+if(id===currentUser.id){alert('You cannot delete yourself');return}
+if(!confirm('Delete user "'+u.name+'"? This cannot be undone.'))return;
+await dbUsers.child(id).remove();
+showToast('User deleted')}
+
+// Populate the assigned-tech dropdown in the delivery edit modal
+function populateTechDropdown(){
+let sel=document.getElementById('e_assigned');if(!sel)return;
+let techs=Object.entries(USERS).filter(([id,u])=>u.role==='tech');
+let cur=curRec&&curRec.assigned_to||'';
+sel.innerHTML='<option value="">— Unassigned —</option>'+techs.map(([id,u])=>'<option value="'+id+'"'+(id===cur?' selected':'')+'>'+escHtml(u.name)+'</option>').join('')}
 
 let EDITS={},ADDED=[];
 let fbReady=false;
@@ -446,25 +1043,44 @@ function syncPulse(){let d=document.getElementById('syncDot');d.className='sync-
 
 // Firebase real-time listeners
 let _loadCount=0;
-function checkReady(){_loadCount++;if(_loadCount>=3){fbReady=true;renderAll();
+function checkReady(){_loadCount++;if(_loadCount>=3){fbReady=true;
 let lo=document.getElementById('loading-ov');lo.classList.add('hide');setTimeout(()=>lo.remove(),400);
-document.getElementById('syncDot').className='sync-dot on';document.getElementById('syncDot').title='Connected'}}
+document.getElementById('syncDot').className='sync-dot on';document.getElementById('syncDot').title='Connected';
+// Now that DB is ready, check auth
+bootAuth()}}
+
+// Auth boot: try to restore session from localStorage; if invalid or missing, show login
+async function bootAuth(){
+let session=loadSession();
+if(session){let u=USERS[session.id];
+if(u&&u.email&&u.email.toLowerCase()===String(session.email||'').toLowerCase()){
+currentUser=Object.assign({id:session.id},u);applyRoleUI();return}
+clearSession()}
+// No valid session - show auth screen
+showAuthScreen()}
 
 // Safety timeout: if Firebase takes more than 8s, show app anyway with a warning
-setTimeout(()=>{if(!fbReady){fbReady=true;renderAll();
+setTimeout(()=>{if(!fbReady){fbReady=true;
 let lo=document.getElementById('loading-ov');if(lo){lo.classList.add('hide');setTimeout(()=>lo.remove(),400)}
 document.getElementById('syncDot').className='sync-dot off';document.getElementById('syncDot').title='Database connection slow — check internet';
-showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn')}},8000);
+showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn');
+bootAuth()}},8000);
 
-dbEdits.on('value',snap=>{EDITS=snap.val()||{};if(fbReady)renderAll();else checkReady()},err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
-dbAdded.on('value',snap=>{ADDED=snap.val()||[];if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);if(fbReady)renderAll();else checkReady()},err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
+dbEdits.on('value',snap=>{EDITS=snap.val()||{};if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
+dbAdded.on('value',snap=>{ADDED=snap.val()||[];if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
 dbOpts.on('value',snap=>{let c=snap.val()||{};
 if(c.tb)c.tb.forEach(v=>{if(!OPT_TB.includes(v))OPT_TB.push(v)});
 if(c.ss)c.ss.forEach(v=>{if(!OPT_SS.includes(v))OPT_SS.push(v)});
 if(c.lf)c.lf.forEach(v=>{if(!OPT_LF.includes(v))OPT_LF.push(v)});
 if(c.cv)c.cv.forEach(v=>{if(!OPT_CV.includes(v))OPT_CV.push(v)});
 if(c.su)c.su.forEach(v=>{if(!OPT_SU.includes(v))OPT_SU.push(v)});
-if(fbReady)renderAll();else checkReady()},err=>{console.error('dbOpts error:',err);if(!fbReady)checkReady()});
+if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbOpts error:',err);if(!fbReady)checkReady()});
+
+// Wrapper that renders the right view based on the current user's role
+function renderAfterAuth(){
+if(!currentUser)return;
+if(currentUser.role==='tech'){renderTechList()}
+else{renderAll()}}
 
 let search="",statusF="all",tab="board",sortCol="date",sortDir="desc";
 function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
@@ -563,7 +1179,13 @@ if(r.jt)chips.push(r.jt+' jets');
 if(r.lg&&r.lg.length<22)chips.push('&#128161; '+r.lg);
 if(r.oz==='yes')chips.push('Ozonator');
 let chipHtml=chips.length?'<div class="c-chips">'+chips.map(c=>'<span class="c-chip">'+c+'</span>').join('')+'</div>':'';
-h+='<div class="card '+s+'" onclick="openDet('+r.i+')"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><span class="badge '+s+'">'+sL(s)+'</span></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
+// Service request badge
+let svcBadge='';
+if(r.svc_status){
+let svcMap={requested:{label:'&#128736; SVC Requested',cls:'svc-req'},assigned:{label:'&#128736; SVC Assigned',cls:'svc-asg'},in_progress:{label:'&#128736; SVC In Progress',cls:'svc-prog'},completed:{label:'&#128736; SVC Done',cls:'svc-done'}};
+let info=svcMap[r.svc_status];
+if(info)svcBadge='<span class="svc-tag '+info.cls+'">'+info.label+'</span>'}
+h+='<div class="card '+s+'" onclick="openDet('+r.i+')"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -595,11 +1217,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/p
 
 async function handleInvoicePDF(file){
 let stat=document.getElementById('pdf_status');
+let setStat=function(cls,txt){let s=document.getElementById('pdf_status');if(s){s.className=cls;s.textContent=txt}};
 if(!file){return}
 if(typeof pdfjsLib==='undefined'){
-stat.className='err';stat.textContent='\u2715 PDF reader not loaded yet. Try again in a moment.';return}
+setStat('err','\u2715 PDF reader not loaded yet. Try again in a moment.');return}
 ensurePdfWorker();
-stat.className='loading';stat.textContent='\u23F3 Reading invoice...';
+setStat('loading','\u23F3 Reading invoice...');
 try{
 let buf=await file.arrayBuffer();
 let pdf=await pdfjsLib.getDocument({data:buf}).promise;
@@ -614,10 +1237,10 @@ let ys=Object.keys(lines).map(Number).sort((a,b)=>b-a);
 fullText+=ys.map(y=>lines[y].join(' ')).join('\n')+'\n'}
 let extracted=parseInvoiceText(fullText);
 let filled=applyExtractedToForm(extracted);
-if(filled===0){stat.className='err';stat.textContent='\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?';return}
-stat.className='ok';stat.textContent='\u2713 Auto-filled '+filled+' field'+(filled===1?'':'s')+' from invoice. Review and adjust as needed.';
+if(filled===0){setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
+setStat('ok','\u2713 Auto-filled '+filled+' field'+(filled===1?'':'s')+' from invoice. Review and adjust as needed.');
 showToast('&#10003; Invoice parsed: '+filled+' field'+(filled===1?'':'s')+' filled')}
-catch(e){console.error('PDF parse error:',e);stat.className='err';stat.textContent='\u2715 Could not read PDF: '+(e.message||'Unknown error')}}
+catch(e){console.error('PDF parse error:',e);setStat('err','\u2715 Could not read PDF: '+(e.message||'Unknown error'))}}
 
 // Parses the extracted text from a QuickBooks invoice and returns a structured object
 function parseInvoiceText(text){
@@ -800,6 +1423,9 @@ h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+S
 h+='<div class="ib"><label>Payment</label><input id="e_py" type="number" step="0.01" value="'+(r.py||0)+'"></div>';
 h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'#dc2626':'#059669')+'">'+fmt(r.bl)+'</span></div></div>';
 h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+(r.st||"")+'</textarea></div>';
+// Assigned tech dropdown (admin/organizer only)
+if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
+h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label><select id="e_assigned" style="padding:9px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;width:100%;background:#fff;outline:none"><option value="">— Unassigned —</option></select></div>'}
 // SPA SPECIFICATIONS — full technical description (replaces calendar invoice copy)
 h+='<details class="spa-specs" '+(spaSpecsHasData(r)?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Specifications</span><span class="spec-hint">Year, jets, pump, electrical, accessories, cabinet</span></summary>';
 h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">&#128206; Auto-fill from Invoice PDF</button><span class="pdf-help">Upload your QuickBooks invoice and we&#39;ll fill the fields below automatically</span><div id="pdf_status"></div></div>';
@@ -852,16 +1478,29 @@ POST.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="
 h+='</div></div>';
 // Customer Feedback (after post-delivery)
 h+='<div class="nb"><label>Customer Feedback</label><textarea id="e_fn">'+(r.fn||"")+'</textarea></div>';
-// Technical Visit
-h+='<div class="tv-section"><h4>&#128736; Technical Visit</h4>';
-h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div class="ib"><label>Visit Date</label><input type="date" id="tv_date" value="'+(r.tvd||'')+'"></div>';
-h+='<div class="ib"><label>Visit Time</label><input type="time" id="tv_time" value="'+(r.tvt||'09:00')+'"></div></div>';
-h+='<div class="ib" style="margin-bottom:10px"><label>Tech / Notes</label><textarea id="tv_notes" rows="3" style="width:100%;padding:6px 8px;border:2px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1f2937;outline:none;resize:vertical;min-height:70px" placeholder="e.g. Fernando - check jets, inspect pump, replace filter">'+(r.tvn||'')+'</textarea></div>';
+// Service Request — sends to Service Log instead of downloading .ics
+let svcStat=r.svc_status||null;  // requested | assigned | in_progress | completed
+let svcId=r.svc_id||null;
+h+='<div class="tv-section"><h4>&#128736; Service Request</h4>';
+if(svcStat){
+let stMap={requested:{label:'Requested — Awaiting Assignment',color:'#d97706',bg:'#fef3c7'},assigned:{label:'Assigned to Technician',color:'#2563eb',bg:'#dbeafe'},in_progress:{label:'In Progress',color:'#7c3aed',bg:'#ede9fe'},completed:{label:'Completed',color:'#059669',bg:'#dcfce7'}};
+let info=stMap[svcStat]||stMap.requested;
+h+='<div class="svc-status" style="background:'+info.bg+';color:'+info.color+'"><strong>'+info.label+'</strong>'+(r.svc_assigned_to?' &mdash; '+esc(r.svc_assigned_to):'')+(r.svc_sent_at?'<div class="svc-stamp">Sent '+new Date(r.svc_sent_at).toLocaleString()+'</div>':'')+'</div>'}
+h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div class="ib"><label>Requested Date</label><input type="date" id="tv_date" value="'+(r.tvd||'')+'"'+(svcStat==='completed'?' disabled':'')+'></div>';
+h+='<div class="ib"><label>Requested Time</label><input type="time" id="tv_time" value="'+(r.tvt||'09:00')+'"'+(svcStat==='completed'?' disabled':'')+'></div></div>';
+h+='<div class="ib" style="margin-bottom:10px"><label>Issue / Notes for Tech</label><textarea id="tv_notes" rows="3" style="width:100%;padding:6px 8px;border:2px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1f2937;outline:none;resize:vertical;min-height:70px" placeholder="Describe the issue, e.g. Customer reports water leak under cabinet. Check pump 1 seals, inspect filter housing." '+(svcStat==='completed'?'disabled':'')+'>'+esc(r.tvn||'')+'</textarea></div>';
 h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-h+='<button class="tv-dl'+(r.tvd?'':' disabled')+'" onclick="'+(r.tvd?'downloadICS('+r.i+')':'alert(\'Set a visit date first.\')')+'">&#128197; Download .ics for Calendar</button></div></div>';
+if(!svcStat){
+h+='<button class="tv-dl" onclick="sendServiceRequest('+r.i+')">&#128228; Send to Service Log</button>'}
+else if(svcStat==='requested'){
+h+='<button class="tv-dl" onclick="sendServiceRequest('+r.i+')" title="Update the request in Service Log">&#128260; Update Request</button>';
+h+='<button class="tv-dl danger" onclick="cancelServiceRequest('+r.i+')">&#10005; Cancel Request</button>'}
+else if(svcStat==='completed'){
+h+='<button class="tv-dl" onclick="sendServiceRequest('+r.i+')">&#128228; Submit New Request</button>'}
+h+='</div></div>';
 // Save
 h+='<div class="mactions"><button class="mbtn mbtn-c" onclick="closeOv()">Cancel</button><button class="mbtn mbtn-s" onclick="saveEdit()">Save Changes</button></div>';
-document.getElementById("md").innerHTML=h}
+document.getElementById("md").innerHTML=h;populateTechDropdown()}
 
 function ib(l,id,val){return'<div class="ib"><label>'+l+'</label><input id="'+id+'" value="'+String(val||"").replace(/"/g,'&quot;')+'"></div>'}
 function parseDDVal(dd){let r={iso:'',slot:'am'};if(!dd)return r;
@@ -945,7 +1584,8 @@ sb:getV('e_sb'),cb:getV('e_cb'),dr:getV('e_dr'),
 cks:getV('e_ck_txt'),di:getV('e_di'),
 tvd:(document.getElementById("tv_date")?document.getElementById("tv_date").value:null)||null,
 tvt:(document.getElementById("tv_time")?document.getElementById("tv_time").value:null)||'09:00',
-tvn:(document.getElementById("tv_notes")?document.getElementById("tv_notes").value.trim():null)||null}}
+tvn:(document.getElementById("tv_notes")?document.getElementById("tv_notes").value.trim():null)||null,
+assigned_to:(document.getElementById("e_assigned")?document.getElementById("e_assigned").value:null)||null}}
 
 function saveEdit(){let id=curRec.i,u=gatherEdits();
 let ai=ADDED.findIndex(x=>x.i===id);
@@ -958,7 +1598,9 @@ pf:false,iv:false,ca:false,el:false,wp:false,lv:false,pt:false,ch:false,rc:false
 tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
 yr:null,vt:null,jt:null,jm:null,p1:null,p2:null,pks:null,ts:null,tsn:null,
 lg:null,wf:null,oz:null,pl:null,ft:null,vl:null,sd:null,sb:null,cb:null,dr:null,cks:null,di:null,
-dl:false,ep:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,tvd:null,tvt:null,tvn:null};
+dl:false,ep:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,tvd:null,tvt:null,tvn:null,
+svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null,
+assigned_to:null,photos:null};
 renderModal();
 let md=document.getElementById("md");
 md.querySelector(".mbtn-s").textContent="Create Delivery";
@@ -998,38 +1640,115 @@ let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],{tvd,tvt,tvn});saveA()}else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],{tvd,tvt,tvn});saveE()}
 curRec=AD().find(x=>x.i===id);renderModal()}
 
-function downloadICS(id){
-let r=AD().find(x=>x.i===id);if(!r||!r.tvd)return;
-let d=r.tvd.replace(/-/g,''),t=(r.tvt||'09:00').replace(':',''),endH=parseInt((r.tvt||'09:00').split(':')[0])+1;
-let eT=String(endH).padStart(2,'0')+(r.tvt||'09:00').split(':')[1];
-let loc=(r.st||'').replace(/\n/g,', ');
-let lines=['Aspen Spas — Technical Visit'];
-lines.push('Customer: '+r.n);
-if(r.sp)lines.push('Spa: '+r.sp);
-if(r.sn)lines.push('SN: '+r.sn);
-if(r.ph)lines.push('Phone: '+r.ph);
-if(r.em)lines.push('Email: '+r.em);
-if(r.st)lines.push('Address: '+(r.st||'').replace(/\n/g,', '));
-if(r.dd)lines.push('Delivery Date: '+r.dd);
-let acc=[];
-if(r.tb&&r.tb!=='NO')acc.push('Table: '+r.tb);
-if(r.ss&&r.ss!=='NONE')acc.push('Steps: '+r.ss);
-if(r.lf&&r.lf!=='NONE')acc.push('Lift: '+r.lf);
-if(r.cv)acc.push('Cover: '+r.cv);
-if(r.su)acc.push('Start Up: '+r.su);
-if(acc.length)lines.push('Accessories: '+acc.join(' | '));
-if(r.tvn)lines.push('Tech Notes: '+r.tvn);
-if(r.dn)lines.push('Delivered Notes: '+r.dn);
-if(r.fn)lines.push('Customer Feedback: '+r.fn);
-let desc=lines.join('\\n');
-let ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Aspen Spas//Delivery Tracker//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',
-'BEGIN:VEVENT','DTSTART:'+d+'T'+t+'00','DTEND:'+d+'T'+eT.replace(':','')+'00',
-'SUMMARY:Tech Visit — '+r.n+(r.sp?' ('+r.sp+')':''),'DESCRIPTION:'+desc,'LOCATION:'+loc,
-'STATUS:CONFIRMED','BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Tech visit in 30 minutes','END:VALARM',
-'END:VEVENT','END:VCALENDAR'].join('\r\n');
-let blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
-let a=document.createElement('a');a.href=URL.createObjectURL(blob);
-a.download='TechVisit_'+r.n.replace(/[^a-zA-Z0-9]/g,'_')+'.ics';a.click();URL.revokeObjectURL(a.href)}
+// === SERVICE REQUEST INTEGRATION ===
+// When a service visit is requested from a delivery, write to db.ref('service_requests').
+// The Service Ticket System (TECH-TICKETS) reads from the same Firebase ref and shows
+// these as new tickets pending assignment.
+
+// Determine zone from address (basic ZIP-based heuristic; can be expanded)
+function inferZone(rec){
+let st=rec.st||'';
+let zip=(st.match(/\b(\d{5})\b/)||[])[1];
+if(!zip)return null;
+let z=parseInt(zip,10);
+// St. Charles County
+if(z>=63301&&z<=63386)return 'St. Charles';
+// St. Louis City + close suburbs
+if(z>=63101&&z<=63199)return 'City';
+// 21/30 — common shorthand from your screenshot — adjust as needed
+// Default: just return null to let dispatcher classify
+return null}
+
+function sendServiceRequest(id){
+let rec=AD().find(x=>x.i===id);if(!rec)return;
+let tvd=document.getElementById('tv_date').value||null;
+let tvt=document.getElementById('tv_time').value||'09:00';
+let tvn=document.getElementById('tv_notes').value.trim()||null;
+if(!tvn){alert('Please describe the issue or add tech notes before sending.');return}
+
+// Reuse existing svc_id if updating, else create new
+let svcId=rec.svc_id||('SVC_'+Date.now()+'_'+Math.floor(Math.random()*1000));
+let now=Date.now();
+let payload={
+id:svcId,
+status:'requested',                 // requested | assigned | in_progress | completed
+source:'delivery_tracker',          // tells Service Log this came from us
+delivery_id:rec.i,                  // link back so Service Log can reference original delivery
+customer_name:rec.n||null,
+phone:rec.ph||null,
+email:rec.em||null,
+address:rec.st||null,
+zip:(rec.st||'').match(/\b(\d{5})\b/)?(rec.st||'').match(/\b(\d{5})\b/)[1]:null,
+zone:inferZone(rec),
+spa_model:rec.sp||null,
+spa_serial:rec.sn||null,
+spa_year:rec.yr||null,
+voltage:rec.vt||null,
+warranty:'unknown',                 // service log will set this when assigned
+requested_date:tvd,
+requested_time:tvt,
+issue_notes:tvn,
+extra_context:{
+balance_due:rec.bl||0,
+delivered_notes:rec.dn||null,
+customer_feedback:rec.fn||null,
+delivery_date:rec.dd||null
+},
+repeat:!!(rec.svc_history&&rec.svc_history.length>0),
+created_at:rec.svc_sent_at||now,
+updated_at:now,
+created_by:'Aspen Delivery Tracker'};
+
+// Write to service_requests
+dbSvcReq.child(svcId).set(payload).then(()=>{
+// Update local delivery record with the link & status
+let updates={tvd,tvt,tvn,svc_id:svcId,svc_status:'requested',svc_sent_at:rec.svc_sent_at||now};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+curRec=AD().find(x=>x.i===id);
+showToast('&#10003; Sent to Service Log — Awaiting assignment');
+renderModal()
+}).catch(err=>{console.error('Service request error:',err);showToast('&#10005; Could not send: '+err.message,'err')})}
+
+function cancelServiceRequest(id){
+let rec=AD().find(x=>x.i===id);if(!rec||!rec.svc_id)return;
+if(!confirm('Cancel this service request? It will be removed from the Service Log.'))return;
+dbSvcReq.child(rec.svc_id).remove().then(()=>{
+let updates={svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+curRec=AD().find(x=>x.i===id);
+showToast('Service request cancelled');renderModal()
+}).catch(err=>{showToast('&#10005; Could not cancel: '+err.message,'err')})}
+
+// Listen for status changes from the Service Ticket System (assigned/in_progress/completed)
+// and reflect them on local delivery records so the user sees live updates here too.
+dbSvcReq.on('value',snap=>{
+let all=snap.val()||{};
+let changed=false;
+AD().forEach(r=>{
+if(!r.svc_id)return;
+let req=all[r.svc_id];
+if(!req){
+// Request was deleted externally - clear local refs
+if(r.svc_status){
+let ai=ADDED.findIndex(x=>x.i===r.i);
+if(ai>=0){Object.assign(ADDED[ai],{svc_status:null,svc_assigned_to:null});changed=true}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:null,svc_assigned_to:null});changed=true}}
+return}
+// Sync status if changed
+if(req.status&&req.status!==r.svc_status){
+let ai=ADDED.findIndex(x=>x.i===r.i);
+if(ai>=0){Object.assign(ADDED[ai],{svc_status:req.status,svc_assigned_to:req.assigned_to||null});changed=true}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:req.status,svc_assigned_to:req.assigned_to||null});changed=true}}
+});
+if(changed){saveA();saveE();
+// Only re-render the modal if it's actually visible (not just has stale HTML)
+let ov=document.getElementById('ov');
+if(ov&&!ov.classList.contains('hidden')&&curRec){curRec=AD().find(x=>x.i===curRec.i);if(curRec)renderModal()}}
+},err=>console.error('svc_requests listener error:',err));
 
 
 // === GOOGLE CALENDAR INTEGRATION ===
