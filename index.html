@@ -419,15 +419,24 @@ th,td{padding:7px 6px}
 .tech-detail .tech-section{background:#fff;border-radius:12px;margin:14px;padding:16px 18px;border:1px solid var(--border-soft);box-shadow:var(--shadow-card)}
 .tech-detail h2{font-size:20px;font-weight:800;margin-bottom:6px;line-height:1.2}
 .tech-detail .meta{font-size:13px;color:var(--text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.tech-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px;max-width:600px;margin:0 auto}
+.tech-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:14px;max-width:600px;margin:0 auto}
 .tech-action-btn{padding:18px 12px;background:#fff;border:1.5px solid var(--border-soft);border-radius:14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-primary);transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;box-shadow:var(--shadow-card)}
 .tech-action-btn:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
 .tech-action-btn .ico{font-size:28px}
-.tech-action-btn.maps{border-color:#3b82f6;color:#1e40af}
 .tech-action-btn.phone{border-color:#10b981;color:#047857}
 .tech-action-btn.photo{border-color:#8b5cf6;color:#6d28d9}
+.tech-action-btn.note{border-color:#f59e0b;color:#b45309}
+.card.needs-attn{box-shadow:0 0 0 3px #fbbf24,0 8px 24px rgba(251,191,36,.25)!important}
+.attn-banner{background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(245,158,11,.4)}
+.pulse{display:inline-block;animation:bell-pulse 1.2s ease-in-out infinite}
+@keyframes bell-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18) rotate(-8deg)}}
 .tech-action-btn.deliver{border-color:#059669;color:#047857;background:#f0fdf4}
 .tech-action-btn.deliver.done{background:#dcfce7;cursor:default}
+.tech-addr-card{display:block;text-decoration:none;color:inherit;border-color:#3b82f6 !important;background:#eff6ff;transition:all .15s;cursor:pointer}
+.tech-addr-card:hover{background:#dbeafe;box-shadow:var(--shadow-card-hover)}
+.tech-addr-card:active{transform:scale(.99)}
+.tech-addr-card .lbl{color:#1d4ed8 !important;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.tech-addr-card .tech-addr-val{color:#1e3a8a;font-weight:700;font-size:14px;line-height:1.4}
 .tech-spec-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f3f4f6;gap:14px}
 .tech-spec-row:last-child{border:none}
 .tech-spec-row .lbl{color:var(--text-tertiary);font-weight:600;flex-shrink:0}
@@ -843,51 +852,86 @@ if(r.bl>0)h+='<div class="meta" style="color:#dc2626;font-weight:700">&#9888; Ba
 h+='</div>';
 // ACTION BUTTONS
 h+='<div class="tech-action-grid">';
-if(r.st)h+='<button class="tech-action-btn maps" onclick="techOpenMaps('+r.i+')"><span class="ico">&#128205;</span><div>Get Directions</div></button>';
 if(r.ph)h+='<button class="tech-action-btn phone" onclick="techPhoneOptions('+r.i+')"><span class="ico">&#128222;</span><div>Call / Message</div></button>';
-h+='<button class="tech-action-btn photo" onclick="techPhotoUpload('+r.i+')"><span class="ico">&#128247;</span><div>Add Photos'+(r.photos&&r.photos.length?' ('+r.photos.length+')':'')+'</div></button>';
+h+='<button class="tech-action-btn note" onclick="techAddNote('+r.i+')"><span class="ico">&#128221;</span><div>Add Note</div></button>';
+h+='<button class="tech-action-btn photo" onclick="techPhotoUpload('+r.i+')"><span class="ico">&#128247;</span><div>Add Photos'+(r.tech_photos&&r.tech_photos.length?' ('+r.tech_photos.length+')':'')+'</div></button>';
 if(!r.dl){h+='<button class="tech-action-btn deliver" onclick="techMarkDelivered('+r.i+')"><span class="ico">&#9989;</span><div>Mark Delivered</div></button>'}
 else{h+='<button class="tech-action-btn deliver done"><span class="ico">&#9989;</span><div>Delivered</div></button>'}
 h+='</div>';
-// Address
-if(r.st){h+='<div class="tech-section"><div class="tech-spec-row"><span class="lbl">Address</span><span class="val">'+escHtml(r.st).replace(/\n/g,'<br>')+'</span></div></div>'}
-// Spa Specs (read-only)
-let specs=[];
-if(r.yr)specs.push(['Year',r.yr]);
-if(r.vt)specs.push(['Voltage',r.vt]);
-if(r.jt)specs.push(['Total Jets',r.jt]);
-if(r.jm)specs.push(['Jet Material',r.jm]);
-if(r.p1)specs.push(['Pump 1',r.p1]);
-if(r.p2)specs.push(['Pump 2',r.p2]);
-if(r.pks)specs.push(['Spa Pack',r.pks]);
-if(r.ts)specs.push(['Top Side',r.ts]);
-if(r.tsn)specs.push(['Top Side Notes',r.tsn]);
-if(r.lg)specs.push(['Lighting',r.lg]);
-if(r.wf)specs.push(['Water Features',r.wf]);
-if(r.oz==='yes')specs.push(['Ozonator','Yes']);
-if(r.pl)specs.push(['Pillows',r.pl]);
-if(r.ft)specs.push(['Filter',r.ft]);
-if(r.vl)specs.push(['Valves',r.vl]);
-if(r.sd==='yes')specs.push(['Spa Drain','Yes']);
-if(r.sb)specs.push(['Spa Base',r.sb]);
-if(r.cb)specs.push(['Cabinet',r.cb]);
-if(r.dr)specs.push(['Doors',r.dr]);
-if(specs.length){
-h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Spa Description</div>';
-specs.forEach(([l,v])=>{h+='<div class="tech-spec-row"><span class="lbl">'+escHtml(l)+'</span><span class="val">'+escHtml(v)+'</span></div>'});
-h+='</div>'}
-// Customer instructions / notes
+// Address (CLICKABLE — opens map app on tap)
+if(r.st){
+let addrEnc=encodeURIComponent(r.st.replace(/\n/g,' '));
+let mapUrl='https://www.google.com/maps/search/?api=1&query='+addrEnc;
+h+='<a class="tech-section tech-addr-card" href="'+mapUrl+'" target="_blank" rel="noopener"><div class="tech-spec-row"><span class="lbl">&#128205; Address (tap to open map)</span><span class="val tech-addr-val">'+escHtml(r.st).replace(/\n/g,'<br>')+'</span></div></a>'}
+// Customer instructions / notes — TOP priority (above spa specs)
 if(r.di||r.cn||r.en){
 h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Notes for Tech</div>';
 if(r.di)h+='<div style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap">'+escHtml(r.di)+'</div>';
 if(r.cn)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap"><strong>Contact:</strong> '+escHtml(r.cn)+'</div>';
 if(r.en)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;white-space:pre-wrap"><strong>Extra:</strong> '+escHtml(r.en)+'</div>';
 h+='</div>'}
-// Photos preview
+// Photos from the manager (admin/Alberto) — read-only for the tech, no delete button
 if(r.photos&&r.photos.length){
-h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Photos</div><div class="tech-photos">';
-r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128231; Photos from Manager</div><div class="tech-photos">';
+r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo"></div>'});
 h+='</div></div>'}
+// Tech's own delivery photos — tech can view, add, and delete these
+if(r.tech_photos&&r.tech_photos.length){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128247; Your Delivery Photos</div><div class="tech-photos">';
+r.tech_photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
+h+='</div></div>'}
+// Accessories (read-only) — what to bring/install
+let acc=[];
+if(r.tb&&r.tb!=='NO')acc.push(['&#129362; Table',r.tb]);
+if(r.ss&&r.ss!=='NONE')acc.push(['&#128717; Steps',r.ss]);
+if(r.lf&&r.lf!=='NONE')acc.push(['&#128081; Lift',r.lf]);
+if(r.cv)acc.push(['&#129721; Cover',r.cv]);
+if(r.su)acc.push(['&#129514; Start Up',r.su]);
+if(acc.length){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Accessories &amp; Install</div>';
+h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">';
+acc.forEach(([l,v])=>{h+='<div style="background:#f9fafb;border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+l+'</div><div style="font-size:13px;font-weight:700;color:var(--text-primary);line-height:1.3">'+escHtml(v)+'</div></div>'});
+h+='</div></div>'}
+// Spa Description (read-only) — show the PDF text the manager copied in.
+// Falls back to legacy structured fields ONLY if the new spd field is empty (for old records).
+let spdText=r.spd||'';
+let hasLegacy=false;
+if(!spdText){
+let legacy=[];
+if(r.yr)legacy.push('Year: '+r.yr);
+if(r.vt)legacy.push('Voltage: '+r.vt);
+if(r.jt)legacy.push('Total Jets: '+r.jt+(r.jm?', '+r.jm:''));
+if(r.p1)legacy.push('Pump 1: '+r.p1);
+if(r.p2)legacy.push('Pump 2: '+r.p2);
+if(r.p3)legacy.push('Pump 3: '+r.p3);
+if(r.p4)legacy.push('Pump 4: '+r.p4);
+if(r.pks)legacy.push('Spa Pack: '+r.pks);
+if(r.ts)legacy.push('Top Side Control: '+r.ts);
+if(r.tsn)legacy.push('Top Side Notes: '+r.tsn);
+if(r.lg)legacy.push('Lighting: '+r.lg);
+if(r.wf)legacy.push('Water Features: '+r.wf);
+if(r.oz==='yes')legacy.push('Ozonator: Yes');
+if(r.pl)legacy.push('Pillows: '+r.pl);
+if(r.ft)legacy.push('Filter: '+r.ft);
+if(r.vl)legacy.push('Valves: '+r.vl);
+if(r.sd==='yes')legacy.push('Spa Drain: Yes');
+if(r.sb)legacy.push('Spa Base: '+r.sb);
+if(r.cb)legacy.push('Cabinet: '+r.cb);
+if(r.dr)legacy.push('Doors: '+r.dr);
+if(r.cks)legacy.push('Chemical Start-up Kit: '+r.cks);
+if(r.xf)legacy.push(r.xf);
+spdText=legacy.join('\n');
+hasLegacy=legacy.length>0}
+// Always show the section if we have spa name OR description
+if(r.sp||r.sn||spdText){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Spa Description</div>';
+// Spa model header (prominent) — model + serial
+if(r.sp||r.sn){
+h+='<div style="font-size:16px;font-weight:800;color:var(--text-primary);margin-bottom:10px;padding-bottom:10px;border-bottom:2px solid var(--aspen-orange)">&#129716; '+escHtml(r.sp||'—')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>'}
+// Full spa description (whitespace preserving)
+if(spdText){
+h+='<div style="font-size:13px;color:var(--text-primary);line-height:1.55;white-space:pre-wrap;font-family:-apple-system,system-ui,sans-serif">'+escHtml(spdText)+'</div>'}
+h+='</div>'}
 // Delivered notes (if delivered)
 if(r.dl&&r.dn){
 h+='<div class="tech-section" style="background:#f0fdf4;border-color:#bbf7d0"><div style="font-size:11px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Delivered Notes</div>'+
@@ -941,6 +985,50 @@ document.getElementById('tech-deliver-modal').classList.add('hidden');
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
 
+// Tech adds a note that gets appended to Delivered Notes (r.dn) with timestamp + tech name
+// and flags r.needs_attention so the manager sees an alert.
+function techAddNote(id){
+let r=AD().find(x=>x.i===id);if(!r)return;
+let modal=document.createElement('div');
+modal.className='tech-modal';
+modal.style.zIndex=200;
+let techName=(currentUser&&currentUser.name)||(r.assigned_to&&USERS[r.assigned_to]?USERS[r.assigned_to].name:'Tech');
+modal.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;max-width:520px;width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
+'<div style="font-size:11px;font-weight:800;color:#b45309;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">&#128221; Add Note for Manager</div>'+
+'<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">This note will be added to <strong>Delivered Notes</strong> with today\'s date, and the manager will get an alert that this delivery needs attention.</div>'+
+'<textarea id="tech_note_input" rows="5" placeholder="e.g. Customer wasn\'t home — rescheduled for tomorrow. Or: Spa installed but missing handrail, will return on Friday." style="width:100%;padding:12px;border:2px solid #fbbf24;border-radius:10px;font-size:14px;font-family:inherit;outline:none;resize:vertical;min-height:100px;box-sizing:border-box"></textarea>'+
+'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">'+
+'<button onclick="this.closest(\'.tech-modal\').remove()" style="padding:10px 18px;background:#f3f4f6;color:var(--text-primary);border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-weight:600;font-family:inherit;font-size:14px">Cancel</button>'+
+'<button onclick="techSaveNote('+id+')" style="padding:10px 22px;background:#f59e0b;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-family:inherit;font-size:14px;box-shadow:0 2px 8px rgba(245,158,11,.3)">&#128228; Send to Manager</button>'+
+'</div></div>';
+document.body.appendChild(modal);
+setTimeout(()=>{let ta=document.getElementById('tech_note_input');if(ta)ta.focus()},100)}
+
+function techSaveNote(id){
+let ta=document.getElementById('tech_note_input');
+if(!ta)return;
+let txt=ta.value.trim();
+if(!txt){alert('Please type a note before sending.');return}
+let r=AD().find(x=>x.i===id);if(!r)return;
+// Build a timestamp like "4/30/2026 11:15 AM"
+let now=new Date();
+let dStr=(now.getMonth()+1)+'/'+now.getDate()+'/'+now.getFullYear();
+let hr=now.getHours(),min=String(now.getMinutes()).padStart(2,'0'),ap=hr>=12?'PM':'AM';
+hr=hr%12||12;
+let stamp=dStr+' '+hr+':'+min+' '+ap;
+let techName=(currentUser&&currentUser.name)||(r.assigned_to&&USERS[r.assigned_to]?USERS[r.assigned_to].name:'Tech');
+let entry='['+stamp+' — '+techName+']\n'+txt;
+let existing=(r.dn||'').trim();
+let newDn=existing?existing+'\n\n'+entry:entry;
+let updates={dn:newDn,needs_attention:true,attention_at:Date.now()};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+// Close modal + refresh detail
+let mod=document.querySelector('.tech-modal[style*="z-index"]');
+if(mod)mod.remove();
+showToast('&#10003; Note sent to manager');
+techOpenDetail(id)}
 function techPhotoUpload(id){
 let inp=document.createElement('input');
 inp.type='file';inp.accept='image/*';inp.capture='environment';inp.multiple=true;
@@ -948,14 +1036,14 @@ inp.onchange=async function(e){
 let files=Array.from(e.target.files||[]);
 if(!files.length)return;
 let r=AD().find(x=>x.i===id);if(!r)return;
-let existing=r.photos||[];
-if(existing.length+files.length>5){alert('Max 5 photos per delivery. Currently '+existing.length+', trying to add '+files.length+'.');return}
+let existing=r.tech_photos||[];
+if(existing.length+files.length>10){alert('Max 10 delivery photos. Currently '+existing.length+', trying to add '+files.length+'.');return}
 showToast('Compressing photos...');
 let added=[];
 for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
 if(!added.length)return;
 let newPhotos=existing.concat(added);
-let updates={photos:newPhotos};
+let updates={tech_photos:newPhotos};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
@@ -977,22 +1065,78 @@ res(canvas.toDataURL('image/jpeg',quality||0.7))};
 img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('Could not load image'))};
 img.src=url})}
 
+// Tech deletes their own delivery photo (from r.tech_photos)
 function techDeletePhoto(id,idx){
-if(!confirm('Delete this photo?'))return;
+if(!confirm('Delete this delivery photo?'))return;
+let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
+let newPhotos=r.tech_photos.slice();newPhotos.splice(idx,1);
+let updates={tech_photos:newPhotos.length?newPhotos:null};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+techOpenDetail(id)}
+
+// Tech views their own delivery photo (full screen)
+function techViewPhoto(id,idx){
+let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos||!r.tech_photos[idx])return;
+showFullPhoto(r.tech_photos[idx])}
+
+// Tech views a manager-uploaded info photo (read-only, full screen)
+function techViewInfoPhoto(id,idx){
+let r=AD().find(x=>x.i===id);if(!r||!r.photos||!r.photos[idx])return;
+showFullPhoto(r.photos[idx])}
+
+// Shared full-screen photo viewer
+function showFullPhoto(src){
+let modal=document.createElement('div');modal.className='tech-modal';modal.style.zIndex=100;modal.style.padding=0;
+modal.innerHTML='<div style="position:relative;max-width:95vw;max-height:95vh"><img src="'+src+'" style="max-width:95vw;max-height:95vh;border-radius:12px;display:block"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px">&#10005;</button></div>';
+modal.onclick=function(e){if(e.target===modal)modal.remove()};
+document.body.appendChild(modal)}
+
+// Admin/manager uploads info photos (saves to r.photos — visible to tech, read-only for them)
+function adminPhotoUpload(id){
+let inp=document.createElement('input');
+inp.type='file';inp.accept='image/*';inp.multiple=true;
+inp.onchange=async function(e){
+let files=Array.from(e.target.files||[]);
+if(!files.length)return;
+let r=AD().find(x=>x.i===id);if(!r)return;
+let existing=r.photos||[];
+if(existing.length+files.length>5){alert('Max 5 info photos. Currently '+existing.length+', trying to add '+files.length+'.');return}
+showToast('Compressing photos...');
+let added=[];
+for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
+if(!added.length)return;
+let newPhotos=existing.concat(added);
+let updates={photos:newPhotos};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
+if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}};
+inp.click()}
+
+// Admin deletes one of their own info photos (r.photos)
+function adminDeletePhoto(id,idx){
+if(!confirm('Delete this info photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
 let newPhotos=r.photos.slice();newPhotos.splice(idx,1);
 let updates={photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
-techOpenDetail(id)}
+if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}}
 
-function techViewPhoto(id,idx){
-let r=AD().find(x=>x.i===id);if(!r||!r.photos||!r.photos[idx])return;
-let modal=document.createElement('div');modal.className='tech-modal';modal.style.zIndex=100;modal.style.padding=0;
-modal.innerHTML='<div style="position:relative;max-width:95vw;max-height:95vh"><img src="'+r.photos[idx]+'" style="max-width:95vw;max-height:95vh;border-radius:12px;display:block"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px">&#10005;</button></div>';
-modal.onclick=function(e){if(e.target===modal)modal.remove()};
-document.body.appendChild(modal)}
+// Admin deletes a tech delivery photo (r.tech_photos) — admin can review and curate the ticket
+function adminDeleteTechPhoto(id,idx){
+if(!confirm('Delete this delivery photo from the ticket?'))return;
+let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
+let newPhotos=r.tech_photos.slice();newPhotos.splice(idx,1);
+let updates={tech_photos:newPhotos.length?newPhotos:null};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}}
 
 // === ADMIN: USER MANAGEMENT ===
 function openUsersPanel(){
@@ -1072,7 +1216,16 @@ function populateTechDropdown(){
 let sel=document.getElementById('e_assigned');if(!sel)return;
 let techs=Object.entries(USERS).filter(([id,u])=>u.role==='tech');
 let cur=curRec&&curRec.assigned_to||'';
-sel.innerHTML='<option value="">— Unassigned —</option>'+techs.map(([id,u])=>'<option value="'+id+'"'+(id===cur?' selected':'')+'>'+escHtml(u.name)+'</option>').join('')}
+// Find Fernando in users (case-insensitive). If found, use his user id; otherwise use the literal string "Fernando".
+let ferEntry=techs.find(([id,u])=>/fernando/i.test(u.name||''));
+let fernandoVal=ferEntry?ferEntry[0]:'Fernando';
+// Default to Fernando when no tech is assigned yet
+if(!cur)cur=fernandoVal;
+// Build options. If Fernando isn't a real user, prepend a synthetic option so he's still selectable.
+let opts='<option value="">— Unassigned —</option>';
+if(!ferEntry)opts+='<option value="Fernando"'+(cur==='Fernando'?' selected':'')+'>Fernando</option>';
+opts+=techs.map(([id,u])=>'<option value="'+id+'"'+(id===cur?' selected':'')+'>'+escHtml(u.name)+'</option>').join('');
+sel.innerHTML=opts}
 
 let EDITS={},ADDED=[];
 let fbReady=false;
@@ -1193,9 +1346,11 @@ function renderCtxHdr(){
 let m=STATUS_META[statusF]||STATUS_META.all;
 let list=AD().filter(r=>r.n).filter(r=>statusF==='all'||st(r)===statusF);
 let totalBal=list.reduce((s,r)=>s+(r.bl||0),0);
+let attnCount=AD().filter(r=>r.n&&r.needs_attention).length;
 let metaParts=[];
 metaParts.push('<strong>'+list.length+'</strong> '+(list.length===1?'delivery':'deliveries'));
 if(totalBal>0)metaParts.push('<span class="bal">Balance Due '+fmt(totalBal)+'</span>');
+if(attnCount>0)metaParts.push('<span style="background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;padding:3px 10px;border-radius:999px;font-weight:800;font-size:12px;box-shadow:0 2px 6px rgba(245,158,11,.4)"><span class="pulse" style="display:inline-block">&#128276;</span> '+attnCount+' need'+(attnCount===1?'s':'')+' attention</span>');
 let h='<div><h2 style="color:'+m.color+'">'+m.label+(statusF==='all'?' Deliveries':' Deliveries')+'</h2>'+
 '<div style="font-size:11px;color:var(--text-tertiary);margin-top:3px;font-weight:500">'+m.sub+'</div></div>'+
 '<div class="ctx-meta">'+metaParts.join(' &nbsp;&middot;&nbsp; ')+'</div>';
@@ -1230,7 +1385,7 @@ if(r.svc_status){
 let svcMap={requested:{label:'&#128736; SVC Requested',cls:'svc-req'},assigned:{label:'&#128736; SVC Assigned',cls:'svc-asg'},in_progress:{label:'&#128736; SVC In Progress',cls:'svc-prog'},completed:{label:'&#128736; SVC Done',cls:'svc-done'}};
 let info=svcMap[r.svc_status];
 if(info)svcBadge='<span class="svc-tag '+info.cls+'">'+info.label+'</span>'}
-h+='<div class="card '+s+'" onclick="openDet('+r.i+')"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -1249,7 +1404,17 @@ document.getElementById("charts").innerHTML='<div class="cbox"><h3>Monthly Deliv
 
 // === DETAIL / EDIT MODAL ===
 let editMode=false,curRec=null;
-function openDet(id){curRec=AD().find(x=>x.i===id);if(!curRec)return;renderModal();document.getElementById("ov").classList.remove("hidden")}
+function openDet(id){
+curRec=AD().find(x=>x.i===id);if(!curRec)return;
+// If this delivery had a tech note pending review, clear the alert flag now that admin is opening it
+if(curRec.needs_attention&&currentUser&&currentUser.role!=='tech'){
+let updates={needs_attention:null,attention_at:null};
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+curRec=AD().find(x=>x.i===id);
+renderBoard();renderTable()}
+renderModal();document.getElementById("ov").classList.remove("hidden")}
 function closeOv(){document.getElementById("ov").classList.add("hidden")}
 function toggleEdit(){renderModal()}
 
@@ -1281,128 +1446,150 @@ tc.items.forEach(it=>{let y=Math.round(it.transform[5]);if(!lines[y])lines[y]=[]
 let ys=Object.keys(lines).map(Number).sort((a,b)=>b-a);
 fullText+=ys.map(y=>lines[y].join(' ')).join('\n')+'\n'}
 let extracted=parseInvoiceText(fullText);
-let filled=applyExtractedToForm(extracted);
+let res=applyExtractedToForm(extracted);
+let filled=res.filled,upgraded=res.upgraded;
 if(filled===0){setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
-setStat('ok','\u2713 Auto-filled '+filled+' field'+(filled===1?'':'s')+' from invoice. Review and adjust as needed.');
+let msg='\u2713 Auto-filled '+filled+' field'+(filled===1?'':'s')+' from invoice';
+if(upgraded>0)msg+=' ('+upgraded+' replaced existing partial values)';
+msg+='. Review and adjust as needed.';
+setStat('ok',msg);
 showToast('&#10003; Invoice parsed: '+filled+' field'+(filled===1?'':'s')+' filled')}
 catch(e){console.error('PDF parse error:',e);setStat('err','\u2715 Could not read PDF: '+(e.message||'Unknown error'))}}
 
 // Parses the extracted text from a QuickBooks invoice and returns a structured object
 function parseInvoiceText(text){
 let result={};
-let line=function(re){let m=text.match(re);return m?m[1].trim():null};
 
-// Customer name (e.g. "Bill To Ruth and David Jayne")
-let nameMatch=text.match(/Bill\s*To[:\s]+([A-Z][A-Za-z\s&'\-\.]+?)(?:\n|Phone|Email|Date|Invoice)/i);
-if(nameMatch){result._customerName=nameMatch[1].trim().replace(/\s+/g,' ')}
+// === CUSTOMER NAME ===
+// Aspen invoices: "Bill To:" → maybe "Ship To:" → name on next line
+let nameMatch=text.match(/Bill\s*To\s*:?\s*([\s\S]{0,400}?)(?=\n\s*(?:Item|Description|Qty|Phone|Email|Sales\s+Person|P\.O\.|Date)\b)/i);
+if(nameMatch){
+let lines=nameMatch[1].split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+for(let i=0;i<lines.length;i++){
+let ln=lines[i];
+if(/^Ship\s*To/i.test(ln))continue;
+if(/^\d/.test(ln))continue;
+if(/^[A-Z]{2}\s+\d{5}/.test(ln))continue;
+if(/MO\s*\d{5}|IL\s*\d{5}|^[A-Z][a-z]+,\s*[A-Z]{2}/.test(ln))continue;
+if(/[A-Za-z]/.test(ln)&&ln.length>2&&ln.length<100&&!/^[A-Z\s]+$/.test(ln)){
+result._customerName=ln.replace(/\s+/g,' ');break}}}
 
-// Phone (US format)
-let phoneMatch=text.match(/\b(\d{3}[\.\-\s]\d{3}[\.\-\s]\d{4})\b/);
-if(phoneMatch)result._phone=phoneMatch[1].replace(/[\.\s]/g,'-');
+// === PHONE — skip company phone (314) 776-5050 ===
+let phoneMatches=[...text.matchAll(/\(?(\d{3})\)?[\.\-\s]+(\d{3})[\.\-\s]+(\d{4})/g)];
+for(let m of phoneMatches){
+let p=m[1]+'-'+m[2]+'-'+m[3];
+if(p==='314-776-5050')continue;
+let ctx=text.substring(Math.max(0,m.index-50),m.index+50);
+if(/MCREE|ASPENSPAS\.COM|SAINT\s+LOUIS,\s*MO\s*63110/i.test(ctx))continue;
+result._phone=p;break}
 
-// Address: try to grab everything between bill-to name and phone
-// (Conservative — only grabs city + state + zip pattern at end)
-let addrMatch=text.match(/(\d+\s+[A-Z][A-Za-z0-9\s\.\-#]+(?:Dr|St|Ave|Rd|Ct|Ln|Way|Blvd|Pl|Pkwy|Hwy|Cir|Trl)\.?[\s,]+[A-Z][A-Za-z\s]+,?\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/i);
-if(addrMatch)result._address=addrMatch[1].replace(/\s+/g,' ').trim();
+// === ADDRESS — skip company address (4609 MCREE AVENUE) ===
+let streetTypes='(?:Drive|Dr|Street|St|Avenue|Ave|Road|Rd|Court|Ct|Lane|Ln|Way|Boulevard|Blvd|Place|Pl|Parkway|Pkwy|Highway|Hwy|Circle|Cir|Trail|Trl|Terrace|Ter|Point|Pt|Run|Square|Sq|Ridge|Rg|Crossing|Xing|Acers|Heights|View)';
+let addrRe=new RegExp('(\\d+\\s+(?:[A-Z][A-Za-z0-9\\.\\-\']+\\s+){1,6}'+streetTypes+'\\.?)[\\s,\\n]+([A-Z][A-Za-z\\s\\.]+?),?\\s+([A-Z]{2})\\s+(\\d{5}(?:-\\d{4})?)','gi');
+for(let m of [...text.matchAll(addrRe)]){
+let street=m[1].replace(/\s+/g,' ').trim();
+let city=m[2].replace(/\s+/g,' ').trim();
+if(/MCREE|4609|ASPENSPAS/i.test(street))continue;
+if(/SAINT\s+LOUIS/i.test(city)&&/MCREE/i.test(text.substring(Math.max(0,m.index-50),m.index)))continue;
+result._address=street+'\n'+city+', '+m[3]+' '+m[4];
+break}
 
-// Year + Model + Series + Voltage on a single line, e.g. "2025 Quattro VS    220v"
-let yvMatch=text.match(/\b(20\d{2})\s+([A-Z][A-Za-z]+)\s+([A-Z]{1,4})\b[^\n]*?\b(\d{3}v?)\b/i);
-if(yvMatch){
-result.yr=yvMatch[1];
-result._model=yvMatch[2];
-result._series=yvMatch[3];
-let v=yvMatch[4];if(!/v$/i.test(v))v+='v';
-if(['110v','220v','240v'].includes(v.toLowerCase()))result.vt=v.toLowerCase()}
-else{
-// Try simpler: just voltage anywhere
-let vMatch=text.match(/\b(110|220|240)v\b/i);
-if(vMatch)result.vt=vMatch[0].toLowerCase()}
-
-// Year fallback (just the year)
-if(!result.yr){let yMatch=text.match(/\b(20\d{2})\s+(?:Quattro|Eldorado|Pinnacle|Arcadia|Alpine|Monarch|13\s*PARTY|VS|GS|ES|VR|XL)/i);if(yMatch)result.yr=yMatch[1]}
-
-// Serial number: "SERIAL # 30726" or "SN 30726" or "SN: 30726"
+// === SERIAL NUMBER ===
 let snMatch=text.match(/(?:SERIAL\s*#?|S\/?N)\s*[:\#]?\s*(\d{4,7})/i);
 if(snMatch)result._serial=snMatch[1];
 
-// Total Jets - 24, [material]
-let jtMatch=text.match(/Total\s+Jets\s*[\-:]\s*(\d+)\s*[,\-]?\s*([^\n]*)/i);
-if(jtMatch){result.jt=+jtMatch[1];if(jtMatch[2])result.jm=jtMatch[2].replace(/\s*$/,'').trim()}
+// === MODEL + SERIES (for dropdowns) ===
+let modelKeys=['Quattro','Eldorado','Pinnacle','Arcadia','Alpine','Monarch','Pioneer','Colorado','13\\s*PARTY','16\\s*SWIM'];
+let yMSrx=new RegExp('\\b(20\\d{2})\\s+('+modelKeys.join('|')+')\\s+(VS|GS|ES|VR|XL|Holiday)\\b','i');
+let ymsMatch=text.match(yMSrx);
+if(ymsMatch){
+result._model=ymsMatch[2].replace(/\s+/g,' ').replace(/^13\s*PARTY$/i,'13 PARTY').replace(/^16\s*SWIM$/i,'16 SWIM');
+result._series=ymsMatch[3].toUpperCase()}
+else{
+let mMatch=text.match(new RegExp('\\b('+modelKeys.join('|')+')\\b','i'));
+if(mMatch)result._model=mMatch[1].replace(/\s+/g,' ')}
 
-// Pump 1 / Pump 2
-let p1Match=text.match(/Pump\s*1\s*[:\-]\s*([^\n]+)/i);if(p1Match)result.p1=p1Match[1].trim();
-let p2Match=text.match(/Pump\s*2\s*[:\-]\s*([^\n]+)/i);if(p2Match)result.p2=p2Match[1].trim();
+// === COVER (cv dropdown) ===
+let cvColor=null;
+let coverContext=text.match(/((?:[^\n]*Cover[^\n]*)|(?:Onyx\s+\w+\s+\d+["']\s*x\s*\d+["']))/gi);
+if(coverContext){
+let coverText=coverContext.join(' ');
+if(/(?:Cover[^\n]*-?\s*BLACK|Onyx\s+Black|Black\s+Cover)/i.test(coverText))cvColor='Black (normal)';
+else if(/Charcoal\s+Cover|Cover[^\n]*-?\s*CHARCOAL/i.test(coverText))cvColor='Charcoal';
+else if(/Walnut\s+Cover|Cover[^\n]*-?\s*WALNUT/i.test(coverText))cvColor='Walnut';
+else if(/Roll\s*Top\s+Cover|Roll\s+Top|Cover[^\n]*Roll\s*Top/i.test(coverText))cvColor='Roll Top'}
+if(cvColor)result._cover=cvColor;
 
-// Spa Pack: "Spa Pack - Gecko - YE-3"
-let pkMatch=text.match(/Spa\s+Pack\s*[\-:]\s*([^\n]+)/i);if(pkMatch)result.pks=pkMatch[1].trim();
+// === LIFT (lf dropdown) ===
+let lfMatch=null;
+if(/CoverMate\s+Vanish\s+XL|Vanish\s+XL/i.test(text))lfMatch='Vanish XL';
+else if(/CoverMate\s+TS[\-\s]?11|\bTS[\-\s]?11\b/i.test(text))lfMatch='TS - 11';
+else if(/CoverMate\s+TS[\-\s]?07|\bTS[\-\s]?07\b|\bTS[\-\s]?7\b/i.test(text))lfMatch='TS - 07';
+else if(/Boomerang/i.test(text))lfMatch='Boomerang';
+else if(/13['\s]*Roll/i.test(text))lfMatch="13' Roll";
+else if(/16['\s]*Roll/i.test(text))lfMatch="16' Roll";
+if(lfMatch)result._lift=lfMatch;
 
-// Top Side Control: "Top Side Control - Gecko k.300    ****INVERTED INWARDS****"
-let tsMatch=text.match(/Top\s+Side\s+Control\s*[\-:]\s*([^\*\n]+?)(?:\s*\*+\s*([^\*]+?)\s*\*+)?\s*(?:\n|$)/i);
-if(tsMatch){result.ts=tsMatch[1].trim();if(tsMatch[2])result.tsn=tsMatch[2].trim()}
-
-// Lighting: "****Mini Chromatherapy Lighting****" or "Mini Chromatherapy Lighting"
-let lgMatch=text.match(/\*+\s*([^\*\n]*(?:Chromatherapy|Lighting)[^\*\n]*?)\s*\*+/i)||text.match(/((?:Mini\s+)?Chromatherapy[^\n]*)/i);
-if(lgMatch)result.lg=lgMatch[1].trim();
-
-// Water Features
-let wfMatch=text.match(/\*+\s*([^\*\n]*Water Features[^\*\n]*?)\s*\*+/i)||text.match(/(No Water Features|Water Feature[^\n]*)/i);
-if(wfMatch)result.wf=wfMatch[1].trim();
-
-// Ozonator (presence)
-if(/^\s*Ozonator\s*$/im.test(text)||/\bOzonator\b/i.test(text))result.oz='yes';
-
-// Pillows: "(2) Ergonomic Pillows with Inserts - Charcoal"
-let plMatch=text.match(/\((\d+)\)\s*([^\n]*Pillow[^\n]*)/i);
-if(plMatch)result.pl='('+plMatch[1]+') '+plMatch[2].trim();
-
-// Filter: "50 Sq Ft Filter"
-let ftMatch=text.match(/(\d+)\s*Sq\s*Ft\s*Filter/i);
-if(ftMatch)result.ft=ftMatch[1]+' Sq Ft';
-
-// Valves
-let vlMatch=text.match(/(Shut\s*off\s*\/?\s*Slice\s*Valves?|Slice\s*Valves?)/i);
-if(vlMatch)result.vl=vlMatch[1].trim();
-
-// Spa Drain
-if(/Spa\s+Drain/i.test(text))result.sd='yes';
-
-// Spa Base: try "Partially-Insulated Spa Base ..." then fallback
-let sbMatch=text.match(/((?:Fully|Partially)?[\-\s]?Insulated\s+Spa\s+Base[^\n]+)/i)||text.match(/(Spa\s+Base\s+[^\n]+Pan)/i);
-if(sbMatch)result.sb=sbMatch[1].trim();
-
-// Cabinet
-let cbMatch=text.match(/(Maintenance[\-\s]?Free[^\n]+Cabinet[^\n]*)/i)||text.match(/(Recycled\s+Plastic\s+Cabinet[^\n]*)/i)||text.match(/Cabinet\s*[\-:]?\s*([^\n]+)/i);
-if(cbMatch)result.cb=(cbMatch[1]||cbMatch[0]).trim();
-
-// Doors
-let drMatch=text.match(/((?:Horizontal|Vertical)\s+Doors[^\n]*)/i);
-if(drMatch)result.dr=drMatch[1].trim();
-
-// Chemical Start-up Kit
-let ckMatch=text.match(/Chemical[^\n]*Start[\-\s]?up[^\n]*Kit[^\n]*[\-:]?\s*([^\n]+)/i);
-if(ckMatch)result.cks=ckMatch[1].replace(/^[\-:\s]+/,'').trim();
-
-// Customer Delivery Instructions: try "Pull controller" or after "Fernando:" or after "Notes:"
-let diMatch=text.match(/(?:Fernando|Tech|Delivery\s+Notes?|Notes?)\s*[:\-]\s*([\s\S]*?)(?=\n\s*(?:Chemical|Spa|Pump|Top|Pillow|Filter|Cabinet|\d{4}\s+\w+\s+\w+|Total\s+Due|Subtotal|Balance|Sales\s+Tax|$))/i);
-if(diMatch){
-let inst=diMatch[1].replace(/\s+/g,' ').trim();
-if(inst.length>10&&inst.length<800)result.di=inst}
-
-// Sales price (look for "Total" amount near end)
-let prMatch=text.match(/(?:Total|Balance\s+Due|Amount\s+Due)\s*\$?\s*([\d,]+\.\d{2})/i);
-if(prMatch)result._price=parseFloat(prMatch[1].replace(/,/g,''));
+// === FULL SPA DESCRIPTION ===
+// Take everything from the start of the spa item (e.g. "2025 Pinnacle ES") up to (but excluding)
+// any pricing/discount/tax/footer. Filter out item codes, pure number lines (qty/prices), and footers.
+let startIdx=text.search(/20\d{2}\s+(?:Quattro|Eldorado|Pinnacle|Arcadia|Alpine|Monarch|Pioneer|Colorado|13\s*PARTY|16\s*SWIM)/i);
+if(startIdx<0)startIdx=text.search(/SERIAL\s*#/i);
+if(startIdx>=0){
+let endRe=/(Spa\s+Discount\b|Sales\s+Tax\b|Total\s*\$|Total\s+Due|Subtotal|Balance\s+Due|QUOTES\s+VALID|We\s+appreciate|SIGNATURE|Discount-Spas|^Discount\s|^Discount$)/im;
+let after=text.substring(startIdx);
+let endMatch=after.match(endRe);
+let block=endMatch?after.substring(0,endMatch.index):after;
+// Clean it up: drop pure-numeric/price lines, QB item-code lines, and noise
+let cleanLines=[];
+for(let raw of block.split('\n')){
+let ln=raw.trim();
+if(!ln)continue;
+// Skip pure number lines like "1", "11,995.00", "$695.00", "0.00"
+if(/^\$?\d{1,3}(,\d{3})*(\.\d{2})?$/.test(ln))continue;
+if(/^\d+$/.test(ln))continue;
+// Skip QuickBooks item code lines (lines starting with QB code prefixes - these are internal codes, not descriptions)
+if(/^(?:as-|cs-|FG-|hav-|AC-|AL-|Discount-|disc-|us-)/i.test(ln))continue;
+// Skip headers from the table
+if(/^(?:Item|Description|Qty\.?|Amount|Total|Sales\s+Tax|Discount)$/i.test(ln))continue;
+// Skip lines that are mostly punctuation/noise
+if(ln.length<3&&!/[A-Za-z]/.test(ln))continue;
+cleanLines.push(ln)}
+let desc=cleanLines.join('\n').trim();
+if(desc.length>20)result._spaDescription=desc}
 
 return result}
 
 // Write the extracted values into the open modal's form fields
 function applyExtractedToForm(d){
 let count=0;
-let setIf=function(id,val){if(val==null||val==='')return;let el=document.getElementById(id);if(!el)return;
-// Don't overwrite if user already typed something
-if(el.value&&String(el.value).trim()&&el.value!=='0')return;
-el.value=val;count++};
+let upgraded=0;
+// Smart fill: empty/zero always gets filled. Existing values are upgraded if the PDF
+// has a more complete version (longer AND contains the existing text). Otherwise keep
+// the user's manual edits intact.
+let setIf=function(id,val){
+if(val==null||val==='')return;
+let el=document.getElementById(id);if(!el)return;
+let cur=String(el.value||'').trim();
+let newVal=String(val);
+// Empty or zero → always fill
+if(!cur||cur==='0'||cur==='0.00'){el.value=val;count++;return}
+// Same value (case-insensitive) → no change
+if(cur.toLowerCase()===newVal.toLowerCase())return;
+// PDF has a more complete version (longer + contains the existing text) → upgrade
+if(newVal.length>cur.length&&newVal.toLowerCase().indexOf(cur.toLowerCase())>=0){
+el.value=val;count++;upgraded++;return}
+// Otherwise: respect the user's existing value, don't overwrite
+};
 
-// Customer info (only if blank)
+let setSelectIf=function(id,val,opts){
+if(val==null||val==='')return;
+let el=document.getElementById(id);if(!el)return;
+if(el.value&&el.value!=='')return;
+let opt=Array.from(el.options).find(o=>o.value.toLowerCase()===val.toLowerCase()||o.text.toLowerCase()===val.toLowerCase());
+if(opt){el.value=opt.value;count++}};
+
+// Customer info (smart-fill: empty/zero or shorter-substring → upgrade)
 if(d._customerName)setIf('e_n',d._customerName);
 if(d._phone)setIf('e_ph',d._phone);
 if(d._address)setIf('e_st',d._address);
@@ -1411,28 +1598,15 @@ if(d._serial)setIf('e_sn',d._serial);
 // Sales price (writes to e_pr)
 if(d._price)setIf('e_pr',d._price);
 
-// Spa specs
-setIf('e_yr',d.yr);
-setIf('e_vt',d.vt);
-setIf('e_jt',d.jt);
-setIf('e_jm',d.jm);
-setIf('e_p1',d.p1);
-setIf('e_p2',d.p2);
-setIf('e_pk',d.pks);
-setIf('e_ts',d.ts);
-setIf('e_tsn',d.tsn);
-setIf('e_lg',d.lg);
-setIf('e_wf',d.wf);
-setIf('e_oz',d.oz);
-setIf('e_pl',d.pl);
-setIf('e_ft',d.ft);
-setIf('e_vl',d.vl);
-setIf('e_sd',d.sd);
-setIf('e_sb',d.sb);
-setIf('e_cb',d.cb);
-setIf('e_dr',d.dr);
-setIf('e_ck_txt',d.cks);
-setIf('e_di',d.di);
+// Spa Description — single big textarea. Prepend special notes (***PLUMB FOR HEAT PUMP***) if any.
+let spdParts=[];
+if(d._specialNotes)spdParts.push('** '+d._specialNotes+' **');
+if(d._spaDescription)spdParts.push(d._spaDescription);
+if(spdParts.length)setIf('e_spd',spdParts.join('\n\n'));
+
+// Cover and Lift dropdowns
+if(d._cover)setSelectIf('e_cv',d._cover);
+if(d._lift)setSelectIf('e_lf',d._lift);
 
 // Try matching SPA model dropdown (if Quattro/Eldorado/etc detected)
 if(d._model){
@@ -1446,11 +1620,11 @@ if(sSel&&!sSel.value){
 let opt=Array.from(sSel.options).find(o=>o.value.toLowerCase()===d._series.toLowerCase()||o.text.toLowerCase().indexOf(d._series.toLowerCase())>=0);
 if(opt){sSel.value=opt.value;count++}}}
 
-return count}
+return{filled:count,upgraded:upgraded}}
 
-// Returns true if the record has any spa specification field filled (controls auto-open of details)
+// Returns true if the record has any spa description data (controls auto-open of details)
 function spaSpecsHasData(r){
-return!!(r.yr||r.vt||r.jt||r.jm||r.p1||r.p2||r.pks||r.ts||r.tsn||r.lg||r.wf||r.oz||r.pl||r.ft||r.vl||r.sd||r.sb||r.cb||r.dr||r.cks||r.di)}
+return!!(r.spd||r.di||r.yr||r.vt||r.jt||r.jm||r.p1||r.p2||r.pks||r.ts||r.tsn||r.lg||r.wf||r.oz||r.pl||r.ft||r.vl||r.sd||r.sb||r.cb||r.dr||r.cks||r.xf)}
 
 function renderModal(){let r=curRec,s=st(r);
 let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
@@ -1471,44 +1645,64 @@ h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea i
 // Assigned tech dropdown (admin/organizer only)
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
 h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label><select id="e_assigned" style="padding:9px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;width:100%;background:#fff;outline:none"><option value="">— Unassigned —</option></select></div>'}
-// SPA SPECIFICATIONS — full technical description (replaces calendar invoice copy)
-h+='<details class="spa-specs" '+(spaSpecsHasData(r)?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Specifications</span><span class="spec-hint">Year, jets, pump, electrical, accessories, cabinet</span></summary>';
-h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">&#128206; Auto-fill from Invoice PDF</button><span class="pdf-help">Upload your QuickBooks invoice and we&#39;ll fill the fields below automatically</span><div id="pdf_status"></div></div>';
-h+='<div class="spec-grid">'+
-'<div class="ib"><label>Year</label><input id="e_yr" type="text" value="'+esc(r.yr||"")+'" placeholder="2025"></div>'+
-'<div class="ib"><label>Voltage</label><select id="e_vt"><option value="">—</option>'+['110v','220v','240v'].map(v=>'<option value="'+v+'"'+(r.vt===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'+
-'<div class="ib"><label>Total Jets</label><input id="e_jt" type="number" value="'+(r.jt||"")+'" placeholder="24"></div>'+
-'<div class="ib"><label>Jet Type / Material</label><input id="e_jm" type="text" value="'+esc(r.jm||"")+'" placeholder="Stainless &amp; Graphite Halo"></div>'+
-'</div>';
-h+='<div class="ct sub-ct">Pump &amp; Electrical</div><div class="spec-grid">'+
-'<div class="ib"><label>Pump 1 (brand · V · amp · speed)</label><input id="e_p1" type="text" value="'+esc(r.p1||"")+'" placeholder="Gecko, 220v, 8 Amp, 2 Speed"></div>'+
-'<div class="ib"><label>Pump 2 (optional)</label><input id="e_p2" type="text" value="'+esc(r.p2||"")+'" placeholder="—"></div>'+
-'<div class="ib"><label>Spa Pack</label><input id="e_pk" type="text" value="'+esc(r.pks||"")+'" placeholder="Gecko - YE-3"></div>'+
-'<div class="ib"><label>Top Side Control</label><input id="e_ts" type="text" value="'+esc(r.ts||"")+'" placeholder="Gecko k.300"></div>'+
-'<div class="ib full"><label>Top Side Notes</label><input id="e_tsn" type="text" value="'+esc(r.tsn||"")+'" placeholder="e.g. INVERTED INWARDS"></div>'+
-'</div>';
-h+='<div class="ct sub-ct">Features</div><div class="spec-grid">'+
-'<div class="ib"><label>Lighting</label><input id="e_lg" type="text" value="'+esc(r.lg||"")+'" placeholder="Mini Chromatherapy"></div>'+
-'<div class="ib"><label>Water Features</label><input id="e_wf" type="text" value="'+esc(r.wf||"")+'" placeholder="No Water Features / details"></div>'+
-'<div class="ib"><label>Ozonator</label><select id="e_oz"><option value="">—</option><option value="yes"'+(r.oz==='yes'?' selected':'')+'>Yes</option><option value="no"'+(r.oz==='no'?' selected':'')+'>No</option></select></div>'+
-'<div class="ib"><label>Pillows (count · type · color)</label><input id="e_pl" type="text" value="'+esc(r.pl||"")+'" placeholder="(2) Ergonomic w/ Inserts - Charcoal"></div>'+
-'<div class="ib"><label>Filter</label><input id="e_ft" type="text" value="'+esc(r.ft||"")+'" placeholder="50 Sq Ft"></div>'+
-'<div class="ib"><label>Valves</label><input id="e_vl" type="text" value="'+esc(r.vl||"")+'" placeholder="Shut off / Slice Valves"></div>'+
-'<div class="ib"><label>Spa Drain</label><select id="e_sd"><option value="">—</option><option value="yes"'+(r.sd==='yes'?' selected':'')+'>Yes</option><option value="no"'+(r.sd==='no'?' selected':'')+'>No</option></select></div>'+
-'<div class="ib"></div>'+
-'</div>';
-h+='<div class="ct sub-ct">Cabinet &amp; Exterior</div><div class="spec-grid">'+
-'<div class="ib full"><label>Spa Base</label><input id="e_sb" type="text" value="'+esc(r.sb||"")+'" placeholder="Partially-Insulated Spa Base w/ABS Recycled Plastic Pan"></div>'+
-'<div class="ib"><label>Cabinet Material &amp; Color</label><input id="e_cb" type="text" value="'+esc(r.cb||"")+'" placeholder="Maintenance-Free Recycled Plastic - Espresso"></div>'+
-'<div class="ib"><label>Doors</label><input id="e_dr" type="text" value="'+esc(r.dr||"")+'" placeholder="Horizontal Doors with Door Logo"></div>'+
-'</div>';
-h+='<div class="ct sub-ct">Chemicals &amp; Special Instructions</div>'+
-'<div class="nb"><label>Chemical Start-up Kit</label><textarea id="e_ck_txt" rows="2" placeholder="@ease Sanitizer Kit - 2# Shock - pH up - pH down - Alk up - Gentle Spa - Clarifier - Calcium Up">'+esc(r.cks||"")+'</textarea></div>'+
+// SPA DESCRIPTION — single textarea, auto-filled from PDF
+h+='<details class="spa-specs" '+((r.spd||r.di||spaSpecsHasData(r))?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Description</span><span class="spec-hint">Upload PDF to auto-fill the full spa description</span></summary>';
+h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">&#128206; Auto-fill from Invoice PDF</button><span class="pdf-help">Upload your QuickBooks invoice and we&#39;ll copy the full spa description (excluding prices, taxes, and discounts)</span><div id="pdf_status"></div></div>';
+// Compute initial value: prefer new spd field; fall back to legacy structured fields
+let spdInitial=r.spd;
+if(!spdInitial){
+let legacy=[];
+if(r.yr)legacy.push('Year: '+r.yr);
+if(r.vt)legacy.push('Voltage: '+r.vt);
+if(r.jt)legacy.push('Total Jets: '+r.jt+(r.jm?', '+r.jm:''));
+if(r.p1)legacy.push('Pump 1: '+r.p1);
+if(r.p2)legacy.push('Pump 2: '+r.p2);
+if(r.p3)legacy.push('Pump 3: '+r.p3);
+if(r.p4)legacy.push('Pump 4: '+r.p4);
+if(r.pks)legacy.push('Spa Pack: '+r.pks);
+if(r.ts)legacy.push('Top Side Control: '+r.ts);
+if(r.tsn)legacy.push('Top Side Notes: '+r.tsn);
+if(r.lg)legacy.push('Lighting: '+r.lg);
+if(r.wf)legacy.push('Water Features: '+r.wf);
+if(r.oz==='yes')legacy.push('Ozonator: Yes');
+if(r.pl)legacy.push('Pillows: '+r.pl);
+if(r.ft)legacy.push('Filter: '+r.ft);
+if(r.vl)legacy.push('Valves: '+r.vl);
+if(r.sd==='yes')legacy.push('Spa Drain: Yes');
+if(r.sb)legacy.push('Spa Base: '+r.sb);
+if(r.cb)legacy.push('Cabinet: '+r.cb);
+if(r.dr)legacy.push('Doors: '+r.dr);
+if(r.cks)legacy.push('Chemical Start-up Kit: '+r.cks);
+if(r.xf)legacy.push(r.xf);
+spdInitial=legacy.join('\n')}
+h+='<div class="nb"><label>Spa Description (full description from PDF)</label><textarea id="e_spd" rows="14" placeholder="Will be filled automatically when you upload the invoice PDF. You can also paste or type here manually.&#10;&#10;Example:&#10;2025 Pinnacle ES - 4 Pump System&#10;SERIAL # 30717&#10;Total Jets - 70, Stainless and Graphite Halo&#10;Pump 1: Gecko 24 Hour Programmable Circulating Pump&#10;Pump 2: Gecko 12 amp, 2 Speed&#10;...">'+esc(spdInitial||"")+'</textarea></div>'+
 '<div class="nb"><label>Customer Delivery Instructions</label><textarea id="e_di" rows="3" placeholder="e.g. Pull controller out of old spa and leave with customer. Customer to reuse old cover, steps, and handrail. Haul away old spa.">'+esc(r.di||"")+'</textarea></div>';
 h+='</details>';
 // Notes (contact & extra)
 h+='<div class="ct">Notes</div>';
 [["Contact Notes","e_cn",r.cn],["Extra Notes","e_en",r.en]].forEach(([l,id,v])=>{h+='<div class="nb"><label>'+l+'</label><textarea id="'+id+'">'+(v||"")+'</textarea></div>'});
+// Info Photos — what Alberto/admin uploads to inform the tech (site, electrical, access path)
+let infoCount=(r.photos||[]).length;
+h+='<div class="ct">&#128231; Info Photos for Tech <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— upload site photos so the tech is prepared</span></div>';
+h+='<div style="background:#f9fafb;border:1.5px dashed #d1d5db;border-radius:10px;padding:14px;margin-bottom:14px">';
+h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:'+(infoCount?'12px':'0')+'">';
+h+='<div style="font-size:13px;color:var(--text-secondary)">'+(infoCount?'<strong style="color:var(--text-primary)">'+infoCount+' info photo'+(infoCount===1?'':'s')+'</strong> shared with tech.':'No info photos yet. Upload site photos, electrical setup, access path, etc.')+'</div>';
+h+='<button type="button" class="pdf-btn" style="background:#7c3aed;border-color:#7c3aed" onclick="adminPhotoUpload('+r.i+')"><span>&#128247;</span> '+(infoCount>=5?'Max 5 info photos':'Upload Info Photos')+'</button>';
+h+='</div>';
+if(infoCount){
+h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
+r.photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="showFullPhoto(this.querySelector(\'img\').src)"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="info photo"><button type="button" onclick="event.stopPropagation();adminDeletePhoto('+r.i+','+idx+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
+h+='</div>'}
+h+='</div>';
+// Delivery Photos from Tech — read-only for admin (can delete to curate ticket, can't add)
+let techPhotoCount=(r.tech_photos||[]).length;
+if(techPhotoCount){
+h+='<div class="ct">&#128247; Delivery Photos from Tech <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— uploaded by '+(r.assigned_to&&USERS[r.assigned_to]?escHtml(USERS[r.assigned_to].name):'tech')+' during delivery</span></div>';
+h+='<div style="background:#faf5ff;border:1.5px solid #ddd6fe;border-radius:10px;padding:14px;margin-bottom:14px">';
+h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px"><strong style="color:#6d28d9">'+techPhotoCount+' delivery photo'+(techPhotoCount===1?'':'s')+'</strong> received from tech.</div>';
+h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
+r.tech_photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="showFullPhoto(this.querySelector(\'img\').src)"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="delivery photo"><button type="button" onclick="event.stopPropagation();adminDeleteTechPhoto('+r.i+','+idx+')" title="Remove from ticket" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
+h+='</div></div>'}
 // Accessories
 h+='<div class="ct">Accessories</div><div class="ag">'+ai("Table","e_tb",OPT_TB,r.tb,"tb")+ai("Steps","e_ss",OPT_SS,r.ss,"ss")+'</div><div class="ag">'+ai("Lift","e_lf",OPT_LF,r.lf,"lf")+ai("Cover","e_cv",OPT_CV,r.cv,"cv")+'</div><div class="ag">'+ai("Start Up","e_su",OPT_SU,r.su,"su")+'<div></div></div>';
 // Pre-Delivery Checklist
@@ -1622,11 +1816,7 @@ lf:document.getElementById("e_lf").value||null,cv:document.getElementById("e_cv"
 su:document.getElementById("e_su").value||null,
 cn:document.getElementById("e_cn").value.trim()||null,en:document.getElementById("e_en").value.trim()||null,
 dn:document.getElementById("e_dn").value.trim()||null,fn:document.getElementById("e_fn").value.trim()||null,
-yr:getV('e_yr'),vt:getV('e_vt'),jt:(function(){let v=getV('e_jt');return v?+v:null})(),jm:getV('e_jm'),
-p1:getV('e_p1'),p2:getV('e_p2'),pks:getV('e_pk'),ts:getV('e_ts'),tsn:getV('e_tsn'),
-lg:getV('e_lg'),wf:getV('e_wf'),oz:getV('e_oz'),pl:getV('e_pl'),ft:getV('e_ft'),vl:getV('e_vl'),sd:getV('e_sd'),
-sb:getV('e_sb'),cb:getV('e_cb'),dr:getV('e_dr'),
-cks:getV('e_ck_txt'),di:getV('e_di'),
+spd:getV('e_spd'),di:getV('e_di'),
 tvd:(document.getElementById("tv_date")?document.getElementById("tv_date").value:null)||null,
 tvt:(document.getElementById("tv_time")?document.getElementById("tv_time").value:null)||'09:00',
 tvn:(document.getElementById("tv_notes")?document.getElementById("tv_notes").value.trim():null)||null,
