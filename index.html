@@ -1385,7 +1385,19 @@ function sL(s){return{complete:"Complete",delivered:"Delivered",overdue:"Past Du
 function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]}
 function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
 // Sort
+let useProximity=(sortCol==="date"&&(statusF==="action"||statusF==="overdue"));
+let todayMs=(function(){let d=new Date();d.setHours(0,0,0,0);return d.getTime()})();
+let DAY=86400000;let FUTURE_BOOST=1e10;
+function proximityKey(r){
+let d=parseDate(r.dd);
+if(!d||isNaN(d))return Number.MAX_SAFE_INTEGER; // no-date → very last
+let dayMs=Math.floor(d.getTime()/DAY)*DAY;
+let diff=todayMs-dayMs; // >=0 if past/today, <0 if future
+if(diff>=0)return diff; // past/today: smaller = closer to today (0=today, 86400000=yesterday, ...)
+return FUTURE_BOOST+(-diff); // future: pushed AFTER all past dates, ordered by closeness ahead
+}
 list.sort((a,b)=>{let v=0;
+if(useProximity){v=proximityKey(a)-proximityKey(b); return v} // proximity sort ignores sortDir
 if(sortCol==="date"){let da=parseDate(a.dd),db=parseDate(b.dd);da=da&&!isNaN(da)?da.getTime():0;db=db&&!isNaN(db)?db.getTime():0;v=da-db}
 else if(sortCol==="name"){v=(a.n||"").localeCompare(b.n||"")}
 else if(sortCol==="price"){v=(a.pr||0)-(b.pr||0)}
@@ -1443,12 +1455,16 @@ function setStatusFilter(s){
 statusF=s;
 // Smart default sort by date:
 // - upcoming: ASC (next delivery first → oldest/closest date at top)
-// - action / overdue: ASC (yesterday first → February 2027 last; user wants past-due/needs-action sorted by recency)
+// - action / overdue: PROXIMITY sort (yesterday first, going back in time → futures at the very end)
 // - delivered / complete / all: DESC (most recently completed first)
 if(sortCol==='date'){
-let asc=(s==='upcoming'||s==='action'||s==='overdue');
+let asc=(s==='upcoming');
 sortDir=asc?'asc':'desc';
-let arrow=document.getElementById('dateSortArrow');if(arrow)arrow.textContent=sortDir==='desc'?'▼ Newest':'▲ Oldest';}
+let arrow=document.getElementById('dateSortArrow');
+if(arrow){
+if(s==='action'||s==='overdue')arrow.textContent='↻ By Recency';
+else arrow.textContent=sortDir==='desc'?'▼ Newest':'▲ Oldest';
+}}
 renderKPIs();renderCtxHdr();
 if(tab==='cal')renderCalendar();else render()}
 
