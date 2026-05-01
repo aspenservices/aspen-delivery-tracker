@@ -1441,9 +1441,13 @@ el.innerHTML=h}
 
 function setStatusFilter(s){
 statusF=s;
-// Smart default sort: Upcoming shows oldest first (next delivery), others show newest first
+// Smart default sort by date:
+// - upcoming: ASC (next delivery first → oldest/closest date at top)
+// - action / overdue: ASC (yesterday first → February 2027 last; user wants past-due/needs-action sorted by recency)
+// - delivered / complete / all: DESC (most recently completed first)
 if(sortCol==='date'){
-sortDir=(s==='upcoming')?'asc':'desc';
+let asc=(s==='upcoming'||s==='action'||s==='overdue');
+sortDir=asc?'asc':'desc';
 let arrow=document.getElementById('dateSortArrow');if(arrow)arrow.textContent=sortDir==='desc'?'▼ Newest':'▲ Oldest';}
 renderKPIs();renderCtxHdr();
 if(tab==='cal')renderCalendar();else render()}
