@@ -448,6 +448,26 @@ th,td{padding:7px 6px}
 .tech-photo{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--bg-cream);cursor:pointer}
 .tech-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .tech-photo .del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+/* Photo lightbox (full-screen viewer with navigation) */
+.photo-lightbox{user-select:none;-webkit-user-select:none}
+.photo-lightbox .lb-stage{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:60px 70px}
+.photo-lightbox .lb-img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);display:block;object-fit:contain}
+.photo-lightbox .lb-close,.photo-lightbox .lb-prev,.photo-lightbox .lb-next{position:absolute;background:rgba(255,255,255,.12);color:#fff;border:none;cursor:pointer;font-size:20px;font-weight:700;border-radius:50%;backdrop-filter:blur(8px);transition:background .15s,transform .15s;display:flex;align-items:center;justify-content:center}
+.photo-lightbox .lb-close:hover,.photo-lightbox .lb-prev:hover,.photo-lightbox .lb-next:hover{background:rgba(255,255,255,.25);transform:scale(1.08)}
+.photo-lightbox .lb-close{top:18px;right:18px;width:44px;height:44px;font-size:18px}
+.photo-lightbox .lb-prev,.photo-lightbox .lb-next{top:50%;transform:translateY(-50%);width:50px;height:50px}
+.photo-lightbox .lb-prev:hover,.photo-lightbox .lb-next:hover{transform:translateY(-50%) scale(1.08)}
+.photo-lightbox .lb-prev{left:18px}
+.photo-lightbox .lb-next{right:18px}
+.photo-lightbox .lb-count{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:13px;font-weight:600;padding:6px 14px;border-radius:999px;backdrop-filter:blur(6px)}
+@media (max-width:600px){
+.photo-lightbox .lb-stage{padding:50px 12px}
+.photo-lightbox .lb-prev,.photo-lightbox .lb-next{width:40px;height:40px;font-size:16px}
+.photo-lightbox .lb-prev{left:8px}
+.photo-lightbox .lb-next{right:8px}
+.photo-lightbox .lb-close{top:12px;right:12px;width:38px;height:38px}
+.photo-lightbox .lb-count{bottom:14px}
+}
 
 .tech-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}
 .tech-modal .box{background:#fff;border-radius:14px;max-width:380px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
@@ -618,8 +638,8 @@ let OPT_LF=["NONE","TS - 07","TS - 11","Vanish XL","Boomerang","13' Roll","16' R
 let OPT_CV=["Black (normal)","Charcoal","Walnut","Roll Top"];
 let OPT_SU=["@ Ease [SPA]","Tru-Blu [SPA]","Tru-Blu [SWIM]","Bromine Tablets"];
 // Load custom options from Firebase (will be populated after init)
-const PRE=[{k:"pf",l:"Pay Full"},{k:"iv",l:"Invoice"},{k:"ca",l:"Calendar"},{k:"el",l:"Electricity"},{k:"wp",l:"WIP"},{k:"lv",l:"Level"},{k:"pt",l:"Photos"},{k:"ch",l:"Chemistry"},{k:"rc",l:"Receipt"}];
-const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"sl",l:"S.L."},{k:"po",l:"Portal"},{k:"oo",l:"O.O."},{k:"il",l:"I.L."},{k:"cl",l:"Call"},{k:"pk",l:"Packets"},{k:"gb",l:"G.B."},{k:"ngb",l:"N.G.B."}];
+const PRE=[{k:"pf",l:"Pay Full"},{k:"iv",l:"Invoice"},{k:"el",l:"Electricity"},{k:"wp",l:"WIP"},{k:"lv",l:"Level"},{k:"pt",l:"Photos"},{k:"ch",l:"Chemistry"},{k:"rc",l:"Receipt"}];
+const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"po",l:"Portal"},{k:"oo",l:"O.O."},{k:"il",l:"I.L."},{k:"cl",l:"Call"},{k:"pk",l:"Packets"},{k:"gb",l:"G.B."},{k:"ngb",l:"N.G.B."}];
 
 // === FIREBASE CONFIG ===
 const firebaseConfig={apiKey:"PASTE_YOUR_API_KEY",authDomain:"aspen-delivery-tracker.firebaseapp.com",databaseURL:"https://aspen-delivery-tracker-default-rtdb.firebaseio.com",projectId:"aspen-delivery-tracker",storageBucket:"aspen-delivery-tracker.appspot.com",messagingSenderId:"000000000000",appId:"PASTE_YOUR_APP_ID"};
@@ -867,11 +887,17 @@ let addrEnc=encodeURIComponent(r.st.replace(/\n/g,' '));
 let mapUrl='https://www.google.com/maps/search/?api=1&query='+addrEnc;
 h+='<a class="tech-section tech-addr-card" href="'+mapUrl+'" target="_blank" rel="noopener"><div class="tech-spec-row"><span class="lbl">&#128205; Address (tap to open map)</span><span class="val tech-addr-val">'+escHtml(r.st).replace(/\n/g,'<br>')+'</span></div></a>'}
 // Customer instructions / notes — TOP priority (above spa specs)
-if(r.di||r.cn||r.en){
-h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Notes for Tech</div>';
-if(r.di)h+='<div style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap">'+escHtml(r.di)+'</div>';
-if(r.cn)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap"><strong>Contact:</strong> '+escHtml(r.cn)+'</div>';
-if(r.en)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;white-space:pre-wrap"><strong>Extra:</strong> '+escHtml(r.en)+'</div>';
+// Notes for Delivery — combined (with legacy cn/en fallback for old records)
+let dnotesShow=r.dnotes;
+if(!dnotesShow){
+let parts=[];
+if(r.cn)parts.push(r.cn);
+if(r.en)parts.push(r.en);
+dnotesShow=parts.join('\n\n')}
+if(r.di||dnotesShow){
+h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Notes for Delivery</div>';
+if(r.di)h+='<div style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:'+(dnotesShow?'10px':'0')+';white-space:pre-wrap;font-weight:600">'+escHtml(r.di)+'</div>';
+if(dnotesShow)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;white-space:pre-wrap">'+escHtml(dnotesShow)+'</div>';
 h+='</div>'}
 // Photos from the manager (admin/Alberto) — read-only for the tech, no delete button
 if(r.photos&&r.photos.length){
@@ -1034,13 +1060,13 @@ showToast('&#10003; Note sent to manager');
 techOpenDetail(id)}
 function techPhotoUpload(id){
 let inp=document.createElement('input');
-inp.type='file';inp.accept='image/*';inp.capture='environment';inp.multiple=true;
+inp.type='file';inp.accept='image/*';inp.multiple=true;
 inp.onchange=async function(e){
 let files=Array.from(e.target.files||[]);
 if(!files.length)return;
 let r=AD().find(x=>x.i===id);if(!r)return;
 let existing=r.tech_photos||[];
-if(existing.length+files.length>10){alert('Max 10 delivery photos. Currently '+existing.length+', trying to add '+files.length+'.');return}
+// No quantity limit - tech can upload as many delivery photos as needed
 showToast('Compressing photos...');
 let added=[];
 for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
@@ -1079,22 +1105,57 @@ if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
 techOpenDetail(id)}
 
-// Tech views their own delivery photo (full screen)
+// Tech views their own delivery photo (full screen, with navigation across all tech_photos)
 function techViewPhoto(id,idx){
-let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos||!r.tech_photos[idx])return;
-showFullPhoto(r.tech_photos[idx])}
+let r=AD().find(x=>String(x.i)===String(id));
+if(!r||!r.tech_photos||!r.tech_photos[idx])return;
+openPhotoLightbox(r.tech_photos,idx)}
 
-// Tech views a manager-uploaded info photo (read-only, full screen)
+// Tech views a manager-uploaded info photo (read-only, full screen, with navigation)
 function techViewInfoPhoto(id,idx){
-let r=AD().find(x=>x.i===id);if(!r||!r.photos||!r.photos[idx])return;
-showFullPhoto(r.photos[idx])}
+let r=AD().find(x=>String(x.i)===String(id));
+if(!r||!r.photos||!r.photos[idx])return;
+openPhotoLightbox(r.photos,idx)}
 
-// Shared full-screen photo viewer
-function showFullPhoto(src){
-let modal=document.createElement('div');modal.className='tech-modal';modal.style.zIndex=100;modal.style.padding=0;
-modal.innerHTML='<div style="position:relative;max-width:95vw;max-height:95vh"><img src="'+src+'" style="max-width:95vw;max-height:95vh;border-radius:12px;display:block"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.7);color:#fff;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px">&#10005;</button></div>';
-modal.onclick=function(e){if(e.target===modal)modal.remove()};
-document.body.appendChild(modal)}
+// Shared full-screen photo viewer with prev/next navigation, counter, swipe + keyboard support
+function openPhotoLightbox(photos,startIdx){
+let cur=startIdx||0;
+let modal=document.createElement('div');
+modal.className='tech-modal photo-lightbox';
+modal.style.cssText='z-index:200;padding:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';
+let render=function(){
+let multi=photos.length>1;
+modal.innerHTML='<button class="lb-close" aria-label="Close">&#10005;</button>'+
+(multi?'<button class="lb-prev" aria-label="Previous">&#10094;</button>':'')+
+'<div class="lb-stage"><img class="lb-img" src="'+photos[cur]+'" alt="photo"></div>'+
+(multi?'<button class="lb-next" aria-label="Next">&#10095;</button>':'')+
+(multi?'<div class="lb-count">'+(cur+1)+' / '+photos.length+'</div>':'');
+modal.querySelector('.lb-close').onclick=function(e){e.stopPropagation();close()};
+if(multi){
+modal.querySelector('.lb-prev').onclick=function(e){e.stopPropagation();cur=(cur-1+photos.length)%photos.length;render()};
+modal.querySelector('.lb-next').onclick=function(e){e.stopPropagation();cur=(cur+1)%photos.length;render()}}};
+let close=function(){document.removeEventListener('keydown',onKey);modal.remove()};
+let onKey=function(e){
+if(e.key==='Escape'){e.preventDefault();close()}
+else if(photos.length>1&&e.key==='ArrowLeft'){e.preventDefault();cur=(cur-1+photos.length)%photos.length;render()}
+else if(photos.length>1&&e.key==='ArrowRight'){e.preventDefault();cur=(cur+1)%photos.length;render()}};
+document.addEventListener('keydown',onKey);
+modal.onclick=function(e){if(e.target===modal||e.target.classList.contains('lb-stage'))close()};
+// Touch swipe on mobile
+let tx=0;
+modal.addEventListener('touchstart',function(e){tx=e.touches[0].clientX},{passive:true});
+modal.addEventListener('touchend',function(e){
+if(photos.length<2)return;
+let dx=e.changedTouches[0].clientX-tx;
+if(Math.abs(dx)<50)return;
+if(dx>0)cur=(cur-1+photos.length)%photos.length;
+else cur=(cur+1)%photos.length;
+render()},{passive:true});
+document.body.appendChild(modal);
+render()}
+
+// Convenience wrapper kept for backward-compat (used elsewhere in code, e.g. edit modal grids)
+function showFullPhoto(src){openPhotoLightbox([src],0)}
 
 // Admin/manager uploads info photos (saves to r.photos — visible to tech, read-only for them)
 function adminPhotoUpload(id){
@@ -1105,7 +1166,7 @@ let files=Array.from(e.target.files||[]);
 if(!files.length)return;
 let r=AD().find(x=>x.i===id);if(!r)return;
 let existing=r.photos||[];
-if(existing.length+files.length>5){alert('Max 5 info photos. Currently '+existing.length+', trying to add '+files.length+'.');return}
+// No quantity limit - admin can upload as many info photos as needed
 showToast('Compressing photos...');
 let added=[];
 for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
@@ -1302,7 +1363,11 @@ function fmtDate(dd){let d=parseDate(dd);if(!d||isNaN(d))return dd||'TBD';
 return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function dateNote(dd){if(!dd)return'';let m=String(dd).match(/(am|pm|all\s*day)/i);return m?' '+m[0]:''}
 
-function st(r){if(r.co)return"complete";if(r.dl)return"delivered";let d=parseDate(r.dd);if(d&&!isNaN(d)&&d<=new Date()){if(r.pf)return"action";return"overdue"}return"upcoming"}
+function st(r){if(r.co)return"complete";
+// NEW RULE: if marked Delivered but Email PW (ep) is NOT checked → Needs Action (don't move to Delivered yet)
+if(r.dl&&!r.ep)return"action";
+if(r.dl)return"delivered";
+let d=parseDate(r.dd);if(d&&!isNaN(d)&&d<=new Date()){if(r.pf)return"action";return"overdue"}return"upcoming"}
 function sL(s){return{complete:"Complete",delivered:"Delivered",overdue:"Past Due",upcoming:"Upcoming",action:"Needs Action"}[s]}
 function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]}
 function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
@@ -1388,7 +1453,7 @@ if(r.svc_status){
 let svcMap={requested:{label:'&#128736; SVC Requested',cls:'svc-req'},assigned:{label:'&#128736; SVC Assigned',cls:'svc-asg'},in_progress:{label:'&#128736; SVC In Progress',cls:'svc-prog'},completed:{label:'&#128736; SVC Done',cls:'svc-done'}};
 let info=svcMap[r.svc_status];
 if(info)svcBadge='<span class="svc-tag '+info.cls+'">'+info.label+'</span>'}
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(r.en?'<div class="c-note">'+r.en.substring(0,90)+(r.en.length>90?"...":"")+'</div>':'')+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -1512,26 +1577,49 @@ else{
 let mMatch=text.match(new RegExp('\\b('+modelKeys.join('|')+')\\b','i'));
 if(mMatch)result._model=mMatch[1].replace(/\s+/g,' ')}
 
-// === COVER (cv dropdown) ===
-let cvColor=null;
+// === COVER, LIFT, STEPS, TABLE, START-UP — match against ALL dropdown options (built-in + custom)
+// The user can add custom options through the "+" button next to each dropdown, and those should
+// ALSO be auto-detected by the parser. We scan the full PDF text for any option name (longest match wins).
+function findOptionInText(text,options){
+// Skip obvious "no value" placeholders
+let valid=options.filter(o=>o&&!/^(NONE|NO|—|-)$/i.test(o));
+// Sort by length descending so "TS - 11" is preferred over "TS" if both existed
+valid.sort((a,b)=>b.length-a.length);
+let upText=text.toUpperCase();
+for(let opt of valid){
+// Build a flexible regex: escape regex chars, allow flexible whitespace/dashes
+let pattern=opt.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s*-\s*/g,'\\s*[-\\u2013]?\\s*').replace(/\s+/g,'\\s+');
+let re=new RegExp(pattern,'i');
+if(re.test(text))return opt}
+return null}
+
+// COVER (cv) — also handle the legacy color-only "Onyx Black 100\" x 100\"" pattern
+let cvFromOptions=findOptionInText(text,OPT_CV);
+if(cvFromOptions)result._cover=cvFromOptions;
+else{
+// Fallback: legacy color detection from "Cover" / "Onyx" context lines
 let coverContext=text.match(/((?:[^\n]*Cover[^\n]*)|(?:Onyx\s+\w+\s+\d+["']\s*x\s*\d+["']))/gi);
 if(coverContext){
 let coverText=coverContext.join(' ');
-if(/(?:Cover[^\n]*-?\s*BLACK|Onyx\s+Black|Black\s+Cover)/i.test(coverText))cvColor='Black (normal)';
-else if(/Charcoal\s+Cover|Cover[^\n]*-?\s*CHARCOAL/i.test(coverText))cvColor='Charcoal';
-else if(/Walnut\s+Cover|Cover[^\n]*-?\s*WALNUT/i.test(coverText))cvColor='Walnut';
-else if(/Roll\s*Top\s+Cover|Roll\s+Top|Cover[^\n]*Roll\s*Top/i.test(coverText))cvColor='Roll Top'}
-if(cvColor)result._cover=cvColor;
+if(/(?:Cover[^\n]*-?\s*BLACK|Onyx\s+Black|Black\s+Cover)/i.test(coverText))result._cover='Black (normal)';
+else if(/Charcoal\s+Cover|Cover[^\n]*-?\s*CHARCOAL/i.test(coverText))result._cover='Charcoal';
+else if(/Walnut\s+Cover|Cover[^\n]*-?\s*WALNUT/i.test(coverText))result._cover='Walnut';
+else if(/Roll\s*Top\s+Cover|Roll\s+Top|Cover[^\n]*Roll\s*Top/i.test(coverText))result._cover='Roll Top'}}
 
-// === LIFT (lf dropdown) ===
-let lfMatch=null;
-if(/CoverMate\s+Vanish\s+XL|Vanish\s+XL/i.test(text))lfMatch='Vanish XL';
-else if(/CoverMate\s+TS[\-\s]?11|\bTS[\-\s]?11\b/i.test(text))lfMatch='TS - 11';
-else if(/CoverMate\s+TS[\-\s]?07|\bTS[\-\s]?07\b|\bTS[\-\s]?7\b/i.test(text))lfMatch='TS - 07';
-else if(/Boomerang/i.test(text))lfMatch='Boomerang';
-else if(/13['\s]*Roll/i.test(text))lfMatch="13' Roll";
-else if(/16['\s]*Roll/i.test(text))lfMatch="16' Roll";
-if(lfMatch)result._lift=lfMatch;
+// LIFT (lf) — match any dropdown option (built-in or custom). Also handle "CoverMate" prefix.
+let lfFromOptions=findOptionInText(text,OPT_LF);
+if(lfFromOptions)result._lift=lfFromOptions;
+else if(/CoverMate\s+Vanish\s+XL|Vanish\s+XL/i.test(text))result._lift='Vanish XL';
+else if(/CoverMate\s+TS[\-\s]?11/i.test(text))result._lift='TS - 11';
+else if(/CoverMate\s+TS[\-\s]?07|CoverMate\s+TS[\-\s]?7/i.test(text))result._lift='TS - 07';
+
+// STEPS (ss), TABLE (tb), START-UP (su) — auto-detect from PDF
+let ssMatch=findOptionInText(text,OPT_SS);
+if(ssMatch)result._steps=ssMatch;
+let tbMatch=findOptionInText(text,OPT_TB);
+if(tbMatch)result._table=tbMatch;
+let suMatch=findOptionInText(text,OPT_SU);
+if(suMatch)result._startup=suMatch;
 
 // === FULL SPA DESCRIPTION ===
 // Take everything from the start of the spa item (e.g. "2025 Pinnacle ES") up to (but excluding)
@@ -1608,8 +1696,12 @@ if(d._spaDescription)spdParts.push(d._spaDescription);
 if(spdParts.length)setIf('e_spd',spdParts.join('\n\n'));
 
 // Cover and Lift dropdowns
+// Cover, Lift, Steps, Table, Start-up dropdowns — all auto-detected from PDF (built-in or custom options)
 if(d._cover)setSelectIf('e_cv',d._cover);
 if(d._lift)setSelectIf('e_lf',d._lift);
+if(d._steps)setSelectIf('e_ss',d._steps);
+if(d._table)setSelectIf('e_tb',d._table);
+if(d._startup)setSelectIf('e_su',d._startup);
 
 // Try matching SPA model dropdown (if Quattro/Eldorado/etc detected)
 if(d._model){
@@ -1683,14 +1775,22 @@ h+='<div class="nb"><label>Spa Description (full description from PDF)</label><t
 h+='</details>';
 // Notes (contact & extra)
 h+='<div class="ct">Notes</div>';
-[["Contact Notes","e_cn",r.cn],["Extra Notes","e_en",r.en]].forEach(([l,id,v])=>{h+='<div class="nb"><label>'+l+'</label><textarea id="'+id+'">'+(v||"")+'</textarea></div>'});
+// Single combined "Notes for Delivery" — replaces the old Contact Notes + Extra Notes split.
+// For backward compat: if r.dnotes is empty but cn/en exist (old records), merge them as initial value.
+let dnotesInitial=r.dnotes;
+if(!dnotesInitial){
+let parts=[];
+if(r.cn)parts.push(r.cn);
+if(r.en)parts.push(r.en);
+dnotesInitial=parts.join('\n\n')}
+h+='<div class="nb"><label>Notes for Delivery</label><textarea id="e_dnotes" rows="4" placeholder="Anything relevant for the delivery: customer requests, contact preferences, site notes, special instructions, etc.">'+esc(dnotesInitial||"")+'</textarea></div>';
 // Info Photos — what Alberto/admin uploads to inform the tech (site, electrical, access path)
 let infoCount=(r.photos||[]).length;
 h+='<div class="ct">&#128231; Info Photos for Tech <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— upload site photos so the tech is prepared</span></div>';
 h+='<div style="background:#f9fafb;border:1.5px dashed #d1d5db;border-radius:10px;padding:14px;margin-bottom:14px">';
 h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:'+(infoCount?'12px':'0')+'">';
 h+='<div style="font-size:13px;color:var(--text-secondary)">'+(infoCount?'<strong style="color:var(--text-primary)">'+infoCount+' info photo'+(infoCount===1?'':'s')+'</strong> shared with tech.':'No info photos yet. Upload site photos, electrical setup, access path, etc.')+'</div>';
-h+='<button type="button" class="pdf-btn" style="background:#7c3aed;border-color:#7c3aed" onclick="adminPhotoUpload('+r.i+')"><span>&#128247;</span> '+(infoCount>=5?'Max 5 info photos':'Upload Info Photos')+'</button>';
+h+='<button type="button" class="pdf-btn" style="background:#7c3aed;border-color:#7c3aed" onclick="adminPhotoUpload('+r.i+')"><span>&#128247;</span> Upload Info Photos</button>';
 h+='</div>';
 if(infoCount){
 h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
@@ -1817,7 +1917,7 @@ st:document.getElementById("e_st").value.trim()||null,pr:pr,py:py,bl:Math.round(
 tb:document.getElementById("e_tb").value||null,ss:document.getElementById("e_ss").value||null,
 lf:document.getElementById("e_lf").value||null,cv:document.getElementById("e_cv").value||null,
 su:document.getElementById("e_su").value||null,
-cn:document.getElementById("e_cn").value.trim()||null,en:document.getElementById("e_en").value.trim()||null,
+dnotes:(function(){let el=document.getElementById("e_dnotes");return el?el.value.trim()||null:null})(),
 dn:document.getElementById("e_dn").value.trim()||null,fn:document.getElementById("e_fn").value.trim()||null,
 spd:getV('e_spd'),di:getV('e_di'),
 tvd:(document.getElementById("tv_date")?document.getElementById("tv_date").value:null)||null,
