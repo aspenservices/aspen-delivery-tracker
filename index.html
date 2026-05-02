@@ -2140,7 +2140,7 @@ h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="bac
 h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">&#9889; Auto-sync is active. '+totalPhotos+' photo'+(totalPhotos===1?'':'s')+' will sync to the customer\'s subfolder shortly. Click to sync immediately:</div>';
 h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="driveSyncButton('+r.i+')">&#128448; Sync '+totalPhotos+' Photo'+(totalPhotos===1?'':'s')+' to Drive Now</button>';
 }
-h+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;line-height:1.5">Looks for a subfolder named with the customer\'s last name <strong>"'+escHtml((r.n||'').split(',')[0]||'')+'"</strong>'+(r.sn?' or SN <strong>"'+escHtml(String(r.sn))+'"</strong>':'')+'. Photos already synced are skipped.</div>';
+h+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;line-height:1.5">Looks for a subfolder named with the customer\'s last name <strong>"'+escHtml((r.n||'').split(',')[0]||'')+'"</strong>'+(r.sn?' or SN <strong>"'+escHtml(String(r.sn))+'"</strong>':'')+'. <strong>If none exists, the app creates one automatically.</strong> Photos already synced are skipped.</div>';
 h+='</div>';
 }
 // Accessories — built-in + custom categories. Pairs by row of 2.
@@ -3004,6 +3004,46 @@ candidates.sort((a,b)=>b.score-a.score);
 return candidates[0]}
 
 // Upload a single base64 photo to a Drive folder. Returns the new file id.
+// Create a new folder inside the parent. Returns the new folder object {id, name}.
+// Used when no matching folder exists for a ticket — the app creates one with the customer's
+// name so future uploads of the same customer find it automatically.
+async function driveCreateFolder(name){
+if(!gcalToken)throw new Error('Not connected to Google');
+let metadata={
+name:name,
+mimeType:'application/vnd.google-apps.folder',
+parents:[GDRIVE_PARENT_FOLDER_ID]
+};
+let res=await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true',{
+method:'POST',
+headers:{Authorization:'Bearer '+gcalToken,'Content-Type':'application/json'},
+body:JSON.stringify(metadata)
+});
+if(!res.ok){let txt=await res.text();throw new Error('Folder create failed: '+res.status+' '+txt.substring(0,200))}
+let json=await res.json();
+// Invalidate the folder list cache so next driveListFolders refetches and includes the new folder
+_driveFolderCache=null;
+return{id:json.id,name:json.name};
+}
+
+// Build a clean folder name from a ticket. Format: "LastName SN" or "LastName" or "SN-only".
+// Examples: "Karacsonyi 30717", "Wild 30716", "30717" (if no name).
+function driveBuildFolderName(r){
+let name=null;
+if(r.n){
+let parts=r.n.split(/[,;]/);
+if(parts.length>1){name=parts[0].trim()}
+else{let words=r.n.trim().split(/\s+/);name=words[words.length-1]}
+}
+let sn=r.sn?String(r.sn).trim():null;
+if(name&&sn)return name+' '+sn;
+if(name)return name;
+if(sn)return 'SN '+sn;
+return 'Customer (no name)';
+}
+
+
+// Upload a single base64 photo to a Drive folder. Returns the new file id.
 async function driveUploadPhoto(folderId,base64DataUri,fileName){
 if(!gcalToken)throw new Error('Not connected to Google');
 let blob=_dataUriToBlob(base64DataUri);
@@ -3054,13 +3094,27 @@ let allPhotos=[];
 if(!allPhotos.length){return{uploaded:0,skipped:0,folder:null,reason:'No photos to sync'}}
 // Proactive scope check — fail fast and clearly if Drive auth is missing
 if(!gdriveScopeOk||!gcalToken)throw new Error('Drive permission missing. Reconnect with Drive access.');
-// Find the folder
+// Find the folder — if none matches, AUTO-CREATE one so the user never has to manage folders manually
 if(!opts.silent)showToast('&#128270; Searching Drive folder...');
 let folders=await driveListFolders(opts.forceRefresh);
 let match=driveFindMatch(folders,r);
-if(!match){
-return{uploaded:0,skipped:0,folder:null,reason:'No matching Drive folder. Looking for "'+(r.n?r.n.split(',')[0]:'')+'" or SN "'+(r.sn||'')+'".'}}
-let folder=match.f;
+let folder;
+let createdNow=false;
+if(match){
+folder=match.f;
+}else{
+// No matching folder exists — create one automatically inside the parent folder.
+// Folder gets a clean predictable name (e.g. "Karacsonyi 30717") so future syncs find it instantly.
+let newName=driveBuildFolderName(r);
+if(!opts.silent)showToast('&#128193; Creating folder "'+escHtml(newName)+'"...');
+try{
+folder=await driveCreateFolder(newName);
+createdNow=true;
+}catch(createErr){
+console.error('Folder create failed:',createErr);
+return{uploaded:0,skipped:0,folder:null,reason:'Could not create folder "'+newName+'": '+createErr.message}
+}
+}
 let already=r.drive_synced||{};
 let lastBase=(r.n||'unknown').replace(/[^a-zA-Z0-9]+/g,'_').substring(0,30);
 let snTag=r.sn?'SN'+r.sn:'';
@@ -3085,7 +3139,7 @@ let ai=ADDED.findIndex(x=>String(x.i)===String(id));
 if(ai>=0){ADDED[ai].drive_synced=already;ADDED[ai].drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()};saveA()}
 else{if(!EDITS[id])EDITS[id]={};EDITS[id].drive_synced=already;EDITS[id].drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()};saveE()}
 if(curRec&&String(curRec.i)===String(id)){curRec.drive_synced=already;curRec.drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()}}
-return{uploaded:uploaded,skipped:skipped,errors:errors,folder:folder,matchReason:match.reason}}
+return{uploaded:uploaded,skipped:skipped,errors:errors,folder:folder,matchReason:match?match.reason:'newly created',created:createdNow}}
 
 // User-facing button handler. NO confirm dialogs — auto-prompts for consent if scope missing,
 // and AUTO-RETRIES the sync once after successful auth.
@@ -3110,7 +3164,8 @@ let parts=[];
 if(result.uploaded)parts.push(result.uploaded+' uploaded');
 if(result.skipped)parts.push(result.skipped+' already synced');
 if(result.errors)parts.push(result.errors+' failed');
-showToast('&#10003; Synced to "'+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing'),'success');
+let prefix=result.created?'&#128193;&#10003; Created folder &amp; synced to "':'&#10003; Synced to "';
+showToast(prefix+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing'),'success');
 }
 if(curRec&&String(curRec.i)===String(id))renderModal();
 }catch(e){
@@ -3184,7 +3239,8 @@ if(!navigator.onLine)return;
 try{
 let result=await driveSyncTicket(id,{silent:true});
 if(result&&result.uploaded>0){
-showToast('&#128448; Auto-synced '+result.uploaded+' photo'+(result.uploaded===1?'':'s')+' to Drive','success');
+let prefix=result.created?'&#128193; Created folder "'+escHtml(result.folder.name)+'" and auto-synced ':'&#128448; Auto-synced ';
+showToast(prefix+result.uploaded+' photo'+(result.uploaded===1?'':'s')+' to Drive','success');
 if(curRec&&String(curRec.i)===String(id))renderModal();
 }else if(result&&!result.folder){
 console.log('Auto-sync skipped:',result.reason);
