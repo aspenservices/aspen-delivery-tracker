@@ -828,7 +828,9 @@ lbl.innerHTML=label;
 let dateKey=techDate.getFullYear()+'-'+String(techDate.getMonth()+1).padStart(2,'0')+'-'+String(techDate.getDate()).padStart(2,'0');
 let mine=AD().filter(r=>{
 if(!r.n||!r.dd)return false;
-// Skip fully completed - tech already finished those
+// Skip already-delivered or fully-completed tickets — tech is done with those.
+// They no longer show in the tech's daily calendar/list as pending work.
+if(r.dl)return false;
 if(st(r)==='complete')return false;
 let d=parseDate(r.dd);if(!d||isNaN(d))return false;
 let k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -857,7 +859,7 @@ let addrShort=(r.st||'').split('\n')[0].substring(0,60);
 // Assignment badge logic
 let assignBadge='';
 let cardCls=r.dl?' delivered':'';
-if(r.assigned_to===currentUser.id){assignBadge='<span class="assign-pill mine">&#9733; Mine</span>';cardCls+=' mine'}
+if(r.assigned_to===currentUser.id){assignBadge='<span class="assign-pill mine" title="This delivery is assigned to you">&#9733; Assigned to you</span>';cardCls+=' mine'}
 else if(r.assigned_to&&USERS[r.assigned_to]){assignBadge='<span class="assign-pill other">&#9888; '+escHtml(USERS[r.assigned_to].name)+'</span>'}
 html+='<div class="tech-card'+cardCls+'" onclick="techOpenDetail('+r.i+')">'+
 '<div class="name">'+escHtml(r.n)+assignBadge+'</div>'+
@@ -1305,8 +1307,103 @@ sel.innerHTML=opts}
 let EDITS={},ADDED=[];
 let fbReady=false;
 function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED)}
-function saveE(){dbEdits.set(EDITS).then(()=>syncPulse()).catch(e=>console.error('saveE:',e))}
-function saveA(){dbAdded.set(ADDED).then(()=>syncPulse()).catch(e=>console.error('saveA:',e))}
+function saveE(){
+// Always backup to localStorage FIRST (so it survives even if app closes mid-sync)
+try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
+// Try Firebase with timeout protection — if it fails or hangs, queue for later sync
+let synced=false;
+let p=dbEdits.set(EDITS);
+p.then(()=>{synced=true;syncPulse();clearOfflineQueue('edits')}).catch(e=>{console.error('saveE:',e);queueOffline('edits',EDITS)});
+setTimeout(()=>{if(!synced&&!navigator.onLine)queueOffline('edits',EDITS)},3000);
+}
+function saveA(){
+try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
+let synced=false;
+let p=dbAdded.set(ADDED);
+p.then(()=>{synced=true;syncPulse();clearOfflineQueue('added')}).catch(e=>{console.error('saveA:',e);queueOffline('added',ADDED)});
+setTimeout(()=>{if(!synced&&!navigator.onLine)queueOffline('added',ADDED)},3000);
+}
+
+// === OFFLINE SUPPORT ===
+// Goal: tech can keep working without signal — toggle checkboxes, add notes, upload photos.
+// Strategy: every write also goes to localStorage as a backup. If the network call fails,
+// we mark the entry as pending. On reconnect (or app reload while online), we replay the queue.
+// This protects against: (1) network drop mid-write, (2) tech closes app before signal returns,
+// (3) Firebase RTDB's in-memory queue being lost on page close.
+let isOnline=navigator.onLine;
+let pendingSyncTimer=null;
+// Flag set when local state has changes not yet pushed to Firebase.
+// While true, the listener won't overwrite EDITS/ADDED with server data.
+let _pendingFlush={edits:false,added:false};
+
+function queueOffline(kind,data){
+try{
+let q=JSON.parse(localStorage.getItem('aspen_offline_queue')||'{}');
+q[kind]={data:data,ts:Date.now()};
+localStorage.setItem('aspen_offline_queue',JSON.stringify(q));
+_pendingFlush[kind]=true;
+updateOfflineIndicator(true);
+}catch(e){console.error('queueOffline err:',e)}
+}
+
+function clearOfflineQueue(kind){
+try{
+let q=JSON.parse(localStorage.getItem('aspen_offline_queue')||'{}');
+if(kind){delete q[kind];_pendingFlush[kind]=false}else{q={};_pendingFlush={edits:false,added:false}}
+localStorage.setItem('aspen_offline_queue',JSON.stringify(q));
+if(!Object.keys(q).length)updateOfflineIndicator(false);
+}catch(e){console.error('clearOfflineQueue err:',e)}
+}
+
+function flushOfflineQueue(){
+if(!navigator.onLine)return;
+try{
+let q=JSON.parse(localStorage.getItem('aspen_offline_queue')||'{}');
+let kinds=Object.keys(q);
+if(!kinds.length){updateOfflineIndicator(false);return}
+showToast('&#128259; Reconnecting — syncing '+kinds.length+' pending change'+(kinds.length===1?'':'s')+'...');
+let promises=[];
+if(q.edits&&q.edits.data){promises.push(dbEdits.set(q.edits.data).then(()=>clearOfflineQueue('edits')))}
+if(q.added&&q.added.data){promises.push(dbAdded.set(q.added.data).then(()=>clearOfflineQueue('added')))}
+Promise.all(promises).then(()=>{showToast('&#10003; All changes synced','success');updateOfflineIndicator(false);syncPulse()}).catch(e=>{console.error('flushOfflineQueue err:',e);showToast('&#9888; Sync failed — will retry','warn')});
+}catch(e){console.error('flushOfflineQueue err:',e)}
+}
+
+function updateOfflineIndicator(hasPending){
+let el=document.getElementById('offline-banner');
+if(!el){
+el=document.createElement('div');el.id='offline-banner';
+el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:8px 16px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.02em;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none';
+document.body.appendChild(el);
+}
+if(!navigator.onLine){
+el.style.background='#dc2626';
+el.innerHTML='&#128268; Offline — your changes are saved locally and will sync when you reconnect';
+el.style.display='block';
+}else if(hasPending){
+el.style.background='#d97706';
+el.innerHTML='&#128259; Syncing pending changes...';
+el.style.display='block';
+}else{
+el.style.display='none';
+}
+}
+
+// Listen for connection changes
+window.addEventListener('online',()=>{
+isOnline=true;
+updateOfflineIndicator(true);
+// Small delay so the network is actually usable (not just navigator.onLine flipping)
+clearTimeout(pendingSyncTimer);
+pendingSyncTimer=setTimeout(flushOfflineQueue,1500);
+});
+window.addEventListener('offline',()=>{
+isOnline=false;
+updateOfflineIndicator(false);
+showToast('&#128268; Offline — keep working, changes will sync when you reconnect','warn');
+});
+// On page load, if there's a pending queue and we're online, flush it immediately
+if(navigator.onLine){setTimeout(flushOfflineQueue,2500)}else{updateOfflineIndicator(false)}
 function saveOpts(){dbOpts.set({tb:OPT_TB.slice(3),ss:OPT_SS.slice(8),lf:OPT_LF.slice(7),cv:OPT_CV.slice(4),su:OPT_SU.slice(4),__cats__:CUSTOM_CATS}).catch(e=>console.error('saveOpts:',e))}
 function syncPulse(){let d=document.getElementById('syncDot');d.className='sync-dot on';d.title='Synced';clearTimeout(d._t);d._t=setTimeout(()=>{d.title='Connected'},1500)}
 
@@ -1335,8 +1432,43 @@ document.getElementById('syncDot').className='sync-dot off';document.getElementB
 showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn');
 bootAuth()}},8000);
 
-dbEdits.on('value',snap=>{EDITS=snap.val()||{};if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
-dbAdded.on('value',snap=>{ADDED=snap.val()||[];if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
+dbEdits.on('value',snap=>{
+let v=snap.val()||{};
+// If we have unsynced offline changes, don't let the server snapshot overwrite our local state.
+// The flush will push our changes up; the next snapshot after that will include them.
+if(_pendingFlush.edits)return;
+EDITS=v;
+try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
+if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()
+},err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
+dbAdded.on('value',snap=>{
+let v=snap.val()||[];
+if(_pendingFlush.added)return;
+ADDED=v;if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);
+try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
+if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()
+},err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
+
+// Offline-first fallback: if we have local backups and Firebase isn't responding fast,
+// load the cached state immediately so the tech can keep working without signal.
+(function restoreOfflineCache(){
+try{
+let be=localStorage.getItem('aspen_backup_edits');
+let ba=localStorage.getItem('aspen_backup_added');
+let bq=localStorage.getItem('aspen_offline_queue');
+if(bq){
+// Pending queue exists — we made changes offline that haven't synced yet.
+// Mark these as pending so the listener can't clobber them, and use queue data.
+let q=JSON.parse(bq);
+if(q.edits&&q.edits.data){EDITS=q.edits.data;_pendingFlush.edits=true}
+if(q.added&&q.added.data&&Array.isArray(q.added.data)){ADDED=q.added.data;_pendingFlush.added=true}
+}else{
+// No queue: use the last server snapshot we cached so the app shows recent state immediately
+if(be&&Object.keys(EDITS).length===0){let e=JSON.parse(be);if(e&&typeof e==='object')EDITS=e}
+if(ba&&ADDED.length===0){let a=JSON.parse(ba);if(Array.isArray(a))ADDED=a}
+}
+}catch(e){console.error('restoreOfflineCache:',e)}
+})();
 dbOpts.on('value',snap=>{let c=snap.val()||{};
 if(c.tb)c.tb.forEach(v=>{if(!OPT_TB.includes(v))OPT_TB.push(v)});
 if(c.ss)c.ss.forEach(v=>{if(!OPT_SS.includes(v))OPT_SS.push(v)});
@@ -1385,7 +1517,12 @@ function sL(s){return{complete:"Complete",delivered:"Delivered",overdue:"Past Du
 function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]}
 function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
 // Sort
-let useProximity=(sortCol==="date"&&(statusF==="action"||statusF==="overdue"));
+// useProximity: order by closeness to today (yesterday first, far future last).
+// Used for tabs where "what's most relevant right now" matters more than raw date order:
+//   - Past Due: oldest overdue closer to today first → far past (still unmoved) at end
+//   - Needs Action: yesterday first → futures sorted last
+//   - Delivered: most recently delivered first → far-future scheduled deliveries at end
+let useProximity=(sortCol==="date"&&(statusF==="action"||statusF==="overdue"||statusF==="delivered"));
 let todayMs=(function(){let d=new Date();d.setHours(0,0,0,0);return d.getTime()})();
 let DAY=86400000;let FUTURE_BOOST=1e10;
 function proximityKey(r){
@@ -1462,7 +1599,7 @@ let asc=(s==='upcoming');
 sortDir=asc?'asc':'desc';
 let arrow=document.getElementById('dateSortArrow');
 if(arrow){
-if(s==='action'||s==='overdue')arrow.textContent='↻ By Recency';
+if(s==='action'||s==='overdue'||s==='delivered')arrow.textContent='↻ By Recency';
 else arrow.textContent=sortDir==='desc'?'▼ Newest':'▲ Oldest';
 }}
 renderKPIs();renderCtxHdr();
@@ -1830,15 +1967,20 @@ h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,
 r.photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="showFullPhoto(this.querySelector(\'img\').src)"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="info photo"><button type="button" onclick="event.stopPropagation();adminDeletePhoto('+r.i+','+idx+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
 h+='</div>'}
 h+='</div>';
-// Delivery Photos from Tech — read-only for admin (can delete to curate ticket, can't add)
+// Delivery Photos from Tech — always shown so admin can see status.
+// Read-only (admin can curate-delete but not add). The tech uploads from their device.
 let techPhotoCount=(r.tech_photos||[]).length;
-if(techPhotoCount){
 h+='<div class="ct">&#128247; Delivery Photos from Tech <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— uploaded by '+(r.assigned_to&&USERS[r.assigned_to]?escHtml(USERS[r.assigned_to].name):'tech')+' during delivery</span></div>';
 h+='<div style="background:#faf5ff;border:1.5px solid #ddd6fe;border-radius:10px;padding:14px;margin-bottom:14px">';
+if(techPhotoCount){
 h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px"><strong style="color:#6d28d9">'+techPhotoCount+' delivery photo'+(techPhotoCount===1?'':'s')+'</strong> received from tech.</div>';
 h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
 r.tech_photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="showFullPhoto(this.querySelector(\'img\').src)"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="delivery photo"><button type="button" onclick="event.stopPropagation();adminDeleteTechPhoto('+r.i+','+idx+')" title="Remove from ticket" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
-h+='</div></div>'}
+h+='</div>';
+}else{
+h+='<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;text-align:center;padding:14px 0">No delivery photos uploaded yet. Photos will appear here once the tech uploads them from their device during delivery.</div>';
+}
+h+='</div>';
 // Accessories — built-in + custom categories. Pairs by row of 2.
 h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div class="ct" style="margin-bottom:0">Accessories</div><button type="button" onclick="addCategory()" style="background:#059669;color:#fff;border:none;padding:6px 11px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Add a new accessory category"><span style="font-size:14px">+</span> Add Category</button></div>';
 // Build a list of all categories: 5 built-in + any custom
