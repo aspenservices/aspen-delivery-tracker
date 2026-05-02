@@ -3038,7 +3038,7 @@ h+='</div>';
 if(emailPw_graphConfigured()){
 h+='<div style="font-size:11px;color:#059669;margin-top:8px;line-height:1.5;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:200px">&#10003; <strong>Direct Outlook mode:</strong> click "Open in Outlook" to create a draft with all attachments. First send asks you to sign in to Microsoft.</span><button onclick="emailPw_msSignOut()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap" title="Sign out so the next send asks you to pick a different Microsoft account">&#128100; Switch account</button><button onclick="emailPw_showSetupWizard()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reconfigure</button></div>'}
 else{
-h+='<div style="font-size:11px;color:#92400e;margin-top:8px;line-height:1.5;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px"><span style="flex:1">&#9888; <strong>Setup needed:</strong> connect your Microsoft 365 account once and "Open in Outlook" will auto-attach every PDF directly into a real Outlook draft. Until then, the button will run the setup wizard.</span><button onclick="emailPw_showSetupWizard()" style="background:#0078d4;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">&#128272; Setup</button></div>'}
+h+='<div style="font-size:11px;color:#374151;margin-top:8px;line-height:1.5;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:200px">&#9432; <strong>How it works:</strong> click "Open in Outlook" → these files download to your Downloads folder and Outlook opens with the email pre-filled. Drag the files onto the new email to attach them, then send.</span><button onclick="emailPw_showSetupWizard()" style="background:transparent;border:1px solid #d1d5db;color:#6b7280;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Optional: configure Microsoft 365 to auto-attach files (advanced)">&#9881; Auto-attach setup (optional)</button></div>'}
 h+='</div>';
 // Status / preview
 h+='<div id="emailpw_status" style="margin-bottom:8px;font-size:12px;color:#6b7280;min-height:18px"></div>';
@@ -3145,16 +3145,16 @@ let a=document.createElement('a');
 a.href=url;a.download=name;document.body.appendChild(a);a.click();
 setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},500)}
 
-// Main entry. Microsoft Graph is the only path now — it's the only
-// way to actually attach files automatically. If the Client ID is
-// not yet configured, we open the setup wizard instead of falling
-// back to mailto: (which can't carry attachments and routes through
-// the OS default mail client, which on Mac is usually Apple Mail).
+// Main entry. Two-tier strategy:
+//   1. If Microsoft Graph is configured AND works → creates a real
+//      Outlook draft with all attachments already attached. Best UX.
+//   2. Otherwise (not configured, or Graph fails for any reason) →
+//      downloads every attachment to the user's Downloads folder
+//      and opens mailto: so the OS mail client (ideally Outlook)
+//      pops a new email with To/Subject/Body pre-filled. The user
+//      drags the files in. Works on every platform.
 async function emailPwSendViaOutlook(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
-// If Graph isn't set up, walk the user through it. The wizard's
-// "Save & Continue" button comes back here once the ID is stored.
-if(!emailPw_graphConfigured()){emailPw_showSetupWizard(()=>emailPwSendViaOutlook(id));return}
 let toEl=document.getElementById('emailpw_to');
 let subjEl=document.getElementById('emailpw_subject');
 let bodyEl=document.getElementById('emailpw_body');
@@ -3184,7 +3184,9 @@ if(failures.length){
 statusEl.style.color='#dc2626';
 statusEl.innerHTML='&#9888; '+failures.length+' attachment(s) failed:<br>&middot; '+failures.map(escHtml).join('<br>&middot; ');
 if(!confirm('Some attachments could not be loaded:\n\n'+failures.join('\n')+'\n\nContinue anyway?'))return}
-// Create the draft via Graph
+// Tier 1: Microsoft Graph (only if configured). Silently falls back
+// to Tier 2 if Graph throws — no scary prompts.
+if(emailPw_graphConfigured()){
 try{
 statusEl.style.color='#6b7280';
 statusEl.innerHTML='&#8987; Signing in to Microsoft (if needed)...';
@@ -3192,21 +3194,25 @@ let draft=await emailPw_createOutlookDraft(to,subject,body,resolved,msg=>{status
 emailPw_setEpTrue(id);
 let userEmail=await emailPw_getCurrentUserEmail();
 emailPw_renderGraphSuccessScreen(r,resolved,draft,userEmail);
-showToast('&#10003; Draft created in your Outlook Drafts folder')}
+showToast('&#10003; Draft created in your Outlook Drafts folder');
+return}
 catch(e){
-console.error('Graph API failed:',e);
-statusEl.style.color='#dc2626';
-let msg=e.message||String(e);
-// AADSTS50011 = redirect URI mismatch (most common configuration error)
-let isRedirectErr=/AADSTS50011|redirect_uri/i.test(msg);
-let isAuthErr=/AADSTS|invalid_client/i.test(msg);
-let helpHtml='&#9888; '+escHtml(msg);
-if(isRedirectErr){
-helpHtml+='<br><br><strong style="color:#dc2626">This usually means the Redirect URI in Azure doesn\'t match this page\'s URL.</strong> Open the wizard, copy the exact URL it shows, and paste it as a "Single-page application" Redirect URI in your Azure app registration.';
-helpHtml+='<br><button onclick="emailPw_showSetupWizard()" style="margin-top:8px;background:#0078d4;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Open Setup Wizard</button>'}
-else if(isAuthErr){
-helpHtml+='<br><br><button onclick="emailPw_showSetupWizard()" style="margin-top:8px;background:#0078d4;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Re-run Setup Wizard</button>'}
-statusEl.innerHTML=helpHtml}}
+console.warn('Graph failed, using simpler method instead:',e);
+statusEl.style.color='#92400e';
+statusEl.innerHTML='&#9888; Microsoft Graph: '+escHtml(e.message||String(e))+'<br>&#8595; Switching to the simpler method...';
+await new Promise(res=>setTimeout(res,1500))}}
+// Tier 2: download attachments + mailto:
+statusEl.style.color='#6b7280';
+statusEl.innerHTML='&#8987; Downloading '+resolved.length+' file(s) to your Downloads folder...';
+for(let i=0;i<resolved.length;i++){
+let a=resolved[i];
+emailPw_downloadAttachment(a.name,a.base64,a.mime);
+if(i<resolved.length-1)await new Promise(res=>setTimeout(res,200))}
+let mailto='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+window.location.href=mailto;
+emailPw_setEpTrue(id);
+emailPw_renderSuccessScreen(r,resolved);
+showToast('&#10003; Files downloaded — check your mail app')}
 
 // =================================================================
 // SETUP WIZARD — guides the user through Azure app registration
@@ -3341,25 +3347,32 @@ let md=document.getElementById('md');
 md.innerHTML=h;
 md.style.maxWidth='560px';md.style.padding='0'}
 
-// Success screen shown after launching Outlook. Lists the downloaded
-// files so the user knows exactly what to drag in.
+// Success screen shown after launching the simple method (download +
+// mailto). Lists the downloaded files and includes a Mac-specific tip
+// about setting Outlook as the default mail reader so future sends
+// open Outlook directly instead of Apple Mail.
 function emailPw_renderSuccessScreen(r,resolved){
+let isMac=/Mac/i.test(navigator.platform||'')||/Mac/i.test(navigator.userAgent||'');
 let h='';
 h+='<div style="padding:32px 28px;text-align:center">';
 h+='<div style="font-size:48px;line-height:1;margin-bottom:12px">&#9989;</div>';
-h+='<div style="font-size:20px;font-weight:800;color:#059669;margin-bottom:6px">Outlook is opening</div>';
-h+='<div style="font-size:13px;color:#6b7280;margin-bottom:24px">A new email to <strong>'+escHtml(r.em||'the customer')+'</strong> should appear in Outlook with the subject and message already filled in.</div>';
-h+='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:18px">';
+h+='<div style="font-size:20px;font-weight:800;color:#059669;margin-bottom:6px">Email is opening</div>';
+h+='<div style="font-size:13px;color:#6b7280;margin-bottom:20px">A new email to <strong>'+escHtml(r.em||'the customer')+'</strong> should appear in your default mail app with the subject and message already filled in.</div>';
+h+='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:14px">';
 h+='<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:6px">&#128205; Final step — drag the files into the email</div>';
-h+='<div style="font-size:12px;color:#78350f;line-height:1.5">'+resolved.length+' file(s) were downloaded to your <strong>Downloads</strong> folder. Open the folder, select all of them, and drag them onto the new Outlook window. Then click <strong>Send</strong>.</div>';
+h+='<div style="font-size:12px;color:#78350f;line-height:1.5">'+resolved.length+' file(s) were downloaded to your <strong>Downloads</strong> folder. Open the folder, select all of them, and drag them onto the new email window. Then click <strong>Send</strong>.</div>';
 h+='</div>';
-h+='<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:18px;max-height:240px;overflow-y:auto">';
+if(isMac){
+h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;text-align:left;margin-bottom:14px">';
+h+='<div style="font-size:12px;font-weight:800;color:#1e40af;margin-bottom:6px">&#128161; Tip — make Outlook open instead of Apple Mail</div>';
+h+='<div style="font-size:11.5px;color:#1e3a8a;line-height:1.55">If this opened Apple Mail (with iCloud) instead of Outlook, set Outlook as your default mail reader (one-time setting):<br><span style="color:#374151"><strong>1.</strong> Open Apple Mail &nbsp;&rarr;&nbsp; <strong>2.</strong> Mail menu &rarr; Settings &rarr; General tab &nbsp;&rarr;&nbsp; <strong>3.</strong> "Default email reader" &rarr; pick Microsoft Outlook</span></div>';
+h+='</div>'}
+h+='<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:18px;max-height:200px;overflow-y:auto">';
 h+='<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Files just downloaded ('+resolved.length+')</div>';
 resolved.forEach(a=>{
 let icon=a.mime&&a.mime.indexOf('image')===0?'&#128247;':'&#128196;';
 h+='<div style="font-size:12px;color:#374151;padding:4px 0;display:flex;align-items:center"><span style="margin-right:8px">'+icon+'</span><span style="word-break:break-all">'+escHtml(a.name)+'</span></div>'});
 h+='</div>';
-h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:18px;line-height:1.5">If Outlook didn\'t open automatically, your default mail client may not be set. You can also paste the customer email manually and drag the files in.</div>';
 h+='<button onclick="closeOv()" style="background:#0078d4;border:none;color:#fff;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
 h+='</div>';
 let md=document.getElementById('md');
