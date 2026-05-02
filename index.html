@@ -1687,12 +1687,65 @@ let extracted=parseInvoiceText(fullText);
 let res=applyExtractedToForm(extracted);
 let filled=res.filled,upgraded=res.upgraded;
 if(filled===0){setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
+// Save the PDF to the ticket so admin can preview/download it later.
+// Convert ArrayBuffer to base64 (chunked to avoid call-stack overflow on large files).
+try{
+let bytes=new Uint8Array(buf);
+let CHUNK=8192,binary='';
+for(let i=0;i<bytes.length;i+=CHUNK){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+CHUNK))}
+let b64='data:application/pdf;base64,'+btoa(binary);
+// Soft size warning — Firebase RTDB has ~10MB per node and tickets also hold photos
+let sizeKB=Math.round(b64.length/1024);
+if(sizeKB>3000){
+setStat('warn','&#9888; PDF saved but it is large ('+sizeKB+' KB). Consider compressing it next time.');
+}
+let pdfMeta={data:b64,name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null};
+if(curRec){
+let id=curRec.i;
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){ADDED[ai].pdf_invoice=pdfMeta;saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;saveE()}
+// Also update curRec so the modal re-renders with the View PDF button
+curRec.pdf_invoice=pdfMeta;
+}
+}catch(saveErr){console.error('PDF save err:',saveErr)}
 let msg='\u2713 Auto-filled '+filled+' field'+(filled===1?'':'s')+' from invoice';
 if(upgraded>0)msg+=' ('+upgraded+' replaced existing partial values)';
-msg+='. Review and adjust as needed.';
+msg+='. PDF saved. Review and adjust as needed.';
 setStat('ok',msg);
-showToast('&#10003; Invoice parsed: '+filled+' field'+(filled===1?'':'s')+' filled')}
+showToast('&#10003; Invoice parsed and saved: '+filled+' field'+(filled===1?'':'s')+' filled');
+// Re-render the modal so the "View PDF" button appears immediately
+if(curRec)renderModal();
+}
 catch(e){console.error('PDF parse error:',e);setStat('err','\u2715 Could not read PDF: '+(e.message||'Unknown error'))}}
+
+// Open the saved invoice PDF in a new tab. Works from base64 data URI.
+function viewInvoicePDF(id){
+let r=AD().find(x=>String(x.i)===String(id));
+if(!r||!r.pdf_invoice||!r.pdf_invoice.data){alert('No PDF saved for this ticket.');return}
+// Convert data URI to a Blob URL — large data URIs are slow/blocked in some browsers.
+try{
+let m=r.pdf_invoice.data.match(/^data:application\/pdf;base64,(.+)$/);
+if(!m){window.open(r.pdf_invoice.data);return}
+let bin=atob(m[1]);
+let bytes=new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+let blob=new Blob([bytes],{type:'application/pdf'});
+let url=URL.createObjectURL(blob);
+let w=window.open(url,'_blank');
+// Revoke after the tab has had time to load
+setTimeout(()=>URL.revokeObjectURL(url),60000);
+if(!w)alert('Pop-up blocked. Please allow pop-ups for this site to view PDFs.');
+}catch(e){console.error('viewInvoicePDF err:',e);alert('Could not open PDF: '+e.message)}}
+
+// Remove the saved PDF from a ticket (admin only)
+function deleteInvoicePDF(id){
+if(!confirm('Remove the saved invoice PDF from this ticket?'))return;
+let ai=ADDED.findIndex(x=>String(x.i)===String(id));
+if(ai>=0){delete ADDED[ai].pdf_invoice;saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=null;saveE()}
+if(curRec&&String(curRec.i)===String(id)){delete curRec.pdf_invoice;renderModal()}
+showToast('Invoice PDF removed')}
 
 // Parses the extracted text from a QuickBooks invoice and returns a structured object
 function parseInvoiceText(text){
@@ -1912,7 +1965,23 @@ if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
 h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label><select id="e_assigned" style="padding:9px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;width:100%;background:#fff;outline:none"><option value="">— Unassigned —</option></select></div>'}
 // SPA DESCRIPTION — single textarea, auto-filled from PDF
 h+='<details class="spa-specs" '+((r.spd||r.di||spaSpecsHasData(r))?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Description</span><span class="spec-hint">Upload PDF to auto-fill the full spa description</span></summary>';
-h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">&#128206; Auto-fill from Invoice PDF</button><span class="pdf-help">Upload your QuickBooks invoice and we&#39;ll copy the full spa description (excluding prices, taxes, and discounts)</span><div id="pdf_status"></div></div>';
+// PDF uploader + saved PDF preview
+let pdfBtnLabel=r.pdf_invoice?'&#128206; Replace Invoice PDF':'&#128206; Auto-fill from Invoice PDF';
+let pdfBtnHelp=r.pdf_invoice?'A PDF is already saved on this ticket — uploading a new one will replace it and re-parse spa specs.':'Upload your QuickBooks invoice and we&#39;ll copy the full spa description (excluding prices, taxes, and discounts)';
+h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">'+pdfBtnLabel+'</button>';
+// If a PDF is already saved on this ticket, show a "View" button + metadata
+if(r.pdf_invoice&&r.pdf_invoice.data){
+let p=r.pdf_invoice;
+let kb=Math.round((p.size||0)/1024);
+let when=p.uploaded_at?new Date(p.uploaded_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';
+let who=p.uploaded_by&&USERS[p.uploaded_by]?USERS[p.uploaded_by].name:'';
+h+='<button type="button" class="pdf-btn" style="background:#059669;border-color:#059669" onclick="viewInvoicePDF('+r.i+')" title="Open the saved invoice PDF in a new tab">&#128065; View Invoice</button>';
+h+='<button type="button" class="pdf-btn" style="background:transparent;border:1px solid #dc2626;color:#dc2626" onclick="deleteInvoicePDF('+r.i+')" title="Remove the saved PDF">&#10005; Remove</button>';
+h+='<span class="pdf-help">&#128196; '+escHtml(p.name||'invoice.pdf')+(kb?' &middot; '+kb+' KB':'')+(when?' &middot; saved '+when:'')+(who?' by '+escHtml(who):'')+'</span>';
+}else{
+h+='<span class="pdf-help">'+pdfBtnHelp+'</span>';
+}
+h+='<div id="pdf_status"></div></div>';
 // Compute initial value: prefer new spd field; fall back to legacy structured fields
 let spdInitial=r.spd;
 if(!spdInitial){
@@ -1981,6 +2050,27 @@ h+='</div>';
 h+='<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;text-align:center;padding:14px 0">No delivery photos uploaded yet. Photos will appear here once the tech uploads them from their device during delivery.</div>';
 }
 h+='</div>';
+// === Google Drive Photo Sync ===
+// Visible whenever the ticket has at least one photo of either type.
+let totalPhotos=(r.photos||[]).length+(r.tech_photos||[]).length;
+if(totalPhotos>0){
+let synced=r.drive_synced||{};
+let syncedCount=Object.keys(synced).length;
+let folderInfo=r.drive_folder;
+let lastSyncStr=folderInfo&&folderInfo.last_sync?new Date(folderInfo.last_sync).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):null;
+h+='<div class="ct">&#128448; Google Drive Sync <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— save photos to the customer\'s folder</span></div>';
+h+='<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:14px">';
+if(folderInfo&&folderInfo.id){
+h+='<div style="font-size:13px;color:#1e40af;margin-bottom:10px"><strong>Folder:</strong> <a href="https://drive.google.com/drive/folders/'+folderInfo.id+'" target="_blank" style="color:#2563eb;font-weight:700">'+escHtml(folderInfo.name||'')+' &#8599;</a> &middot; <strong>'+syncedCount+' of '+totalPhotos+'</strong> photo'+(totalPhotos===1?'':'s')+' synced'+(lastSyncStr?' &middot; last '+lastSyncStr:'')+'</div>';
+}else{
+h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">'+totalPhotos+' photo'+(totalPhotos===1?'':'s')+' on this ticket. Click below to find the customer\'s subfolder and upload them.</div>';
+}
+let unsynced=totalPhotos-syncedCount;
+let btnLabel=unsynced>0?'&#128448; Sync '+unsynced+' Photo'+(unsynced===1?'':'s')+' to Drive':'&#10003; All Photos Synced (re-check)';
+h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="driveSyncButton('+r.i+')">'+btnLabel+'</button>';
+h+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;line-height:1.5">Looks for a folder named with the customer\'s last name <strong>"'+escHtml((r.n||'').split(',')[0]||'')+'"</strong>'+(r.sn?' or SN <strong>"'+escHtml(String(r.sn))+'"</strong>':'')+'. Photos already synced are skipped.</div>';
+h+='</div>';
+}
 // Accessories — built-in + custom categories. Pairs by row of 2.
 h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div class="ct" style="margin-bottom:0">Accessories</div><button type="button" onclick="addCategory()" style="background:#059669;color:#fff;border:none;padding:6px 11px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Add a new accessory category"><span style="font-size:14px">+</span> Add Category</button></div>';
 // Build a list of all categories: 5 built-in + any custom
@@ -2066,7 +2156,7 @@ if(name.length>30){alert('Name too long. Use 30 characters max.');return}
 let baseKey='c_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,20);
 if(!baseKey||baseKey==='c_'){alert('Invalid name. Use letters or numbers.');return}
 // Reserved/used keys
-let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn'];
+let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder'];
 PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));
 let k=baseKey,n=2;
 while(reserved.includes(k)||CUSTOM_CATS.some(c=>c.k===k)){k=baseKey+'_'+n;n++}
@@ -2338,8 +2428,10 @@ if(ov&&!ov.classList.contains('hidden')&&curRec){curRec=AD().find(x=>x.i===curRe
 //   4. Authorized JavaScript origins:  https://aspenservices.github.io
 //   5. Paste the Client ID here:
 const GCAL_CLIENT_ID='865767728073-rssakss70dpo4rqfivq0lf24qsle7t59.apps.googleusercontent.com';
-const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.readonly';
+const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive';
 const GCAL_DISCOVERY='https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+// Google Drive parent folder where customer subfolders live. Photos sync to subfolders matching last name OR SN.
+const GDRIVE_PARENT_FOLDER_ID='1QUbZye-Fp-5_UZJqGueu6w_U3-D37cfe';
 const GCAL_DEFAULT_NAME='Aspen Service'; // calendar name to auto-select
 
 let gcalTokenClient=null,gcalToken=null,gcalGapiReady=false,gcalGisReady=false;
@@ -2676,8 +2768,192 @@ gcalSyncToken=null;
 showToast('&#10003; Cleaned '+candidates.length+' imported records');
 renderAll()}
 
-// === CALENDAR ===
-let calView="month",calDate=new Date();
+// === GOOGLE DRIVE PHOTO SYNC ===
+// Syncs photos (admin info photos + tech delivery photos) to a customer subfolder in Google Drive.
+// Match logic: looks for a subfolder under GDRIVE_PARENT_FOLDER_ID whose name contains the
+// customer's last name OR the spa serial number. Case-insensitive substring match.
+//
+// Auth: piggybacks on the existing GCal OAuth token — when scope was granted, both Calendar and
+// Drive permissions came together. If the user previously connected before Drive scope was added,
+// they will need to reconnect (we detect 401/403 and prompt).
+//
+// Tracking: per-photo upload state stored in r.drive_synced (object: {photo_b64_hash: drive_file_id}).
+// We use a tiny content hash so the same photo isn't re-uploaded on repeated syncs.
+
+let _driveFolderCache=null; // { ts, folders: [{id,name}] }
+const DRIVE_FOLDER_CACHE_MS=5*60*1000; // 5 minutes
+
+// Tiny non-cryptographic hash for photo dedup. Good enough to detect "same photo, same content".
+function _hashPhoto(s){
+let h=0;if(!s)return'0';
+// Hash a sample of the string (first 4KB + length) — full hash on large b64 would be slow
+let sample=s.length>4096?s.substring(0,4096)+'|'+s.length:s;
+for(let i=0;i<sample.length;i++){h=((h<<5)-h+sample.charCodeAt(i))|0}
+return Math.abs(h).toString(36)}
+
+// Convert a base64 data URI to a Blob ready for upload
+function _dataUriToBlob(dataUri){
+let m=dataUri.match(/^data:([^;]+);base64,(.+)$/);
+if(!m)throw new Error('Not a base64 data URI');
+let mime=m[1];let bin=atob(m[2]);
+let bytes=new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+return new Blob([bytes],{type:mime})}
+
+// Check if Drive scope is available. If the user is connected to GCal but didn't grant Drive,
+// gcalToken still exists but Drive API calls will 403. We detect on first call.
+function driveIsReady(){return !!gcalToken}
+
+// Re-prompts for OAuth — used when Drive scope is missing or token expired
+function driveReconnect(){
+return new Promise((res,rej)=>{
+if(!gcalTokenClient){rej(new Error('Google sign-in not loaded'));return}
+gcalTokenClient.callback=(resp)=>{
+if(resp.error){rej(new Error(resp.error));return}
+gcalToken=resp.access_token;
+res(gcalToken)};
+try{gcalTokenClient.requestAccessToken({prompt:'consent'})}
+catch(e){rej(e)}})}
+
+// List all folder children of the parent Drive folder. Cached for 5min.
+async function driveListFolders(force){
+if(!force&&_driveFolderCache&&(Date.now()-_driveFolderCache.ts<DRIVE_FOLDER_CACHE_MS)){
+return _driveFolderCache.folders}
+if(!gcalToken){throw new Error('Not connected to Google. Connect via the Calendar Synced button first.')}
+let q=encodeURIComponent("'"+GDRIVE_PARENT_FOLDER_ID+"' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
+let url='https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true';
+let res=await fetch(url,{headers:{Authorization:'Bearer '+gcalToken}});
+if(res.status===401||res.status===403){
+let body=await res.text();
+console.error('Drive auth error:',body);
+throw new Error('Google Drive permission missing. Click "Reconnect with Drive access" to grant access.');
+}
+if(!res.ok){throw new Error('Drive API error: '+res.status)}
+let json=await res.json();
+let folders=json.files||[];
+_driveFolderCache={ts:Date.now(),folders:folders};
+return folders}
+
+// Find a folder matching the ticket's last name OR serial number
+function driveFindMatch(folders,r){
+if(!r)return null;
+let lastName=null;
+if(r.n){
+// Customer name format: "Last, First" or "First Last" — try both
+let parts=r.n.split(/[,;]/);
+if(parts.length>1){lastName=parts[0].trim()}
+else{let words=r.n.trim().split(/\s+/);lastName=words[words.length-1]}
+}
+let sn=r.sn?String(r.sn).trim():null;
+let candidates=[];
+folders.forEach(f=>{
+let name=(f.name||'').toLowerCase();
+if(sn&&name.indexOf(String(sn).toLowerCase())>=0){candidates.push({f:f,reason:'SN '+sn,score:100})}
+else if(lastName&&lastName.length>=3&&name.indexOf(lastName.toLowerCase())>=0){candidates.push({f:f,reason:'last name "'+lastName+'"',score:50})}
+});
+if(!candidates.length)return null;
+candidates.sort((a,b)=>b.score-a.score);
+return candidates[0]}
+
+// Upload a single base64 photo to a Drive folder. Returns the new file id.
+async function driveUploadPhoto(folderId,base64DataUri,fileName){
+if(!gcalToken)throw new Error('Not connected to Google');
+let blob=_dataUriToBlob(base64DataUri);
+let metadata={name:fileName,parents:[folderId]};
+// Multipart upload: metadata + blob in one request
+let boundary='-------aspen'+Date.now();
+let metaPart='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(metadata)+'\r\n';
+let mediaHdr='--'+boundary+'\r\nContent-Type: '+blob.type+'\r\n\r\n';
+let endBoundary='\r\n--'+boundary+'--';
+// Build the body as a Blob with the binary photo in the middle
+let body=new Blob([metaPart,mediaHdr,blob,endBoundary],{type:'multipart/related; boundary='+boundary});
+let res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',{
+method:'POST',
+headers:{Authorization:'Bearer '+gcalToken,'Content-Type':'multipart/related; boundary='+boundary},
+body:body});
+if(res.status===401||res.status===403){throw new Error('Drive permission missing. Reconnect with Drive access.')}
+if(!res.ok){let txt=await res.text();throw new Error('Upload failed: '+res.status+' '+txt.substring(0,200))}
+let json=await res.json();
+return json.id}
+
+// Sync ALL photos (admin + tech) of a ticket to its matching Drive folder.
+// Skips photos already synced (by content hash). Returns {uploaded, skipped, folder}.
+async function driveSyncTicket(id,opts){
+opts=opts||{};
+let r=AD().find(x=>String(x.i)===String(id));
+if(!r)throw new Error('Ticket not found');
+let allPhotos=[];
+(r.photos||[]).forEach((p,i)=>allPhotos.push({src:'admin',idx:i,b64:p}));
+(r.tech_photos||[]).forEach((p,i)=>allPhotos.push({src:'tech',idx:i,b64:p}));
+if(!allPhotos.length){return{uploaded:0,skipped:0,folder:null,reason:'No photos to sync'}}
+// Find the folder
+showToast('&#128270; Searching Drive folder...');
+let folders=await driveListFolders(opts.forceRefresh);
+let match=driveFindMatch(folders,r);
+if(!match){
+return{uploaded:0,skipped:0,folder:null,reason:'No matching Drive folder. Looking for "'+(r.n?r.n.split(',')[0]:'')+'" or SN "'+(r.sn||'')+'".'}}
+let folder=match.f;
+let already=r.drive_synced||{};
+let lastBase=(r.n||'unknown').replace(/[^a-zA-Z0-9]+/g,'_').substring(0,30);
+let snTag=r.sn?'SN'+r.sn:'';
+let dateTag=new Date().toISOString().substring(0,10);
+let uploaded=0,skipped=0,errors=0;
+showToast('&#128228; Uploading to "'+folder.name+'"...');
+for(let i=0;i<allPhotos.length;i++){
+let ph=allPhotos[i];
+let h=_hashPhoto(ph.b64);
+if(already[h]){skipped++;continue}
+let fname=lastBase+'_'+(snTag?snTag+'_':'')+ph.src+'_'+(ph.idx+1)+'_'+dateTag+'.jpg';
+try{
+let fileId=await driveUploadPhoto(folder.id,ph.b64,fname);
+already[h]={fid:fileId,src:ph.src,uploaded_at:Date.now()};
+uploaded++;
+}catch(e){console.error('Photo upload err:',e);errors++;
+if(/permission missing|reconnect/i.test(e.message))throw e; // bubble auth errors
+}
+}
+// Persist drive_synced map back to the ticket
+let ai=ADDED.findIndex(x=>String(x.i)===String(id));
+if(ai>=0){ADDED[ai].drive_synced=already;ADDED[ai].drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()};saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].drive_synced=already;EDITS[id].drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()};saveE()}
+if(curRec&&String(curRec.i)===String(id)){curRec.drive_synced=already;curRec.drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()}}
+return{uploaded:uploaded,skipped:skipped,errors:errors,folder:folder,matchReason:match.reason}}
+
+// User-facing button handler — wraps driveSyncTicket with friendly UI feedback
+async function driveSyncButton(id){
+let r=AD().find(x=>String(x.i)===String(id));if(!r)return;
+if(!gcalToken){
+if(!confirm('Drive sync needs Google access. Connect now?'))return;
+try{await driveReconnect()}catch(e){alert('Could not connect: '+e.message);return}
+}
+let btn=document.getElementById('drive-sync-btn-'+id);
+if(btn){btn.disabled=true;btn.innerHTML='&#9203; Syncing...'}
+try{
+let result=await driveSyncTicket(id);
+if(!result.folder){
+showToast('&#9888; '+result.reason,'warn');
+alert(result.reason+'\n\nTo sync this ticket, create a folder in your Aspen Spas Drive folder named with either the customer\'s last name or SN '+(r.sn||'')+'.');
+}else{
+let parts=[];
+if(result.uploaded)parts.push(result.uploaded+' uploaded');
+if(result.skipped)parts.push(result.skipped+' already synced');
+if(result.errors)parts.push(result.errors+' failed');
+let msg='&#10003; Synced to "'+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing');
+showToast(msg,'success');
+}
+if(curRec&&String(curRec.i)===String(id))renderModal();
+}catch(e){
+console.error('driveSyncButton err:',e);
+if(/permission missing|reconnect/i.test(e.message)){
+if(confirm('Drive permission is missing. Reconnect now to grant Drive access?')){
+try{await driveReconnect();showToast('Reconnected — try syncing again');}catch(re){alert('Reconnect failed: '+re.message)}
+}
+}else{alert('Sync failed: '+e.message)}
+}finally{
+if(btn){btn.disabled=false;btn.innerHTML='&#128448; Sync Photos to Drive'}
+}}
+
+
 const DAYNAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MNAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function sC2(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]||"#6b7280"}
