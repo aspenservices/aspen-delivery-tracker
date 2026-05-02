@@ -94,8 +94,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;
 .filters{padding:0 40px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .search{flex:1;min-width:200px;padding:11px 16px;border-radius:9px;border:1px solid var(--border-mid);background:#fff;color:var(--text-primary);font-size:14px;outline:none;width:100%}
 .search:focus{border-color:var(--aspen-orange)}
-.board{padding:0 40px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:11px}
-.card{background:#fff;border:1px solid var(--border-soft);border-left:3px solid var(--text-tertiary);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-card)}
+.board{padding:0 40px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:9px}
+.card{background:#fff;border:1px solid var(--border-soft);border-left:3px solid var(--text-tertiary);border-radius:9px;padding:12px 13px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-card)}
 .card:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
 .card.complete{border-left-color:#059669}
 .card.delivered{border-left-color:#2563eb}
@@ -103,21 +103,21 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;
 .card.upcoming{border-left-color:var(--aspen-orange)}
 .card.action{border-left-color:#ea580c}
 .sbar{display:none}
-.c-name{font-size:14px;font-weight:700;color:var(--text-primary);letter-spacing:.005em}
-.c-spa{font-size:11px;color:var(--text-secondary);margin-top:2px;font-weight:500}
+.c-name{font-size:12px;font-weight:700;color:var(--text-primary);letter-spacing:.005em}
+.c-spa{font-size:9.5px;color:var(--text-secondary);margin-top:2px;font-weight:500}
 .badge{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:5px;text-transform:uppercase;white-space:nowrap;letter-spacing:.06em}
 .badge.complete{background:#dcfce7;color:#059669}.badge.delivered{background:#dbeafe;color:#2563eb}.badge.overdue{background:#fef2f2;color:#dc2626}.badge.upcoming{background:#fef3c7;color:#92400e}.badge.action{background:#ffedd5;color:#c2410c}
-.c-meta{display:flex;gap:11px;font-size:11px;color:var(--text-secondary);margin:8px 0;flex-wrap:wrap;font-weight:500;align-items:center}
+.c-meta{display:flex;gap:9px;font-size:9.5px;color:var(--text-secondary);margin:7px 0;flex-wrap:wrap;font-weight:500;align-items:center}
 .c-meta .bal{color:#dc2626;font-weight:700}
 .c-meta .phone{color:var(--aspen-orange);font-weight:600}
-.pl{font-size:9px;color:var(--text-tertiary);margin-bottom:2px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.pbar{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.ptrk{flex:1;height:5px;background:var(--bg-cream);border-radius:3px;overflow:hidden}
+.pl{font-size:8px;color:var(--text-tertiary);margin-bottom:2px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.pbar{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.ptrk{flex:1;height:4px;background:var(--bg-cream);border-radius:3px;overflow:hidden}
 .pfil{height:100%;border-radius:3px}
 .pcnt{font-size:11px;color:var(--text-secondary);min-width:32px;text-align:right;font-weight:700}
-.c-note{margin-top:8px;font-size:11px;color:var(--text-secondary);background:var(--bg-cream);border-radius:6px;padding:6px 9px;border-left:3px solid var(--aspen-orange);line-height:1.4}
-.c-chips{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0 8px}
-.c-chip{font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--bg-cream);color:var(--text-secondary);border:1px solid var(--border-soft)}
+.c-note{margin-top:7px;font-size:9.5px;color:var(--text-secondary);background:var(--bg-cream);border-radius:5px;padding:5px 8px;border-left:2.5px solid var(--aspen-orange);line-height:1.4}
+.c-chips{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 7px}
+.c-chip{font-size:8px;font-weight:600;padding:1.5px 6px;border-radius:4px;background:var(--bg-cream);color:var(--text-secondary);border:1px solid var(--border-soft)}
 .svc-tag{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.04em;white-space:nowrap}
 .svc-tag.svc-req{background:#fef3c7;color:#92400e;border:1px solid #fbbf24}
 .svc-tag.svc-asg{background:#dbeafe;color:#1e40af;border:1px solid #3b82f6}
@@ -241,9 +241,9 @@ body{font-size:14px}
 .filters{padding:0 14px 12px;gap:6px}
 .search{min-width:100%;font-size:16px;padding:11px 14px}
 .board{grid-template-columns:1fr;padding:0 14px 14px;gap:10px}
-.card{padding:11px 13px}
-.c-name{font-size:13px}
-.c-meta{font-size:10.5px;gap:8px}
+.card{padding:9px 11px}
+.c-name{font-size:11px}
+.c-meta{font-size:9px;gap:7px}
 .twrap{padding:0 14px 14px}
 table{font-size:12px}
 th,td{padding:7px 6px}
@@ -456,6 +456,8 @@ th,td{padding:7px 6px}
 .tech-action-btn.phone{border-color:#10b981;color:#047857}
 .tech-action-btn.photo{border-color:#8b5cf6;color:#6d28d9}
 .tech-action-btn.note{border-color:#f59e0b;color:#b45309}
+.tech-action-btn.sign{border-color:#0ea5e9;color:#0369a1}
+.tech-action-btn.sign.done{background:#e0f2fe;border-color:#0284c7;color:#0c4a6e}
 .card.needs-attn{box-shadow:0 0 0 3px #fbbf24,0 8px 24px rgba(251,191,36,.25)!important}
 .attn-banner{background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(245,158,11,.4)}
 .pulse{display:inline-block;animation:bell-pulse 1.2s ease-in-out infinite}
@@ -494,6 +496,34 @@ th,td{padding:7px 6px}
 .photo-lightbox .lb-next{right:8px}
 .photo-lightbox .lb-close{top:12px;right:12px;width:38px;height:38px}
 .photo-lightbox .lb-count{bottom:14px}
+}
+/* Signature Pad — full-screen modal where customer signs with finger or mouse */
+.signature-modal{background:rgba(15,23,42,.85);padding:0;display:flex;align-items:center;justify-content:center;z-index:200}
+.signature-modal .signature-box{background:#fff;border-radius:16px;width:96vw;max-width:720px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.4)}
+.sig-header{padding:18px 22px 14px;border-bottom:1px solid var(--border-soft);background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%)}
+.sig-header h3{margin:0 0 4px;font-size:18px;color:#0c4a6e;font-weight:800}
+.sig-header .sig-sub{font-size:13px;color:#0369a1;font-weight:600}
+.sig-header .sig-instructions{font-size:12px;color:var(--text-secondary);margin-top:8px;line-height:1.4}
+.sig-header .sig-pdf-note{font-size:11px;color:#059669;font-weight:700;margin-top:6px;background:#dcfce7;padding:4px 8px;border-radius:5px;display:inline-block}
+.sig-header .sig-pdf-note.warn{color:#b45309;background:#fef3c7}
+.sig-header .sig-existing-note{font-size:11px;color:#dc2626;font-weight:700;margin-top:6px}
+.sig-canvas-wrap{padding:14px 22px;background:#f8fafc;position:relative}
+#signature-canvas{width:100%;height:240px;background:#fff;border:2px dashed #cbd5e1;border-radius:10px;cursor:crosshair;touch-action:none;display:block}
+.sig-x-line{position:absolute;left:34px;bottom:30px;font-size:11px;color:#94a3b8;font-family:monospace;letter-spacing:1px;pointer-events:none;font-weight:700}
+.sig-actions{display:flex;gap:10px;padding:14px 22px 18px;flex-wrap:wrap;justify-content:flex-end;border-top:1px solid var(--border-soft);background:#fff}
+.sig-btn{padding:11px 18px;border-radius:9px;font-size:14px;font-weight:700;border:1.5px solid;cursor:pointer;transition:all .15s;font-family:inherit}
+.sig-btn.clear{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+.sig-btn.cancel{background:#fff;border-color:var(--border-soft);color:var(--text-secondary)}
+.sig-btn.save{background:#059669;border-color:#059669;color:#fff;flex:1;min-width:160px}
+.sig-btn.save:hover{background:#047857}
+.sig-btn.save:disabled{opacity:.6;cursor:wait}
+.sig-btn.clear:hover,.sig-btn.cancel:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(0,0,0,.08)}
+@media (max-width:600px){
+#signature-canvas{height:200px}
+.sig-header{padding:14px 16px 10px}
+.sig-canvas-wrap{padding:10px 16px}
+.sig-actions{padding:12px 16px 16px}
+.sig-x-line{left:28px;bottom:24px}
 }
 
 .tech-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}
@@ -922,6 +952,10 @@ h+='<div class="tech-action-grid">';
 if(r.ph)h+='<button class="tech-action-btn phone" onclick="techPhoneOptions('+r.i+')"><span class="ico">&#128222;</span><div>Call / Message</div></button>';
 h+='<button class="tech-action-btn note" onclick="techAddNote('+r.i+')"><span class="ico">&#128221;</span><div>Add Note</div></button>';
 h+='<button class="tech-action-btn photo" onclick="techPhotoUpload('+r.i+')"><span class="ico">&#128247;</span><div>Add Photos'+(r.tech_photos&&r.tech_photos.length?' ('+r.tech_photos.length+')':'')+'</div></button>';
+// Customer signature button — opens signature pad. If a PDF invoice is saved, the signature
+// will be embedded into the PDF below the Balance Due line, then auto-synced to Drive.
+let sigDone=r.signature&&r.signature.data;
+h+='<button class="tech-action-btn sign'+(sigDone?' done':'')+'" onclick="techSignature('+r.i+')"><span class="ico">&#9997;&#65039;</span><div>'+(sigDone?'Signed &#10003;':'Customer Signature')+'</div></button>';
 if(!r.dl){h+='<button class="tech-action-btn deliver" onclick="techMarkDelivered('+r.i+')"><span class="ico">&#9989;</span><div>Mark Delivered</div></button>'}
 else{h+='<button class="tech-action-btn deliver done"><span class="ico">&#9989;</span><div>Delivered</div></button>'}
 h+='</div>';
@@ -1025,17 +1059,29 @@ window.open(url,'_blank')}
 
 function techPhoneOptions(id){
 let r=AD().find(x=>x.i===id);if(!r||!r.ph)return;
+let phones=parsePhones(r.ph);
+if(!phones.length)return;
 let modal=document.getElementById('tech-phone-modal');
-let cleanPh=String(r.ph).replace(/[^\d+]/g,'');
 let firstName=(r.n||'Customer').split(/[\s,]+/)[0];
 let techName=currentUser&&currentUser.name?currentUser.name.split(/\s+/)[0]:'your technician';
 let msg='Hi '+firstName+', this is '+techName+' from Aspen Spas. Your spa is loaded and we\'re heading to your home now. We\'ll be there shortly!';
-modal.innerHTML='<div class="box"><h3>'+escHtml(r.n)+'</h3><div class="sub">&#128222; '+escHtml(r.ph)+'</div>'+
-'<div class="btns">'+
-'<a class="mbig green" href="tel:'+cleanPh+'" style="text-decoration:none">&#128222; Call '+escHtml(firstName)+'</a>'+
-'<a class="mbig" href="sms:'+cleanPh+'?&body='+encodeURIComponent(msg)+'" style="text-decoration:none">&#128241; Send "On the way" SMS</a>'+
-'<button class="mbig gray" onclick="document.getElementById(\'tech-phone-modal\').classList.add(\'hidden\')">Cancel</button>'+
-'</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:10px;line-height:1.4"><strong>SMS message:</strong><br>"'+escHtml(msg)+'"</div></div>';
+let inner='<div class="box"><h3>'+escHtml(r.n)+'</h3>';
+inner+='<div class="sub" style="margin-bottom:14px">'+phones.length+' phone number'+(phones.length===1?'':'s')+' on file</div>';
+// One row per phone with Call + SMS buttons
+phones.forEach(p=>{
+let pl=phoneLabel(p);
+let digits=phoneDigits(pl.num);
+let label=pl.tag?escHtml(pl.num)+' &middot; <span style="color:var(--aspen-orange);font-weight:700">'+escHtml(pl.tag)+'</span>':escHtml(pl.num);
+inner+='<div style="border:1px solid var(--border-soft);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--bg-cream)">';
+inner+='<div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">&#128222; '+label+'</div>';
+inner+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+inner+='<a class="mbig green" href="tel:'+digits+'" style="text-decoration:none;flex:1;min-width:120px;padding:11px 14px;font-size:13px">&#128222; Call</a>';
+inner+='<a class="mbig" href="sms:'+digits+'?&body='+encodeURIComponent(msg)+'" style="text-decoration:none;flex:1;min-width:120px;padding:11px 14px;font-size:13px">&#128241; Send SMS</a>';
+inner+='</div></div>';
+});
+inner+='<button class="mbig gray" onclick="document.getElementById(\'tech-phone-modal\').classList.add(\'hidden\')">Cancel</button>';
+inner+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:10px;line-height:1.4"><strong>SMS message will be:</strong><br>"'+escHtml(msg)+'"</div></div>';
+modal.innerHTML=inner;
 modal.classList.remove('hidden')}
 
 function techMarkDelivered(id){
@@ -1059,6 +1105,188 @@ else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
 document.getElementById('tech-deliver-modal').classList.add('hidden');
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
+
+// === CUSTOMER SIGNATURE ===
+// Tech presents a signature pad to the customer. Customer signs with finger/mouse.
+// On save: signature is stored as PNG, AND embedded into the invoice PDF (if one exists)
+// below the Balance Due line, then auto-synced to the customer's Drive folder.
+
+let _sigPad=null;
+
+// Lazy-load pdf-lib only when actually needed (saves ~200KB on initial page load)
+function ensurePdfLib(){
+return new Promise((res,rej)=>{
+if(window.PDFLib){res();return}
+let s=document.createElement('script');
+s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+s.onload=()=>res();
+s.onerror=()=>rej(new Error('Could not load PDF library — check internet'));
+document.head.appendChild(s);
+})}
+
+function techSignature(id){
+let r=AD().find(x=>x.i===id);if(!r)return;
+let hasPdf=r.pdf_invoice&&r.pdf_invoice.data;
+let hasExistingSig=r.signature&&r.signature.data;
+let modal=document.createElement('div');
+modal.className='tech-modal signature-modal';
+modal.id='signature-modal';
+modal.innerHTML=
+'<div class="signature-box">'+
+'<div class="sig-header">'+
+'<h3>&#9997;&#65039; Customer Signature</h3>'+
+'<div class="sig-sub">'+escHtml(r.n||'')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>'+
+'<div class="sig-instructions">Hand the device to the customer. They sign below to acknowledge delivery.</div>'+
+(hasPdf?'<div class="sig-pdf-note">&#128206; Signature will be embedded into invoice PDF</div>':'<div class="sig-pdf-note warn">&#9888; No invoice PDF saved — signature will be saved alone</div>')+
+(hasExistingSig?'<div class="sig-existing-note">&#9888; A signature already exists. Saving will replace it.</div>':'')+
+'</div>'+
+'<div class="sig-canvas-wrap"><canvas id="signature-canvas"></canvas><div class="sig-x-line">&times; ____________________________</div></div>'+
+'<div class="sig-actions">'+
+'<button type="button" class="sig-btn clear" onclick="techSignatureClear()">&#128465; Clear</button>'+
+'<button type="button" class="sig-btn cancel" onclick="techSignatureCancel()">Cancel</button>'+
+'<button type="button" class="sig-btn save" id="sig-save-btn" onclick="techSignatureSave('+id+')">&#10003; Save Signature</button>'+
+'</div>'+
+'</div>';
+document.body.appendChild(modal);
+// Initialize after DOM paints
+requestAnimationFrame(()=>initSignaturePad());
+}
+
+function initSignaturePad(){
+let canvas=document.getElementById('signature-canvas');
+if(!canvas)return;
+let dpr=window.devicePixelRatio||1;
+let rect=canvas.getBoundingClientRect();
+canvas.width=Math.round(rect.width*dpr);
+canvas.height=Math.round(rect.height*dpr);
+let ctx=canvas.getContext('2d');
+ctx.scale(dpr,dpr);
+ctx.fillStyle='#ffffff';
+ctx.fillRect(0,0,rect.width,rect.height);
+ctx.lineWidth=2.4;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#1e3a8a';
+_sigPad={ctx:ctx,canvas:canvas,dpr:dpr,drawing:false,lastX:0,lastY:0,hasInk:false,cssWidth:rect.width,cssHeight:rect.height};
+
+function getPos(e){
+let rect=canvas.getBoundingClientRect();
+let touch=e.touches&&e.touches[0]?e.touches[0]:(e.changedTouches&&e.changedTouches[0]?e.changedTouches[0]:e);
+return{x:touch.clientX-rect.left,y:touch.clientY-rect.top}}
+function start(e){e.preventDefault();let p=getPos(e);_sigPad.drawing=true;_sigPad.lastX=p.x;_sigPad.lastY=p.y}
+function move(e){if(!_sigPad.drawing)return;e.preventDefault();let p=getPos(e);ctx.beginPath();ctx.moveTo(_sigPad.lastX,_sigPad.lastY);ctx.lineTo(p.x,p.y);ctx.stroke();_sigPad.lastX=p.x;_sigPad.lastY=p.y;_sigPad.hasInk=true}
+function end(e){if(!_sigPad.drawing)return;if(e)e.preventDefault();_sigPad.drawing=false}
+canvas.addEventListener('mousedown',start);
+canvas.addEventListener('mousemove',move);
+canvas.addEventListener('mouseup',end);
+canvas.addEventListener('mouseout',end);
+canvas.addEventListener('touchstart',start,{passive:false});
+canvas.addEventListener('touchmove',move,{passive:false});
+canvas.addEventListener('touchend',end,{passive:false});
+canvas.addEventListener('touchcancel',end,{passive:false});
+}
+
+function techSignatureClear(){
+if(!_sigPad)return;
+let ctx=_sigPad.ctx;
+ctx.fillStyle='#ffffff';
+ctx.fillRect(0,0,_sigPad.cssWidth,_sigPad.cssHeight);
+_sigPad.hasInk=false;
+}
+
+function techSignatureCancel(){
+let m=document.getElementById('signature-modal');
+if(m)m.remove();
+_sigPad=null;
+}
+
+async function techSignatureSave(id){
+if(!_sigPad||!_sigPad.hasInk){alert('Please sign in the box first.');return}
+let r=AD().find(x=>x.i===id);if(!r)return;
+let saveBtn=document.getElementById('sig-save-btn');
+if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='&#9203; Saving...'}
+try{
+// Capture signature as PNG. Trim whitespace to keep file small.
+let signaturePng=_sigPad.canvas.toDataURL('image/png');
+let now=Date.now();
+let signedBy=(currentUser&&currentUser.name)||(r.assigned_to&&USERS[r.assigned_to]?USERS[r.assigned_to].name:'tech');
+let updates={
+signature:{data:signaturePng,signed_at:now,signed_by:signedBy,customer_name:r.n||null}
+};
+// If there's a saved invoice PDF, embed the signature into it
+if(r.pdf_invoice&&r.pdf_invoice.data){
+if(saveBtn)saveBtn.innerHTML='&#9203; Embedding in PDF...';
+try{
+let signedPdfDataUri=await appendSignatureToPDF(r.pdf_invoice.data,signaturePng,r.n,r.dd);
+let signedName=(r.pdf_invoice.name||'invoice.pdf').replace(/\.pdf$/i,'')+'_signed.pdf';
+updates.pdf_invoice_signed={
+data:signedPdfDataUri,
+name:signedName,
+size:signedPdfDataUri.length,
+signed_at:now,
+signed_by:signedBy
+};
+}catch(pdfErr){
+console.error('PDF sign failed:',pdfErr);
+showToast('&#9888; Signature saved but could not embed in PDF: '+pdfErr.message,'warn');
+}
+}
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+showToast('&#10003; Customer signature saved'+(updates.pdf_invoice_signed?' &amp; embedded in PDF':''));
+// Auto-sync to Drive (will include the signed PDF + signature image)
+if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
+techSignatureCancel();
+techOpenDetail(id);
+}catch(e){
+console.error('Signature save err:',e);
+alert('Could not save signature: '+e.message);
+if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='&#10003; Save Signature'}
+}}
+
+// Embed the signature PNG into the existing invoice PDF, below the Balance Due area on the
+// last page. Returns a new data URI. Requires pdf-lib (lazy-loaded on first use).
+async function appendSignatureToPDF(pdfDataUri,sigPngDataUri,customerName,deliveryDate){
+await ensurePdfLib();
+if(!window.PDFLib)throw new Error('PDF library not available');
+// Decode base64 → Uint8Array (chunked for safety with large PDFs)
+function b64ToBytes(uri){
+let m=uri.match(/^data:[^;]+;base64,(.+)$/);
+if(!m)throw new Error('Bad data URI');
+let bin=atob(m[1]);
+let bytes=new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+return bytes}
+let pdfBytes=b64ToBytes(pdfDataUri);
+let pngBytes=b64ToBytes(sigPngDataUri);
+let pdfDoc=await PDFLib.PDFDocument.load(pdfBytes);
+let pngImage=await pdfDoc.embedPng(pngBytes);
+// Aspen invoices use letter size (612x792 points). The last page of an Aspen invoice has
+// "Balance Due" near the middle and lots of empty space below. We add the signature in that
+// empty space, above the page footer ("Page N").
+let pages=pdfDoc.getPages();
+let lastPage=pages[pages.length-1];
+let{width,height}=lastPage.getSize();
+// Sizing: keep signature aspect ratio; fit within 220x90
+let pngDims=pngImage.scaleToFit(220,90);
+let sigX=80;
+let sigY=140; // above "Page N" footer (which is ~y=70-80) but below content area
+// Header label
+let font=await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+let regular=await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+let dateStr=new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+lastPage.drawText('Customer Acknowledgment of Delivery',{x:sigX,y:sigY+pngDims.height+24,size:11,font:font,color:PDFLib.rgb(0,0,0)});
+let custLine='Signed by: '+(customerName||'Customer')+'   Date: '+dateStr;
+lastPage.drawText(custLine,{x:sigX,y:sigY+pngDims.height+8,size:9,font:regular,color:PDFLib.rgb(0.3,0.3,0.3)});
+// Signature line (the underline below the signature)
+lastPage.drawLine({start:{x:sigX,y:sigY-3},end:{x:sigX+260,y:sigY-3},thickness:0.6,color:PDFLib.rgb(0,0,0)});
+lastPage.drawText('X',{x:sigX-10,y:sigY+8,size:11,font:font,color:PDFLib.rgb(0,0,0)});
+lastPage.drawImage(pngImage,{x:sigX,y:sigY,width:pngDims.width,height:pngDims.height});
+// Save and convert back to data URI
+let resultBytes=await pdfDoc.save();
+let bin='';
+let CHUNK=8192;
+for(let i=0;i<resultBytes.length;i+=CHUNK){bin+=String.fromCharCode.apply(null,resultBytes.subarray(i,i+CHUNK))}
+return'data:application/pdf;base64,'+btoa(bin);
+}
 
 // Tech adds a note that gets appended to Delivered Notes (r.dn) with timestamp + tech name
 // and flags r.needs_attention so the manager sees an alert.
@@ -1525,6 +1753,21 @@ else{renderAll()}}
 let search="",statusF="all",tab="board",sortCol="date",sortDir="desc";
 function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
 
+// Phone helpers — a ticket's r.ph may now contain MULTIPLE numbers, one per line.
+// parsePhones() returns a clean array of trimmed entries.
+// Each entry can be a bare number ("719-510-8200") or annotated ("314-555-1234 (wife)").
+function parsePhones(s){
+if(!s)return[];
+return String(s).split(/\n+/).map(p=>p.trim()).filter(Boolean);
+}
+// Strip everything except digits/+ — used for tel: and sms: hrefs
+function phoneDigits(p){return String(p||'').replace(/[^0-9+]/g,'')}
+// Compact display label for a phone entry — "719-510-8200 Tom" → ["719-510-8200","Tom"]
+function phoneLabel(p){
+let m=String(p||'').match(/^([\(\)\d\s\.\-+]+)(.*)$/);
+if(m)return{num:m[1].trim(),tag:m[2].replace(/[()]/g,'').trim()};
+return{num:String(p||'').trim(),tag:''}}
+
 // Robust date parser for all formats
 function parseDate(dd){if(!dd)return null;let s=String(dd).trim();
 let iso=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
@@ -1667,7 +1910,7 @@ if(r.pst){
 let pstLabels={paid:'&#128181; Paid',check:'&#128221; Check',financed:'&#128179; Financed',cash:'&#128176; CASH'};
 let lbl=pstLabels[r.pst];
 if(lbl)pstBadge='<span class="pst-badge '+r.pst+'">'+lbl+'</span>'}
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return pl.num+(pl.tag?' '+pl.tag:'')});return'<span class="phone">&#128222; '+escHtml(parts.join(' &middot; '))+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -1812,6 +2055,23 @@ let w=window.open(url,'_blank');
 setTimeout(()=>URL.revokeObjectURL(url),60000);
 if(!w)alert('Pop-up blocked. Please allow pop-ups for this site to view PDFs.');
 }catch(e){console.error('viewInvoicePDF err:',e);alert('Could not open PDF: '+e.message)}}
+
+// Open the signed invoice PDF (with embedded customer signature) in a new tab.
+function viewSignedPDF(id){
+let r=AD().find(x=>String(x.i)===String(id));
+if(!r||!r.pdf_invoice_signed||!r.pdf_invoice_signed.data){alert('No signed PDF saved for this ticket.');return}
+try{
+let m=r.pdf_invoice_signed.data.match(/^data:application\/pdf;base64,(.+)$/);
+if(!m){window.open(r.pdf_invoice_signed.data);return}
+let bin=atob(m[1]);
+let bytes=new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+let blob=new Blob([bytes],{type:'application/pdf'});
+let url=URL.createObjectURL(blob);
+let w=window.open(url,'_blank');
+setTimeout(()=>URL.revokeObjectURL(url),60000);
+if(!w)alert('Pop-up blocked. Please allow pop-ups for this site to view PDFs.');
+}catch(e){console.error('viewSignedPDF err:',e);alert('Could not open signed PDF: '+e.message)}}
 
 // Remove the saved PDF from a ticket (admin only)
 function deleteInvoicePDF(id){
@@ -1958,6 +2218,52 @@ let tbMatch=findOptionWithContext(text,OPT_TB,['Table','Tray']);
 if(tbMatch)result._table=tbMatch;
 let suMatch=findOptionWithContext(text,OPT_SU,['Start-up','Startup','Sanitizer','start up','salt-','start\\-up']);
 if(suMatch)result._startup=suMatch;
+// Aliases — vendor-specific product names that map to standard dropdown options.
+// "Genesis Blu Fusion" salt system → maps to our "Tru-Blu [SPA]" startup option.
+// Runs only if no exact match was found above, so explicit options always win.
+if(!result._startup){
+if(/Genesis\s+Blu\s+Fusion|Blu\s+Fusion/i.test(text))result._startup='Tru-Blu [SPA]';
+}
+
+// === A&B CUSTOM STEPS / TABLE — auto-detect items that aren't built-in options ===
+// QuickBooks invoices show A&B accessories as line items prefixed with "a&b-step" or "a&b-table".
+// When detected, we extract the description + color and offer to add it as a NEW dropdown option
+// (so it persists for future tickets), then auto-select it on the form.
+function extractABCustomLine(text,prefix){
+// Match: "a&b-step do..." or "a&b-table fo..." then the description text up to the next QB line/digit/discount
+let re=new RegExp('\\b'+prefix.replace('&','\\&')+'[a-z\\s\\-\\.]{0,15}\\.{2,3}\\s+([^\\n]{4,200}?)(?=\\s+1\\s+\\d+\\s|\\n[a-zA-Z]+-|\\n\\s*Discount|\\n\\s*Subtotal|\\n\\s*\\d{1,2}\\s+\\d{1,2}\\s)','i');
+let m=text.match(re);
+if(!m)return null;
+let desc=m[1].replace(/\s+/g,' ').trim();
+// If the desc continues on a 2nd indented/wrapped line in the original PDF, also include it
+let after=text.substring(m.index+m[0].length,m.index+m[0].length+150).trim();
+let cont=after.match(/^([a-z][^\n]{0,80})/i);
+if(cont&&!/^[A-Z]+-|^\d/.test(cont[1]))desc+=' '+cont[1].replace(/\s+/g,' ').trim();
+// Detect color from common Aspen Spas color names
+let colorRe=/\b(Ash\s+Luxe|Charcoal\s+Slate|Slate\s+Brown|Charcoal|Slate|Brown|Cedar|Walnut|Espresso|Mocha|Java|Brushed|Black|White|Gray)\b/i;
+let cm=desc.match(colorRe);
+let color=cm?cm[1].replace(/\s+/g,' '):null;
+return{fullDesc:desc,color:color};
+}
+let stepsRaw=extractABCustomLine(text,'a&b-step');
+let tableRaw=extractABCustomLine(text,'a&b-table');
+if(stepsRaw){
+// Build a clean, predictable label: "A&B Enclosed Steps 2-Tier Ash Luxe"
+let lbl='A&B';
+if(/Enclosed/i.test(stepsRaw.fullDesc))lbl+=' Enclosed Steps';
+else lbl+=' Steps';
+let tierM=stepsRaw.fullDesc.match(/(\d+)\s*Tier/i);
+if(tierM)lbl+=' '+tierM[1]+'-Tier';
+if(stepsRaw.color)lbl+=' '+stepsRaw.color;
+result._stepsCustomLabel=lbl;
+}
+if(tableRaw){
+let lbl='Spa Mount Folding Table';
+let widthM=tableRaw.fullDesc.match(/(\d+)["\s]*wide/i);
+if(widthM)lbl+=' '+widthM[1]+'"';
+if(tableRaw.color)lbl+=' '+tableRaw.color;
+result._tableCustomLabel=lbl;
+}
 
 // === FULL SPA DESCRIPTION ===
 // Take everything from the start of the spa item (e.g. "2025 Pinnacle ES") up to (but excluding)
@@ -2041,6 +2347,39 @@ if(d._steps)setSelectIf('e_ss',d._steps);
 if(d._table)setSelectIf('e_tb',d._table);
 if(d._startup)setSelectIf('e_su',d._startup);
 
+// === Auto-add A&B custom options to dropdowns + persist + select ===
+// When the PDF parser detects an A&B steps/table line that doesn't match a built-in option,
+// it returns a clean label like "A&B Enclosed Steps 2-Tier Ash Luxe". We add it to OPT_SS/OPT_TB
+// (which gets persisted to Firebase via saveOpts so it shows up for future tickets too) and
+// auto-select it in the dropdown.
+function autoAddOption(elementId,label,optsArray){
+if(!label||!label.trim())return false;
+let lbl=label.trim();
+// Add to in-memory options array if not already present (case-insensitive match)
+let exists=optsArray.some(o=>o&&o.toLowerCase()===lbl.toLowerCase());
+if(!exists){
+optsArray.push(lbl);
+try{saveOpts()}catch(e){console.error('autoAddOption saveOpts:',e)}
+}
+let el=document.getElementById(elementId);
+if(!el)return false;
+// Add the <option> element if missing in the live select
+let opt=Array.from(el.options).find(o=>o.value.toLowerCase()===lbl.toLowerCase());
+if(!opt){
+let nopt=document.createElement('option');
+nopt.value=lbl;nopt.textContent=lbl;
+el.appendChild(nopt);opt=nopt;
+}
+// Only select if user hasn't already chosen something
+if(!el.value||el.value===''||/^NONE$/i.test(el.value)){
+el.value=opt.value;
+return true;
+}
+return false;
+}
+if(d._stepsCustomLabel){if(autoAddOption('e_ss',d._stepsCustomLabel,OPT_SS))count++}
+if(d._tableCustomLabel){if(autoAddOption('e_tb',d._tableCustomLabel,OPT_TB))count++}
+
 // Try matching SPA model dropdown (if Quattro/Eldorado/etc detected)
 if(d._model){
 let mSel=document.getElementById('e_spa_base');
@@ -2070,7 +2409,7 @@ h+='</div>';
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
 h+='<div class="ib"><label>SERIES</label><select id="e_spa_series">'+opt(SPA_SERIES,((r.sp||"").split(",")[1]||"").trim())+'</select></div>';
-h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Phone</label><input id="e_ph" type="tel" value="'+String(r.ph||'').replace(/"/g,'&quot;')+'"></div></div><div class="ig">';
+h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Phones <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(one per line — add wife/spouse, etc.)</span></label><textarea id="e_ph" rows="2" placeholder="719-510-8200&#10;314-555-1234 (wife)" style="font-family:inherit">'+escHtml(r.ph||'')+'</textarea></div></div><div class="ig">';
 h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="number" step="0.01" value="'+(r.pr||0)+'"></div></div><div class="ig">';
 h+='<div class="ib"><label>Payment</label><input id="e_py" type="number" step="0.01" value="'+(r.py||0)+'"></div>';
 h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'#dc2626':'#059669')+'">'+fmt(r.bl)+'</span></div></div>';
@@ -2185,6 +2524,26 @@ h+='</div>';
 h+='<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;text-align:center;padding:14px 0">No delivery photos uploaded yet. Photos will appear here once the tech uploads them from their device during delivery.</div>';
 }
 h+='</div>';
+// === Customer Signature Preview ===
+// Shows the captured signature (if any) so the admin/manager can verify the customer signed.
+// Read-only: signature can only be created by the tech via the signature pad on delivery.
+if(r.signature&&r.signature.data){
+let sig=r.signature;
+let when=sig.signed_at?new Date(sig.signed_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'';
+let by=sig.signed_by||'tech';
+h+='<div class="ct">&#9997;&#65039; Customer Signature <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— captured at delivery</span></div>';
+h+='<div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:14px;margin-bottom:14px">';
+h+='<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">';
+h+='<img src="'+sig.data+'" alt="Customer signature" style="background:#fff;border:1px solid var(--border-soft);border-radius:8px;max-width:280px;max-height:120px;flex-shrink:0">';
+h+='<div style="flex:1;min-width:200px;font-size:13px;color:#0c4a6e">';
+h+='<div style="font-weight:700;margin-bottom:4px">Signed by: '+escHtml(sig.customer_name||r.n||'Customer')+'</div>';
+if(when)h+='<div style="color:#0369a1">&#128197; '+escHtml(when)+'</div>';
+h+='<div style="color:#0369a1;font-size:11px;margin-top:4px">Captured by '+escHtml(by)+' on tech device</div>';
+if(r.pdf_invoice_signed&&r.pdf_invoice_signed.data){
+h+='<button type="button" class="pdf-btn" style="background:#059669;border-color:#059669;margin-top:10px;font-size:12px;padding:7px 12px" onclick="viewSignedPDF('+r.i+')">&#128065; View Signed Invoice PDF</button>';
+}
+h+='</div></div></div>';
+}
 // === Google Drive Photo Sync ===
 // Auto-syncs in the background. This section shows status and lets admin trigger manual sync.
 let totalPhotos=(r.photos||[]).length+(r.tech_photos||[]).length;
@@ -2299,7 +2658,7 @@ if(name.length>30){alert('Name too long. Use 30 characters max.');return}
 let baseKey='c_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,20);
 if(!baseKey||baseKey==='c_'){alert('Invalid name. Use letters or numbers.');return}
 // Reserved/used keys
-let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst'];
+let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst','signature','pdf_invoice_signed'];
 PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));
 let k=baseKey,n=2;
 while(reserved.includes(k)||CUSTOM_CATS.some(c=>c.k===k)){k=baseKey+'_'+n;n++}
@@ -3159,10 +3518,18 @@ async function driveSyncTicket(id,opts){
 opts=opts||{};
 let r=AD().find(x=>String(x.i)===String(id));
 if(!r)throw new Error('Ticket not found');
+// Build a list of every binary asset to sync. Each entry: {src, idx, b64, ext}
+// - 'admin'/'tech' photos → JPG
+// - 'pdf' (original invoice) → PDF
+// - 'pdf-signed' (invoice with embedded signature) → PDF
+// - 'signature' (raw signature image alone) → PNG
 let allPhotos=[];
-(r.photos||[]).forEach((p,i)=>allPhotos.push({src:'admin',idx:i,b64:p}));
-(r.tech_photos||[]).forEach((p,i)=>allPhotos.push({src:'tech',idx:i,b64:p}));
-if(!allPhotos.length){return{uploaded:0,skipped:0,folder:null,reason:'No photos to sync'}}
+(r.photos||[]).forEach((p,i)=>allPhotos.push({src:'admin',idx:i,b64:p,ext:'jpg'}));
+(r.tech_photos||[]).forEach((p,i)=>allPhotos.push({src:'tech',idx:i,b64:p,ext:'jpg'}));
+if(r.pdf_invoice&&r.pdf_invoice.data)allPhotos.push({src:'pdf',idx:0,b64:r.pdf_invoice.data,ext:'pdf'});
+if(r.pdf_invoice_signed&&r.pdf_invoice_signed.data)allPhotos.push({src:'pdf-signed',idx:0,b64:r.pdf_invoice_signed.data,ext:'pdf'});
+if(r.signature&&r.signature.data)allPhotos.push({src:'signature',idx:0,b64:r.signature.data,ext:'png'});
+if(!allPhotos.length){return{uploaded:0,skipped:0,folder:null,reason:'Nothing to sync'}}
 // Proactive scope check — fail fast and clearly if Drive auth is missing
 if(!gdriveScopeOk||!gcalToken)throw new Error('Drive permission missing. Reconnect with Drive access.');
 // Find the folder — if none matches, AUTO-CREATE one so the user never has to manage folders manually
@@ -3196,12 +3563,13 @@ for(let i=0;i<allPhotos.length;i++){
 let ph=allPhotos[i];
 let h=_hashPhoto(ph.b64);
 if(already[h]){skipped++;continue}
-let fname=lastBase+'_'+(snTag?snTag+'_':'')+ph.src+'_'+(ph.idx+1)+'_'+dateTag+'.jpg';
+let ext=ph.ext||'jpg';
+let fname=lastBase+'_'+(snTag?snTag+'_':'')+ph.src+(ph.idx>0||ph.src==='admin'||ph.src==='tech'?'_'+(ph.idx+1):'')+'_'+dateTag+'.'+ext;
 try{
 let fileId=await driveUploadPhoto(folder.id,ph.b64,fname);
 already[h]={fid:fileId,src:ph.src,uploaded_at:Date.now()};
 uploaded++;
-}catch(e){console.error('Photo upload err:',e);errors++;
+}catch(e){console.error('Asset upload err:',e);errors++;
 if(/permission missing|reconnect/i.test(e.message))throw e;
 }
 }
