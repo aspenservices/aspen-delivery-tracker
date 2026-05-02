@@ -1728,9 +1728,16 @@ tc.items.forEach(it=>{let y=Math.round(it.transform[5]);if(!lines[y])lines[y]=[]
 let ys=Object.keys(lines).map(Number).sort((a,b)=>b-a);
 fullText+=ys.map(y=>lines[y].join(' ')).join('\n')+'\n'}
 let extracted=parseInvoiceText(fullText);
+// Detect whether the PDF had any usable spa data at all (independent of whether the form already had values).
+// This is the real "is this a valid Aspen Spas invoice?" check.
+let extractedAny=!!(extracted._customerName||extracted._serial||extracted._spaDescription||extracted._cover||extracted._lift||extracted._model||extracted._price);
 let res=applyExtractedToForm(extracted);
 let filled=res.filled,upgraded=res.upgraded;
-if(filled===0){setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
+// Only show "could not detect" if the PDF truly had nothing recognizable.
+// If the PDF was valid but the form was already filled (typical for tickets imported from GCal),
+// show a friendly message instead of an error.
+if(!extractedAny){
+setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
 // Save the PDF to the ticket so admin can preview/download it later.
 // Convert ArrayBuffer to base64 (chunked to avoid call-stack overflow on large files).
 try{
@@ -1753,11 +1760,22 @@ else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;saveE()}
 curRec.pdf_invoice=pdfMeta;
 }
 }catch(saveErr){console.error('PDF save err:',saveErr)}
-let msg='\u2713 Auto-filled '+filled+' field'+(filled===1?'':'s')+' from invoice';
-if(upgraded>0)msg+=' ('+upgraded+' replaced existing partial values)';
-msg+='. PDF saved. Review and adjust as needed.';
+// Build a contextual success message:
+// - If filled fields: "Auto-filled N fields"
+// - If only upgrades: "Upgraded N existing values"
+// - If filled=0 and upgraded=0 but extractedAny=true: "PDF saved (form already had values)"
+let msg;
+if(filled>0||upgraded>0){
+let parts=[];
+if(filled>0)parts.push(filled+' field'+(filled===1?'':'s')+' filled');
+if(upgraded>0)parts.push(upgraded+' replaced with longer values');
+msg='\u2713 '+parts.join(', ')+' from invoice. PDF saved.';
+}else{
+msg='\u2713 PDF saved. Form already had values — kept your existing data. (Spa Description was updated.)';
+}
 setStat('ok',msg);
-showToast('&#10003; Invoice parsed and saved: '+filled+' field'+(filled===1?'':'s')+' filled');
+let toastMsg=filled>0?'&#10003; Invoice parsed and saved: '+filled+' field'+(filled===1?'':'s')+' filled':'&#10003; Invoice PDF saved to ticket';
+showToast(toastMsg);
 // Re-render the modal so the "View PDF" button appears immediately
 if(curRec)renderModal();
 }
