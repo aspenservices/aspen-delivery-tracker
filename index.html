@@ -1090,6 +1090,8 @@ let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
+// Auto-sync to Google Drive (debounced, silent if Drive not connected)
+if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
 techOpenDetail(id)};
 inp.click()}
 
@@ -1190,6 +1192,8 @@ let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
+// Auto-sync to Google Drive (debounced, silent if Drive not connected)
+if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
 if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}};
 inp.click()}
 
@@ -2051,24 +2055,32 @@ h+='<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;text
 }
 h+='</div>';
 // === Google Drive Photo Sync ===
-// Visible whenever the ticket has at least one photo of either type.
+// Auto-syncs in the background. This section shows status and lets admin trigger manual sync.
 let totalPhotos=(r.photos||[]).length+(r.tech_photos||[]).length;
 if(totalPhotos>0){
 let synced=r.drive_synced||{};
 let syncedCount=Object.keys(synced).length;
 let folderInfo=r.drive_folder;
 let lastSyncStr=folderInfo&&folderInfo.last_sync?new Date(folderInfo.last_sync).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):null;
-h+='<div class="ct">&#128448; Google Drive Sync <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— save photos to the customer\'s folder</span></div>';
+let driveConnected=gcalToken&&gdriveScopeOk;
+h+='<div class="ct">&#128448; Google Drive Auto-Sync <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— photos save to the customer\'s folder automatically</span></div>';
 h+='<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:14px">';
-if(folderInfo&&folderInfo.id){
+if(!driveConnected){
+// Show a one-click "Enable" button when Drive is not authorized yet
+h+='<div style="font-size:13px;color:#92400e;background:#fef3c7;border-left:3px solid #d97706;padding:8px 11px;border-radius:6px;margin-bottom:10px"><strong>&#9888; Drive not connected.</strong> Click below to grant access — then all future photo uploads sync automatically to the customer\'s folder.</div>';
+h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="driveSyncButton('+r.i+')">&#128448; Enable Drive Auto-Sync &amp; Sync Now</button>';
+}else if(folderInfo&&folderInfo.id){
 h+='<div style="font-size:13px;color:#1e40af;margin-bottom:10px"><strong>Folder:</strong> <a href="https://drive.google.com/drive/folders/'+folderInfo.id+'" target="_blank" style="color:#2563eb;font-weight:700">'+escHtml(folderInfo.name||'')+' &#8599;</a> &middot; <strong>'+syncedCount+' of '+totalPhotos+'</strong> photo'+(totalPhotos===1?'':'s')+' synced'+(lastSyncStr?' &middot; last '+lastSyncStr:'')+'</div>';
-}else{
-h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">'+totalPhotos+' photo'+(totalPhotos===1?'':'s')+' on this ticket. Click below to find the customer\'s subfolder and upload them.</div>';
-}
 let unsynced=totalPhotos-syncedCount;
-let btnLabel=unsynced>0?'&#128448; Sync '+unsynced+' Photo'+(unsynced===1?'':'s')+' to Drive':'&#10003; All Photos Synced (re-check)';
-h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="driveSyncButton('+r.i+')">'+btnLabel+'</button>';
-h+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;line-height:1.5">Looks for a folder named with the customer\'s last name <strong>"'+escHtml((r.n||'').split(',')[0]||'')+'"</strong>'+(r.sn?' or SN <strong>"'+escHtml(String(r.sn))+'"</strong>':'')+'. Photos already synced are skipped.</div>';
+if(unsynced>0){
+h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">'+unsynced+' photo'+(unsynced===1?'':'s')+' will auto-sync in a few seconds. Or click to sync now:</div>';
+}
+h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="driveSyncButton('+r.i+')">'+(unsynced>0?'&#128448; Sync '+unsynced+' Photo'+(unsynced===1?'':'s')+' Now':'&#10003; All Synced (re-check)')+'</button>';
+}else{
+h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">&#9889; Auto-sync is active. '+totalPhotos+' photo'+(totalPhotos===1?'':'s')+' will sync to the customer\'s subfolder shortly. Click to sync immediately:</div>';
+h+='<button type="button" id="drive-sync-btn-'+r.i+'" class="pdf-btn" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="driveSyncButton('+r.i+')">&#128448; Sync '+totalPhotos+' Photo'+(totalPhotos===1?'':'s')+' to Drive Now</button>';
+}
+h+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;line-height:1.5">Looks for a subfolder named with the customer\'s last name <strong>"'+escHtml((r.n||'').split(',')[0]||'')+'"</strong>'+(r.sn?' or SN <strong>"'+escHtml(String(r.sn))+'"</strong>':'')+'. Photos already synced are skipped.</div>';
 h+='</div>';
 }
 // Accessories — built-in + custom categories. Pairs by row of 2.
@@ -2435,6 +2447,16 @@ const GDRIVE_PARENT_FOLDER_ID='1QUbZye-Fp-5_UZJqGueu6w_U3-D37cfe';
 const GCAL_DEFAULT_NAME='Aspen Service'; // calendar name to auto-select
 
 let gcalTokenClient=null,gcalToken=null,gcalGapiReady=false,gcalGisReady=false;
+// Tracks whether the current OAuth token has Drive scope granted.
+// Set after every token acquisition by parsing resp.scope (space-separated list of granted scopes).
+let gdriveScopeOk=false;
+
+// Parse the scope string from a Google token response and update gdriveScopeOk
+function _checkDriveScope(resp){
+let scopes=(resp&&resp.scope)?resp.scope.split(/\s+/):[];
+gdriveScopeOk=scopes.some(s=>s==='https://www.googleapis.com/auth/drive'||s==='https://www.googleapis.com/auth/drive.file');
+console.log('OAuth scopes granted:',scopes,'| Drive ok?',gdriveScopeOk);
+return gdriveScopeOk}
 let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
 let gcalMap={}; // {gcalEventId: localDeliveryId}
 let gcalStats={created:0,updated:0,skipped:0,errors:0};
@@ -2483,6 +2505,7 @@ if(localStorage.getItem('gcalConnectedBefore')!=='true')return;
 gcalTokenClient.callback=async(resp)=>{
 if(resp.error){console.log('Silent reconnect failed:',resp.error);return}
 gcalToken=resp.access_token;
+_checkDriveScope(resp);
 await gcalLoadCalendars();updateGcalUI();
 scheduleGcalRefresh();
 // Restore auto-sync state if it was on
@@ -2500,6 +2523,7 @@ if(!gcalTokenClient||!gcalToken)return;
 gcalTokenClient.callback=(resp)=>{
 if(resp.error){console.log('Token refresh failed:',resp.error);return}
 gcalToken=resp.access_token;
+_checkDriveScope(resp);
 console.log('Token refreshed silently')};
 try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){console.log('Refresh error:',e)}
 },50*60*1000)}
@@ -2510,7 +2534,9 @@ return new Promise(resolve=>{
 if(!gcalTokenClient){resolve(false);return}
 gcalTokenClient.callback=resp=>{
 if(resp.error){resolve(false);return}
-gcalToken=resp.access_token;resolve(true)};
+gcalToken=resp.access_token;
+_checkDriveScope(resp);
+resolve(true)};
 try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){resolve(false)}})}
 // Wait for scripts (loaded async) — poll until they appear
 let _gcalPoll=setInterval(()=>{
@@ -2529,9 +2555,10 @@ if(!gcalTokenClient){showToast('&#9888; Google API not ready yet, try again in a
 gcalTokenClient.callback=async(resp)=>{
 if(resp.error){showToast('&#10005; Google sign-in failed: '+resp.error,'err');return}
 gcalToken=resp.access_token;
+_checkDriveScope(resp);
 localStorage.setItem('gcalConnectedBefore','true');
 scheduleGcalRefresh();
-showToast('&#10003; Connected to Google Calendar');
+showToast('&#10003; Connected to Google Calendar'+(gdriveScopeOk?' + Drive':''));
 await gcalLoadCalendars();updateGcalUI();
 // Auto-sync after connect if a calendar is already chosen
 if(gcalCalendarId)gcalSync()};
@@ -2804,14 +2831,18 @@ return new Blob([bytes],{type:mime})}
 // gcalToken still exists but Drive API calls will 403. We detect on first call.
 function driveIsReady(){return !!gcalToken}
 
-// Re-prompts for OAuth — used when Drive scope is missing or token expired
+// Re-prompts for OAuth with consent screen (forces user to see/grant Drive scope).
+// Resolves with the new token after Drive scope is confirmed, rejects otherwise.
 function driveReconnect(){
 return new Promise((res,rej)=>{
 if(!gcalTokenClient){rej(new Error('Google sign-in not loaded'));return}
 gcalTokenClient.callback=(resp)=>{
 if(resp.error){rej(new Error(resp.error));return}
 gcalToken=resp.access_token;
+_checkDriveScope(resp);
+if(!gdriveScopeOk){rej(new Error('Drive scope was not granted. Please tick the Drive permission box on the Google consent screen.'));return}
 res(gcalToken)};
+// Always force consent screen — silent token requests don't expand scope grants reliably
 try{gcalTokenClient.requestAccessToken({prompt:'consent'})}
 catch(e){rej(e)}})}
 
@@ -2878,6 +2909,24 @@ return json.id}
 
 // Sync ALL photos (admin + tech) of a ticket to its matching Drive folder.
 // Skips photos already synced (by content hash). Returns {uploaded, skipped, folder}.
+// Ensure Drive scope is granted. If not, automatically prompts the consent screen.
+// Returns Promise<bool> — true if Drive is ready, false if the user declined.
+async function ensureDriveScope(){
+if(gdriveScopeOk&&gcalToken)return true;
+try{
+showToast('&#128274; Granting Drive access...');
+await driveReconnect();
+return gdriveScopeOk;
+}catch(e){
+console.error('ensureDriveScope:',e);
+if(/scope was not granted/i.test(e.message)){
+showToast('&#9888; Drive access denied — sync skipped','warn');
+}else if(e.message&&!/popup_closed|access_denied/i.test(e.message)){
+showToast('&#9888; Drive access failed: '+e.message,'warn');
+}
+return false;
+}}
+
 async function driveSyncTicket(id,opts){
 opts=opts||{};
 let r=AD().find(x=>String(x.i)===String(id));
@@ -2886,8 +2935,10 @@ let allPhotos=[];
 (r.photos||[]).forEach((p,i)=>allPhotos.push({src:'admin',idx:i,b64:p}));
 (r.tech_photos||[]).forEach((p,i)=>allPhotos.push({src:'tech',idx:i,b64:p}));
 if(!allPhotos.length){return{uploaded:0,skipped:0,folder:null,reason:'No photos to sync'}}
+// Proactive scope check — fail fast and clearly if Drive auth is missing
+if(!gdriveScopeOk||!gcalToken)throw new Error('Drive permission missing. Reconnect with Drive access.');
 // Find the folder
-showToast('&#128270; Searching Drive folder...');
+if(!opts.silent)showToast('&#128270; Searching Drive folder...');
 let folders=await driveListFolders(opts.forceRefresh);
 let match=driveFindMatch(folders,r);
 if(!match){
@@ -2898,7 +2949,7 @@ let lastBase=(r.n||'unknown').replace(/[^a-zA-Z0-9]+/g,'_').substring(0,30);
 let snTag=r.sn?'SN'+r.sn:'';
 let dateTag=new Date().toISOString().substring(0,10);
 let uploaded=0,skipped=0,errors=0;
-showToast('&#128228; Uploading to "'+folder.name+'"...');
+if(!opts.silent)showToast('&#128228; Uploading to "'+folder.name+'"...');
 for(let i=0;i<allPhotos.length;i++){
 let ph=allPhotos[i];
 let h=_hashPhoto(ph.b64);
@@ -2909,7 +2960,7 @@ let fileId=await driveUploadPhoto(folder.id,ph.b64,fname);
 already[h]={fid:fileId,src:ph.src,uploaded_at:Date.now()};
 uploaded++;
 }catch(e){console.error('Photo upload err:',e);errors++;
-if(/permission missing|reconnect/i.test(e.message))throw e; // bubble auth errors
+if(/permission missing|reconnect/i.test(e.message))throw e;
 }
 }
 // Persist drive_synced map back to the ticket
@@ -2919,41 +2970,83 @@ else{if(!EDITS[id])EDITS[id]={};EDITS[id].drive_synced=already;EDITS[id].drive_f
 if(curRec&&String(curRec.i)===String(id)){curRec.drive_synced=already;curRec.drive_folder={id:folder.id,name:folder.name,last_sync:Date.now()}}
 return{uploaded:uploaded,skipped:skipped,errors:errors,folder:folder,matchReason:match.reason}}
 
-// User-facing button handler — wraps driveSyncTicket with friendly UI feedback
+// User-facing button handler. NO confirm dialogs — auto-prompts for consent if scope missing,
+// and AUTO-RETRIES the sync once after successful auth.
 async function driveSyncButton(id){
 let r=AD().find(x=>String(x.i)===String(id));if(!r)return;
-if(!gcalToken){
-if(!confirm('Drive sync needs Google access. Connect now?'))return;
-try{await driveReconnect()}catch(e){alert('Could not connect: '+e.message);return}
-}
 let btn=document.getElementById('drive-sync-btn-'+id);
 if(btn){btn.disabled=true;btn.innerHTML='&#9203; Syncing...'}
+let ranOnce=false;
 try{
+// Step 1: ensure scope (silent prompt if needed)
+if(!gcalToken||!gdriveScopeOk){
+let ok=await ensureDriveScope();
+if(!ok){return}
+}
+// Step 2: try the sync
 let result=await driveSyncTicket(id);
+ranOnce=true;
 if(!result.folder){
 showToast('&#9888; '+result.reason,'warn');
-alert(result.reason+'\n\nTo sync this ticket, create a folder in your Aspen Spas Drive folder named with either the customer\'s last name or SN '+(r.sn||'')+'.');
 }else{
 let parts=[];
 if(result.uploaded)parts.push(result.uploaded+' uploaded');
 if(result.skipped)parts.push(result.skipped+' already synced');
 if(result.errors)parts.push(result.errors+' failed');
-let msg='&#10003; Synced to "'+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing');
-showToast(msg,'success');
+showToast('&#10003; Synced to "'+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing'),'success');
 }
 if(curRec&&String(curRec.i)===String(id))renderModal();
 }catch(e){
 console.error('driveSyncButton err:',e);
-if(/permission missing|reconnect/i.test(e.message)){
-if(confirm('Drive permission is missing. Reconnect now to grant Drive access?')){
-try{await driveReconnect();showToast('Reconnected — try syncing again');}catch(re){alert('Reconnect failed: '+re.message)}
+// One auto-retry on auth error: re-prompt then sync immediately
+if(!ranOnce&&/permission missing|reconnect/i.test(e.message)){
+try{
+let ok=await ensureDriveScope();
+if(!ok)return;
+let result=await driveSyncTicket(id);
+if(result&&result.folder){
+let parts=[];
+if(result.uploaded)parts.push(result.uploaded+' uploaded');
+if(result.skipped)parts.push(result.skipped+' already synced');
+showToast('&#10003; Synced to "'+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing'),'success');
+if(curRec&&String(curRec.i)===String(id))renderModal();
 }
-}else{alert('Sync failed: '+e.message)}
+}catch(re){showToast('&#10005; Drive sync failed: '+re.message,'err')}
+}else{
+showToast('&#10005; Sync failed: '+e.message,'err');
+}
 }finally{
 if(btn){btn.disabled=false;btn.innerHTML='&#128448; Sync Photos to Drive'}
 }}
 
+// === AUTO-SYNC ===
+// After ANY photo upload (admin or tech), automatically push to Drive.
+// Debounced per-ticket so multi-photo uploads only trigger ONE sync round.
+// Silent — bails early without UI noise if Drive isn't connected.
+let _autoSyncTimers={};
+function scheduleAutoSync(id){
+if(!id)return;
+clearTimeout(_autoSyncTimers[id]);
+_autoSyncTimers[id]=setTimeout(()=>doAutoSync(id),3500);
+}
+async function doAutoSync(id){
+delete _autoSyncTimers[id];
+// Bail silently if we can't sync right now — no UI noise
+if(!gcalToken||!gdriveScopeOk)return;
+if(!navigator.onLine)return;
+try{
+let result=await driveSyncTicket(id,{silent:true});
+if(result&&result.uploaded>0){
+showToast('&#128448; Auto-synced '+result.uploaded+' photo'+(result.uploaded===1?'':'s')+' to Drive','success');
+if(curRec&&String(curRec.i)===String(id))renderModal();
+}else if(result&&!result.folder){
+console.log('Auto-sync skipped:',result.reason);
+}
+}catch(e){console.warn('Auto-sync skipped:',e.message)}}
 
+
+// === CALENDAR ===
+let calView="month",calDate=new Date();
 const DAYNAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MNAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function sC2(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]||"#6b7280"}
