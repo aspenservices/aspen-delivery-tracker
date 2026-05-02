@@ -600,6 +600,7 @@ th,td{padding:7px 6px}
 <select id="gcalSelect" style="min-width:200px"></select>
 <button class="pbtn" id="gcalSyncBtn" onclick="gcalSync()">&#128260; Sync Now</button>
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
+<button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
 <label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
 <button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
 </div>
@@ -2853,13 +2854,35 @@ return _driveFolderCache.folders}
 if(!gcalToken){throw new Error('Not connected to Google. Connect via the Calendar Synced button first.')}
 let q=encodeURIComponent("'"+GDRIVE_PARENT_FOLDER_ID+"' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
 let url='https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true';
-let res=await fetch(url,{headers:{Authorization:'Bearer '+gcalToken}});
-if(res.status===401||res.status===403){
-let body=await res.text();
-console.error('Drive auth error:',body);
-throw new Error('Google Drive permission missing. Click "Reconnect with Drive access" to grant access.');
+let res;
+try{
+res=await fetch(url,{headers:{Authorization:'Bearer '+gcalToken}});
+}catch(netErr){throw new Error('Network error reaching Google Drive: '+netErr.message)}
+if(!res.ok){
+// Parse Drive API error body for a precise reason. Google returns JSON like:
+// { error: { code: 403, message: "...", errors: [{reason: "..."}] } }
+let body='';let parsed=null;
+try{body=await res.text();parsed=JSON.parse(body)}catch(_){}
+let reason=parsed&&parsed.error&&parsed.error.errors&&parsed.error.errors[0]?parsed.error.errors[0].reason:'';
+let msg=parsed&&parsed.error&&parsed.error.message?parsed.error.message:('HTTP '+res.status);
+console.error('Drive API error:',res.status,reason,msg,body);
+// Build a user-friendly explanation based on the actual reason
+if(res.status===401){
+gdriveScopeOk=false;
+throw new Error('Drive permission missing. Reconnect with Drive access.');
 }
-if(!res.ok){throw new Error('Drive API error: '+res.status)}
+if(reason==='accessNotConfigured'||/Drive API has not been used|not been enabled|disabled/i.test(msg)){
+throw new Error('The Google Drive API is not enabled for your project. An admin needs to enable it in Google Cloud Console (APIs & Services → Library → Google Drive API → Enable).');
+}
+if(reason==='insufficientPermissions'||reason==='forbidden'||/insufficient|permission/i.test(msg)){
+gdriveScopeOk=false;
+throw new Error('Drive permission missing or insufficient. Reconnect with Drive access — make sure to check the Drive box on the consent screen.');
+}
+if(reason==='notFound'||res.status===404){
+throw new Error('The Aspen Spas Drive folder ('+GDRIVE_PARENT_FOLDER_ID+') was not found. Check that you signed in with the Google account that has access to that folder, or that the folder ID is correct.');
+}
+throw new Error('Drive API error '+res.status+': '+msg+(reason?' ('+reason+')':''));
+}
 let json=await res.json();
 let folders=json.files||[];
 _driveFolderCache={ts:Date.now(),folders:folders};
@@ -3019,8 +3042,38 @@ showToast('&#10005; Sync failed: '+e.message,'err');
 if(btn){btn.disabled=false;btn.innerHTML='&#128448; Sync Photos to Drive'}
 }}
 
-// === AUTO-SYNC ===
-// After ANY photo upload (admin or tech), automatically push to Drive.
+// Diagnostic helper — tests Drive connection and prints exact error to user.
+// Exposed globally so Alberto can call driveDebugCheck() from the console.
+async function driveDebugCheck(){
+let msgs=[];
+let log=(s)=>{msgs.push(s);console.log('[Drive Debug]',s)};
+log('Token present: '+(gcalToken?'YES':'NO'));
+log('Drive scope flag: '+gdriveScopeOk);
+log('Online: '+navigator.onLine);
+if(!gcalToken){alert(msgs.join('\n')+'\n\n→ Connect Google first.');return}
+log('Trying generic Drive ping (about.get)...');
+try{
+let res=await fetch('https://www.googleapis.com/drive/v3/about?fields=user',{headers:{Authorization:'Bearer '+gcalToken}});
+let body=await res.text();
+log('  HTTP '+res.status);
+log('  Body: '+body.substring(0,300));
+if(res.ok){
+let j=JSON.parse(body);
+log('  Signed in as: '+(j.user&&j.user.emailAddress?j.user.emailAddress:'?'));
+log('Trying to list parent folder children...');
+let q=encodeURIComponent("'"+GDRIVE_PARENT_FOLDER_ID+"' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
+let r2=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&pageSize=10',{headers:{Authorization:'Bearer '+gcalToken}});
+let b2=await r2.text();
+log('  HTTP '+r2.status);
+log('  Body: '+b2.substring(0,500));
+if(r2.ok){let j2=JSON.parse(b2);log('  Found '+(j2.files?j2.files.length:0)+' subfolder(s)');if(j2.files){j2.files.forEach(f=>log('    - '+f.name+' (id: '+f.id+')'))}}
+}
+}catch(e){log('Network error: '+e.message)}
+alert('=== DRIVE DEBUG ===\n\n'+msgs.join('\n')+'\n\n(Also logged to console — F12)');
+}
+window.driveDebugCheck=driveDebugCheck;
+
+
 // Debounced per-ticket so multi-photo uploads only trigger ONE sync round.
 // Silent — bails early without UI noise if Drive isn't connected.
 let _autoSyncTimers={};
