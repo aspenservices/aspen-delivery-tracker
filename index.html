@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Aspen Spas">
@@ -39,6 +39,7 @@
 --shadow-card-hover:0 4px 12px rgba(26,20,16,.08),0 2px 6px rgba(26,20,16,.05);
 }
 body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;background:var(--bg-cream);color:var(--text-primary);font-size:14px;-webkit-text-size-adjust:100%;-webkit-overflow-scrolling:touch}
+body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 
 /* ASPEN HEADER (black bar with logo) */
 .aspen-hdr{background:var(--aspen-black);color:#fff;padding:22px 40px 26px;position:relative}
@@ -143,9 +144,12 @@ tbody tr{cursor:pointer}
 .bf{height:100%;border-radius:5px}
 .bv{font-size:12px;color:#374151;min-width:22px;text-align:right;font-weight:800}
 /* Overlay */
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:999;padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.mdl{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:24px;-webkit-overflow-scrolling:touch}
-.mdl h2{font-size:19px;font-weight:800;color:#111827}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mdl{background:#fff;border-radius:18px;width:100%;max-width:760px;max-height:90vh;overflow:auto;padding:28px;-webkit-overflow-scrolling:touch;box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.mdl.mdl-wide{max-width:920px}
+.mdl.mdl-xl{max-width:1100px}
+.mdl.mdl-narrow{max-width:520px}
+.mdl h2{font-size:20px;font-weight:800;color:#111827}
 .mdl .sub{font-size:13px;color:#6b7280;margin-top:3px}
 .xbtn{background:#f3f4f6;border:2px solid #e5e7eb;color:#6b7280;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
 .xbtn:hover{background:#e5e7eb}
@@ -278,6 +282,23 @@ th,td{padding:7px 6px}
 .board{padding:0 10px 10px}
 .filters{padding:0 10px 8px}
 .ctx-hdr{margin:10px 10px 8px;padding:9px 12px}
+}
+/* Tablet — between mobile and desktop. Keeps the auto-fill board but with comfier padding for the smaller viewport. */
+@media(min-width:701px) and (max-width:1024px){
+.board{padding:0 24px 24px;gap:12px}
+.ov{padding:24px}
+.mdl{padding:24px;max-width:88vw}
+.mdl.mdl-wide{max-width:92vw}
+.charts{padding:0 24px 24px;grid-template-columns:1fr}
+.aspen-tabs-bar{padding:0 18px}
+.filters{padding:0 18px 14px}
+.twrap{padding:0 18px 18px}
+}
+/* Desktop XL — extra space available, let modals breathe a bit more */
+@media(min-width:1400px){
+.mdl{max-width:820px}
+.mdl.mdl-wide{max-width:1000px}
+.mdl.mdl-xl{max-width:1180px}
 }
 #loading-ov{position:fixed;inset:0;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .3s}
 #loading-ov.hide{opacity:0;pointer-events:none}
@@ -1935,6 +1956,21 @@ document.getElementById("charts").innerHTML='<div class="cbox"><h3>Monthly Deliv
 
 // === DETAIL / EDIT MODAL ===
 let editMode=false,curRec=null;
+// Reset inline styles & classes on the shared #md element so each
+// modal opens fresh. Several modals (Email PW, setup wizard, success
+// screens) used to set md.style.maxWidth/padding directly — those
+// values would stick around when the next modal opened, causing weird
+// sizing (e.g. the delivery edit modal showing as cramped 640px or
+// stretched 720px depending on what was opened previously).
+function resetMd(size){
+let md=document.getElementById('md');if(!md)return md;
+md.removeAttribute('style');
+md.className='mdl'+(size?' mdl-'+size:'');
+return md}
+// Lock body scroll while any modal is open, so dragging inside the
+// modal doesn't scroll the page underneath (especially on mobile).
+function openOv(){document.getElementById('ov').classList.remove('hidden');document.body.classList.add('modal-open')}
+
 function openDet(id){
 curRec=AD().find(x=>x.i===id);if(!curRec)return;
 // If this delivery had a tech note pending review, clear the alert flag now that admin is opening it
@@ -1945,8 +1981,9 @@ if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
 curRec=AD().find(x=>x.i===id);
 renderBoard();renderTable()}
-renderModal();document.getElementById("ov").classList.remove("hidden")}
-function closeOv(){document.getElementById("ov").classList.add("hidden")}
+resetMd('wide');
+renderModal();openOv()}
+function closeOv(){document.getElementById("ov").classList.add("hidden");document.body.classList.remove('modal-open');resetMd()}
 function toggleEdit(){renderModal()}
 
 // === INVOICE PDF AUTO-FILL ===
@@ -3051,10 +3088,10 @@ h+='<button onclick="closeOv()" style="background:#fff;border:1.5px solid #d1d5d
 h+='<button onclick="emailPwMarkSentOnly('+r.i+')" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" title="Mark Email PW as completed without generating the email">&#10003; Mark as Sent</button>';
 h+='<button onclick="emailPwSendViaOutlook('+r.i+')" style="background:#0078d4;border:1.5px solid #0078d4;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#128231; Open in Outlook</button>';
 h+='</div>';
-let md=document.getElementById('md');
+let md=resetMd('wide');
 md.innerHTML=h;
-md.style.maxWidth='720px';md.style.padding='0';
-document.getElementById('ov').classList.remove('hidden')}
+md.style.padding='0';
+openOv()}
 
 // Mark ep=true without generating an email (e.g. user already sent it manually).
 function emailPwMarkSentOnly(id){
@@ -3266,9 +3303,9 @@ h+='<div style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#fafaf
 h+='<button onclick="closeOv()" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
 h+='<button onclick="emailPw_saveSetup()" style="background:#059669;border:1.5px solid #059669;color:#fff;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#10003; Save &amp; Continue</button>';
 h+='</div>';
-let md=document.getElementById('md');
-md.innerHTML=h;md.style.maxWidth='720px';md.style.padding='0';
-document.getElementById('ov').classList.remove('hidden');
+let md=resetMd('wide');
+md.innerHTML=h;md.style.padding='0';
+openOv();
 // Stash the callback so emailPw_saveSetup() can retry the original action
 window._emailPwSetupOnComplete=onComplete||null}
 
@@ -3343,9 +3380,9 @@ h+='<button onclick="emailPw_msSignOut()" style="background:#fff;border:1.5px so
 h+='<button onclick="closeOv()" style="background:#0078d4;border:none;color:#fff;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
 h+='</div>';
 h+='</div>';
-let md=document.getElementById('md');
+let md=resetMd('narrow');
 md.innerHTML=h;
-md.style.maxWidth='560px';md.style.padding='0'}
+md.style.padding='0'}
 
 // Success screen shown after launching the simple method (download +
 // mailto). Lists the downloaded files and includes a Mac-specific tip
@@ -3375,9 +3412,9 @@ h+='<div style="font-size:12px;color:#374151;padding:4px 0;display:flex;align-it
 h+='</div>';
 h+='<button onclick="closeOv()" style="background:#0078d4;border:none;color:#fff;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
 h+='</div>';
-let md=document.getElementById('md');
+let md=resetMd('narrow');
 md.innerHTML=h;
-md.style.maxWidth='560px';md.style.padding='0'}
+md.style.padding='0'}
 
 // =================================================================
 // .eml fallback (legacy — for classic Outlook for Windows only)
@@ -3504,6 +3541,7 @@ lg:null,wf:null,oz:null,pl:null,ft:null,vl:null,sd:null,sb:null,cb:null,dr:null,
 dl:false,ep:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,tvd:null,tvt:null,tvn:null,
 svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null,
 assigned_to:null,photos:null};
+resetMd('wide');
 renderModal();
 let md=document.getElementById("md");
 md.querySelector(".mbtn-s").textContent="Create Delivery";
