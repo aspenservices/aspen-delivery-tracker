@@ -2788,7 +2788,10 @@ await _msalInstance.initialize();
 return _msalInstance}
 
 // Acquire a Graph access token. Falls back to a popup login if no
-// account is cached, or if the silent refresh fails.
+// account is cached, or if the silent refresh fails. Always uses
+// prompt:'select_account' on interactive flows so the user can pick
+// a different Microsoft account if their current one is blocked
+// (e.g. corporate MFA they can't pass).
 async function emailPw_getGraphToken(){
 let pca=await emailPw_getMsalInstance();
 let accounts=pca.getAllAccounts();
@@ -2799,7 +2802,7 @@ try{
 let result=await pca.acquireTokenSilent({scopes:MS_GRAPH_SCOPES,account:accounts[0]});
 return result.accessToken}
 catch(e){
-let result=await pca.acquireTokenPopup({scopes:MS_GRAPH_SCOPES});
+let result=await pca.acquireTokenPopup({scopes:MS_GRAPH_SCOPES,prompt:'select_account'});
 return result.accessToken}}
 
 // Get the signed-in user's email address (for display in the success
@@ -2807,12 +2810,24 @@ return result.accessToken}}
 async function emailPw_getCurrentUserEmail(){
 try{let pca=await emailPw_getMsalInstance();let accs=pca.getAllAccounts();return accs.length?accs[0].username:null}catch(e){return null}}
 
-// Sign out (clears the cached MSAL account). Called from the success
-// screen if the user wants to switch Microsoft accounts.
+// Sign out completely. Clears MSAL's in-memory state, every account
+// it has cached, and (belt-and-suspenders) any leftover MSAL keys
+// in localStorage. Used when the user wants to switch accounts —
+// e.g. their corporate account is blocked by MFA they can't pass.
 async function emailPw_msSignOut(){
-try{let pca=await emailPw_getMsalInstance();let accs=pca.getAllAccounts();
-for(let a of accs)await pca.clearCache({account:a});
-showToast('&#10003; Microsoft sign-out complete')}catch(e){console.error(e);showToast('Could not sign out: '+e.message)}}
+try{
+if(_msalInstance){
+let accs=_msalInstance.getAllAccounts()||[];
+for(let a of accs){try{await _msalInstance.clearCache({account:a})}catch(e){console.warn('clearCache:',e)}}}
+// Nuke any leftover MSAL localStorage keys directly
+let toRemove=[];
+for(let i=0;i<localStorage.length;i++){
+let k=localStorage.key(i);
+if(k&&(k.indexOf('msal.')===0||k.indexOf('login.microsoftonline.com')>=0||k.indexOf('login.windows.net')>=0||k.indexOf('{"authority"')===0)){toRemove.push(k)}}
+toRemove.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+_msalInstance=null;_msalCachedClientId=null;
+showToast('&#10003; Signed out — next send will ask which Microsoft account to use')}
+catch(e){console.error('sign-out:',e);showToast('Could not sign out: '+e.message)}}
 
 // Create a draft in the signed-in user's Outlook mailbox, then attach
 // every file. Small attachments (<3 MB) go in a single POST; bigger
@@ -3021,7 +3036,7 @@ h+='<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px 
 h+='</div>';
 // Show which send mode is active so the user knows what to expect.
 if(emailPw_graphConfigured()){
-h+='<div style="font-size:11px;color:#059669;margin-top:8px;line-height:1.5;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px"><span style="flex:1">&#10003; <strong>Direct Outlook mode:</strong> clicking "Open in Outlook" creates a draft in your Outlook Drafts folder with all attachments already attached. First time will ask you to sign in.</span><button onclick="emailPw_showSetupWizard()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reconfigure</button></div>'}
+h+='<div style="font-size:11px;color:#059669;margin-top:8px;line-height:1.5;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:200px">&#10003; <strong>Direct Outlook mode:</strong> click "Open in Outlook" to create a draft with all attachments. First send asks you to sign in to Microsoft.</span><button onclick="emailPw_msSignOut()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap" title="Sign out so the next send asks you to pick a different Microsoft account">&#128100; Switch account</button><button onclick="emailPw_showSetupWizard()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reconfigure</button></div>'}
 else{
 h+='<div style="font-size:11px;color:#92400e;margin-top:8px;line-height:1.5;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px"><span style="flex:1">&#9888; <strong>Setup needed:</strong> connect your Microsoft 365 account once and "Open in Outlook" will auto-attach every PDF directly into a real Outlook draft. Until then, the button will run the setup wizard.</span><button onclick="emailPw_showSetupWizard()" style="background:#0078d4;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">&#128272; Setup</button></div>'}
 h+='</div>';
