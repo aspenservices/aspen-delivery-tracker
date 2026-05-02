@@ -314,6 +314,27 @@ th,td{padding:7px 6px}
 .toast.err{background:#dc2626}.toast.warn{background:#d97706}
 /* Missing accessory button */
 .miss-btn{background:#fef2f2;color:#dc2626;border:2px solid #dc2626;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;letter-spacing:.02em;transition:all .15s}
+/* Payment Status pill buttons (Paid / Check / Financed / Cash) */
+.pst-row{display:flex;flex-wrap:wrap;gap:8px}
+.pst-pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:2px solid transparent;background:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.005em;white-space:nowrap}
+.pst-pill:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.pst-pill.pst-active{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+/* Cash gets an extra-attention pulse when active to make it impossible to miss */
+.pst-pill.pst-urgent.pst-active{animation:pst-cash-pulse 1.4s ease-in-out infinite;font-weight:900}
+@keyframes pst-cash-pulse{
+0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.55), 0 4px 12px rgba(220,38,38,.3)}
+50%{box-shadow:0 0 0 8px rgba(220,38,38,0), 0 4px 12px rgba(220,38,38,.5)}
+}
+/* Card badge (small version that shows in the upcoming/past due grid) */
+.pst-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent}
+.pst-badge.paid{background:#dcfce7;color:#059669;border-color:#a7f3d0}
+.pst-badge.check{background:#fef3c7;color:#b45309;border-color:#fde68a}
+.pst-badge.financed{background:#f3f4f6;color:#4b5563;border-color:#e5e7eb}
+.pst-badge.cash{background:#dc2626;color:#fff;border-color:#991b1b;animation:pst-cash-pulse-mini 1.4s ease-in-out infinite}
+@keyframes pst-cash-pulse-mini{
+0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}
+50%{box-shadow:0 0 0 4px rgba(220,38,38,0)}
+}
 .miss-btn:hover{background:#dc2626;color:#fff}
 .miss-btn.on{background:#dc2626;color:#fff}
 /* Date sort button */
@@ -884,6 +905,17 @@ h+='<div class="tech-section"><h2>'+escHtml(r.n)+'</h2>';
 if(r.dd)h+='<div class="meta">&#128197; '+escHtml(fmtDate(r.dd))+escHtml(dateNote(r.dd))+'</div>';
 if(r.sp||r.sn)h+='<div class="meta">&#129716; '+escHtml(r.sp||'—')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>';
 if(r.bl>0)h+='<div class="meta" style="color:#dc2626;font-weight:700">&#9888; Balance Due: '+fmt(r.bl)+'</div>';
+// Payment status indicator — tech needs to know up front if they have to collect cash/check
+if(r.pst){
+let pstStyles={
+paid:{bg:'#dcfce7',color:'#059669',icon:'&#128181;',label:'PAID — no collection needed'},
+check:{bg:'#fef3c7',color:'#b45309',icon:'&#128221;',label:'COLLECT CHECK from customer'},
+financed:{bg:'#f3f4f6',color:'#4b5563',icon:'&#128179;',label:'Financed — no collection'},
+cash:{bg:'#dc2626',color:'#fff',icon:'&#128176;',label:'COLLECT CASH from customer'}
+};
+let s=pstStyles[r.pst];
+if(s){h+='<div style="margin-top:12px;padding:11px 14px;background:'+s.bg+';color:'+s.color+';border-radius:10px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px'+(r.pst==='cash'?';animation:pst-cash-pulse 1.4s ease-in-out infinite':'')+'"><span style="font-size:18px">'+s.icon+'</span> '+s.label+'</div>'}
+}
 h+='</div>';
 // ACTION BUTTONS
 h+='<div class="tech-action-grid">';
@@ -1628,7 +1660,14 @@ if(r.svc_status){
 let svcMap={requested:{label:'&#128736; SVC Requested',cls:'svc-req'},assigned:{label:'&#128736; SVC Assigned',cls:'svc-asg'},in_progress:{label:'&#128736; SVC In Progress',cls:'svc-prog'},completed:{label:'&#128736; SVC Done',cls:'svc-done'}};
 let info=svcMap[r.svc_status];
 if(info)svcBadge='<span class="svc-tag '+info.cls+'">'+info.label+'</span>'}
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+// Payment status badge — small visual indicator that lets admin see at a glance which deliveries
+// need cash collection vs. paid vs. financed. Cash gets a pulsing red badge for urgency.
+let pstBadge='';
+if(r.pst){
+let pstLabels={paid:'&#128181; Paid',check:'&#128221; Check',financed:'&#128179; Financed',cash:'&#128176; CASH'};
+let lbl=pstLabels[r.pst];
+if(lbl)pstBadge='<span class="pst-badge '+r.pst+'">'+lbl+'</span>'}
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(r.ph?'<span class="phone">&#128222; '+r.ph+'</span>':'')+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -1964,6 +2003,26 @@ h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Pho
 h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="number" step="0.01" value="'+(r.pr||0)+'"></div></div><div class="ig">';
 h+='<div class="ib"><label>Payment</label><input id="e_py" type="number" step="0.01" value="'+(r.py||0)+'"></div>';
 h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'#dc2626':'#059669')+'">'+fmt(r.bl)+'</span></div></div>';
+// Payment Status pills — one-click status indicator for the financial state of this delivery.
+// Values: paid (green) | check (orange) | financed (neutral) | cash (red, urgent)
+let pstCur=r.pst||null;
+let pstDef=[
+{k:'paid',l:'Paid',ico:'&#128181;',color:'#059669',bg:'#dcfce7'},
+{k:'check',l:'Collect Check',ico:'&#128221;',color:'#d97706',bg:'#fef3c7'},
+{k:'financed',l:'Financed',ico:'&#128179;',color:'#6b7280',bg:'#f3f4f6'},
+{k:'cash',l:'Collect Cash',ico:'&#128176;',color:'#dc2626',bg:'#fee2e2'}
+];
+h+='<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);display:block;margin-bottom:8px">Payment Status</label>';
+h+='<div class="pst-row">';
+pstDef.forEach(p=>{
+let active=pstCur===p.k;
+let cls='pst-pill'+(active?' pst-active':'')+(p.k==='cash'?' pst-urgent':'');
+let style='';
+if(active){style='background:'+p.color+';color:#fff;border-color:'+p.color}
+else{style='color:'+p.color+';border-color:'+p.color+'66'}
+h+='<button type="button" class="'+cls+'" data-pst="'+p.k+'" onclick="togglePaymentStatus(\''+p.k+'\')" style="'+style+'"><span style="font-size:13px">'+p.ico+'</span> '+p.l+'</button>';
+});
+h+='</div></div>';
 h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+(r.st||"")+'</textarea></div>';
 // Assigned tech dropdown (admin/organizer only)
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
@@ -2169,7 +2228,7 @@ if(name.length>30){alert('Name too long. Use 30 characters max.');return}
 let baseKey='c_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,20);
 if(!baseKey||baseKey==='c_'){alert('Invalid name. Use letters or numbers.');return}
 // Reserved/used keys
-let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder'];
+let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst'];
 PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));
 let k=baseKey,n=2;
 while(reserved.includes(k)||CUSTOM_CATS.some(c=>c.k===k)){k=baseKey+'_'+n;n++}
@@ -2243,6 +2302,40 @@ dot.className="cd "+(on?"on":"off");el.className="ci "+(on?"on":"off");
 renderKPIs();renderCtxHdr();
 if(key==='pf'){renderModal()}}
 
+// Toggle the payment status pill. Click the active one again to clear it.
+// Persists immediately to Firebase so it shows up on cards without needing Save Edit.
+function togglePaymentStatus(k){
+if(!curRec)return;
+let id=curRec.i;
+let cur=curRec.pst||null;
+let next=cur===k?null:k;
+curRec.pst=next;
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){ADDED[ai].pst=next;saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pst=next;saveE()}
+// Update buttons in place without full modal re-render (snappier UX)
+let row=document.querySelector('.pst-row');
+if(row){
+let pstDef=[
+{k:'paid',color:'#059669'},
+{k:'check',color:'#d97706'},
+{k:'financed',color:'#6b7280'},
+{k:'cash',color:'#dc2626'}
+];
+row.querySelectorAll('.pst-pill').forEach(btn=>{
+let bk=btn.getAttribute('data-pst');
+let def=pstDef.find(p=>p.k===bk);
+let active=next===bk;
+btn.classList.toggle('pst-active',active);
+if(active){btn.style.cssText='background:'+def.color+';color:#fff;border-color:'+def.color}
+else{btn.style.cssText='color:'+def.color+';border-color:'+def.color+'66'}
+});
+}
+// Update the card in the background list too
+renderBoard();
+showToast(next?'Payment status: '+next:'Payment status cleared');
+}
+
 function gatherEdits(){
 let pr=parseFloat(document.getElementById("e_pr").value)||0,py=parseFloat(document.getElementById("e_py").value)||0;
 let sB=document.getElementById("e_spa_base").value,sS=document.getElementById("e_spa_series").value;
@@ -2260,6 +2353,7 @@ spd:getV('e_spd'),di:getV('e_di'),
 tvd:(document.getElementById("tv_date")?document.getElementById("tv_date").value:null)||null,
 tvt:(document.getElementById("tv_time")?document.getElementById("tv_time").value:null)||'09:00',
 tvn:(document.getElementById("tv_notes")?document.getElementById("tv_notes").value.trim():null)||null,
+pst:curRec&&curRec.pst!==undefined?curRec.pst:null,
 assigned_to:(document.getElementById("e_assigned")?document.getElementById("e_assigned").value:null)||null};
 // Add custom-category values dynamically
 CUSTOM_CATS.forEach(c=>{
