@@ -2723,6 +2723,128 @@ if(btn){btn.classList.add('on');btn.textContent='MISSING ✓'}
 showToast('&#9888; '+label+' marked missing — added to Delivered Notes');}
 
 // =================================================================
+// MICROSOFT GRAPH (for Email PW — creates Outlook drafts directly)
+// -----------------------------------------------------------------
+// One-time setup:
+//   1. Go to https://portal.azure.com → Microsoft Entra ID
+//      → App registrations → New registration
+//   2. Name: "Aspen Spas Delivery Tracker"
+//      Supported account types: "Accounts in any organizational
+//      directory and personal Microsoft accounts"
+//      Redirect URI: type "Single-page application (SPA)" then
+//      paste the EXACT URL where this index.html is hosted
+//      (e.g. https://aspenservices.github.io/your-repo/)
+//   3. After registering, copy the "Application (client) ID" and
+//      paste it into MS_GRAPH_CLIENT_ID below.
+//   4. (Optional) Under "API permissions", confirm Mail.ReadWrite
+//      and Mail.Send are present as Delegated permissions — they
+//      are added by default but verify.
+//
+// After setup, the first time anyone clicks "Open in Outlook" they
+// get a Microsoft login popup. After that, the token is cached and
+// it's silent for the next ~hour. Drafts appear instantly in their
+// Outlook Drafts folder with all PDFs already attached.
+// =================================================================
+const MS_GRAPH_CLIENT_ID='';   // <<< paste your Azure App Client ID here
+const MS_GRAPH_SCOPES=['Mail.ReadWrite','Mail.Send','User.Read'];
+let _msalInstance=null;
+
+function emailPw_graphConfigured(){return !!MS_GRAPH_CLIENT_ID&&MS_GRAPH_CLIENT_ID.length>10}
+
+async function emailPw_loadMSAL(){
+if(window.msal&&window.msal.PublicClientApplication)return;
+await new Promise((resolve,reject)=>{
+let s=document.createElement('script');
+s.src='https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js';
+s.onload=resolve;
+s.onerror=()=>reject(new Error('Could not load Microsoft authentication library — check your internet connection'));
+document.head.appendChild(s)})}
+
+async function emailPw_getMsalInstance(){
+if(_msalInstance)return _msalInstance;
+await emailPw_loadMSAL();
+_msalInstance=new window.msal.PublicClientApplication({
+auth:{clientId:MS_GRAPH_CLIENT_ID,authority:'https://login.microsoftonline.com/common',redirectUri:window.location.origin+window.location.pathname},
+cache:{cacheLocation:'localStorage'}});
+await _msalInstance.initialize();
+return _msalInstance}
+
+// Acquire a Graph access token. Falls back to a popup login if no
+// account is cached, or if the silent refresh fails.
+async function emailPw_getGraphToken(){
+let pca=await emailPw_getMsalInstance();
+let accounts=pca.getAllAccounts();
+if(accounts.length===0){
+let result=await pca.loginPopup({scopes:MS_GRAPH_SCOPES,prompt:'select_account'});
+return result.accessToken}
+try{
+let result=await pca.acquireTokenSilent({scopes:MS_GRAPH_SCOPES,account:accounts[0]});
+return result.accessToken}
+catch(e){
+let result=await pca.acquireTokenPopup({scopes:MS_GRAPH_SCOPES});
+return result.accessToken}}
+
+// Get the signed-in user's email address (for display in the success
+// screen — shows them which mailbox the draft was created in).
+async function emailPw_getCurrentUserEmail(){
+try{let pca=await emailPw_getMsalInstance();let accs=pca.getAllAccounts();return accs.length?accs[0].username:null}catch(e){return null}}
+
+// Sign out (clears the cached MSAL account). Called from the success
+// screen if the user wants to switch Microsoft accounts.
+async function emailPw_msSignOut(){
+try{let pca=await emailPw_getMsalInstance();let accs=pca.getAllAccounts();
+for(let a of accs)await pca.clearCache({account:a});
+showToast('&#10003; Microsoft sign-out complete')}catch(e){console.error(e);showToast('Could not sign out: '+e.message)}}
+
+// Create a draft in the signed-in user's Outlook mailbox, then attach
+// every file. Small attachments (<3 MB) go in a single POST; bigger
+// ones use createUploadSession + chunked PUT. Returns the draft object.
+async function emailPw_createOutlookDraft(to,subject,body,attachments,onProgress){
+let token=await emailPw_getGraphToken();
+let GRAPH='https://graph.microsoft.com/v1.0';
+// 1. Create the draft (no attachments yet)
+if(onProgress)onProgress('Creating draft in Outlook...');
+let resp=await fetch(GRAPH+'/me/messages',{
+method:'POST',
+headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+body:JSON.stringify({
+subject:subject,
+body:{contentType:'Text',content:body},
+toRecipients:[{emailAddress:{address:to}}]})});
+if(!resp.ok){let err=await resp.text();throw new Error('Could not create Outlook draft: '+err)}
+let draft=await resp.json();
+// 2. Attach each file. Decoded byte size determines small vs large path.
+let SMALL_LIMIT=3*1024*1024;
+for(let i=0;i<attachments.length;i++){
+let a=attachments[i];
+if(onProgress)onProgress('Attaching '+(i+1)+' of '+attachments.length+': '+a.name);
+let sizeBytes=Math.floor(a.base64.length*0.75);
+if(sizeBytes<=SMALL_LIMIT){
+let r=await fetch(GRAPH+'/me/messages/'+draft.id+'/attachments',{
+method:'POST',
+headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+body:JSON.stringify({'@odata.type':'#microsoft.graph.fileAttachment',name:a.name,contentType:a.mime||'application/octet-stream',contentBytes:a.base64})});
+if(!r.ok){let err=await r.text();throw new Error('Failed to attach '+a.name+': '+err)}}
+else{
+// Large file → upload session
+let sessR=await fetch(GRAPH+'/me/messages/'+draft.id+'/attachments/createUploadSession',{
+method:'POST',
+headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+body:JSON.stringify({AttachmentItem:{attachmentType:'file',name:a.name,size:sizeBytes,contentType:a.mime||'application/octet-stream'}})});
+if(!sessR.ok)throw new Error('Could not create upload session for '+a.name+': '+await sessR.text());
+let sess=await sessR.json();
+// Decode base64 to bytes, then upload in 4 MB chunks
+let bin=atob(a.base64);
+let arr=new Uint8Array(bin.length);
+for(let j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);
+let CHUNK=4*1024*1024;
+for(let offset=0;offset<arr.length;offset+=CHUNK){
+let end=Math.min(offset+CHUNK,arr.length);
+let r=await fetch(sess.uploadUrl,{method:'PUT',headers:{'Content-Range':'bytes '+offset+'-'+(end-1)+'/'+arr.length,'Content-Type':'application/octet-stream'},body:arr.slice(offset,end)});
+if(!r.ok&&r.status!==200&&r.status!==201&&r.status!==202)throw new Error('Upload chunk failed for '+a.name+' (HTTP '+r.status+')')}}}
+return draft}
+
+// =================================================================
 // EMAIL PW (Post-Delivery email composer)
 // -----------------------------------------------------------------
 // Triggered when the admin/organizer clicks the "Email PW" item in
@@ -2801,13 +2923,29 @@ else if(san==='pristine'){
 list.push({name:EMAIL_PW_ASSETS.pristine_swim,source:'asset',mime:'application/pdf'})}
 return list}
 
-// Default subject and body. The user can edit both before generating the .eml.
+// Extract a customer-facing greeting name from r.n.
+// Most records are in "Last, First [& Other]" format, but some are
+// raw names ("Big Dream Rental"). Returns the best human-readable
+// fragment to use after "Hi ".
+function emailPw_firstName(n){
+let s=String(n||'').trim();
+if(!s)return 'there';
+// "Last, First & Other"  →  "First & Other"
+if(s.indexOf(',')>=0){
+let afterComma=s.split(',').slice(1).join(',').trim();
+if(afterComma){
+// Strip junk like "**" or trailing notes
+afterComma=afterComma.replace(/\*+/g,'').trim();
+if(afterComma)return afterComma}}
+// No comma - take first word
+return s.split(/\s+/)[0]||'there'}
+
 function emailPw_defaultSubject(r){return 'Aspen Spas — Delivery Documents for '+(r.n||'').replace(/[\r\n]+/g,' ').trim()}
 function emailPw_defaultBody(r){
 let isSwim=emailPw_isSwim(r);
 let san=emailPw_sanitizerSystem(r);
 let sysLabel=san==='ease'?'@ease Floating Sanitizing System':san==='blufusion'?'Blu Fusion Salt System':san==='pristine'?'Pristine Blue System':'water care system';
-let firstName=(function(){let n=String(r.n||'').trim();if(!n)return 'there';let parts=n.split(/[,\/&]/)[0].trim().split(/\s+/);return parts[0]||'there'})();
+let firstName=emailPw_firstName(r.n);
 let unitWord=isSwim?'swim spa':'hot tub';
 return 'Hi '+firstName+',\n\n'+
 'Thank you again for choosing Aspen Spas. We hope you\'re enjoying your new '+unitWord+'.\n\n'+
@@ -2863,16 +3001,22 @@ let tag=a.source==='photo'?'<span style="background:#dbeafe;color:#1d4ed8;font-s
 h+='<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dashed #e5e7eb"><span style="margin-right:8px">'+icon+'</span><span style="flex:1;color:#1f2937;word-break:break-all">'+escHtml(a.name)+'</span>'+tag+'</div>'});
 }
 h+='</div>';
-h+='<div style="font-size:11px;color:#6b7280;margin-top:8px">&#9432; All warranty/start-up PDFs are bundled in <code>pdf-assets.js</code>. Tech photos and the signed PDF come from this delivery.</div>';
+// Show which send mode is active so the user knows what to expect.
+if(emailPw_graphConfigured()){
+h+='<div style="font-size:11px;color:#059669;margin-top:8px;line-height:1.5;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px">&#10003; <strong>Direct Outlook mode:</strong> clicking "Open in Outlook" will create a draft in your Outlook Drafts folder with all attachments already attached. First time will ask you to sign in to Microsoft.</div>'}
+else{
+h+='<div style="font-size:11px;color:#6b7280;margin-top:8px;line-height:1.5">&#9432; <strong>How it works:</strong> when you click "Open in Outlook", these files download to your Downloads folder and Outlook opens with the email pre-filled. Drag the files onto the new email to attach them, then send.<br><span style="color:#0078d4">&#128272; To enable one-click drafts with auto-attachments, set up Microsoft Graph (see comments at the top of the Email PW code block).</span></div>'}
 h+='</div>';
 // Status / preview
 h+='<div id="emailpw_status" style="margin-bottom:8px;font-size:12px;color:#6b7280;min-height:18px"></div>';
 h+='</div>';
 // Actions footer
-h+='<div style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#fafafa;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">';
+h+='<div style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#fafafa;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center">';
+h+='<button onclick="emailPwGenerateEml('+r.i+')" style="background:transparent;border:none;color:#6b7280;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline" title="Advanced: download a .eml file. Only opens as a draft in classic Outlook for Windows.">.eml (advanced)</button>';
+h+='<div style="flex:1"></div>';
 h+='<button onclick="closeOv()" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
-h+='<button onclick="emailPwMarkSentOnly('+r.i+')" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" title="Mark Email PW as completed without generating the .eml file">&#10003; Mark as Sent (skip)</button>';
-h+='<button onclick="emailPwGenerate('+r.i+')" style="background:#0078d4;border:1.5px solid #0078d4;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#128231; Generate .eml &amp; Open Outlook</button>';
+h+='<button onclick="emailPwMarkSentOnly('+r.i+')" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" title="Mark Email PW as completed without generating the email">&#10003; Mark as Sent</button>';
+h+='<button onclick="emailPwSendViaOutlook('+r.i+')" style="background:#0078d4;border:1.5px solid #0078d4;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#128231; Open in Outlook</button>';
 h+='</div>';
 let md=document.getElementById('md');
 md.innerHTML=h;
@@ -2953,9 +3097,30 @@ let a=document.createElement('a');
 a.href=url;a.download=filename;document.body.appendChild(a);a.click();
 setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},500)}
 
-// Main entry: gather inputs, fetch all attachments, build the .eml,
-// download it, and mark ep=true.
-async function emailPwGenerate(id){
+// Convert "data:application/pdf;base64,..." or raw base64 → Blob.
+function emailPw_base64ToBlob(b64,mime){
+let bytes=atob(b64);
+let arr=new Uint8Array(bytes.length);
+for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);
+return new Blob([arr],{type:mime||'application/octet-stream'})}
+
+// Trigger one file download. Wraps emailPw_downloadBlob for raw base64.
+function emailPw_downloadAttachment(name,base64,mime){
+let blob=emailPw_base64ToBlob(base64,mime);
+let url=URL.createObjectURL(blob);
+let a=document.createElement('a');
+a.href=url;a.download=name;document.body.appendChild(a);a.click();
+setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},500)}
+
+// Main entry: validates inputs, resolves all attachments to base64,
+// and chooses the best send strategy:
+//   • If MS_GRAPH_CLIENT_ID is configured → creates a real Outlook
+//     draft via Graph API with all PDFs already attached. The draft
+//     appears instantly in the user's Drafts folder. Best UX.
+//   • If not configured (or Graph fails) → falls back to downloading
+//     the files locally and opening mailto: so the user can drag
+//     them into the new email window.
+async function emailPwSendViaOutlook(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
 let toEl=document.getElementById('emailpw_to');
 let subjEl=document.getElementById('emailpw_subject');
@@ -2969,7 +3134,7 @@ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){statusEl.style.color='#dc2626';status
 if(!subject){statusEl.style.color='#dc2626';statusEl.innerHTML='&#9888; Please enter a subject.';subjEl.focus();return}
 let attList=emailPw_buildAttachmentList(r);
 statusEl.style.color='#6b7280';
-// Resolve every attachment's base64 payload.
+// Resolve attachments to base64 (same loop for both Graph and fallback paths)
 let resolved=[];
 let failures=[];
 for(let i=0;i<attList.length;i++){
@@ -2981,26 +3146,128 @@ if(a.source==='photo'||a.source==='signed_pdf'){b64=emailPw_dataUriToBase64(a.da
 else{b64=await emailPw_fetchAssetBase64(a.name)}
 if(!b64)throw new Error('Empty file');
 resolved.push({name:a.name,mime:a.mime,base64:b64})}
-catch(e){console.error('emailPwGenerate: failed for',a.name,e);failures.push(a.name+' ('+e.message+')')}}
+catch(e){console.error('emailPwSendViaOutlook: failed for',a.name,e);failures.push(a.name+' ('+e.message+')')}}
 if(failures.length){
 statusEl.style.color='#dc2626';
 statusEl.innerHTML='&#9888; '+failures.length+' attachment(s) failed:<br>&middot; '+failures.map(escHtml).join('<br>&middot; ');
-if(!confirm('Some attachments could not be loaded:\n\n'+failures.join('\n')+'\n\nGenerate the email without them?'))return}
-statusEl.innerHTML='&#8987; Building .eml file...';
-let eml;
-try{eml=emailPw_buildEml(to,subject,body,resolved)}
-catch(e){statusEl.style.color='#dc2626';statusEl.innerHTML='&#9888; Could not build email: '+escHtml(e.message);return}
-// Download .eml — Outlook will open this as a draft thanks to X-Unsent: 1.
+if(!confirm('Some attachments could not be loaded:\n\n'+failures.join('\n')+'\n\nContinue anyway?'))return}
+// Path A: Microsoft Graph (preferred — true draft with attachments)
+if(emailPw_graphConfigured()){
+try{
+statusEl.style.color='#6b7280';
+statusEl.innerHTML='&#8987; Signing in to Microsoft (if needed)...';
+let draft=await emailPw_createOutlookDraft(to,subject,body,resolved,msg=>{statusEl.innerHTML='&#8987; '+escHtml(msg)});
+emailPw_setEpTrue(id);
+let userEmail=await emailPw_getCurrentUserEmail();
+emailPw_renderGraphSuccessScreen(r,resolved,draft,userEmail);
+showToast('&#10003; Draft created in your Outlook Drafts folder');
+return}
+catch(e){
+console.error('Graph API failed:',e);
+statusEl.style.color='#dc2626';
+let msg=e.message||String(e);
+// If popup was blocked or user closed it, fall through to fallback silently;
+// otherwise show the error and ask whether to fall back.
+let shouldFallback=/popup|cancelled|user_cancelled|interaction/i.test(msg)||confirm('Microsoft Graph could not create the draft:\n\n'+msg+'\n\nFall back to download + drag-and-drop?');
+if(!shouldFallback){statusEl.innerHTML='&#9888; '+escHtml(msg);return}}}
+else{
+// Not configured — show a one-time hint above the fallback flow
+console.info('MS Graph not configured. Using download + mailto fallback. To enable one-click drafts, set MS_GRAPH_CLIENT_ID at the top of the Email PW block.')}
+// Path B: download all locally + open mailto:
+statusEl.style.color='#6b7280';
+statusEl.innerHTML='&#8987; Downloading '+resolved.length+' file(s) to your Downloads folder...';
+for(let i=0;i<resolved.length;i++){
+let a=resolved[i];
+emailPw_downloadAttachment(a.name,a.base64,a.mime);
+if(i<resolved.length-1)await new Promise(res=>setTimeout(res,200))}
+let mailto='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+window.location.href=mailto;
+emailPw_setEpTrue(id);
+emailPw_renderSuccessScreen(r,resolved);
+showToast('&#10003; Files downloaded — Outlook is opening')}
+
+// Success screen for the GRAPH path. The draft is already in Outlook
+// with attachments — we just need to tell the user where to find it.
+function emailPw_renderGraphSuccessScreen(r,resolved,draft,userEmail){
+// Build a deep link to open the draft directly in Outlook on the web
+let webLink=draft&&draft.webLink?draft.webLink:null;
+let h='';
+h+='<div style="padding:32px 28px;text-align:center">';
+h+='<div style="font-size:48px;line-height:1;margin-bottom:12px">&#127881;</div>';
+h+='<div style="font-size:22px;font-weight:800;color:#059669;margin-bottom:6px">Draft is ready in Outlook</div>';
+h+='<div style="font-size:13px;color:#6b7280;margin-bottom:24px;line-height:1.5">A new email to <strong>'+escHtml(r.em||'the customer')+'</strong> with all '+resolved.length+' attachment(s) was just created in '+(userEmail?'<strong>'+escHtml(userEmail)+'</strong>':'your mailbox')+'\'s <strong>Drafts</strong> folder.<br>Open Outlook, find it under Drafts, review, and click Send.</div>';
+if(webLink){
+h+='<a href="'+escHtml(webLink)+'" target="_blank" style="display:inline-block;background:#0078d4;border:none;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:14px">&#128231; Open the draft in Outlook on the web</a>';
+h+='<div style="font-size:12px;color:#9ca3af;margin-bottom:18px">…or just open Outlook on your computer — it\'s already there.</div>'}
+h+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;text-align:left;margin-bottom:18px">';
+h+='<div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Attached ('+resolved.length+')</div>';
+resolved.forEach(a=>{
+let icon=a.mime&&a.mime.indexOf('image')===0?'&#128247;':'&#128206;';
+h+='<div style="font-size:12px;color:#15803d;padding:3px 0;display:flex;align-items:center"><span style="margin-right:8px">'+icon+'</span><span style="word-break:break-all">'+escHtml(a.name)+'</span></div>'});
+h+='</div>';
+h+='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+h+='<button onclick="emailPw_msSignOut()" style="background:#fff;border:1.5px solid #d1d5db;color:#6b7280;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" title="Switch Microsoft account">Sign out of Microsoft</button>';
+h+='<button onclick="closeOv()" style="background:#0078d4;border:none;color:#fff;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
+h+='</div>';
+h+='</div>';
+let md=document.getElementById('md');
+md.innerHTML=h;
+md.style.maxWidth='560px';md.style.padding='0'}
+
+// Success screen shown after launching Outlook. Lists the downloaded
+// files so the user knows exactly what to drag in.
+function emailPw_renderSuccessScreen(r,resolved){
+let h='';
+h+='<div style="padding:32px 28px;text-align:center">';
+h+='<div style="font-size:48px;line-height:1;margin-bottom:12px">&#9989;</div>';
+h+='<div style="font-size:20px;font-weight:800;color:#059669;margin-bottom:6px">Outlook is opening</div>';
+h+='<div style="font-size:13px;color:#6b7280;margin-bottom:24px">A new email to <strong>'+escHtml(r.em||'the customer')+'</strong> should appear in Outlook with the subject and message already filled in.</div>';
+h+='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:18px">';
+h+='<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:6px">&#128205; Final step — drag the files into the email</div>';
+h+='<div style="font-size:12px;color:#78350f;line-height:1.5">'+resolved.length+' file(s) were downloaded to your <strong>Downloads</strong> folder. Open the folder, select all of them, and drag them onto the new Outlook window. Then click <strong>Send</strong>.</div>';
+h+='</div>';
+h+='<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:18px;max-height:240px;overflow-y:auto">';
+h+='<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Files just downloaded ('+resolved.length+')</div>';
+resolved.forEach(a=>{
+let icon=a.mime&&a.mime.indexOf('image')===0?'&#128247;':'&#128196;';
+h+='<div style="font-size:12px;color:#374151;padding:4px 0;display:flex;align-items:center"><span style="margin-right:8px">'+icon+'</span><span style="word-break:break-all">'+escHtml(a.name)+'</span></div>'});
+h+='</div>';
+h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:18px;line-height:1.5">If Outlook didn\'t open automatically, your default mail client may not be set. You can also paste the customer email manually and drag the files in.</div>';
+h+='<button onclick="closeOv()" style="background:#0078d4;border:none;color:#fff;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
+h+='</div>';
+let md=document.getElementById('md');
+md.innerHTML=h;
+md.style.maxWidth='560px';md.style.padding='0'}
+
+// =================================================================
+// .eml fallback (legacy — for classic Outlook for Windows only)
+// X-Unsent: 1 only works on classic Outlook Win32. On Outlook for Mac
+// and "new Outlook" the file opens as a read-only message. Kept as
+// a hidden advanced option in case the team ever needs it.
+// =================================================================
+async function emailPwGenerateEml(id){
+let r=AD().find(x=>x.i===id);if(!r)return;
+let to=(document.getElementById('emailpw_to').value||'').trim();
+let subject=(document.getElementById('emailpw_subject').value||'').trim();
+let body=document.getElementById('emailpw_body').value||'';
+let statusEl=document.getElementById('emailpw_status');
+if(!to||!subject){statusEl.style.color='#dc2626';statusEl.innerHTML='&#9888; Fill in To and Subject first.';return}
+let attList=emailPw_buildAttachmentList(r);
+let resolved=[];
+for(let i=0;i<attList.length;i++){
+let a=attList[i];
+statusEl.style.color='#6b7280';
+statusEl.innerHTML='&#8987; Building .eml — loading '+(i+1)+'/'+attList.length+'...';
+try{
+let b64=(a.source==='photo'||a.source==='signed_pdf')?emailPw_dataUriToBase64(a.data):await emailPw_fetchAssetBase64(a.name);
+resolved.push({name:a.name,mime:a.mime,base64:b64})}catch(e){console.error(e)}}
+let eml=emailPw_buildEml(to,subject,body,resolved);
 let safeName=String(r.n||'customer').replace(/[^a-z0-9]+/gi,'_').substring(0,40);
 let filename='AspenSpas_PW_'+safeName+'_'+(new Date().toISOString().substring(0,10))+'.eml';
 emailPw_downloadBlob(eml,filename,'message/rfc822');
-// Auto-mark ep=true
 emailPw_setEpTrue(id);
 statusEl.style.color='#059669';
-statusEl.innerHTML='&#10003; Email file ready! Look in your Downloads folder for <strong>'+escHtml(filename)+'</strong> and double-click it to open in Outlook.';
-showToast('&#10003; .eml downloaded — open it to launch Outlook');
-// Close the modal after a short delay so the user can read the message.
-setTimeout(()=>{closeOv()},2800)}
+statusEl.innerHTML='&#10003; .eml downloaded as <strong>'+escHtml(filename)+'</strong>. NOTE: only opens as a draft in classic Outlook for Windows.'}
 // =================================================================
 // END Email PW
 // =================================================================
