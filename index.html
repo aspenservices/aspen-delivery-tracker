@@ -1776,8 +1776,21 @@ msg='\u2713 PDF saved. Form already had values — kept your existing data. (Spa
 setStat('ok',msg);
 let toastMsg=filled>0?'&#10003; Invoice parsed and saved: '+filled+' field'+(filled===1?'':'s')+' filled':'&#10003; Invoice PDF saved to ticket';
 showToast(toastMsg);
-// Re-render the modal so the "View PDF" button appears immediately
-if(curRec)renderModal();
+// CRITICAL: persist the values applied by applyExtractedToForm to Firebase BEFORE re-rendering.
+// Otherwise renderModal() rebuilds the form from curRec (which has the OLD data) and the
+// extracted values are lost. We capture all current form values via gatherEdits() and merge.
+if(curRec){
+try{
+let updates=gatherEdits();
+let id=curRec.i;
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+// Also update curRec in-memory so the immediate re-render sees the new values
+Object.assign(curRec,updates);
+}catch(persistErr){console.error('PDF auto-save err:',persistErr)}
+renderModal();
+}
 }
 catch(e){console.error('PDF parse error:',e);setStat('err','\u2715 Could not read PDF: '+(e.message||'Unknown error'))}}
 
@@ -1878,8 +1891,24 @@ let re=new RegExp(pattern,'i');
 if(re.test(text))return opt}
 return null}
 
-// COVER (cv) — also handle the legacy color-only "Onyx Black 100\" x 100\"" pattern
-let cvFromOptions=findOptionInText(text,OPT_CV);
+// COVER (cv) — color must appear near the word "Cover" (within 80 chars).
+// This avoids false matches like "Charcoal" pillows or "Walnut" cabinet stain.
+function findCoverInText(text,options){
+let valid=options.filter(o=>o&&!/^(NONE|NO|—|-)$/i.test(o));
+valid.sort((a,b)=>b.length-a.length);
+// Find every occurrence of "cover" (and similar words like "spa cover")
+let coverIdx=[];let m;let coverRe=/\bSpa\s+Cover\b|\bCover\s*(?:-|:)|\bCover\s+(?:Lift|Color)|\bCover\b/gi;
+while((m=coverRe.exec(text))){coverIdx.push(m.index)}
+for(let opt of valid){
+let pattern=opt.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s*-\s*/g,'\\s*[-\\u2013]?\\s*').replace(/\s+/g,'\\s+');
+let re=new RegExp(pattern,'gi');
+let mm;
+while((mm=re.exec(text))){
+// Accept this match if any "Cover" reference is within 80 chars before/after
+let nearCover=coverIdx.some(ci=>Math.abs(ci-mm.index)<=80);
+if(nearCover)return opt}}
+return null}
+let cvFromOptions=findCoverInText(text,OPT_CV);
 if(cvFromOptions)result._cover=cvFromOptions;
 else{
 // Fallback: legacy color detection from "Cover" / "Onyx" context lines
@@ -1891,19 +1920,43 @@ else if(/Charcoal\s+Cover|Cover[^\n]*-?\s*CHARCOAL/i.test(coverText))result._cov
 else if(/Walnut\s+Cover|Cover[^\n]*-?\s*WALNUT/i.test(coverText))result._cover='Walnut';
 else if(/Roll\s*Top\s+Cover|Roll\s+Top|Cover[^\n]*Roll\s*Top/i.test(coverText))result._cover='Roll Top'}}
 
-// LIFT (lf) — match any dropdown option (built-in or custom). Also handle "CoverMate" prefix.
-let lfFromOptions=findOptionInText(text,OPT_LF);
+// LIFT (lf) — must appear near "Lift" or "CoverMate" — all lift options require context
+// because names like "13' Roll" can match the Cover line "13' Roll Top Swim Spa Cover".
+let lfFromOptions=findOptionWithContext(text,OPT_LF,['Lift','CoverMate','Lifter','lifter','LC,'],true);
 if(lfFromOptions)result._lift=lfFromOptions;
 else if(/CoverMate\s+Vanish\s+XL|Vanish\s+XL/i.test(text))result._lift='Vanish XL';
 else if(/CoverMate\s+TS[\-\s]?11/i.test(text))result._lift='TS - 11';
 else if(/CoverMate\s+TS[\-\s]?07|CoverMate\s+TS[\-\s]?7/i.test(text))result._lift='TS - 07';
 
-// STEPS (ss), TABLE (tb), START-UP (su) — auto-detect from PDF
-let ssMatch=findOptionInText(text,OPT_SS);
+// STEPS (ss), TABLE (tb), START-UP (su) — auto-detect from PDF.
+// Generic option names ("Basic", "NO", "Other") need extra care: they can match unrelated words
+// like "basic chemical instruction" in the delivery service description. We require these
+// generic-sounding options to appear near a relevant context keyword.
+function findOptionWithContext(text,options,contextKeywords,forceContext){
+let valid=options.filter(o=>o&&!/^(NONE|NO|—|-)$/i.test(o));
+valid.sort((a,b)=>b.length-a.length);
+function isSpecific(s){return s.length>6||/[\[\]\d]|[A-Z][a-z]+\s+[A-Z]/.test(s)}
+for(let opt of valid){
+let pattern=opt.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s*-\s*/g,'\\s*[-\\u2013]?\\s*').replace(/\s+/g,'\\s+');
+let re=new RegExp('\\b'+pattern+'\\b','gi');
+let mm;
+while((mm=re.exec(text))){
+// Specific tokens match anywhere UNLESS forceContext=true
+if(!forceContext&&isSpecific(opt))return opt;
+let lineStart=text.lastIndexOf('\n',mm.index-1)+1;
+let lineEnd=text.indexOf('\n',mm.index);
+if(lineEnd<0)lineEnd=text.length;
+let line=text.substring(lineStart,lineEnd);
+if(/Delivery\s+services\s+provided|delivery\s+team\s+members|chemical\s+instruction|site\s+cleanup|CUSTOMER\s+RESPONSIBILITIES/i.test(line))continue;
+let hasCtx=contextKeywords.some(kw=>new RegExp('\\b'+kw+'\\b','i').test(line));
+if(hasCtx)return opt;
+}}
+return null}
+let ssMatch=findOptionWithContext(text,OPT_SS,['Steps','Step','Stair']);
 if(ssMatch)result._steps=ssMatch;
-let tbMatch=findOptionInText(text,OPT_TB);
+let tbMatch=findOptionWithContext(text,OPT_TB,['Table','Tray']);
 if(tbMatch)result._table=tbMatch;
-let suMatch=findOptionInText(text,OPT_SU);
+let suMatch=findOptionWithContext(text,OPT_SU,['Start-up','Startup','Sanitizer','start up','salt-','start\\-up']);
 if(suMatch)result._startup=suMatch;
 
 // === FULL SPA DESCRIPTION ===
