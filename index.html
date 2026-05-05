@@ -17,6 +17,7 @@
 <title>Aspen Spas — Delivery Tracker</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <!-- Google Calendar API (Identity Services + GAPI) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -736,7 +737,22 @@ const dbAdded=db.ref('added');
 const dbOpts=db.ref('custom_opts');
 const dbGcal=db.ref('gcal_config');     // calendar id, last sync token
 const dbGcalMap=db.ref('gcal_map');     // maps {gcalEventId -> deliveryId}
-const dbSvcReq=db.ref('service_requests');  // service requests sent to Service Log (TECH-TICKETS)
+const dbSvcReq=db.ref('service_requests');  // legacy — kept for backward compat, no longer used for cross-app sync
+
+// === SERVICE LOG (TECH-TICKETS) — secondary Firebase app for cross-app sync ===
+// The Service Ticket System (TECH-TICKETS) lives in a separate Firebase project
+// and uses Firestore (not Realtime Database). We initialize a secondary app here
+// so we can write tickets directly into its `tickets` collection.
+const SERVICE_LOG_CONFIG={
+apiKey:"AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc",
+authDomain:"tech-tickets-a9485.firebaseapp.com",
+projectId:"tech-tickets-a9485",
+storageBucket:"tech-tickets-a9485.firebasestorage.app",
+messagingSenderId:"680308339087",
+appId:"1:680308339087:web:3d18766c4b0e465a1a9bfa"};
+const serviceApp=firebase.initializeApp(SERVICE_LOG_CONFIG,'service');
+const svcDb=serviceApp.firestore();
+const svcTickets=svcDb.collection('tickets');
 const dbUsers=db.ref('users');              // user accounts {id: {email, name, role, pin}}
 
 // === AUTH STATE ===
@@ -3607,43 +3623,89 @@ let tvt=document.getElementById('tv_time').value||'09:00';
 let tvn=document.getElementById('tv_notes').value.trim()||null;
 if(!tvn){alert('Please describe the issue or add tech notes before sending.');return}
 
-// Reuse existing svc_id if updating, else create new
-let svcId=rec.svc_id||('SVC_'+Date.now()+'_'+Math.floor(Math.random()*1000));
 let now=Date.now();
-let payload={
-id:svcId,
-status:'requested',                 // requested | assigned | in_progress | completed
-source:'delivery_tracker',          // tells Service Log this came from us
-delivery_id:rec.i,                  // link back so Service Log can reference original delivery
-customer_name:rec.n||null,
-phone:rec.ph||null,
-email:rec.em||null,
-address:rec.st||null,
-zip:(rec.st||'').match(/\b(\d{5})\b/)?(rec.st||'').match(/\b(\d{5})\b/)[1]:null,
-zone:inferZone(rec),
-spa_model:rec.sp||null,
-spa_serial:rec.sn||null,
-spa_year:rec.yr||null,
-voltage:rec.vt||null,
-warranty:'unknown',                 // service log will set this when assigned
-requested_date:tvd,
-requested_time:tvt,
-issue_notes:tvn,
-extra_context:{
-balance_due:rec.bl||0,
-delivered_notes:rec.dn||null,
-customer_feedback:rec.fn||null,
-delivery_date:rec.dd||null
-},
-repeat:!!(rec.svc_history&&rec.svc_history.length>0),
-created_at:rec.svc_sent_at||now,
-updated_at:now,
-created_by:'Aspen Delivery Tracker'};
+let isRepeat=!!(rec.svc_history&&rec.svc_history.length>0);
 
-// Write to service_requests
-dbSvcReq.child(svcId).set(payload).then(()=>{
-// Update local delivery record with the link & status
-let updates={tvd,tvt,tvn,svc_id:svcId,svc_status:'requested',svc_sent_at:rec.svc_sent_at||now};
+// Parse address into address/city/zip for Service Log compatibility
+let st=rec.st||'';
+let zip='';
+let zipMatch=st.match(/\b(\d{5})\b/);
+if(zipMatch)zip=zipMatch[1];
+let city='';
+let address=st;
+// Try to split: "123 Main St, Saint Louis, MO 63114"
+let parts=st.split(',').map(s=>s.trim()).filter(Boolean);
+if(parts.length>=2){
+address=parts[0];
+// city is typically second-to-last part (last is "STATE ZIP")
+if(parts.length>=3)city=parts[parts.length-2];
+else city=parts[1].replace(/[A-Z]{2}\s*\d{5}.*/,'').trim();
+}
+
+// Build spa description from delivery record
+let spaParts=[];
+if(rec.sp)spaParts.push(rec.sp);
+if(rec.sn)spaParts.push('S/N: '+rec.sn);
+if(rec.yr)spaParts.push('Year: '+rec.yr);
+if(rec.vt)spaParts.push(rec.vt);
+let spaDesc=spaParts.join(' · ');
+
+// Build notes block with full delivery context for the technician
+let notesParts=[tvn];
+if(rec.dn)notesParts.push('--- Delivery notes ---\n'+rec.dn);
+if(rec.fn)notesParts.push('--- Customer feedback ---\n'+rec.fn);
+if(rec.bl&&rec.bl>0)notesParts.push('Balance due: $'+rec.bl);
+if(rec.dd)notesParts.push('Delivered: '+rec.dd);
+let notes=notesParts.join('\n\n');
+
+// Service Log ticket payload — matches the format used by TECH-TICKETS Service Log
+let payload={
+customer:rec.n||'',
+date:tvd||'',
+techs:[],
+workTypes:['Service Call'],
+warranty:{has:false,model:rec.sp||'',year:rec.yr||0,type:'',label:''},
+visitNum:isRepeat?4:5,        // 5 = Delivery badge (blue), 4 = Repeat badge (red)
+noLabor:false,
+arrival:tvt||'',
+departure:'',
+parts:[],
+total:0,
+partsCost:0,
+totalRda:0,
+spaDesc:spaDesc,
+notes:notes,
+phone:rec.ph||'',
+phone2:'',
+address:address||'',
+city:city||'',
+zip:zip||'',
+zone:inferZone(rec)||'',
+ccOnFile:false,
+ccRequested:false,
+paid:false,
+paidAt:null,
+isRepeat:isRepeat,
+payCheck:false,
+payCredit:false,
+media:[],
+videoLinks:null,
+source:'delivery_tracker',                   // tells Service Log this came from Delivery Tracker
+delivery_id:rec.i,                            // link back to original delivery record
+status:'pending',
+createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+submitted:new Date().toLocaleString()};
+
+// If we already have a ticket (updating), update in place. Otherwise create new.
+let writePromise;
+if(rec.svc_id){
+writePromise=svcTickets.doc(rec.svc_id).set(payload,{merge:true}).then(()=>rec.svc_id);
+}else{
+writePromise=svcTickets.add(payload).then(docRef=>docRef.id);
+}
+
+writePromise.then(docId=>{
+let updates={tvd,tvt,tvn,svc_id:docId,svc_status:'requested',svc_sent_at:rec.svc_sent_at||now};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
@@ -3655,7 +3717,7 @@ renderModal()
 function cancelServiceRequest(id){
 let rec=AD().find(x=>x.i===id);if(!rec||!rec.svc_id)return;
 if(!confirm('Cancel this service request? It will be removed from the Service Log.'))return;
-dbSvcReq.child(rec.svc_id).remove().then(()=>{
+svcTickets.doc(rec.svc_id).delete().then(()=>{
 let updates={svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
@@ -3664,32 +3726,43 @@ curRec=AD().find(x=>x.i===id);
 showToast('Service request cancelled');renderModal()
 }).catch(err=>{showToast('&#10005; Could not cancel: '+err.message,'err')})}
 
-// Listen for status changes from the Service Ticket System (assigned/in_progress/completed)
+// Listen for status changes from the Service Ticket System (Firestore: tech-tickets-a9485 / tickets)
 // and reflect them on local delivery records so the user sees live updates here too.
-dbSvcReq.on('value',snap=>{
-let all=snap.val()||{};
+// We only watch tickets that originated from the Delivery Tracker (source==='delivery_tracker').
+svcTickets.where('source','==','delivery_tracker').onSnapshot(snap=>{
+let byDocId={};
+snap.forEach(doc=>{byDocId[doc.id]=doc.data()||{}});
 let changed=false;
 AD().forEach(r=>{
 if(!r.svc_id)return;
-let req=all[r.svc_id];
+let req=byDocId[r.svc_id];
 if(!req){
-// Request was deleted externally - clear local refs
+// Ticket was deleted externally — clear local refs
 if(r.svc_status){
 let ai=ADDED.findIndex(x=>x.i===r.i);
 if(ai>=0){Object.assign(ADDED[ai],{svc_status:null,svc_assigned_to:null});changed=true}
 else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:null,svc_assigned_to:null});changed=true}}
 return}
-// Sync status if changed
-if(req.status&&req.status!==r.svc_status){
+// Map Service Log status → Delivery Tracker status
+// Service Log uses: pending | complete | done | reschedule | canceled
+// Delivery Tracker uses: requested | assigned | in_progress | completed
+let techs=Array.isArray(req.techs)?req.techs:[];
+let mapped=req.status==='done'?'completed'
+:req.status==='complete'?(techs.length?'assigned':'requested')
+:req.status==='reschedule'?'reschedule'
+:req.status==='canceled'?'canceled'
+:techs.length?'assigned':'requested';
+let assignedTo=techs.length?techs.join(', '):null;
+if(mapped!==r.svc_status||assignedTo!==r.svc_assigned_to){
 let ai=ADDED.findIndex(x=>x.i===r.i);
-if(ai>=0){Object.assign(ADDED[ai],{svc_status:req.status,svc_assigned_to:req.assigned_to||null});changed=true}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:req.status,svc_assigned_to:req.assigned_to||null});changed=true}}
+if(ai>=0){Object.assign(ADDED[ai],{svc_status:mapped,svc_assigned_to:assignedTo});changed=true}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:mapped,svc_assigned_to:assignedTo});changed=true}}
 });
 if(changed){saveA();saveE();
 // Only re-render the modal if it's actually visible (not just has stale HTML)
 let ov=document.getElementById('ov');
 if(ov&&!ov.classList.contains('hidden')&&curRec){curRec=AD().find(x=>x.i===curRec.i);if(curRec)renderModal()}}
-},err=>console.error('svc_requests listener error:',err));
+},err=>console.error('Service Log listener error:',err));
 
 
 // === GOOGLE CALENDAR INTEGRATION ===
