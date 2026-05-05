@@ -3113,11 +3113,8 @@ let tag=a.source==='photo'?'<span style="background:#dbeafe;color:#1d4ed8;font-s
 h+='<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dashed #e5e7eb"><span style="margin-right:8px">'+icon+'</span><span style="flex:1;color:#1f2937;word-break:break-all">'+escHtml(a.name)+'</span>'+tag+'</div>'});
 }
 h+='</div>';
-// Show which send mode is active so the user knows what to expect.
-if(emailPw_graphConfigured()){
-h+='<div style="font-size:11px;color:#059669;margin-top:8px;line-height:1.5;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:200px">&#10003; <strong>Direct Outlook mode:</strong> click "Open in Outlook" to create a draft with all attachments. First send asks you to sign in to Microsoft.</span><button onclick="emailPw_msSignOut()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap" title="Sign out so the next send asks you to pick a different Microsoft account">&#128100; Switch account</button><button onclick="emailPw_showSetupWizard()" style="background:transparent;border:1px solid #059669;color:#059669;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Reconfigure</button></div>'}
-else{
-h+='<div style="font-size:11px;color:#374151;margin-top:8px;line-height:1.5;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:200px">&#9432; <strong>How it works:</strong> click "Open in Outlook" → these files download to your Downloads folder and Outlook opens with the email pre-filled. Drag the files onto the new email to attach them, then send.</span><button onclick="emailPw_showSetupWizard()" style="background:transparent;border:1px solid #d1d5db;color:#6b7280;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Optional: configure Microsoft 365 to auto-attach files (advanced)">&#9881; Auto-attach setup (optional)</button></div>'}
+// Simple info bar — no Microsoft 365 / Azure setup options.
+h+='<div style="font-size:11px;color:#374151;margin-top:8px;line-height:1.5;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px"><span>&#9432; <strong>How it works:</strong> click "Open in Outlook" → these files download to your Downloads folder and Outlook opens with the email pre-filled. Drag the files onto the new email to attach them, then send.</span></div>';
 h+='</div>';
 // Status / preview
 h+='<div id="emailpw_status" style="margin-bottom:8px;font-size:12px;color:#6b7280;min-height:18px"></div>';
@@ -3263,23 +3260,8 @@ if(failures.length){
 statusEl.style.color='#dc2626';
 statusEl.innerHTML='&#9888; '+failures.length+' attachment(s) failed:<br>&middot; '+failures.map(escHtml).join('<br>&middot; ');
 if(!confirm('Some attachments could not be loaded:\n\n'+failures.join('\n')+'\n\nContinue anyway?'))return}
-// Tier 1: Microsoft Graph (only if configured). Silently falls back
-// to Tier 2 if Graph throws — no scary prompts.
-if(emailPw_graphConfigured()){
-try{
-statusEl.style.color='#6b7280';
-statusEl.innerHTML='&#8987; Signing in to Microsoft (if needed)...';
-let draft=await emailPw_createOutlookDraft(to,subject,body,resolved,msg=>{statusEl.innerHTML='&#8987; '+escHtml(msg)});
-emailPw_setEpTrue(id);
-let userEmail=await emailPw_getCurrentUserEmail();
-emailPw_renderGraphSuccessScreen(r,resolved,draft,userEmail);
-showToast('&#10003; Draft created in your Outlook Drafts folder');
-return}
-catch(e){
-console.warn('Graph failed, using simpler method instead:',e);
-statusEl.style.color='#92400e';
-statusEl.innerHTML='&#9888; Microsoft Graph: '+escHtml(e.message||String(e))+'<br>&#8595; Switching to the simpler method...';
-await new Promise(res=>setTimeout(res,1500))}}
+// NOTE: Microsoft Graph (Tier 1) path was removed per user request to avoid Azure setup.
+// All sends now use the Tier 2 path (download attachments + open Outlook).
 // Tier 2: download attachments + open Outlook desktop app
 // Strategy: launch the ms-outlook:// protocol via THREE methods in parallel for maximum
 // reliability across Mac/Windows and across Outlook versions:
@@ -3536,10 +3518,17 @@ statusEl.innerHTML='&#10003; .eml downloaded as <strong>'+escHtml(filename)+'</s
 // =================================================================
 
 function toggleCk(id,key,el){
-// Email PW: open the email composer modal instead of a plain toggle.
-// The composer auto-marks ep=true on send. If the user wants to skip the email
-// (e.g. already sent it from elsewhere), the modal has a "Mark as Sent" option.
-if(key==='ep'){let r=AD().find(x=>x.i===id);if(r){openEmailPwModal(r);return}}
+// Email PW: special behavior
+//   - If ep is OFF (not done yet): open the email composer modal.
+//   - If ep is ON (done): confirm with user, then reset back to OFF so they
+//     can re-send. Falls through to the standard toggle path below.
+if(key==='ep'){
+let r=AD().find(x=>x.i===id);if(!r)return;
+if(!r.ep){openEmailPwModal(r);return}
+// ep is true → ask before resetting
+if(!confirm('Email PW is marked as done. Reset it so you can send the email again?'))return;
+// fall through to the standard toggle (will set ep=false)
+}
 let addIdx=ADDED.findIndex(r=>r.i===id);
 if(addIdx>=0){ADDED[addIdx][key]=!ADDED[addIdx][key];
 if(key==='pf'&&ADDED[addIdx].pf){ADDED[addIdx].py=ADDED[addIdx].pr||0;ADDED[addIdx].bl=0}
