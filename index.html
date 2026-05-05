@@ -3281,10 +3281,13 @@ statusEl.style.color='#92400e';
 statusEl.innerHTML='&#9888; Microsoft Graph: '+escHtml(e.message||String(e))+'<br>&#8595; Switching to the simpler method...';
 await new Promise(res=>setTimeout(res,1500))}}
 // Tier 2: download attachments + open Outlook desktop app
-// Strategy: use the ms-outlook:// protocol handler, which is registered by
-// Outlook itself when installed (works on both macOS and Windows). The browser
-// intercepts the URL and launches the Outlook desktop app — it does NOT navigate
-// the page away, so this is safe to use with window.location.
+// Strategy: launch the ms-outlook:// protocol via THREE methods in parallel for maximum
+// reliability across Mac/Windows and across Outlook versions:
+//   1. Hidden iframe (most browser-safe — won't navigate page if protocol unhandled)
+//   2. Programmatic <a> click (works as a direct user gesture)
+//   3. window.location.href (last resort — what we used before)
+// At least one of these triggers the OS protocol handler in any browser/OS combo
+// where Outlook is installed and registered.
 statusEl.style.color='#6b7280';
 statusEl.innerHTML='&#8987; Downloading '+resolved.length+' file(s) to your Downloads folder...';
 for(let i=0;i<resolved.length;i++){
@@ -3292,12 +3295,41 @@ let a=resolved[i];
 emailPw_downloadAttachment(a.name,a.base64,a.mime);
 if(i<resolved.length-1)await new Promise(res=>setTimeout(res,200))}
 let appUrl='ms-outlook://compose?to='+encodeURIComponent(to)+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-// Auto-launch Outlook desktop app. Browsers handle ms-outlook:// as a protocol
-// handoff, so this triggers the OS to open Outlook without navigating the page.
-window.location.href=appUrl;
+emailPw_launchOutlook(appUrl);
 emailPw_setEpTrue(id);
 emailPw_renderSuccessScreen(r,resolved,{appUrl,to});
 showToast('&#10003; Files downloaded — Outlook is opening')}
+
+// Robust Outlook desktop launcher. Triggers the ms-outlook:// protocol handler
+// using three methods in sequence: iframe (safest), anchor click (most reliable
+// for user-gesture launches), and window.location (last resort). One of them
+// will succeed if Outlook desktop is installed and registers the protocol.
+function emailPw_launchOutlook(url){
+console.log('[email-pw] Launching Outlook with URL:',url);
+// Method 1: hidden iframe — silent, page-safe
+try{
+let f=document.createElement('iframe');
+f.style.cssText='position:absolute;width:0;height:0;border:0;left:-9999px;top:-9999px;visibility:hidden';
+f.src=url;
+document.body.appendChild(f);
+setTimeout(()=>{try{f.remove()}catch(_){}},3500);
+}catch(e){console.warn('[email-pw] iframe method failed:',e)}
+// Method 2: programmatic anchor click — Chrome treats this as user gesture
+setTimeout(()=>{
+try{
+let a=document.createElement('a');
+a.href=url;
+a.style.display='none';
+a.target='_self';
+document.body.appendChild(a);
+a.click();
+setTimeout(()=>{try{a.remove()}catch(_){}},1000);
+}catch(e){console.warn('[email-pw] anchor method failed:',e)}
+},150);
+// Method 3: window.location as absolute last resort
+setTimeout(()=>{
+try{window.location.href=url}catch(e){console.warn('[email-pw] location method failed:',e)}
+},400)}
 
 // =================================================================
 // SETUP WIZARD — guides the user through Azure app registration
@@ -3446,9 +3478,10 @@ h+='<div style="font-size:48px;line-height:1;margin-bottom:12px">&#9989;</div>';
 h+='<div style="font-size:20px;font-weight:800;color:#059669;margin-bottom:6px">Files downloaded — Outlook is opening</div>';
 h+='<div style="font-size:13px;color:#6b7280;margin-bottom:18px">'+resolved.length+' file(s) saved to your <strong>Downloads</strong> folder. The email to <strong>'+escHtml(to)+'</strong> should appear in Outlook with subject and message ready.</div>';
 
-// Single primary button — re-launches Outlook in case it didn't open the first time
-h+='<a href="'+escHtml(appUrl)+'" style="display:block;background:#0078d4;border:none;color:#fff;padding:14px 20px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;text-decoration:none;margin-bottom:14px">&#128231; Open in Outlook</a>';
-h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:16px">If a browser dialog asks "Open Microsoft Outlook?" — click <strong>Open</strong>, and check "Always allow" so it stops asking.</div>';
+// Single primary button — re-launches Outlook robustly using the same multi-method
+// approach as the auto-launch (iframe + anchor + window.location).
+h+='<button onclick="emailPw_launchOutlook(\''+escHtml(appUrl).replace(/'/g,"\\'")+'\')" style="display:block;width:100%;background:#0078d4;border:none;color:#fff;padding:14px 20px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;text-decoration:none;margin-bottom:10px">&#128231; Open in Outlook</button>';
+h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:16px">If a browser dialog asks "Open Microsoft Outlook?" — click <strong>Open</strong>, and check "Always allow" so it stops asking next time.</div>';
 
 // Drag instructions
 h+='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:14px">';
