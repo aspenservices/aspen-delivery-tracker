@@ -3727,7 +3727,7 @@ payCheck:false,
 payCredit:false,
 media:[],
 videoLinks:null,
-source:'delivery_tracker',
+source:'dispatch',
 delivery_id:rec.i,
 status:'pending',
 createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -3805,15 +3805,16 @@ svcTickets.doc(rec.svc_id).delete()
 
 // Listen for status changes from the Service Ticket System (Firestore: tech-tickets-a9485 / tickets)
 // and reflect them on local delivery records so the user sees live updates here too.
-// We only watch tickets that originated from the Delivery Tracker (source==='delivery_tracker').
+// Tickets created from this app have `source==='dispatch'` (so the Service Log shows them) AND
+// a `delivery_id` field linking back to the originating delivery — that field is what we filter on.
 function startServiceLogListener(){
 if(!svcTickets){console.warn('[SVC-LOG] Listener skipped — svcTickets not ready');return}
-console.log('[SVC-LOG] Starting Firestore listener for source=delivery_tracker tickets');
-svcTickets.where('source','==','delivery_tracker').onSnapshot(snap=>{
-console.log('[SVC-LOG] Snapshot received with',snap.size,'delivery_tracker tickets');
+console.log('[SVC-LOG] Starting Firestore listener for tickets with delivery_id field');
+svcTickets.where('delivery_id','>',0).onSnapshot(snap=>{
 let byDocId={};
 snap.forEach(doc=>{byDocId[doc.id]=doc.data()||{}});
 let changed=false;
+console.log('[SVC-LOG] Snapshot received with',snap.size,'tickets linked to deliveries');
 AD().forEach(r=>{
 if(!r.svc_id)return;
 // Legacy svc_ids never existed in Firestore — leave them alone, they'll be cleaned
@@ -3847,7 +3848,7 @@ if(ov&&!ov.classList.contains('hidden')&&curRec){curRec=AD().find(x=>x.i===curRe
 console.error('[SVC-LOG] ✗ Listener error:',err);
 SVC_LOG_ERROR='Listener: '+(err.code||'')+' '+(err.message||err);
 if(err.code==='failed-precondition'){
-console.error('[SVC-LOG] Firestore needs a single-field index on `source`. Open the link in the error above to auto-create it (one click).');
+console.error('[SVC-LOG] Firestore needs a single-field index on `delivery_id`. Open the link in the error above to auto-create it (one click).');
 }})}
 // Defer listener start until SDK is initialized and DOM ready
 if(svcTickets)startServiceLogListener();
@@ -3860,7 +3861,7 @@ console.log('[SVC-LOG] svcTickets ready:',!!svcTickets);
 console.log('[SVC-LOG] SVC_LOG_READY:',SVC_LOG_READY);
 console.log('[SVC-LOG] SVC_LOG_ERROR:',SVC_LOG_ERROR);
 if(!svcTickets){alert('svcTickets is null. Reload the page.');return}
-svcTickets.add({customer:'__TEST_PING__',source:'delivery_tracker',status:'pending',date:'',techs:[],workTypes:[],notes:'Connection test from Delivery Tracker',createdAt:firebase.firestore.FieldValue.serverTimestamp(),visitNum:5,_test:true})
+svcTickets.add({customer:'__TEST_PING__',source:'dispatch',status:'pending',date:'',techs:[],workTypes:[],notes:'Connection test from Delivery Tracker',createdAt:firebase.firestore.FieldValue.serverTimestamp(),visitNum:5,delivery_id:1,_test:true})
 .then(ref=>{console.log('[SVC-LOG] ✓ Test write succeeded. Doc id:',ref.id);
 return svcTickets.doc(ref.id).delete().then(()=>{console.log('[SVC-LOG] ✓ Test cleanup OK');alert('✓ Service Log connection works! Test ticket written and deleted. Check console for details.')})})
 .catch(err=>{console.error('[SVC-LOG] ✗ Test failed:',err);alert('✗ Test FAILED: ['+(err.code||'?')+'] '+err.message+'\n\nCheck the browser console for full details.')})};
