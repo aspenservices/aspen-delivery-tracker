@@ -1017,6 +1017,18 @@ cash:{bg:'#dc2626',color:'#fff',icon:'&#128176;',label:'COLLECT CASH from custom
 let s=pstStyles[r.pst];
 if(s){h+='<div style="margin-top:12px;padding:11px 14px;background:'+s.bg+';color:'+s.color+';border-radius:10px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px'+(r.pst==='cash'?';animation:pst-cash-pulse 1.4s ease-in-out infinite':'')+'"><span style="font-size:18px">'+s.icon+'</span> '+s.label+'</div>'}
 }
+// Special delivery requirements — flagged by the manager from the admin view. Each banner is bold,
+// high-contrast, and uses gear-related language so the tech remembers BEFORE leaving the shop.
+let reqBanners=[
+{k:'crane',bg:'#7c3aed',icon:'&#128679;',label:'CRANE JOB — coordinate the crane / boom truck'},
+{k:'extra_person',bg:'#0369a1',icon:'&#128101;',label:'EXTRA PERSON REQUIRED — bring an extra crew member'},
+{k:'water_truck',bg:'#0891b2',icon:'&#128666;',label:'WATER TRUCK NEEDED — bring water for the spa fill'}
+];
+reqBanners.forEach(rb=>{
+if(r[rb.k]){
+h+='<div style="margin-top:8px;padding:11px 14px;background:'+rb.bg+';color:#fff;border-radius:10px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px"><span style="font-size:18px">'+rb.icon+'</span> '+rb.label+'</div>'
+}
+});
 h+='</div>';
 // ACTION BUTTONS
 h+='<div class="tech-action-grid">';
@@ -1999,7 +2011,23 @@ if(r.pst){
 let pstLabels={paid:'&#128181; Paid',check:'&#128221; Check',financed:'&#128179; Financed',cash:'&#128176; CASH'};
 let lbl=pstLabels[r.pst];
 if(lbl)pstBadge='<span class="pst-badge '+r.pst+'">'+lbl+'</span>'}
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return pl.num+(pl.tag?' '+pl.tag:'')});return'<span class="phone">&#128222; '+escHtml(parts.join(' &middot; '))+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+// Special-requirement badges — these appear ABOVE the rest of the card content as a high-visibility
+// row, so the admin knows at a glance which jobs need a crane, extra person, or water truck.
+let reqBadgeHtml='';
+let reqList=[
+{k:'crane',ico:'&#128679;',label:'Crane',bg:'#7c3aed'},
+{k:'extra_person',ico:'&#128101;',label:'Extra Person',bg:'#0369a1'},
+{k:'water_truck',ico:'&#128666;',label:'Water Truck',bg:'#0891b2'}
+];
+let activeReqs=reqList.filter(x=>r[x.k]);
+if(activeReqs.length){
+reqBadgeHtml='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">';
+activeReqs.forEach(rq=>{
+reqBadgeHtml+='<span style="display:inline-flex;align-items:center;gap:4px;background:'+rq.bg+';color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em">'+rq.ico+' '+rq.label+'</span>'
+});
+reqBadgeHtml+='</div>';
+}
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return pl.num+(pl.tag?' '+pl.tag:'')});return'<span class="phone">&#128222; '+escHtml(parts.join(' &middot; '))+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -2514,7 +2542,7 @@ h+='</div>';
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
 h+='<div class="ib"><label>SERIES</label><select id="e_spa_series">'+opt(SPA_SERIES,((r.sp||"").split(",")[1]||"").trim())+'</select></div>';
-h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Phones <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(one per line — add wife/spouse, etc.)</span></label><textarea id="e_ph" rows="2" placeholder="719-510-8200&#10;314-555-1234 (wife)" style="font-family:inherit">'+escHtml(r.ph||'')+'</textarea></div></div><div class="ig">';
+h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Phones <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(one per line — add wife/spouse, etc.)</span></label><textarea id="e_ph" rows="2" style="font-family:inherit">'+escHtml(r.ph||'')+'</textarea></div></div><div class="ig">';
 h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="number" step="0.01" value="'+(r.pr||0)+'"></div></div><div class="ig">';
 h+='<div class="ib"><label>Payment</label><input id="e_py" type="number" step="0.01" value="'+(r.py||0)+'"></div>';
 h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'#dc2626':'#059669')+'">'+fmt(r.bl)+'</span></div></div>';
@@ -2536,6 +2564,25 @@ let style='';
 if(active){style='background:'+p.color+';color:#fff;border-color:'+p.color}
 else{style='color:'+p.color+';border-color:'+p.color+'66'}
 h+='<button type="button" class="'+cls+'" data-pst="'+p.k+'" onclick="togglePaymentStatus(\''+p.k+'\')" style="'+style+'"><span style="font-size:13px">'+p.ico+'</span> '+p.l+'</button>';
+});
+h+='</div></div>';
+// Delivery Requirements — special equipment / extra resources the tech must know about.
+// Independent toggles (unlike Payment Status which is exclusive). Each one shows a banner
+// in the tech's mobile view so they bring the right gear / coordinate the right people.
+let reqDef=[
+{k:'crane',l:'Crane Job',ico:'&#128679;',color:'#7c3aed',bg:'#ede9fe'},
+{k:'extra_person',l:'Extra Person',ico:'&#128101;',color:'#0369a1',bg:'#dbeafe'},
+{k:'water_truck',l:'Water Truck',ico:'&#128666;',color:'#0891b2',bg:'#cffafe'}
+];
+h+='<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);display:block;margin-bottom:8px">Delivery Requirements <span style="font-weight:400;color:var(--text-tertiary);font-size:10px;text-transform:none;letter-spacing:0">(notifies the tech)</span></label>';
+h+='<div class="pst-row">';
+reqDef.forEach(p=>{
+let active=!!r[p.k];
+let cls='pst-pill'+(active?' pst-active':'');
+let style='';
+if(active){style='background:'+p.color+';color:#fff;border-color:'+p.color}
+else{style='color:'+p.color+';border-color:'+p.color+'66'}
+h+='<button type="button" class="'+cls+'" data-req="'+p.k+'" onclick="toggleRequirement(\''+p.k+'\')" style="'+style+'"><span style="font-size:13px">'+p.ico+'</span> '+p.l+'</button>';
 });
 h+='</div></div>';
 h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+(r.st||"")+'</textarea></div>';
@@ -2763,7 +2810,7 @@ if(name.length>30){alert('Name too long. Use 30 characters max.');return}
 let baseKey='c_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,20);
 if(!baseKey||baseKey==='c_'){alert('Invalid name. Use letters or numbers.');return}
 // Reserved/used keys
-let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst','signature','pdf_invoice_signed'];
+let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst','signature','pdf_invoice_signed','crane','extra_person','water_truck'];
 PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));
 let k=baseKey,n=2;
 while(reserved.includes(k)||CUSTOM_CATS.some(c=>c.k===k)){k=baseKey+'_'+n;n++}
@@ -3596,6 +3643,31 @@ renderBoard();
 showToast(next?'Payment status: '+next:'Payment status cleared');
 }
 
+// Toggle a special-requirement flag on the current ticket (Crane Job / Extra Person / Water Truck).
+// These are independent on/off flags (unlike Payment Status which is mutually exclusive). Each one
+// renders a banner in the tech's mobile detail view so they know what gear / extra people to bring.
+function toggleRequirement(k){
+if(!curRec)return;
+let id=curRec.i;
+let next=!curRec[k];
+curRec[k]=next;
+let ai=ADDED.findIndex(x=>x.i===id);
+if(ai>=0){ADDED[ai][k]=next;saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id][k]=next;saveE()}
+// Update the pill in place without full re-render (snappier UX, doesn't lose modal scroll)
+let reqColors={crane:'#7c3aed',extra_person:'#0369a1',water_truck:'#0891b2'};
+let btn=document.querySelector('.pst-pill[data-req="'+k+'"]');
+if(btn){
+let color=reqColors[k];
+btn.classList.toggle('pst-active',next);
+if(next){btn.style.cssText='background:'+color+';color:#fff;border-color:'+color}
+else{btn.style.cssText='color:'+color+';border-color:'+color+'66'}
+}
+renderBoard();
+let labels={crane:'Crane Job',extra_person:'Extra Person',water_truck:'Water Truck'};
+showToast((next?'\u2713 ':'\u2715 ')+labels[k]+(next?' required — tech will be notified':' removed'));
+}
+
 function gatherEdits(){
 let pr=parseFloat(document.getElementById("e_pr").value)||0,py=parseFloat(document.getElementById("e_py").value)||0;
 let sB=document.getElementById("e_spa_base").value,sS=document.getElementById("e_spa_series").value;
@@ -3614,6 +3686,9 @@ tvd:(document.getElementById("tv_date")?document.getElementById("tv_date").value
 tvt:(document.getElementById("tv_time")?document.getElementById("tv_time").value:null)||'09:00',
 tvn:(document.getElementById("tv_notes")?document.getElementById("tv_notes").value.trim():null)||null,
 pst:curRec&&curRec.pst!==undefined?curRec.pst:null,
+crane:!!(curRec&&curRec.crane),
+extra_person:!!(curRec&&curRec.extra_person),
+water_truck:!!(curRec&&curRec.water_truck),
 assigned_to:(document.getElementById("e_assigned")?document.getElementById("e_assigned").value:null)||null};
 // Add custom-category values dynamically
 CUSTOM_CATS.forEach(c=>{
@@ -3635,6 +3710,7 @@ yr:null,vt:null,jt:null,jm:null,p1:null,p2:null,pks:null,ts:null,tsn:null,
 lg:null,wf:null,oz:null,pl:null,ft:null,vl:null,sd:null,sb:null,cb:null,dr:null,cks:null,di:null,
 dl:false,ep:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,tvd:null,tvt:null,tvn:null,
 svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null,
+crane:false,extra_person:false,water_truck:false,
 assigned_to:null,photos:null};
 resetMd('wide');
 renderModal();
@@ -4244,6 +4320,7 @@ pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
 tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
 dl:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,
+crane:false,extra_person:false,water_truck:false,
 gcalId:ev.id,gcalColorId:ev.colorId||null};
 ADDED.push(rec);saveA();
 let updates={};updates['gcal_map/'+ev.id]=newId;db.ref().update(updates);
