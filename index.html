@@ -4358,15 +4358,31 @@ gcalStats={created:0,updated:0,skipped:0,errors:0};
 // returns events that changed since the last sync. So those old tickets never get their
 // colors back-filled, even though the corresponding calendar events are red/green/orange.
 //
-// Detection: any open delivery (not completed) that has gcalId but no gcalColorId is
-// a candidate for color migration. If we find any, we drop the syncToken so this sync
-// becomes a full re-fetch from today forward — that pulls every event with its colorId
-// and our buildGcalUpdates() will save the colors to those tickets.
+// Detection happens in two ways because tickets can be associated with calendar events
+// through TWO different mechanisms:
+//   (a) Auto-imported tickets (created from a calendar event) live in ADDED and have a
+//       direct gcalId field on them.
+//   (b) Pre-existing tickets that were LINKED to a calendar event (matched by SN) live
+//       in BASE+EDITS and have NO gcalId on the record itself — the link lives in the
+//       separate gcalMap table (eventId -> ticketId). Stevens/Tosso (SN 30817) is a
+//       textbook case of (b): it was hardcoded in BASE long before color tracking, and
+//       got linked via gcalMap when the calendar synced for the first time, but its color
+//       was never propagated.
+//
+// We detect both cases. If we find any ticket needing migration we drop the syncToken so
+// this sync becomes a full re-fetch from today forward — that pulls every event with its
+// colorId and our buildGcalUpdates() will save the color to the ticket via EDITS or ADDED.
 //
 // This is a one-time correction. Once all colorIds are populated, the check returns false
 // and future syncs go back to fast incremental updates.
 if(gcalSyncToken){
-let needsMigration=AD().some(r=>r.gcalId&&!r.gcalColorId&&!r.co);
+let mappedIds=new Set(Object.values(gcalMap||{}).map(String));
+let needsMigration=AD().some(r=>{
+if(r.co)return false; // completed deliveries don't need color updates
+if(r.gcalColorId)return false; // already has color, nothing to do
+// Candidate if linked to calendar by either mechanism above
+return r.gcalId||mappedIds.has(String(r.i))
+});
 if(needsMigration){
 console.log('[GCAL] Color back-fill: resetting sync token to refresh colors on existing tickets');
 gcalSyncToken=null;
