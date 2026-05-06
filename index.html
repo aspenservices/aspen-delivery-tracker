@@ -993,7 +993,11 @@ function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt
 
 function techOpenDetail(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
+// Detect re-render (e.g. live refresh from Firebase listener) so we can preserve scroll position
+let isReRender=(_currentTechDetailId===id);
+_currentTechDetailId=id;
 let det=document.getElementById('tech-detail');
+let savedScroll=isReRender?det.scrollTop:0;
 det.classList.remove('hidden');
 let h='<div class="back-bar"><button class="back-btn" onclick="techCloseDetail()">&#9664; Back</button><div style="font-size:13px;font-weight:600;flex:1;text-align:center">'+escHtml(r.n)+'</div></div>';
 h+='<div class="tech-detail-inner">';
@@ -1113,9 +1117,9 @@ if(r.dl&&r.dn){
 h+='<div class="tech-section" style="background:#f0fdf4;border-color:#bbf7d0"><div style="font-size:11px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Delivered Notes</div>'+
 '<div style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap">'+escHtml(r.dn)+'</div></div>'}
 h+='</div>';
-det.innerHTML=h;det.scrollTop=0}
+det.innerHTML=h;det.scrollTop=savedScroll}
 
-function techCloseDetail(){document.getElementById('tech-detail').classList.add('hidden')}
+function techCloseDetail(){_currentTechDetailId=null;document.getElementById('tech-detail').classList.add('hidden')}
 
 function techOpenMaps(id){
 let r=AD().find(x=>x.i===id);if(!r||!r.st)return;
@@ -1667,6 +1671,10 @@ let pendingSyncTimer=null;
 // Flag set when local state has changes not yet pushed to Firebase.
 // While true, the listener won't overwrite EDITS/ADDED with server data.
 let _pendingFlush={edits:false,added:false};
+// Tracks which delivery the tech currently has open in the detail view.
+// Used so the listener can live-refresh the detail when the manager uploads
+// new photos / edits the record from another device.
+let _currentTechDetailId=null;
 
 function queueOffline(kind,data){
 try{
@@ -1771,15 +1779,27 @@ let v=snap.val()||{};
 if(_pendingFlush.edits)return;
 EDITS=v;
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
-if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()
+if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
 dbAdded.on('value',snap=>{
 let v=snap.val()||[];
 if(_pendingFlush.added)return;
 ADDED=v;if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);
 try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
-if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()
+if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
+
+// If a tech has the delivery detail open, re-render it whenever Firebase pushes new data
+// (e.g. the manager uploads new photos from desktop). Without this, the tech sees a stale view
+// and has to close + reopen the ticket to see updates. Scroll position is preserved.
+function liveRefreshTechDetail(){
+if(_currentTechDetailId===null)return;
+let det=document.getElementById('tech-detail');
+if(!det||det.classList.contains('hidden'))return;
+// Skip refresh if the tech currently has a modal open (note pad, signature, photo upload, etc.)
+// — we don't want to wipe what they're doing if a server update happens to land mid-edit.
+if(document.querySelector('.tech-modal, .signature-modal, .photo-lightbox'))return;
+techOpenDetail(_currentTechDetailId)}
 
 // Offline-first fallback: if we have local backups and Firebase isn't responding fast,
 // load the cached state immediately so the tech can keep working without signal.
