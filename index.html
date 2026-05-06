@@ -4352,6 +4352,27 @@ setTimeout(gcalSync,2000);
 return}
 let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
 gcalStats={created:0,updated:0,skipped:0,errors:0};
+
+// COLOR MIGRATION: tickets that were imported BEFORE color tracking was added have
+// gcalColorId === null/undefined. Google Calendar's syncToken is incremental — it only
+// returns events that changed since the last sync. So those old tickets never get their
+// colors back-filled, even though the corresponding calendar events are red/green/orange.
+//
+// Detection: any open delivery (not completed) that has gcalId but no gcalColorId is
+// a candidate for color migration. If we find any, we drop the syncToken so this sync
+// becomes a full re-fetch from today forward — that pulls every event with its colorId
+// and our buildGcalUpdates() will save the colors to those tickets.
+//
+// This is a one-time correction. Once all colorIds are populated, the check returns false
+// and future syncs go back to fast incremental updates.
+if(gcalSyncToken){
+let needsMigration=AD().some(r=>r.gcalId&&!r.gcalColorId&&!r.co);
+if(needsMigration){
+console.log('[GCAL] Color back-fill: resetting sync token to refresh colors on existing tickets');
+gcalSyncToken=null;
+try{await dbGcal.update({syncToken:null})}catch(e){console.warn('Failed to clear syncToken:',e)}
+}
+}
 try{
 let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,showDeleted:true};
 if(gcalSyncToken){params.syncToken=gcalSyncToken}
@@ -4438,22 +4459,25 @@ if(ovOpen&&!ovOpen.classList.contains('hidden')&&curRec&&curRec.gcalId===ev.id){
 gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 
 // PHILOSOPHY (per Alberto's explicit request): once a ticket exists in our app,
-// Google Calendar is ONLY the master of the delivery date (dd). Nothing else.
+// Google Calendar is ONLY the master of the delivery date (dd) and color (gcalColorId).
 // • The first time a calendar event is imported, we DO populate name / SN / city from the title.
 // • After that, even if the title changes in the calendar, we NEVER update those fields again.
 // • The user's edits to name / SN / address / phone / etc. are sacred — only the user can
 //   change them through the dashboard.
-// This prevents the bug where the user fills in customer info, refreshes, and sees their
-// edits silently overwritten by a calendar sync.
-function buildGcalUpdates(local,parsed,newDD){
+// • Color is kept in sync because it represents the spa size/category coding that Alberto
+//   uses to plan deliveries — it's metadata about the event, not user-entered customer data.
+//   E.g. flipping from gray "Awaiting Conf." to red "Standard 8'" must propagate.
+function buildGcalUpdates(local,parsed,newDD,evColorId){
 let u={};
 if(local.dd!==newDD)u.dd=newDD;
+let newColor=evColorId||null;
+if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
 return u}
 
 let mappedId=gcalMap[ev.id];
 if(mappedId){
 let local=AD().find(r=>r.i===mappedId);if(!local)return;
-let updates=buildGcalUpdates(local,parsed,newDD);
+let updates=buildGcalUpdates(local,parsed,newDD,ev.colorId);
 if(Object.keys(updates).length){
 let ai=ADDED.findIndex(x=>x.i===mappedId);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
@@ -4470,9 +4494,9 @@ existing=AD().find(r=>{if(!r.n)return false;let rn=r.n.toLowerCase();return rn.i
 if(existing){
 // Link this event to the existing delivery — but DO NOT touch any of its fields except dd.
 // The ticket already exists, so it's owned by the user (manually entered or previously imported
-// and then edited). Calendar's only job here is keeping the date in sync.
+// and then edited). Calendar's only job here is keeping the date and color in sync.
 let mapUpd={};mapUpd['gcal_map/'+ev.id]=existing.i;db.ref().update(mapUpd);
-let updates=buildGcalUpdates(existing,parsed,newDD);
+let updates=buildGcalUpdates(existing,parsed,newDD,ev.colorId);
 if(Object.keys(updates).length){
 let ai=ADDED.findIndex(x=>x.i===existing.i);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
@@ -4900,6 +4924,35 @@ let calView="month",calDate=new Date();
 const DAYNAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MNAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function sC2(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]||"#6b7280"}
+
+// Map Google Calendar colorIds to the EXACT hex colors shown in the color-filter checkboxes
+// (the colored dots next to "Standard 8' (red)", "7' or Smaller (green)", etc.). These are the
+// same saturated colors Google Calendar paints its events with — so the dashboard calendar
+// matches what Alberto sees in Google Calendar 1:1.
+//
+// `solid` is used as the event background (saturated, like Google Calendar paints it).
+// `text` is the readable foreground (white or dark depending on contrast).
+const GCAL_COLOR_MAP={
+'11':{solid:'#d50000',text:'#ffffff'}, // red    — Standard 8'
+'10':{solid:'#0b8043',text:'#ffffff'}, // green  — 7' or Smaller
+'6': {solid:'#f4511e',text:'#ffffff'}, // orange — Non-Standard
+'8': {solid:'#616161',text:'#ffffff'}, // gray   — Awaiting Conf.
+'5': {solid:'#e4c441',text:'#3b2f00'}  // yellow — Slot N/A (dark text on yellow for legibility)
+};
+// Returns inline-style snippet for a calendar event card based on the ticket's gcalColorId,
+// or null if the ticket has no recognized color (caller falls back to status-based class).
+// When the delivery is complete, the saturated calendar color stays — we just lower opacity
+// slightly so a glance still distinguishes it from open deliveries.
+function gcalColorStyle(r){
+if(!r||!r.gcalColorId)return null;
+let c=GCAL_COLOR_MAP[String(r.gcalColorId)];if(!c)return null;
+let dim=r.co?';opacity:0.6':'';
+return'background:'+c.solid+';color:'+c.text+';border-left-color:'+c.solid+dim}
+// Returns the event color (saturated) for week/day-view dot indicators.
+function gcalDotColor(r){
+if(!r||!r.gcalColorId)return null;
+let c=GCAL_COLOR_MAP[String(r.gcalColorId)];if(!c)return null;
+return c.solid}
 function calEvents(){return AD().filter(r=>{
 if(!r.n||!r.dd)return false;
 if(statusF!=='all'&&st(r)!==statusF)return false;
@@ -4953,7 +5006,12 @@ if(r.sn)subParts.push('SN '+r.sn);
 else if(r.dd){let dn=dateNote(r.dd);if(dn)subParts.push(dn.replace(/^\s*[—•]?\s*/,''))}
 let sub=subParts.join(' · ');
 let titleAttr=r.n+(r.sp?' — '+r.sp:'')+(r.sn?' (SN '+r.sn+')':'');
-h+='<div class="cal-ev '+e.s+'" onclick="event.stopPropagation();openDet('+r.i+')" title="'+escHtml(titleAttr)+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
+// Use Google Calendar color if the ticket was imported with a recognized colorId — otherwise
+// fall back to the status-based class (.upcoming / .delivered / etc.).
+let gStyle=gcalColorStyle(r);
+let evClass='cal-ev'+(gStyle?'':' '+e.s);
+let evStyle=gStyle?' style="'+gStyle+'"':'';
+h+='<div class="'+evClass+'"'+evStyle+' onclick="event.stopPropagation();openDet('+r.i+')" title="'+escHtml(titleAttr)+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
 if(dayEvs.length>3)h+='<div class="cal-more" onclick="calDate=new Date('+y+','+(m)+','+d+');setCalView(\'day\')">+' +(dayEvs.length-3)+' more</div>';
 h+='</div>'}
 // Trailing blanks
@@ -4975,7 +5033,9 @@ let isToday=k===todayK;
 let dayEvs=evs[k]||[];
 h+='<div class="cal-wk-row"><div class="cal-wk-label'+(isToday?' today':'')+'"><div style="font-size:11px;text-transform:uppercase">'+DAYNAMES[cur.getDay()]+'</div><div class="cw-day">'+cur.getDate()+'</div><div style="font-size:10px;color:#9ca3af">'+MNAMES[cur.getMonth()].substring(0,3)+'</div></div><div class="cal-wk-evs">';
 if(!dayEvs.length)h+='<div style="font-size:12px;color:#d1d5db;padding:8px">No deliveries</div>';
-dayEvs.forEach(e=>{h+='<div class="cal-wk-ev" onclick="openDet('+e.r.i+')"><div class="ev-dot" style="background:'+sC2(e.s)+'"></div><div class="ev-name">'+e.r.n+'</div><div class="ev-spa">'+(e.r.sp||'')+'</div><div class="ev-time">'+dateNote(e.r.dd).trim()+'</div></div>'});
+dayEvs.forEach(e=>{
+let dotColor=gcalDotColor(e.r)||sC2(e.s);
+h+='<div class="cal-wk-ev" onclick="openDet('+e.r.i+')"><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+e.r.n+'</div><div class="ev-spa">'+(e.r.sp||'')+'</div><div class="ev-time">'+dateNote(e.r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
@@ -4989,9 +5049,10 @@ let h='<div class="cal-wk">';
 if(!dayEvs.length)h+='<div style="padding:40px;text-align:center;color:#9ca3af;font-size:15px">No deliveries on this day.</div>';
 dayEvs.forEach(e=>{
 let r=e.r;
+let dotColor=gcalDotColor(r)||sC2(e.s);
 h+='<div class="cal-wk-row" style="grid-template-columns:1fr;cursor:pointer" onclick="openDet('+r.i+')">';
 h+='<div style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">';
-h+='<div class="ev-dot" style="background:'+sC2(e.s)+';width:10px;height:10px"></div>';
+h+='<div class="ev-dot" style="background:'+dotColor+';width:10px;height:10px"></div>';
 h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:#111827">'+r.n+'</div><div style="font-size:12px;color:#6b7280;margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
 h+='<div style="font-size:13px;font-weight:700;color:#1e40af">'+dateNote(r.dd).trim().toUpperCase()+'</div>';
 if(r.pr>0)h+='<div style="font-size:13px;font-weight:700;color:#7c3aed">'+fmt(r.pr)+'</div>';
