@@ -1655,21 +1655,68 @@ sel.innerHTML=opts}
 let EDITS={},ADDED=[];
 let fbReady=false;
 function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED)}
+
+// === SAVE-IN-FLIGHT TRACKING ===
+// Critical for preventing data loss. Without this counter, the following race-condition can wipe
+// the user's edits: (1) user saves, ADDED[i].n = "New Name", saveA() starts the Firebase write
+// async; (2) BEFORE Firebase confirms our write and echoes it back, an older listener event
+// arrives carrying the previous server state ("Old Name"); (3) ADDED gets reassigned by the
+// listener to that stale snapshot; (4) the user sees their edit silently revert.
+//
+// With this counter incremented before set() and decremented in then/catch, the listener can
+// CHECK whether any of our own writes are still pending and refuse to clobber local state until
+// they confirm. This is the same protection _pendingFlush gives for offline queues, but for the
+// online-but-not-yet-confirmed window.
+let _saveInFlight={added:0,edits:0};
+// Timestamp of the most recent local save. The listener uses this as a secondary guard:
+// for ~3 seconds after a save, the listener treats server snapshots as suspect and merges
+// rather than overwrites (in case our save was confirmed but a stale callback fires after).
+let _lastLocalSave={added:0,edits:0};
+
 function saveE(){
 // Always backup to localStorage FIRST (so it survives even if app closes mid-sync)
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
 // Try Firebase with timeout protection — if it fails or hangs, queue for later sync
 let synced=false;
+_saveInFlight.edits++;_lastLocalSave.edits=Date.now();
 let p=dbEdits.set(EDITS);
-p.then(()=>{synced=true;syncPulse();clearOfflineQueue('edits')}).catch(e=>{console.error('saveE:',e);queueOffline('edits',EDITS)});
-setTimeout(()=>{if(!synced&&!navigator.onLine)queueOffline('edits',EDITS)},3000);
+p.then(()=>{
+synced=true;
+_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
+syncPulse();clearOfflineQueue('edits')
+}).catch(e=>{
+_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
+console.error('saveE:',e);queueOffline('edits',EDITS)
+});
+// If Firebase doesn't confirm within 5s, the write may be silently stuck. Drop the in-flight
+// counter so it doesn't lock forever — but ALWAYS queue offline (regardless of navigator.onLine)
+// because _pendingFlush keeps the listener from overwriting our local state until we replay.
+setTimeout(()=>{
+if(!synced){
+_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
+queueOffline('edits',EDITS)
+}
+},5000);
 }
 function saveA(){
 try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
 let synced=false;
+_saveInFlight.added++;_lastLocalSave.added=Date.now();
 let p=dbAdded.set(ADDED);
-p.then(()=>{synced=true;syncPulse();clearOfflineQueue('added')}).catch(e=>{console.error('saveA:',e);queueOffline('added',ADDED)});
-setTimeout(()=>{if(!synced&&!navigator.onLine)queueOffline('added',ADDED)},3000);
+p.then(()=>{
+synced=true;
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1);
+syncPulse();clearOfflineQueue('added')
+}).catch(e=>{
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1);
+console.error('saveA:',e);queueOffline('added',ADDED)
+});
+setTimeout(()=>{
+if(!synced){
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1);
+queueOffline('added',ADDED)
+}
+},5000);
 }
 
 // === OFFLINE SUPPORT ===
@@ -1786,9 +1833,22 @@ bootAuth()}},8000);
 
 dbEdits.on('value',snap=>{
 let v=snap.val()||{};
-// If we have unsynced offline changes, don't let the server snapshot overwrite our local state.
-// The flush will push our changes up; the next snapshot after that will include them.
+// Defense layer 1: explicit offline-queue lock — flushing pending changes, don't clobber.
 if(_pendingFlush.edits)return;
+// Defense layer 2: in-flight save protection — we've called set() but Firebase hasn't
+// confirmed. A snapshot arriving now could be the OLD server state from before our write
+// (Firebase RTDB does NOT guarantee that the next on('value') event reflects our pending set).
+// Refusing the snapshot here means the user's save survives. The next snapshot after
+// confirmation will carry our data and replace EDITS cleanly.
+if(_saveInFlight.edits>0)return;
+// Defense layer 3: 1.5s grace window — even after _saveInFlight drops to 0, a stale callback
+// can occasionally land. During the grace window, only accept snapshots that contain our
+// most recent edits (i.e. the keys we just wrote) — otherwise discard.
+if(Date.now()-_lastLocalSave.edits<1500){
+let localKeys=Object.keys(EDITS),snapKeys=Object.keys(v);
+let missing=localKeys.filter(k=>!(k in v));
+if(missing.length){console.warn('[FB] Discarding stale edits snapshot — missing local keys:',missing);return}
+}
 EDITS=v;
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
@@ -1796,6 +1856,17 @@ if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkR
 dbAdded.on('value',snap=>{
 let v=snap.val()||[];
 if(_pendingFlush.added)return;
+if(_saveInFlight.added>0)return;
+// 1.5s grace window — verify the snapshot has our latest local writes by ID. If a record
+// we just edited is missing OR has older field values than our local state, the snapshot
+// is stale (race against Firebase echo) and we drop it. The next legit snapshot WILL match.
+if(Date.now()-_lastLocalSave.added<1500&&Array.isArray(ADDED)&&ADDED.length){
+let serverArr=Array.isArray(v)?v:Object.values(v||{});
+let localById={};ADDED.forEach(r=>{if(r&&r.i!=null)localById[r.i]=r});
+let serverById={};serverArr.forEach(r=>{if(r&&r.i!=null)serverById[r.i]=r});
+let missingId=Object.keys(localById).find(id=>!serverById[id]);
+if(missingId){console.warn('[FB] Discarding stale added snapshot — missing recently-saved ticket id:',missingId);return}
+}
 ADDED=v;if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);
 try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
@@ -2062,14 +2133,14 @@ return md}
 function openOv(){document.getElementById('ov').classList.remove('hidden');document.body.classList.add('modal-open')}
 
 function openDet(id){
-curRec=AD().find(x=>x.i===id);if(!curRec)return;
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));if(!curRec)return;
 // If this delivery had a tech note pending review, clear the alert flag now that admin is opening it
 if(curRec.needs_attention&&currentUser&&currentUser.role!=='tech'){
 let updates={needs_attention:null,attention_at:null};
-let ai=ADDED.findIndex(x=>x.i===id);
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
-curRec=AD().find(x=>x.i===id);
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 renderBoard();renderTable()}
 resetMd('wide');
 renderModal();openOv()}
@@ -3698,9 +3769,13 @@ if(el){let v=el.value;result[c.k]=(v&&v!=='NONE')?v:null}
 return result}
 
 function saveEdit(){let id=curRec.i,u=gatherEdits();
-let ai=ADDED.findIndex(x=>x.i===id);
+// Robust ID lookup: tolerate number vs string mismatches (Firebase RTDB sometimes returns
+// numeric keys as strings depending on how the array was serialized). Strict-equality findIndex
+// alone could return -1 for a perfectly valid ticket and route the save to the WRONG branch
+// (EDITS overlay vs ADDED), where it would not be reflected in the dashboard or persist correctly.
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],u);saveE()}
-curRec=AD().find(x=>x.i===id);closeOv();renderAll();showToast('&#10003; Changes saved successfully')}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully')}
 
 // Safely refresh the edit modal after a background update (photo upload, drive sync, external
 // service-log change, etc.). If the modal is open and showing the same ticket, this captures
@@ -4268,6 +4343,13 @@ return iso+label}
 async function gcalSync(){
 if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
 if(!gcalCalendarId){showToast('&#9888; Choose a calendar','warn');return}
+// SAFETY: don't run a sync while the user has unconfirmed local saves in flight. The sync
+// reads the current state of ADDED/EDITS to decide what to update; if those are mid-flight,
+// we could read stale state and re-apply old data. Defer the sync by 2s and try again.
+if(_saveInFlight.added>0||_saveInFlight.edits>0||Date.now()-_lastLocalSave.added<2000||Date.now()-_lastLocalSave.edits<2000){
+console.log('[GCAL] Sync deferred — local save in flight (added='+_saveInFlight.added+', edits='+_saveInFlight.edits+')');
+setTimeout(gcalSync,2000);
+return}
 let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
 gcalStats={created:0,updated:0,skipped:0,errors:0};
 try{
