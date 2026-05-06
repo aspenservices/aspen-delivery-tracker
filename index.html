@@ -1538,7 +1538,7 @@ else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
 // Auto-sync to Google Drive (debounced, silent if Drive not connected)
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
-if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}};
+safeRefreshModalIfOpen(id)};
 inp.click()}
 
 // Admin deletes one of their own info photos (r.photos)
@@ -1550,7 +1550,7 @@ let updates={photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
-if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}}
+safeRefreshModalIfOpen(id)}
 
 // Admin deletes a tech delivery photo (r.tech_photos) — admin can review and curate the ticket
 function adminDeleteTechPhoto(id,idx){
@@ -1561,7 +1561,7 @@ let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
-if(curRec&&curRec.i===id){curRec=AD().find(x=>x.i===id);renderModal()}}
+safeRefreshModalIfOpen(id)}
 
 // === ADMIN: USER MANAGEMENT ===
 function openUsersPanel(){
@@ -3702,6 +3702,29 @@ let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],u);saveE()}
 curRec=AD().find(x=>x.i===id);closeOv();renderAll();showToast('&#10003; Changes saved successfully')}
 
+// Safely refresh the edit modal after a background update (photo upload, drive sync, external
+// service-log change, etc.). If the modal is open and showing the same ticket, this captures
+// any in-progress form values first, persists them, THEN re-renders. This prevents the bug
+// where typed-but-not-yet-saved data gets wiped when an unrelated background event triggers
+// renderModal(). Returns true if a refresh happened, false otherwise.
+function safeRefreshModalIfOpen(id){
+if(!curRec||String(curRec.i)!==String(id))return false;
+let ov=document.getElementById('ov');
+if(!ov||ov.classList.contains('hidden'))return false;
+try{
+let inProgress=gatherEdits();
+let ai=ADDED.findIndex(x=>x.i===curRec.i);
+if(ai>=0){Object.assign(ADDED[ai],inProgress);saveA()}
+else{if(!EDITS[curRec.i])EDITS[curRec.i]={};Object.assign(EDITS[curRec.i],inProgress);saveE()}
+let latest=AD().find(x=>x.i===curRec.i);
+if(latest){curRec=latest;renderModal();return true}
+}catch(e){
+// If gatherEdits fails for any reason, do NOT re-render — better to leave the user's typed
+// state in the DOM than to forcibly refresh and erase it.
+console.warn('safeRefreshModalIfOpen: skipping refresh to preserve user input',e);
+}
+return false}
+
 function openForm(){
 curRec={i:Date.now(),n:"",sp:null,sn:null,dd:null,st:null,ph:null,em:null,cn:null,pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:false,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
@@ -3943,6 +3966,7 @@ svcTickets.where('delivery_id','>',0).onSnapshot(snap=>{
 let byDocId={};
 snap.forEach(doc=>{byDocId[doc.id]=doc.data()||{}});
 let changed=false;
+let changedTicketIds=new Set(); // track which delivery tickets actually got modified
 console.log('[SVC-LOG] Snapshot received with',snap.size,'tickets linked to deliveries');
 AD().forEach(r=>{
 if(!r.svc_id)return;
@@ -3954,8 +3978,8 @@ if(!req){
 // Ticket was deleted externally — clear local refs
 if(r.svc_status){
 let ai=ADDED.findIndex(x=>x.i===r.i);
-if(ai>=0){Object.assign(ADDED[ai],{svc_status:null,svc_assigned_to:null});changed=true}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:null,svc_assigned_to:null});changed=true}}
+if(ai>=0){Object.assign(ADDED[ai],{svc_status:null,svc_assigned_to:null});changed=true;changedTicketIds.add(r.i)}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:null,svc_assigned_to:null});changed=true;changedTicketIds.add(r.i)}}
 return}
 // Map Service Log status → Delivery Tracker status
 let techs=Array.isArray(req.techs)?req.techs:[];
@@ -3967,12 +3991,49 @@ let mapped=req.status==='done'?'completed'
 let assignedTo=techs.length?techs.join(', '):null;
 if(mapped!==r.svc_status||assignedTo!==r.svc_assigned_to){
 let ai=ADDED.findIndex(x=>x.i===r.i);
-if(ai>=0){Object.assign(ADDED[ai],{svc_status:mapped,svc_assigned_to:assignedTo});changed=true}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:mapped,svc_assigned_to:assignedTo});changed=true}}
+if(ai>=0){Object.assign(ADDED[ai],{svc_status:mapped,svc_assigned_to:assignedTo});changed=true;changedTicketIds.add(r.i)}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],{svc_status:mapped,svc_assigned_to:assignedTo});changed=true;changedTicketIds.add(r.i)}}
 });
 if(changed){saveA();saveE();
+// CRITICAL FIX: when this listener fires while the user has the edit modal open, we must NOT
+// blindly call renderModal() — that rebuilds the form from curRec and erases anything the user
+// is currently typing into the fields. Bug previously reported: user fills in customer info
+// (phone, email, etc.), an unrelated svc_status change lands from another tech's update,
+// and POOF — half-typed data wiped.
+//
+// Safe approach:
+//   1. If the modal is open AND it's editing one of the tickets that just changed → capture
+//      the user's in-progress form values first, persist them, THEN re-render so the new
+//      svc_status banner appears without losing the user's edits.
+//   2. If the modal is open but editing a DIFFERENT ticket → leave the modal alone entirely.
+//      curRec gets refreshed so any subsequent save merges cleanly with the latest server state.
 let ov=document.getElementById('ov');
-if(ov&&!ov.classList.contains('hidden')&&curRec){curRec=AD().find(x=>x.i===curRec.i);if(curRec)renderModal()}}
+if(ov&&!ov.classList.contains('hidden')&&curRec){
+let editingId=curRec.i;
+// Always update curRec to point at the latest server-side object so save merges correctly
+let latest=AD().find(x=>x.i===editingId);
+if(latest){
+if(changedTicketIds.has(editingId)){
+// The ticket the user is editing right now had its svc_status changed. We need to refresh
+// the modal so they see the new status — but we MUST preserve what they're typing.
+try{
+let inProgress=gatherEdits();
+let ai=ADDED.findIndex(x=>x.i===editingId);
+if(ai>=0){Object.assign(ADDED[ai],inProgress);saveA()}
+else{if(!EDITS[editingId])EDITS[editingId]={};Object.assign(EDITS[editingId],inProgress);saveE()}
+Object.assign(latest,inProgress);
+curRec=latest;renderModal();
+}catch(captureErr){
+// If gatherEdits fails, don't re-render — keep user's typing intact
+console.warn('[SVC-LOG] Skipped modal refresh to preserve user input:',captureErr);
+curRec=latest;
+}
+}else{
+// Different ticket changed — just point curRec at the latest object, no re-render
+curRec=latest;
+}
+}
+}}
 },err=>{
 console.error('[SVC-LOG] ✗ Listener error:',err);
 SVC_LOG_ERROR='Listener: '+(err.code||'')+' '+(err.message||err);
@@ -4671,7 +4732,7 @@ if(result.errors)parts.push(result.errors+' failed');
 let prefix=result.created?'&#128193;&#10003; Created folder &amp; synced to "':'&#10003; Synced to "';
 showToast(prefix+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing'),'success');
 }
-if(curRec&&String(curRec.i)===String(id))renderModal();
+safeRefreshModalIfOpen(id);
 }catch(e){
 console.error('driveSyncButton err:',e);
 // One auto-retry on auth error: re-prompt then sync immediately
@@ -4685,7 +4746,7 @@ let parts=[];
 if(result.uploaded)parts.push(result.uploaded+' uploaded');
 if(result.skipped)parts.push(result.skipped+' already synced');
 showToast('&#10003; Synced to "'+escHtml(result.folder.name)+'": '+(parts.join(', ')||'nothing'),'success');
-if(curRec&&String(curRec.i)===String(id))renderModal();
+safeRefreshModalIfOpen(id);
 }
 }catch(re){showToast('&#10005; Drive sync failed: '+re.message,'err')}
 }else{
@@ -4745,7 +4806,7 @@ let result=await driveSyncTicket(id,{silent:true});
 if(result&&result.uploaded>0){
 let prefix=result.created?'&#128193; Created folder "'+escHtml(result.folder.name)+'" and auto-synced ':'&#128448; Auto-synced ';
 showToast(prefix+result.uploaded+' photo'+(result.uploaded===1?'':'s')+' to Drive','success');
-if(curRec&&String(curRec.i)===String(id))renderModal();
+safeRefreshModalIfOpen(id);
 }else if(result&&!result.folder){
 console.log('Auto-sync skipped:',result.reason);
 }
