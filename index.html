@@ -4287,20 +4287,24 @@ if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;retur
 let parsed=parseGcalTitle(ev.summary);
 let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
 
-// Build the set of "safe to fill from calendar" updates for an existing local ticket.
-// PHILOSOPHY: never overwrite a field the user has already filled in manually. We only:
-//   • update dd if it changed (the calendar is authoritative for delivery date)
-//   • set name if the local one is empty OR still contains placeholder "???" markers
-//   • set sn if the local one is empty
-//   • set st (address) if the local one is empty
-// This way if the manager fixes a calendar event title (e.g. "AM-McNamee???" -> "AM-McNamee-31052-63376")
-// the ticket auto-fills the corrected name / SN / ZIP. Manual edits are always preserved.
+// SAFETY: never run sync while the user has the edit modal open. The modal could be holding
+// unsaved changes in form fields, and a sync that touches the underlying ticket would cause
+// confusing behavior (or a stale-state save that wipes data). The next sync tick will catch up.
+let ovOpen=document.getElementById('ov');
+if(ovOpen&&!ovOpen.classList.contains('hidden')&&curRec&&curRec.gcalId===ev.id){
+gcalStats.skipped=(gcalStats.skipped||0)+1;return}
+
+// PHILOSOPHY (per Alberto's explicit request): once a ticket exists in our app,
+// Google Calendar is ONLY the master of the delivery date (dd). Nothing else.
+// • The first time a calendar event is imported, we DO populate name / SN / city from the title.
+// • After that, even if the title changes in the calendar, we NEVER update those fields again.
+// • The user's edits to name / SN / address / phone / etc. are sacred — only the user can
+//   change them through the dashboard.
+// This prevents the bug where the user fills in customer info, refreshes, and sees their
+// edits silently overwritten by a calendar sync.
 function buildGcalUpdates(local,parsed,newDD){
 let u={};
 if(local.dd!==newDD)u.dd=newDD;
-if(parsed.name&&(!local.n||/\?{2,}/.test(local.n)))u.n=parsed.name;
-if(parsed.sn&&!String(local.sn||'').replace(/\.0$/,'').trim())u.sn=parsed.sn;
-if(parsed.city&&!String(local.st||'').trim())u.st=parsed.city;
 return u}
 
 let mappedId=gcalMap[ev.id];
@@ -4321,7 +4325,9 @@ if(!existing&&parsed.name){
 let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
 existing=AD().find(r=>{if(!r.n)return false;let rn=r.n.toLowerCase();return rn.indexOf(nameKey)>=0&&!r.co})}
 if(existing){
-// Link this event to the existing delivery
+// Link this event to the existing delivery — but DO NOT touch any of its fields except dd.
+// The ticket already exists, so it's owned by the user (manually entered or previously imported
+// and then edited). Calendar's only job here is keeping the date in sync.
 let mapUpd={};mapUpd['gcal_map/'+ev.id]=existing.i;db.ref().update(mapUpd);
 let updates=buildGcalUpdates(existing,parsed,newDD);
 if(Object.keys(updates).length){
