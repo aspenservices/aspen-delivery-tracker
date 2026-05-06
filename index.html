@@ -4286,14 +4286,31 @@ if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;re
 if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 let parsed=parseGcalTitle(ev.summary);
 let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
+
+// Build the set of "safe to fill from calendar" updates for an existing local ticket.
+// PHILOSOPHY: never overwrite a field the user has already filled in manually. We only:
+//   • update dd if it changed (the calendar is authoritative for delivery date)
+//   • set name if the local one is empty OR still contains placeholder "???" markers
+//   • set sn if the local one is empty
+//   • set st (address) if the local one is empty
+// This way if the manager fixes a calendar event title (e.g. "AM-McNamee???" -> "AM-McNamee-31052-63376")
+// the ticket auto-fills the corrected name / SN / ZIP. Manual edits are always preserved.
+function buildGcalUpdates(local,parsed,newDD){
+let u={};
+if(local.dd!==newDD)u.dd=newDD;
+if(parsed.name&&(!local.n||/\?{2,}/.test(local.n)))u.n=parsed.name;
+if(parsed.sn&&!String(local.sn||'').replace(/\.0$/,'').trim())u.sn=parsed.sn;
+if(parsed.city&&!String(local.st||'').trim())u.st=parsed.city;
+return u}
+
 let mappedId=gcalMap[ev.id];
 if(mappedId){
-// UPDATE existing delivery if date changed
 let local=AD().find(r=>r.i===mappedId);if(!local)return;
-if(local.dd!==newDD){
+let updates=buildGcalUpdates(local,parsed,newDD);
+if(Object.keys(updates).length){
 let ai=ADDED.findIndex(x=>x.i===mappedId);
-if(ai>=0){ADDED[ai].dd=newDD;saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};EDITS[mappedId].dd=newDD;saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);saveE()}
 gcalStats.updated++}
 return}
 // Look up by SN first (most reliable)
@@ -4305,11 +4322,12 @@ let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
 existing=AD().find(r=>{if(!r.n)return false;let rn=r.n.toLowerCase();return rn.indexOf(nameKey)>=0&&!r.co})}
 if(existing){
 // Link this event to the existing delivery
-let updates={};updates['gcal_map/'+ev.id]=existing.i;db.ref().update(updates);
-if(existing.dd!==newDD){
+let mapUpd={};mapUpd['gcal_map/'+ev.id]=existing.i;db.ref().update(mapUpd);
+let updates=buildGcalUpdates(existing,parsed,newDD);
+if(Object.keys(updates).length){
 let ai=ADDED.findIndex(x=>x.i===existing.i);
-if(ai>=0){ADDED[ai].dd=newDD;saveA()}
-else{if(!EDITS[existing.i])EDITS[existing.i]={};EDITS[existing.i].dd=newDD;saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[existing.i])EDITS[existing.i]={};Object.assign(EDITS[existing.i],updates);saveE()}
 gcalStats.updated++}
 return}
 // Create a new Upcoming delivery
