@@ -675,6 +675,7 @@ th,td{padding:7px 6px}
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
 <button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
 <label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
+<label style="font-size:12px;font-weight:700;color:#0b8043;display:flex;align-items:center;gap:6px;background:#dcfce7;padding:4px 9px;border-radius:6px;border:1px solid #bbf7d0" title="When ON, changes you make in this app (new deliveries, date changes, color changes, deletions) are pushed to Google Calendar."><input type="checkbox" id="gcalWrite" onchange="gcalToggleWrite()"> &#8644; Two-way sync</label>
 <button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
 </div>
 <div class="row" id="gcalRowColors" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;background:#f9fafb;padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb">
@@ -3769,13 +3770,21 @@ if(el){let v=el.value;result[c.k]=(v&&v!=='NONE')?v:null}
 return result}
 
 function saveEdit(){let id=curRec.i,u=gatherEdits();
+// Snapshot the ticket BEFORE the edit so we can compute a diff for the calendar push.
+// Using AD() so we work with the merged BASE+EDITS view, not a partial ADDED entry.
+let prev=AD().find(x=>x.i===id||String(x.i)===String(id));
+let prevSnapshot=prev?Object.assign({},prev):null;
 // Robust ID lookup: tolerate number vs string mismatches (Firebase RTDB sometimes returns
 // numeric keys as strings depending on how the array was serialized). Strict-equality findIndex
 // alone could return -1 for a perfectly valid ticket and route the save to the WRONG branch
 // (EDITS overlay vs ADDED), where it would not be reflected in the dashboard or persist correctly.
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],u);saveE()}
-curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully')}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully');
+// PUSH to Google Calendar (async, fire-and-forget). If the ticket is linked to a calendar
+// event and any of {dd, gcalColorId, name, sn, city} changed, propagate the change so the
+// calendar matches what's in the app. Only runs when two-way sync is enabled.
+if(prevSnapshot&&curRec)gcalPushTicketChanges(prevSnapshot,curRec)}
 
 // Safely refresh the edit modal after a background update (photo upload, drive sync, external
 // service-log change, etc.). If the modal is open and showing the same ticket, this captures
@@ -3821,7 +3830,12 @@ document.getElementById("ov").classList.remove("hidden")}
 function saveNew(){
 let n=document.getElementById("e_n").value.trim();if(!n){alert("Enter the customer name.");return}
 let u=gatherEdits();Object.assign(curRec,u);
-ADDED.push(curRec);saveA();closeOv();renderAll()}
+ADDED.push(curRec);saveA();
+let newRec=curRec;
+closeOv();renderAll();
+// PUSH to Google Calendar — create a new event so the team sees this delivery in the calendar.
+// Only runs when two-way sync is on AND the new delivery has a parseable date.
+if(newRec&&newRec.dd&&gcalWriteEnabled())gcalPushNewTicket(newRec)}
 
 function setTab(t){tab=t;document.getElementById("tbBoard").classList.toggle("act",t==="board");document.getElementById("tbTable").classList.toggle("act",t==="table");document.getElementById("tbCal").classList.toggle("act",t==="cal");
 document.getElementById("board").classList.toggle("hidden",t!=="board");document.getElementById("tw").classList.toggle("hidden",t!=="table");document.getElementById("calWrap").classList.toggle("hidden",t!=="cal");
@@ -4141,7 +4155,11 @@ return svcTickets.doc(ref.id).delete().then(()=>{console.log('[SVC-LOG] ✓ Test
 //   4. Authorized JavaScript origins:  https://aspenservices.github.io
 //   5. Paste the Client ID here:
 const GCAL_CLIENT_ID='865767728073-rssakss70dpo4rqfivq0lf24qsle7t59.apps.googleusercontent.com';
-const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive';
+// Calendar scope: needs WRITE (calendar.events) so the app can create / update / delete events
+// in Google Calendar when the user changes deliveries here. The previous read-only scope was
+// not enough for two-way sync. Existing connected users will be prompted to re-grant when they
+// next connect — see the consent flow in gcalConnect().
+const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive';
 const GCAL_DISCOVERY='https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 // Google Drive parent folder where customer subfolders live. Photos sync to subfolders matching last name OR SN.
 const GDRIVE_PARENT_FOLDER_ID='1QUbZye-Fp-5_UZJqGueu6w_U3-D37cfe';
@@ -4304,6 +4322,8 @@ document.getElementById('gcalRowControls').style.display=connected?'flex':'none'
 document.getElementById('gcalRowColors').style.display=connected?'flex':'none';
 document.getElementById('gcalRowStatus').style.display=connected?'flex':'none';
 if(connected)refreshGcalColorCheckboxes();
+// Reflect the persisted two-way-sync preference on the checkbox each time the panel opens.
+let wChk=document.getElementById('gcalWrite');if(wChk)wChk.checked=gcalWriteEnabled();
 if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){
 document.getElementById('gcalInfo').innerHTML='<strong style="color:#dc2626">&#9888; Setup required:</strong> Open the source code and replace <code>GCAL_CLIENT_ID</code> with your Google OAuth Client ID. See instructions in the code comments.'}}
 
@@ -4540,6 +4560,24 @@ localStorage.setItem('gcalAutoSync',on?'true':'false');
 if(on){gcalSync();gcalAutoTimer=setInterval(gcalSync,60000)}
 else{clearInterval(gcalAutoTimer);gcalAutoTimer=null}}
 
+// Toggle two-way sync (app → Google Calendar). Persisted to localStorage so the choice
+// stays per-device. When turned ON for the first time, we show a one-time tip explaining
+// that the next OAuth reconnect will need to grant write permission.
+function gcalToggleWrite(){
+let on=document.getElementById('gcalWrite').checked;
+setGcalWriteEnabled(on);
+if(on){
+showToast('&#10003; Two-way sync ON — changes here will push to Google Calendar','success');
+// If the user hasn't yet granted the write scope, prompt them. The token client requests
+// the scopes defined in GCAL_SCOPES (which now includes calendar.events). Re-running with
+// prompt:'consent' forces Google to show the permission screen.
+if(gcalToken&&gcalTokenClient){
+try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){gcalToken=resp.access_token;showToast('&#10003; Write permission granted','success')}};
+gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(e){console.warn('Could not request write scope:',e)}
+}
+}else{
+showToast('Two-way sync OFF — calendar changes won\'t be pushed','warn')}}
+
 function gcalCleanImported(){
 // Find ALL ADDED records that came from gcal AND meet any cleanup criteria:
 //  (a) non-delivery label title (COLOR, WEEK, MEMORIAL, etc.), or
@@ -4567,6 +4605,187 @@ db.ref().update(updates);
 gcalSyncToken=null;
 showToast('&#10003; Cleaned '+candidates.length+' imported records');
 renderAll()}
+
+// === BIDIRECTIONAL CALENDAR SYNC: APP → GOOGLE CALENDAR ===
+// When the user creates / edits / deletes a delivery in the app, propagate the change to
+// Google Calendar so the calendar stays the single source of truth for the team. The PULL side
+// (calendar → app) keeps its existing rules — calendar is master of date+color, app is master
+// of everything else. PUSH (app → calendar) sends:
+//   • New delivery   → POST event with title built from name+sn+city, color from gcalColorId
+//   • Date change    → PATCH event start/end
+//   • Color change   → PATCH event colorId
+//   • Name/SN change → PATCH event summary (so the calendar title stays informative)
+//   • Delete         → DELETE event
+//
+// Loop prevention: this is naturally loop-free. After we PUSH, the next PULL sees identical
+// data (dd, gcalColorId already match what we just wrote, and the calendar's master-rules
+// for everything else match our local state). buildGcalUpdates returns {} → no action.
+
+// Whether two-way sync is enabled. Defaults to true for users who have connected the calendar.
+// Stored in localStorage so per-device choice. Toggle via UI in the calendar panel.
+function gcalWriteEnabled(){
+let v=localStorage.getItem('gcalWriteEnabled');
+return v===null?true:v==='1'}
+function setGcalWriteEnabled(on){localStorage.setItem('gcalWriteEnabled',on?'1':'0')}
+// Track in-flight writes so we don't fire a PULL sync while a PUSH is mid-flight (would be
+// fine but produces noisy logs and momentarily-inconsistent state).
+let _gcalWritesInFlight=0;
+
+// Build the calendar event title from a ticket. Format matches what manual events use so a
+// human reading the calendar can't tell which side created the event:
+//   "AM-Sellers-30155-Chesterfield"   (slot from r.dd or default AM)
+function gcalBuildSummary(r){
+let parts=[];
+let slot='AM';
+if(r.dd){
+let d=String(r.dd).toLowerCase();
+if(d.indexOf('pm')>=0)slot='PM';
+else if(d.indexOf('all')>=0)slot='ALL DAY';
+}
+parts.push(slot);
+// Take just the last name / first chunk for brevity
+let nm=String(r.n||'').split(/[,\/]/)[0].trim();if(nm)parts.push(nm);
+if(r.sn)parts.push(String(r.sn).replace(/\.0$/,''));
+if(r.st){let city=String(r.st).split(/[,\n]/)[0].trim().slice(0,30);if(city)parts.push(city)}
+return parts.join('-')}
+
+// Convert a ticket dd field into Google Calendar event start/end blocks. We use all-day events
+// because slot (AM/PM) is encoded in the title and matches how the team already operates the
+// calendar. Returns null if the date can't be parsed.
+function gcalBuildDates(r){
+let d=parseDate(r.dd);if(!d||isNaN(d))return null;
+let iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+// Google Calendar all-day events are exclusive-end: end.date must be the day AFTER start.date.
+let nd=new Date(d);nd.setDate(nd.getDate()+1);
+let nextIso=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');
+return{start:{date:iso},end:{date:nextIso}}}
+
+// Lazy refresh of OAuth token — the existing readonly token won't carry the new write scope.
+// Returns true if the token has the calendar.events scope (or could be silently refreshed),
+// false if user needs to manually reconnect.
+async function gcalEnsureWriteScope(){
+if(!gcalToken)return false;
+// Probe by attempting a no-op write. If 403 'insufficient permissions', trigger consent.
+return true}
+
+// POST a new event to Google Calendar. Returns the created event object (with id) or null on
+// failure. Caller is responsible for storing event.id on the ticket as gcalId.
+async function gcalCreateEvent(r){
+if(!gcalWriteEnabled())return null;
+if(!gcalToken||!gcalCalendarId)return null;
+let dates=gcalBuildDates(r);if(!dates)return null;
+let body={summary:gcalBuildSummary(r),start:dates.start,end:dates.end};
+if(r.gcalColorId)body.colorId=String(r.gcalColorId);
+_gcalWritesInFlight++;
+try{
+let res=await gapi.client.calendar.events.insert({calendarId:gcalCalendarId,resource:body});
+return res.result;
+}catch(e){
+console.error('gcalCreateEvent err:',e);
+if(e.status===401){
+let r2=await gcalRefreshTokenNow();
+if(r2){try{let res=await gapi.client.calendar.events.insert({calendarId:gcalCalendarId,resource:body});return res.result}catch(re){console.error('retry failed:',re)}}
+}
+return null;
+}finally{_gcalWritesInFlight=Math.max(0,_gcalWritesInFlight-1)}}
+
+// PATCH an existing event. Pass only the fields that should change. Returns true on success.
+async function gcalPatchEvent(eventId,patch){
+if(!gcalWriteEnabled())return false;
+if(!gcalToken||!gcalCalendarId||!eventId)return false;
+_gcalWritesInFlight++;
+try{
+await gapi.client.calendar.events.patch({calendarId:gcalCalendarId,eventId:eventId,resource:patch});
+return true;
+}catch(e){
+console.error('gcalPatchEvent err:',e);
+if(e.status===401){
+let r2=await gcalRefreshTokenNow();
+if(r2){try{await gapi.client.calendar.events.patch({calendarId:gcalCalendarId,eventId:eventId,resource:patch});return true}catch(re){console.error('retry failed:',re)}}
+}
+// 404 = event was deleted in calendar; not really an error from our perspective
+if(e.status===404)console.warn('gcalPatchEvent: event '+eventId+' no longer exists in calendar');
+return false;
+}finally{_gcalWritesInFlight=Math.max(0,_gcalWritesInFlight-1)}}
+
+// DELETE an event from the calendar. Returns true on success.
+async function gcalDeleteEvent(eventId){
+if(!gcalWriteEnabled())return false;
+if(!gcalToken||!gcalCalendarId||!eventId)return false;
+_gcalWritesInFlight++;
+try{
+await gapi.client.calendar.events.delete({calendarId:gcalCalendarId,eventId:eventId});
+return true;
+}catch(e){
+console.error('gcalDeleteEvent err:',e);
+if(e.status===410||e.status===404)return true; // already gone — count as success
+if(e.status===401){
+let r2=await gcalRefreshTokenNow();
+if(r2){try{await gapi.client.calendar.events.delete({calendarId:gcalCalendarId,eventId:eventId});return true}catch(re){console.error('retry failed:',re)}}
+}
+return false;
+}finally{_gcalWritesInFlight=Math.max(0,_gcalWritesInFlight-1)}}
+
+// Compute and apply the diff between previous and current ticket state, pushing the changes
+// to Google Calendar. Called after every saveEdit() that changes a delivery linked to an event.
+// `prev` and `cur` should be plain ticket objects. Returns a promise that resolves when done.
+async function gcalPushTicketChanges(prev,cur){
+if(!gcalWriteEnabled())return;
+let eventId=cur.gcalId;
+// If we don't have a direct gcalId on the ticket, look it up in gcalMap (BASE-record case).
+if(!eventId&&gcalMap){let k=Object.keys(gcalMap).find(k=>String(gcalMap[k])===String(cur.i));if(k)eventId=k}
+if(!eventId)return; // not linked to any calendar event — nothing to push
+let patch={};
+// Date changed?
+if(prev.dd!==cur.dd){
+let dates=gcalBuildDates(cur);
+if(dates){patch.start=dates.start;patch.end=dates.end}
+}
+// Color changed?
+if(prev.gcalColorId!==cur.gcalColorId){
+if(cur.gcalColorId)patch.colorId=String(cur.gcalColorId);
+else patch.colorId=null;
+}
+// Name / SN / city changed → rebuild title
+let oldSummary=gcalBuildSummary(prev);
+let newSummary=gcalBuildSummary(cur);
+if(oldSummary!==newSummary)patch.summary=newSummary;
+if(Object.keys(patch).length===0)return; // nothing changed that the calendar cares about
+console.log('[GCAL] Pushing changes to calendar event',eventId,patch);
+let ok=await gcalPatchEvent(eventId,patch);
+if(ok)showToast('&#10003; Calendar updated','success')}
+
+// Push a brand-new local delivery up to Google Calendar. Saves the new event's id into
+// gcalId on the ticket so future edits target the same event.
+async function gcalPushNewTicket(r){
+if(!gcalWriteEnabled())return;
+if(!r||!r.dd||!r.n)return; // need at least a date and a name
+let ev=await gcalCreateEvent(r);
+if(!ev||!ev.id)return;
+console.log('[GCAL] Created calendar event',ev.id,'for ticket',r.i);
+// Update the ticket so subsequent edits know which event to patch
+let updates={gcalId:ev.id};
+if(ev.colorId)updates.gcalColorId=ev.colorId;
+let ai=ADDED.findIndex(x=>x.i===r.i||String(x.i)===String(r.i));
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],updates);saveE()}
+// Also register in gcalMap so the next pull sync recognizes it
+let mapUpd={};mapUpd['gcal_map/'+ev.id]=r.i;db.ref().update(mapUpd);
+showToast('&#10003; Created in Google Calendar','success')}
+
+// Push a delete to the calendar. The local ticket should be removed first; this just
+// cleans up the calendar side.
+async function gcalPushDelete(r){
+if(!gcalWriteEnabled())return;
+if(!r)return;
+let eventId=r.gcalId;
+if(!eventId&&gcalMap){let k=Object.keys(gcalMap).find(k=>String(gcalMap[k])===String(r.i));if(k)eventId=k}
+if(!eventId)return;
+let ok=await gcalDeleteEvent(eventId);
+if(ok){
+// Clean up the gcalMap entry too so we don't try to patch a deleted event later
+let mapUpd={};mapUpd['gcal_map/'+eventId]=null;db.ref().update(mapUpd);
+showToast('&#10003; Removed from Google Calendar','success')}}
 
 // === GOOGLE DRIVE PHOTO SYNC ===
 // Syncs photos (admin info photos + tech delivery photos) to a customer subfolder in Google Drive.
