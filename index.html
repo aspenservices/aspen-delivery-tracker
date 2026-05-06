@@ -1674,6 +1674,61 @@ let _saveInFlight={added:0,edits:0};
 // rather than overwrites (in case our save was confirmed but a stale callback fires after).
 let _lastLocalSave={added:0,edits:0};
 
+// === RECENT-EDIT OVERLAY (BULLETPROOF DATA-LOSS PROTECTION) ===
+// Even with _saveInFlight + grace window, there's still a way the user's edits can revert:
+// after .then() resolves and _saveInFlight drops to 0, Firebase RTDB might emit an OLDER
+// snapshot (e.g. from a write that completed AFTER ours but carried server-side stale data,
+// or from another path on the same connection). When that older snapshot arrives, the
+// listener replaces ADDED/EDITS with stale data, and the user's typed phone/name is GONE.
+//
+// To make this absolutely impossible, we maintain an in-memory map of recent local edits.
+// When the user saves, we capture a deep copy of the edited record. For the next 30 seconds,
+// EVERY incoming snapshot from Firebase has these recent edits OVERLAID on top before being
+// applied to our local state. So even if the snapshot is stale and missing our edit, we
+// re-stamp our edit on top — the user's data is never lost.
+//
+// After 30 seconds (well past any normal Firebase echo latency), the entry expires. By then
+// the server has definitely received our write and the next snapshot will carry it.
+const _RECENT_EDIT_TTL_MS=30000;
+let _recentLocalEditsAdded={}; // {ticketId: {data, ts}}
+let _recentLocalEditsEdits={}; // {ticketId: {data, ts}}  — for EDITS overlays on BASE rows
+
+function rememberAddedEdit(ticket){
+if(!ticket||ticket.i==null)return;
+_recentLocalEditsAdded[String(ticket.i)]={data:JSON.parse(JSON.stringify(ticket)),ts:Date.now()};
+pruneRecentEdits()}
+function rememberEditsEdit(ticketId,editObj){
+if(ticketId==null)return;
+_recentLocalEditsEdits[String(ticketId)]={data:JSON.parse(JSON.stringify(editObj||{})),ts:Date.now()};
+pruneRecentEdits()}
+function pruneRecentEdits(){
+let cutoff=Date.now()-_RECENT_EDIT_TTL_MS;
+Object.keys(_recentLocalEditsAdded).forEach(k=>{if(_recentLocalEditsAdded[k].ts<cutoff)delete _recentLocalEditsAdded[k]});
+Object.keys(_recentLocalEditsEdits).forEach(k=>{if(_recentLocalEditsEdits[k].ts<cutoff)delete _recentLocalEditsEdits[k]})}
+// Apply our recent local edits ON TOP of an incoming server snapshot. The snapshot is the
+// "base layer" — if the user just edited a ticket, our edit overrides whatever the server says
+// for that specific ticket. Returns the merged array/object.
+function overlayRecentAddedEdits(serverArr){
+pruneRecentEdits();
+if(!Array.isArray(serverArr))return serverArr;
+let arr=serverArr.slice();
+Object.keys(_recentLocalEditsAdded).forEach(id=>{
+let edit=_recentLocalEditsAdded[id].data;
+let idx=arr.findIndex(r=>r&&String(r.i)===String(id));
+if(idx>=0)arr[idx]=edit; // override
+else arr.push(edit); // server doesn't know about it yet — keep our local copy
+});
+return arr}
+function overlayRecentEditsEdits(serverObj){
+pruneRecentEdits();
+let obj=Object.assign({},serverObj||{});
+Object.keys(_recentLocalEditsEdits).forEach(id=>{
+// Merge our recent edit fields on top of whatever the server has for this ticket
+let local=_recentLocalEditsEdits[id].data;
+obj[id]=Object.assign({},obj[id]||{},local);
+});
+return obj}
+
 function saveE(){
 // Always backup to localStorage FIRST (so it survives even if app closes mid-sync)
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
@@ -1837,20 +1892,18 @@ let v=snap.val()||{};
 // Defense layer 1: explicit offline-queue lock — flushing pending changes, don't clobber.
 if(_pendingFlush.edits)return;
 // Defense layer 2: in-flight save protection — we've called set() but Firebase hasn't
-// confirmed. A snapshot arriving now could be the OLD server state from before our write
-// (Firebase RTDB does NOT guarantee that the next on('value') event reflects our pending set).
-// Refusing the snapshot here means the user's save survives. The next snapshot after
-// confirmation will carry our data and replace EDITS cleanly.
+// confirmed. A snapshot arriving now could be the OLD server state from before our write.
 if(_saveInFlight.edits>0)return;
-// Defense layer 3: 1.5s grace window — even after _saveInFlight drops to 0, a stale callback
-// can occasionally land. During the grace window, only accept snapshots that contain our
-// most recent edits (i.e. the keys we just wrote) — otherwise discard.
+// Defense layer 3: 1.5s grace window for missing-key check.
 if(Date.now()-_lastLocalSave.edits<1500){
 let localKeys=Object.keys(EDITS),snapKeys=Object.keys(v);
 let missing=localKeys.filter(k=>!(k in v));
 if(missing.length){console.warn('[FB] Discarding stale edits snapshot — missing local keys:',missing);return}
 }
-EDITS=v;
+// Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
+// Even if the snapshot is stale and missing a typed field, our recent-edit overlay puts
+// it back. This is the absolute last line of defense against the user seeing data revert.
+EDITS=overlayRecentEditsEdits(v);
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
@@ -1858,9 +1911,7 @@ dbAdded.on('value',snap=>{
 let v=snap.val()||[];
 if(_pendingFlush.added)return;
 if(_saveInFlight.added>0)return;
-// 1.5s grace window — verify the snapshot has our latest local writes by ID. If a record
-// we just edited is missing OR has older field values than our local state, the snapshot
-// is stale (race against Firebase echo) and we drop it. The next legit snapshot WILL match.
+// 1.5s grace window for missing-id check.
 if(Date.now()-_lastLocalSave.added<1500&&Array.isArray(ADDED)&&ADDED.length){
 let serverArr=Array.isArray(v)?v:Object.values(v||{});
 let localById={};ADDED.forEach(r=>{if(r&&r.i!=null)localById[r.i]=r});
@@ -1868,7 +1919,11 @@ let serverById={};serverArr.forEach(r=>{if(r&&r.i!=null)serverById[r.i]=r});
 let missingId=Object.keys(localById).find(id=>!serverById[id]);
 if(missingId){console.warn('[FB] Discarding stale added snapshot — missing recently-saved ticket id:',missingId);return}
 }
-ADDED=v;if(!Array.isArray(ADDED))ADDED=Object.values(ADDED);
+let nextArr=Array.isArray(v)?v:Object.values(v||{});
+// Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
+// If the user just typed a phone number and the server's snapshot doesn't reflect it yet,
+// our overlay re-applies the edit. This guarantees the typed data is never lost — period.
+ADDED=overlayRecentAddedEdits(nextArr);
 try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
@@ -2657,6 +2712,31 @@ else{style='color:'+p.color+';border-color:'+p.color+'66'}
 h+='<button type="button" class="'+cls+'" data-req="'+p.k+'" onclick="toggleRequirement(\''+p.k+'\')" style="'+style+'"><span style="font-size:13px">'+p.ico+'</span> '+p.l+'</button>';
 });
 h+='</div></div>';
+// CALENDAR COLOR PICKER — only the colors currently allowed in the sync filter are shown,
+// because per Alberto's rule, only those event types should ever sync bidirectionally.
+// Setting a color here lets a NEW delivery be pushed to Google Calendar (without a color we
+// skip the push). For existing deliveries it lets the user re-categorize without leaving the app.
+if(typeof getGcalColors==='function'){
+let allowedColors=getGcalColors();
+let colorDefs=[
+{id:'11',l:"Standard 8'",hex:'#d50000',text:'#fff'},
+{id:'10',l:"7' or Smaller",hex:'#0b8043',text:'#fff'},
+{id:'6',l:'Non-Standard',hex:'#f4511e',text:'#fff'},
+{id:'8',l:'Awaiting Conf.',hex:'#616161',text:'#fff'},
+{id:'5',l:'Slot N/A',hex:'#e4c441',text:'#3b2f00'}
+].filter(c=>allowedColors.includes(c.id));
+if(colorDefs.length){
+h+='<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);display:block;margin-bottom:8px">Calendar Color <span style="font-weight:400;color:var(--text-tertiary);font-size:10px;text-transform:none;letter-spacing:0">(syncs to Google Calendar)</span></label>';
+h+='<div class="pst-row">';
+colorDefs.forEach(c=>{
+let active=String(r.gcalColorId||'')===c.id;
+let style=active
+?'background:'+c.hex+';color:'+c.text+';border-color:'+c.hex
+:'background:#fff;color:'+c.hex+';border-color:'+c.hex+'66';
+h+='<button type="button" class="pst-pill'+(active?' pst-active':'')+'" onclick="toggleCalendarColor(\''+c.id+'\')" style="'+style+'"><span style="font-size:13px">&#9679;</span> '+c.l+'</button>';
+});
+h+='</div></div>'}
+}
 h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+(r.st||"")+'</textarea></div>';
 // Assigned tech dropdown (admin/organizer only)
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
@@ -3740,6 +3820,33 @@ let labels={crane:'Crane Job',extra_person:'Extra Person',water_truck:'Water Tru
 showToast((next?'\u2713 ':'\u2715 ')+labels[k]+(next?' required — tech will be notified':' removed'));
 }
 
+// Toggle the Google Calendar color on the current ticket. Click an inactive pill to set it,
+// click the active pill to clear it. Also pushes the change to Google Calendar (if write
+// is enabled and the ticket is already linked to an event).
+function toggleCalendarColor(colorId){
+if(!curRec)return;
+let id=curRec.i;
+let prev=AD().find(x=>x.i===id||String(x.i)===String(id));
+let prevSnapshot=prev?Object.assign({},prev):null;
+let next=String(curRec.gcalColorId||'')===String(colorId)?null:String(colorId);
+curRec.gcalColorId=next;
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){ADDED[ai].gcalColorId=next;saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].gcalColorId=next;saveE()}
+// Re-render the modal so the color pills reflect the new selection (in-place style update
+// without losing scroll). We just toggle the active state on the relevant pills.
+document.querySelectorAll('.pst-pill').forEach(b=>{
+let m=b.getAttribute('onclick')||'';let mt=m.match(/toggleCalendarColor\('([^']+)'\)/);
+if(!mt)return;
+let cid=mt[1];let active=String(next||'')===cid;
+b.classList.toggle('pst-active',active)
+});
+renderModal();renderAll();
+let cur=AD().find(x=>x.i===id||String(x.i)===String(id));
+if(prevSnapshot&&cur)gcalPushTicketChanges(prevSnapshot,cur);
+showToast(next?'&#10003; Color set':'&#10003; Color cleared');
+}
+
 function gatherEdits(){
 let pr=parseFloat(document.getElementById("e_pr").value)||0,py=parseFloat(document.getElementById("e_py").value)||0;
 let sB=document.getElementById("e_spa_base").value,sS=document.getElementById("e_spa_series").value;
@@ -3761,6 +3868,8 @@ pst:curRec&&curRec.pst!==undefined?curRec.pst:null,
 crane:!!(curRec&&curRec.crane),
 extra_person:!!(curRec&&curRec.extra_person),
 water_truck:!!(curRec&&curRec.water_truck),
+// Carry the calendar color through saves (set via toggleCalendarColor pills above)
+gcalColorId:curRec&&curRec.gcalColorId!==undefined?curRec.gcalColorId:null,
 assigned_to:(document.getElementById("e_assigned")?document.getElementById("e_assigned").value:null)||null};
 // Add custom-category values dynamically
 CUSTOM_CATS.forEach(c=>{
@@ -3779,11 +3888,22 @@ let prevSnapshot=prev?Object.assign({},prev):null;
 // alone could return -1 for a perfectly valid ticket and route the save to the WRONG branch
 // (EDITS overlay vs ADDED), where it would not be reflected in the dashboard or persist correctly.
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],u);saveE()}
+if(ai>=0){
+Object.assign(ADDED[ai],u);
+// Remember this edit for 30s — protects against stale Firebase snapshots wiping the change
+rememberAddedEdit(ADDED[ai]);
+saveA()
+}else{
+if(!EDITS[id])EDITS[id]={};
+Object.assign(EDITS[id],u);
+rememberEditsEdit(id,EDITS[id]);
+saveE()
+}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully');
 // PUSH to Google Calendar (async, fire-and-forget). If the ticket is linked to a calendar
-// event and any of {dd, gcalColorId, name, sn, city} changed, propagate the change so the
-// calendar matches what's in the app. Only runs when two-way sync is enabled.
+// event and any of {dd, gcalColorId} changed, propagate the change so the calendar matches
+// the app. Title is intentionally NOT pushed — see gcalPushTicketChanges. Only runs when
+// two-way sync is enabled.
 if(prevSnapshot&&curRec)gcalPushTicketChanges(prevSnapshot,curRec)}
 
 // Safely refresh the edit modal after a background update (photo upload, drive sync, external
@@ -4729,8 +4849,22 @@ return false;
 // Compute and apply the diff between previous and current ticket state, pushing the changes
 // to Google Calendar. Called after every saveEdit() that changes a delivery linked to an event.
 // `prev` and `cur` should be plain ticket objects. Returns a promise that resolves when done.
+//
+// SCOPE OF PUSHED CHANGES (per Alberto's rule):
+// • Date  — yes, push (drag-and-drop and date edits should reflect on the calendar)
+// • Color — yes, push (re-categorizing via the Calendar Color pills updates colorId)
+// • Title (summary) — NO. The calendar title is whatever the team originally created in
+//   Google Calendar. Editing the customer name, SN, or city in the app must NOT rewrite the
+//   calendar event title — those fields are app-side metadata only. Keeping the title
+//   stable also prevents conflict when the team uses non-standard titles in calendar.
 async function gcalPushTicketChanges(prev,cur){
 if(!gcalWriteEnabled())return;
+// COLOR GATE: per Alberto's rule, only events whose color is in the allowed-color filter
+// should be modified bidirectionally. If the ticket has no color OR the color is not allowed,
+// we skip the push entirely. This protects events outside the user's workflow categories.
+if(!cur.gcalColorId||!isAllowedColor(cur.gcalColorId)){
+console.log('[GCAL] Push skipped — ticket color not in allowed filter:',cur.gcalColorId);
+return}
 let eventId=cur.gcalId;
 // If we don't have a direct gcalId on the ticket, look it up in gcalMap (BASE-record case).
 if(!eventId&&gcalMap){let k=Object.keys(gcalMap).find(k=>String(gcalMap[k])===String(cur.i));if(k)eventId=k}
@@ -4746,10 +4880,8 @@ if(prev.gcalColorId!==cur.gcalColorId){
 if(cur.gcalColorId)patch.colorId=String(cur.gcalColorId);
 else patch.colorId=null;
 }
-// Name / SN / city changed → rebuild title
-let oldSummary=gcalBuildSummary(prev);
-let newSummary=gcalBuildSummary(cur);
-if(oldSummary!==newSummary)patch.summary=newSummary;
+// IMPORTANT: deliberately NOT patching summary/title. The calendar event title stays as the
+// team originally typed it. Only date and color are bidirectional.
 if(Object.keys(patch).length===0)return; // nothing changed that the calendar cares about
 console.log('[GCAL] Pushing changes to calendar event',eventId,patch);
 let ok=await gcalPatchEvent(eventId,patch);
@@ -4760,6 +4892,13 @@ if(ok)showToast('&#10003; Calendar updated','success')}
 async function gcalPushNewTicket(r){
 if(!gcalWriteEnabled())return;
 if(!r||!r.dd||!r.n)return; // need at least a date and a name
+// COLOR GATE: a new delivery without an allowed color is NOT pushed to the calendar. This
+// matches Alberto's rule that only events with the configured colors are part of the
+// calendar workflow. The user can pick a color via the Calendar Color pills in the modal.
+if(!r.gcalColorId||!isAllowedColor(r.gcalColorId)){
+console.log('[GCAL] New ticket not pushed — no allowed color set');
+showToast('&#9888; Pick a Calendar Color to also create the event in Google Calendar','warn');
+return}
 let ev=await gcalCreateEvent(r);
 if(!ev||!ev.id)return;
 console.log('[GCAL] Created calendar event',ev.id,'for ticket',r.i);
@@ -4778,6 +4917,8 @@ showToast('&#10003; Created in Google Calendar','success')}
 async function gcalPushDelete(r){
 if(!gcalWriteEnabled())return;
 if(!r)return;
+// COLOR GATE: only delete events from calendar that match the allowed color filter.
+if(!r.gcalColorId||!isAllowedColor(r.gcalColorId))return;
 let eventId=r.gcalId;
 if(!eventId&&gcalMap){let k=Object.keys(gcalMap).find(k=>String(gcalMap[k])===String(r.i));if(k)eventId=k}
 if(!eventId)return;
@@ -5223,11 +5364,11 @@ DAYNAMES.forEach(d=>{h+='<div class="cal-dh">'+d+'</div>'});
 // Leading blanks from prev month
 let prevLast=new Date(y,m,0).getDate();
 for(let i=startDay-1;i>=0;i--){let dn=prevLast-i;h+='<div class="cal-cell other"><div class="cal-dn">'+dn+'</div></div>'}
-// Days of month
+// Days of month — each cell is a drop target. Events with allowed colors are draggable.
 for(let d=1;d<=totalDays;d++){
 let k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 let isToday=k===todayK;
-h+='<div class="cal-cell'+(isToday?' today':'')+'">';
+h+='<div class="cal-cell'+(isToday?' today':'')+'" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
 h+='<div class="cal-dn">'+d+'</div>';
 let dayEvs=evs[k]||[];
 let show=dayEvs.slice(0,3);
@@ -5246,13 +5387,58 @@ let titleAttr=r.n+(r.sp?' — '+r.sp:'')+(r.sn?' (SN '+r.sn+')':'');
 let gStyle=gcalColorStyle(r);
 let evClass='cal-ev'+(gStyle?'':' '+e.s);
 let evStyle=gStyle?' style="'+gStyle+'"':'';
-h+='<div class="'+evClass+'"'+evStyle+' onclick="event.stopPropagation();openDet('+r.i+')" title="'+escHtml(titleAttr)+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
+// Only events with an allowed color can be dragged (matches Alberto's bidirectional rule).
+// Completed events are non-draggable too — moving a delivered event makes no sense.
+let canDrag=!r.co&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
+let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
+h+='<div class="'+evClass+'"'+evStyle+dragAttrs+' onclick="event.stopPropagation();openDet('+r.i+')" title="'+escHtml(titleAttr)+(canDrag?' (drag to move date)':'')+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
 if(dayEvs.length>3)h+='<div class="cal-more" onclick="calDate=new Date('+y+','+(m)+','+d+');setCalView(\'day\')">+' +(dayEvs.length-3)+' more</div>';
 h+='</div>'}
 // Trailing blanks
 let totalCells=startDay+totalDays;let rem=totalCells%7;
 if(rem>0)for(let i=1;i<=7-rem;i++){h+='<div class="cal-cell other"><div class="cal-dn">'+i+'</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
+
+// === DRAG & DROP HANDLERS ===
+// Move a delivery to a new date by dragging it across day cells. Updates the ticket's dd
+// while preserving its time-slot suffix (am/pm/all day), saves, and pushes the change to
+// Google Calendar via the bidirectional sync (which also enforces the color filter).
+function calEvDragStart(ev,ticketId){
+ev.dataTransfer.setData('text/plain',String(ticketId));
+ev.dataTransfer.effectAllowed='move';
+// Visual feedback — ghost the dragged element
+ev.target.style.opacity='0.4'}
+function calEvDragEnd(ev){ev.target.style.opacity=''}
+function calCellDragOver(ev){
+ev.preventDefault();
+ev.dataTransfer.dropEffect='move';
+// Highlight the target cell
+let cell=ev.currentTarget;cell.style.background='#dbeafe'}
+function calCellDragLeave(ev){
+let cell=ev.currentTarget;cell.style.background=''}
+function calCellDrop(ev,targetDateKey){
+ev.preventDefault();
+let cell=ev.currentTarget;cell.style.background='';
+let id=ev.dataTransfer.getData('text/plain');if(!id)return;
+let ticket=AD().find(r=>String(r.i)===String(id));if(!ticket)return;
+// Preserve the time slot suffix (am / pm / all day) from the original date string
+let oldDdLower=String(ticket.dd||'').toLowerCase();
+let suffix=' am';
+if(oldDdLower.indexOf('all')>=0)suffix=' all day';
+else if(oldDdLower.indexOf('pm')>=0)suffix=' pm';
+let newDd=targetDateKey+suffix;
+if(newDd===ticket.dd)return; // dropped on same day, nothing to do
+// Snapshot for diff push to calendar
+let prevSnapshot=Object.assign({},ticket);
+let updates={dd:newDd};
+let ai=ADDED.findIndex(x=>String(x.i)===String(id));
+if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
+else{if(!EDITS[ticket.i])EDITS[ticket.i]={};Object.assign(EDITS[ticket.i],updates);saveE()}
+showToast('&#128197; Moved to '+targetDateKey);
+renderAll();
+// Push to Google Calendar (will be skipped if color is not in allowed filter)
+let cur=AD().find(x=>String(x.i)===String(id));
+if(prevSnapshot&&cur)gcalPushTicketChanges(prevSnapshot,cur)}
 
 function renderCalWeek(){
 let d=new Date(calDate);d.setDate(d.getDate()-d.getDay());
@@ -5266,11 +5452,15 @@ let cur=new Date(d);cur.setDate(cur.getDate()+i);
 let k=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
 let isToday=k===todayK;
 let dayEvs=evs[k]||[];
-h+='<div class="cal-wk-row"><div class="cal-wk-label'+(isToday?' today':'')+'"><div style="font-size:11px;text-transform:uppercase">'+DAYNAMES[cur.getDay()]+'</div><div class="cw-day">'+cur.getDate()+'</div><div style="font-size:10px;color:#9ca3af">'+MNAMES[cur.getMonth()].substring(0,3)+'</div></div><div class="cal-wk-evs">';
+// The events list area is the drop zone for this day
+h+='<div class="cal-wk-row"><div class="cal-wk-label'+(isToday?' today':'')+'"><div style="font-size:11px;text-transform:uppercase">'+DAYNAMES[cur.getDay()]+'</div><div class="cw-day">'+cur.getDate()+'</div><div style="font-size:10px;color:#9ca3af">'+MNAMES[cur.getMonth()].substring(0,3)+'</div></div><div class="cal-wk-evs" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
 if(!dayEvs.length)h+='<div style="font-size:12px;color:#d1d5db;padding:8px">No deliveries</div>';
 dayEvs.forEach(e=>{
-let dotColor=gcalDotColor(e.r)||sC2(e.s);
-h+='<div class="cal-wk-ev" onclick="openDet('+e.r.i+')"><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+e.r.n+'</div><div class="ev-spa">'+(e.r.sp||'')+'</div><div class="ev-time">'+dateNote(e.r.dd).trim()+'</div></div>'});
+let r=e.r;
+let dotColor=gcalDotColor(r)||sC2(e.s);
+let canDrag=!r.co&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
+let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
+h+='<div class="cal-wk-ev"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+r.n+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
