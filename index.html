@@ -1184,8 +1184,8 @@ function techConfirmDelivered(id){
 let notes=document.getElementById('tdv_notes').value.trim()||null;
 let updates={dl:true,dn:notes};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 document.getElementById('tech-deliver-modal').classList.add('hidden');
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
@@ -1313,8 +1313,8 @@ showToast('&#9888; Signature saved but could not embed in PDF: '+pdfErr.message,
 }
 }
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 showToast('&#10003; Customer signature saved'+(updates.pdf_invoice_signed?' &amp; embedded in PDF':''));
 // Auto-sync to Drive (will include the signed PDF + signature image)
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
@@ -1409,8 +1409,8 @@ let existing=(r.dn||'').trim();
 let newDn=existing?existing+'\n\n'+entry:entry;
 let updates={dn:newDn,needs_attention:true,attention_at:Date.now()};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 // Close modal + refresh detail
 let mod=document.querySelector('.tech-modal[style*="z-index"]');
 if(mod)mod.remove();
@@ -1432,8 +1432,8 @@ if(!added.length)return;
 let newPhotos=existing.concat(added);
 let updates={tech_photos:newPhotos};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
 // Auto-sync to Google Drive (debounced, silent if Drive not connected)
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
@@ -1461,8 +1461,8 @@ let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
 let newPhotos=r.tech_photos.slice();newPhotos.splice(idx,1);
 let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 techOpenDetail(id)}
 
 // Tech views their own delivery photo (full screen, with navigation across all tech_photos)
@@ -1534,8 +1534,8 @@ if(!added.length)return;
 let newPhotos=existing.concat(added);
 let updates={photos:newPhotos};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
 // Auto-sync to Google Drive (debounced, silent if Drive not connected)
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
@@ -1549,8 +1549,8 @@ let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
 let newPhotos=r.photos.slice();newPhotos.splice(idx,1);
 let updates={photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 safeRefreshModalIfOpen(id)}
 
 // Admin deletes a tech delivery photo (r.tech_photos) — admin can review and curate the ticket
@@ -1560,8 +1560,8 @@ let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
 let newPhotos=r.tech_photos.slice();newPhotos.splice(idx,1);
 let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 safeRefreshModalIfOpen(id)}
 
 // === ADMIN: USER MANAGEMENT ===
@@ -2194,8 +2194,8 @@ curRec=AD().find(x=>x.i===id||String(x.i)===String(id));if(!curRec)return;
 if(curRec.needs_attention&&currentUser&&currentUser.role!=='tech'){
 let updates={needs_attention:null,attention_at:null};
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 renderBoard();renderTable()}
 resetMd('wide');
@@ -2256,9 +2256,9 @@ setStat('warn','&#9888; PDF saved but it is large ('+sizeKB+' KB). Consider comp
 let pdfMeta={data:b64,name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null};
 if(curRec){
 let id=curRec.i;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){ADDED[ai].pdf_invoice=pdfMeta;saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;saveE()}
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){ADDED[ai].pdf_invoice=pdfMeta;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;rememberEditsEdit(id,EDITS[id]);saveE()}
 // Also update curRec so the modal re-renders with the View PDF button
 curRec.pdf_invoice=pdfMeta;
 }
@@ -2286,9 +2286,9 @@ if(curRec){
 try{
 let updates=gatherEdits();
 let id=curRec.i;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 // Also update curRec in-memory so the immediate re-render sees the new values
 Object.assign(curRec,updates);
 }catch(persistErr){console.error('PDF auto-save err:',persistErr)}
@@ -2337,8 +2337,8 @@ if(!w)alert('Pop-up blocked. Please allow pop-ups for this site to view PDFs.');
 function deleteInvoicePDF(id){
 if(!confirm('Remove the saved invoice PDF from this ticket?'))return;
 let ai=ADDED.findIndex(x=>String(x.i)===String(id));
-if(ai>=0){delete ADDED[ai].pdf_invoice;saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=null;saveE()}
+if(ai>=0){delete ADDED[ai].pdf_invoice;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=null;rememberEditsEdit(id,EDITS[id]);saveE()}
 if(curRec&&String(curRec.i)===String(id)){delete curRec.pdf_invoice;renderModal()}
 showToast('Invoice PDF removed')}
 
@@ -3748,14 +3748,14 @@ if(!r.ep){openEmailPwModal(r);return}
 if(!confirm('Email PW is marked as done. Reset it so you can send the email again?'))return;
 // fall through to the standard toggle (will set ep=false)
 }
-let addIdx=ADDED.findIndex(r=>r.i===id);
+let addIdx=ADDED.findIndex(r=>r.i===id||String(r.i)===String(id));
 if(addIdx>=0){ADDED[addIdx][key]=!ADDED[addIdx][key];
 if(key==='pf'&&ADDED[addIdx].pf){ADDED[addIdx].py=ADDED[addIdx].pr||0;ADDED[addIdx].bl=0}
-saveA()}
-else{if(!EDITS[id])EDITS[id]={};let cur=AD().find(r=>r.i===id);EDITS[id][key]=!cur[key];
+rememberAddedEdit(ADDED[addIdx]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};let cur=AD().find(r=>r.i===id||String(r.i)===String(id));EDITS[id][key]=!cur[key];
 if(key==='pf'&&EDITS[id].pf){EDITS[id].py=cur.pr||0;EDITS[id].bl=0}
-saveE()}
-curRec=AD().find(r=>r.i===id);
+rememberEditsEdit(id,EDITS[id]);saveE()}
+curRec=AD().find(r=>r.i===id||String(r.i)===String(id));
 let dot=el.querySelector(".cd"),on=curRec[key];
 dot.className="cd "+(on?"on":"off");el.className="ci "+(on?"on":"off");
 renderKPIs();renderCtxHdr();
@@ -3766,12 +3766,15 @@ if(key==='pf'){renderModal()}}
 function togglePaymentStatus(k){
 if(!curRec)return;
 let id=curRec.i;
+// Snapshot before for calendar push diff
+let prev=AD().find(x=>x.i===id||String(x.i)===String(id));
+let prevSnapshot=prev?Object.assign({},prev):null;
 let cur=curRec.pst||null;
 let next=cur===k?null:k;
 curRec.pst=next;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){ADDED[ai].pst=next;saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pst=next;saveE()}
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){ADDED[ai].pst=next;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pst=next;rememberEditsEdit(id,EDITS[id]);saveE()}
 // Update buttons in place without full modal re-render (snappier UX)
 let row=document.querySelector('.pst-row');
 if(row){
@@ -3793,6 +3796,10 @@ else{btn.style.cssText='color:'+def.color+';border-color:'+def.color+'66'}
 // Update the card in the background list too
 renderBoard();
 showToast(next?'Payment status: '+next:'Payment status cleared');
+// Push the change to Google Calendar (description includes payment status). Skipped if
+// not linked to an event or color not in allowed filter — see gcalPushTicketChanges.
+let curAfter=AD().find(x=>x.i===id||String(x.i)===String(id));
+if(prevSnapshot&&curAfter)gcalPushTicketChanges(prevSnapshot,curAfter);
 }
 
 // Toggle a special-requirement flag on the current ticket (Crane Job / Extra Person / Water Truck).
@@ -3801,11 +3808,14 @@ showToast(next?'Payment status: '+next:'Payment status cleared');
 function toggleRequirement(k){
 if(!curRec)return;
 let id=curRec.i;
+// Snapshot before for calendar push diff
+let prev=AD().find(x=>x.i===id||String(x.i)===String(id));
+let prevSnapshot=prev?Object.assign({},prev):null;
 let next=!curRec[k];
 curRec[k]=next;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){ADDED[ai][k]=next;saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id][k]=next;saveE()}
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){ADDED[ai][k]=next;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id][k]=next;rememberEditsEdit(id,EDITS[id]);saveE()}
 // Update the pill in place without full re-render (snappier UX, doesn't lose modal scroll)
 let reqColors={crane:'#7c3aed',extra_person:'#0369a1',water_truck:'#0891b2'};
 let btn=document.querySelector('.pst-pill[data-req="'+k+'"]');
@@ -3818,6 +3828,9 @@ else{btn.style.cssText='color:'+color+';border-color:'+color+'66'}
 renderBoard();
 let labels={crane:'Crane Job',extra_person:'Extra Person',water_truck:'Water Truck'};
 showToast((next?'\u2713 ':'\u2715 ')+labels[k]+(next?' required — tech will be notified':' removed'));
+// Push the change to Google Calendar so the description reflects the new requirement.
+let curAfter=AD().find(x=>x.i===id||String(x.i)===String(id));
+if(prevSnapshot&&curAfter)gcalPushTicketChanges(prevSnapshot,curAfter);
 }
 
 // Toggle the Google Calendar color on the current ticket. Click an inactive pill to set it,
@@ -3831,8 +3844,8 @@ let prevSnapshot=prev?Object.assign({},prev):null;
 let next=String(curRec.gcalColorId||'')===String(colorId)?null:String(colorId);
 curRec.gcalColorId=next;
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){ADDED[ai].gcalColorId=next;saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].gcalColorId=next;saveE()}
+if(ai>=0){ADDED[ai].gcalColorId=next;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].gcalColorId=next;rememberEditsEdit(id,EDITS[id]);saveE()}
 // Re-render the modal so the color pills reflect the new selection (in-place style update
 // without losing scroll). We just toggle the active state on the relevant pills.
 document.querySelectorAll('.pst-pill').forEach(b=>{
@@ -3917,10 +3930,10 @@ let ov=document.getElementById('ov');
 if(!ov||ov.classList.contains('hidden'))return false;
 try{
 let inProgress=gatherEdits();
-let ai=ADDED.findIndex(x=>x.i===curRec.i);
-if(ai>=0){Object.assign(ADDED[ai],inProgress);saveA()}
-else{if(!EDITS[curRec.i])EDITS[curRec.i]={};Object.assign(EDITS[curRec.i],inProgress);saveE()}
-let latest=AD().find(x=>x.i===curRec.i);
+let ai=ADDED.findIndex(x=>x.i===curRec.i||String(x.i)===String(curRec.i));
+if(ai>=0){Object.assign(ADDED[ai],inProgress);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[curRec.i])EDITS[curRec.i]={};Object.assign(EDITS[curRec.i],inProgress);rememberEditsEdit(curRec.i,EDITS[curRec.i]);saveE()}
+let latest=AD().find(x=>x.i===curRec.i||String(x.i)===String(curRec.i));
 if(latest){curRec=latest;renderModal();return true}
 }catch(e){
 // If gatherEdits fails for any reason, do NOT re-render — better to leave the user's typed
@@ -3950,7 +3963,11 @@ document.getElementById("ov").classList.remove("hidden")}
 function saveNew(){
 let n=document.getElementById("e_n").value.trim();if(!n){alert("Enter the customer name.");return}
 let u=gatherEdits();Object.assign(curRec,u);
-ADDED.push(curRec);saveA();
+ADDED.push(curRec);
+// Remember the new ticket for 30s so the recent-edit overlay protects it from any stale
+// snapshot that might arrive between push and Firebase confirmation.
+rememberAddedEdit(curRec);
+saveA();
 let newRec=curRec;
 closeOv();renderAll();
 // PUSH to Google Calendar — create a new event so the team sees this delivery in the calendar.
@@ -3962,27 +3979,30 @@ document.getElementById("board").classList.toggle("hidden",t!=="board");document
 if(t==="cal")renderCalendar();else render()}
 
 function completeTicket(id){
-let rec=AD().find(x=>x.i===id);
+let rec=AD().find(x=>x.i===id||String(x.i)===String(id));
 if(!rec||!rec.cl||!(rec.gb||rec.ngb)){alert('Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.');return}
 if(!confirm('Mark "'+rec.n+'" as COMPLETE?'))return;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){ADDED[ai].co=true;saveA()}else{if(!EDITS[id])EDITS[id]={};EDITS[id].co=true;saveE()}
-curRec=AD().find(x=>x.i===id);renderModal();renderAll()}
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){ADDED[ai].co=true;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].co=true;rememberEditsEdit(id,EDITS[id]);saveE()}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll()}
 
 function saveInlineNote(id,key,elId){
 let val=document.getElementById(elId).value.trim()||null;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){ADDED[ai][key]=val;saveA()}else{if(!EDITS[id])EDITS[id]={};EDITS[id][key]=val;saveE()}
-curRec=AD().find(x=>x.i===id);
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){ADDED[ai][key]=val;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id][key]=val;rememberEditsEdit(id,EDITS[id]);saveE()}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 let btn=document.getElementById(elId).nextElementSibling;btn.textContent='Saved ✓';btn.style.background='#059669';setTimeout(()=>{btn.textContent='Save';btn.style.background=''},1500)}
 
 function saveTechVisit(id){
 let tvd=document.getElementById('tv_date').value||null;
 let tvt=document.getElementById('tv_time').value||'09:00';
 let tvn=document.getElementById('tv_notes').value.trim()||null;
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],{tvd,tvt,tvn});saveA()}else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],{tvd,tvt,tvn});saveE()}
-curRec=AD().find(x=>x.i===id);renderModal()}
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){Object.assign(ADDED[ai],{tvd,tvt,tvn});rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],{tvd,tvt,tvn});rememberEditsEdit(id,EDITS[id]);saveE()}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal()}
 
 // === SERVICE REQUEST INTEGRATION ===
 // When a service visit is requested from a delivery, write to db.ref('service_requests').
@@ -4119,8 +4139,8 @@ Promise.race([writePromise,timeoutPromise])
 .then(docId=>{
 let updates={tvd,tvt,tvn,svc_id:docId,svc_status:'requested',svc_sent_at:rec.svc_sent_at||now};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(x=>x.i===id);
 SVC_LOG_READY=true;SVC_LOG_ERROR=null;
 console.log('[SVC-LOG] ✓ Ticket sent successfully. Doc id:',docId);
@@ -4149,8 +4169,8 @@ console.log('[SVC-LOG] Canceling ticket:',rec.svc_id);
 let clearLocal=()=>{
 let updates={svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null};
 let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(x=>x.i===id);
 showToast('Service request cancelled');renderModal()};
 
@@ -4227,9 +4247,9 @@ if(changedTicketIds.has(editingId)){
 // the modal so they see the new status — but we MUST preserve what they're typing.
 try{
 let inProgress=gatherEdits();
-let ai=ADDED.findIndex(x=>x.i===editingId);
-if(ai>=0){Object.assign(ADDED[ai],inProgress);saveA()}
-else{if(!EDITS[editingId])EDITS[editingId]={};Object.assign(EDITS[editingId],inProgress);saveE()}
+let ai=ADDED.findIndex(x=>x.i===editingId||String(x.i)===String(editingId));
+if(ai>=0){Object.assign(ADDED[ai],inProgress);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[editingId])EDITS[editingId]={};Object.assign(EDITS[editingId],inProgress);rememberEditsEdit(editingId,EDITS[editingId]);saveE()}
 Object.assign(latest,inProgress);
 curRec=latest;renderModal();
 }catch(captureErr){
@@ -4483,11 +4503,11 @@ return iso+label}
 async function gcalSync(){
 if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
 if(!gcalCalendarId){showToast('&#9888; Choose a calendar','warn');return}
-// SAFETY: don't run a sync while the user has unconfirmed local saves in flight. The sync
-// reads the current state of ADDED/EDITS to decide what to update; if those are mid-flight,
-// we could read stale state and re-apply old data. Defer the sync by 2s and try again.
-if(_saveInFlight.added>0||_saveInFlight.edits>0||Date.now()-_lastLocalSave.added<2000||Date.now()-_lastLocalSave.edits<2000){
-console.log('[GCAL] Sync deferred — local save in flight (added='+_saveInFlight.added+', edits='+_saveInFlight.edits+')');
+// SAFETY: don't run a sync while local writes (Firebase OR Google Calendar pushes) are in
+// flight. If we pull mid-write, we'd read stale state and could overwrite the user's just-made
+// change with the previous server state. Defer the sync by 2s and try again.
+if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0||Date.now()-_lastLocalSave.added<2000||Date.now()-_lastLocalSave.edits<2000){
+console.log('[GCAL] Sync deferred — write in flight (firebase saves='+_saveInFlight.added+'/'+_saveInFlight.edits+', gcal pushes='+_gcalWritesInFlight+')');
 setTimeout(gcalSync,2000);
 return}
 let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
@@ -4607,11 +4627,18 @@ if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;retur
 let parsed=parseGcalTitle(ev.summary);
 let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
 
-// SAFETY: never run sync while the user has the edit modal open. The modal could be holding
-// unsaved changes in form fields, and a sync that touches the underlying ticket would cause
-// confusing behavior (or a stale-state save that wipes data). The next sync tick will catch up.
+// SAFETY: never run sync while the user has the edit modal open for THIS event. The modal
+// could be holding unsaved changes in form fields, and a sync that touches the underlying
+// ticket would cause confusing behavior (or a stale-state save that wipes data). The next
+// sync tick will catch up. We check two ways:
+//   (a) curRec.gcalId === ev.id — auto-imported tickets store gcalId directly
+//   (b) gcalMap[ev.id] === curRec.i — BASE tickets linked via SN store the link separately
 let ovOpen=document.getElementById('ov');
-if(ovOpen&&!ovOpen.classList.contains('hidden')&&curRec&&curRec.gcalId===ev.id){
+let isEditingThisEvent=ovOpen&&!ovOpen.classList.contains('hidden')&&curRec&&(
+curRec.gcalId===ev.id||
+(gcalMap&&String(gcalMap[ev.id])===String(curRec.i))
+);
+if(isEditingThisEvent){
 gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 
 // PHILOSOPHY (per Alberto's explicit request): once a ticket exists in our app,
@@ -4769,6 +4796,33 @@ if(r.sn)parts.push(String(r.sn).replace(/\.0$/,''));
 if(r.st){let city=String(r.st).split(/[,\n]/)[0].trim().slice(0,30);if(city)parts.push(city)}
 return parts.join('-')}
 
+// === HISTORICAL EVENT PROTECTION ===
+// Per Alberto's explicit rule: the company-wide Google Calendar must stay CLEAN as a
+// historical record. Once a delivery date has passed, that calendar event is sacred —
+// the app must NEVER touch it again (no description rewrite, no color change, no date
+// move, no delete). The whole company sees this calendar; messing with old entries
+// would create confusion and break trust in the historical record.
+//
+// Scope of protection — these checks gate every PUSH path (create, patch, delete) and
+// also disable the drag-and-drop affordance on past events:
+//   • Past dates  — anything strictly before "today midnight" (local time)
+//   • Completed   — r.co=true, the delivery's wrap-up workflow is done
+//   • Delivered   — r.dl=true, the tech has confirmed the spa is on site
+//
+// Today and future dates remain freely modifiable as long as r.co/r.dl are still false.
+function isPastDate(dd){
+if(!dd)return false;
+let d=parseDate(dd);
+if(!d||isNaN(d))return false;
+let today=new Date();today.setHours(0,0,0,0);
+return d.getTime()<today.getTime()}
+
+function isCalendarReadOnly(r){
+if(!r)return true;
+if(r.co)return true;       // completed deliveries are immutable history
+if(r.dl)return true;       // tech-delivered tickets are done — calendar shouldn't change
+return isPastDate(r.dd)}   // dates strictly before today are the company's permanent record
+
 // Convert a ticket dd field into Google Calendar event start/end blocks. We use all-day events
 // because slot (AM/PM) is encoded in the title and matches how the team already operates the
 // calendar. Returns null if the date can't be parsed.
@@ -4779,6 +4833,112 @@ let iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.
 let nd=new Date(d);nd.setDate(nd.getDate()+1);
 let nextIso=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');
 return{start:{date:iso},end:{date:nextIso}}}
+
+// Description block markers — the app writes its auto-generated content BETWEEN these two
+// lines. Anything the user types ABOVE the start marker or BELOW the end marker is preserved.
+// This way a tech writing manual notes in the calendar event keeps their notes, while the
+// app keeps its info section in sync.
+const APP_BLOCK_START='───── ASPEN APP INFO ─────';
+const APP_BLOCK_END='───── END ─────';
+
+// Build the human-readable description block from a ticket. Plain text, similar in style to
+// what the team types manually (see Bertram-30724-Marthasville for the reference layout).
+function gcalBuildDescriptionBlock(r){
+if(!r)return'';
+let lines=[];
+// Customer name
+if(r.n)lines.push(r.n);
+// Phone(s) — one per line
+if(r.ph){String(r.ph).split('\n').forEach(p=>{p=p.trim();if(p)lines.push(p)})}
+// Email
+if(r.em)lines.push(r.em);
+// Address (multi-line)
+if(r.st){
+if(lines.length)lines.push('');
+String(r.st).split('\n').forEach(a=>{a=a.trim();if(a)lines.push(a)});
+}
+// Payment status + balance
+let pstLabels={paid:'Paid in full',collect_check:'Collect Check',financed:'Financed',collect_cash:'Collect Cash'};
+let payLines=[];
+if(r.pst&&pstLabels[r.pst])payLines.push(pstLabels[r.pst]);
+if(typeof r.pr==='number'&&r.pr>0){
+if(typeof r.bl==='number'&&r.bl>0)payLines.push('Balance Due: $'+Number(r.bl).toFixed(2));
+else if(r.bl===0)payLines.push('Total: $'+Number(r.pr).toFixed(2)+' (Paid)');
+}
+if(payLines.length){if(lines.length)lines.push('');payLines.forEach(p=>lines.push(p))}
+// Spa info (description from invoice PDF)
+if(r.spd){
+if(lines.length)lines.push('');
+String(r.spd).split('\n').forEach(s=>{s=s.trim();if(s)lines.push(s)});
+}
+// Accessories (only if explicitly set, not "NONE")
+let accs=[];
+if(r.tb&&r.tb!=='NONE')accs.push('Table: '+r.tb);
+if(r.ss&&r.ss!=='NONE')accs.push('Steps: '+r.ss);
+if(r.lf&&r.lf!=='NONE')accs.push('Lift: '+r.lf);
+if(r.cv&&r.cv!=='NONE')accs.push('Cover: '+r.cv);
+if(r.su&&r.su!=='NONE')accs.push('Start Up: '+r.su);
+if(accs.length){if(lines.length)lines.push('');accs.forEach(a=>lines.push(a))}
+// Delivery requirements (Crane / Extra Person / Water Truck)
+let reqs=[];
+if(r.crane)reqs.push('Crane Job');
+if(r.extra_person)reqs.push('Extra Person');
+if(r.water_truck)reqs.push('Water Truck');
+if(reqs.length){if(lines.length)lines.push('');lines.push('⚠ Requires: '+reqs.join(', '))}
+// Delivery instructions and customer-facing notes
+if(r.di){
+if(lines.length)lines.push('');
+lines.push('Notes for tech:');
+String(r.di).split('\n').forEach(s=>{s=s.trim();if(s)lines.push(s)});
+}
+if(r.dnotes){
+if(lines.length)lines.push('');
+lines.push('Customer feedback:');
+String(r.dnotes).split('\n').forEach(s=>{s=s.trim();if(s)lines.push(s)});
+}
+// Assigned tech
+if(r.assigned_to&&typeof USERS!=='undefined'){
+let techName=USERS[r.assigned_to]?USERS[r.assigned_to].name:r.assigned_to;
+if(lines.length)lines.push('');
+lines.push('Assigned to: '+techName);
+}
+return lines.join('\n')}
+
+// Merge our generated description block into an existing description, preserving any user-typed
+// content above or below the markers. If no markers exist yet, append our block at the end.
+function gcalMergeDescription(existing,ourContent){
+let block=APP_BLOCK_START+'\n'+ourContent+'\n'+APP_BLOCK_END;
+if(!existing||!existing.trim())return block;
+let startIdx=existing.indexOf(APP_BLOCK_START);
+let endIdx=existing.indexOf(APP_BLOCK_END);
+if(startIdx>=0&&endIdx>startIdx){
+// Replace the existing marked block, keep content outside
+let before=existing.substring(0,startIdx).replace(/\s+$/,'');
+let after=existing.substring(endIdx+APP_BLOCK_END.length).replace(/^\s+/,'');
+let parts=[];
+if(before)parts.push(before);
+parts.push(block);
+if(after)parts.push(after);
+return parts.join('\n\n');
+}
+// First time: append our block to existing description (preserves any human-typed content)
+return existing.replace(/\s+$/,'')+'\n\n'+block}
+
+// GET an event from the calendar. Used to read the current description before merging our
+// auto-generated block, so we don't blow away anything the team typed manually.
+async function gcalGetEvent(eventId){
+if(!gcalToken||!gcalCalendarId||!eventId)return null;
+try{
+let res=await gapi.client.calendar.events.get({calendarId:gcalCalendarId,eventId:eventId});
+return res.result;
+}catch(e){
+if(e.status===401){
+let r2=await gcalRefreshTokenNow();
+if(r2){try{let res=await gapi.client.calendar.events.get({calendarId:gcalCalendarId,eventId:eventId});return res.result}catch(re){}}
+}
+console.warn('gcalGetEvent err:',e);
+return null;
+}}
 
 // Lazy refresh of OAuth token — the existing readonly token won't carry the new write scope.
 // Returns true if the token has the calendar.events scope (or could be silently refreshed),
@@ -4795,6 +4955,14 @@ if(!gcalWriteEnabled())return null;
 if(!gcalToken||!gcalCalendarId)return null;
 let dates=gcalBuildDates(r);if(!dates)return null;
 let body={summary:gcalBuildSummary(r),start:dates.start,end:dates.end};
+// Description: write the full ticket info into the event so the team sees customer details,
+// payment status, spa specs, etc. directly in the calendar. Wrapped in our markers so future
+// updates can replace just this block without erasing any manual notes the team adds.
+let descBlock=gcalBuildDescriptionBlock(r);
+if(descBlock)body.description=APP_BLOCK_START+'\n'+descBlock+'\n'+APP_BLOCK_END;
+// Tag the event as "managed by Aspen App" so subsequent edits know it's safe to update the
+// description. Events with this tag are fully managed by the app's auto-generated content.
+body.extendedProperties={private:{aspenManaged:'1'}};
 if(r.gcalColorId)body.colorId=String(r.gcalColorId);
 _gcalWritesInFlight++;
 try{
@@ -4823,8 +4991,12 @@ if(e.status===401){
 let r2=await gcalRefreshTokenNow();
 if(r2){try{await gapi.client.calendar.events.patch({calendarId:gcalCalendarId,eventId:eventId,resource:patch});return true}catch(re){console.error('retry failed:',re)}}
 }
-// 404 = event was deleted in calendar; not really an error from our perspective
-if(e.status===404)console.warn('gcalPatchEvent: event '+eventId+' no longer exists in calendar');
+// 404 = event was deleted in calendar; clean up our gcalMap entry so we don't keep retrying
+// against an event that doesn't exist. Next sync will re-link if a matching event reappears.
+if(e.status===404||e.status===410){
+console.warn('gcalPatchEvent: event '+eventId+' no longer exists in calendar — cleaning gcalMap');
+try{db.ref('gcal_map/'+eventId).remove();delete gcalMap[eventId]}catch(ce){}
+}
 return false;
 }finally{_gcalWritesInFlight=Math.max(0,_gcalWritesInFlight-1)}}
 
@@ -4859,14 +5031,21 @@ return false;
 //   stable also prevents conflict when the team uses non-standard titles in calendar.
 async function gcalPushTicketChanges(prev,cur){
 if(!gcalWriteEnabled())return;
+// HISTORICAL PROTECTION: if either the previous OR current state of this ticket represents
+// a past/completed/delivered event, do NOT touch the calendar. The company-wide calendar
+// must remain a clean historical record. We check BOTH prev and cur so that:
+//   • An already-historical event being edited locally is never pushed (cur read-only)
+//   • An event being moved INTO the past (e.g. accidental date edit) doesn't push either
+//     because cur becomes past, even though prev was future
+if(isCalendarReadOnly(prev)||isCalendarReadOnly(cur)){
+console.log('[GCAL] Push blocked — event is past/completed/delivered, calendar stays clean');
+return}
 // COLOR GATE: per Alberto's rule, only events whose color is in the allowed-color filter
-// should be modified bidirectionally. If the ticket has no color OR the color is not allowed,
-// we skip the push entirely. This protects events outside the user's workflow categories.
+// should be modified bidirectionally.
 if(!cur.gcalColorId||!isAllowedColor(cur.gcalColorId)){
 console.log('[GCAL] Push skipped — ticket color not in allowed filter:',cur.gcalColorId);
 return}
 let eventId=cur.gcalId;
-// If we don't have a direct gcalId on the ticket, look it up in gcalMap (BASE-record case).
 if(!eventId&&gcalMap){let k=Object.keys(gcalMap).find(k=>String(gcalMap[k])===String(cur.i));if(k)eventId=k}
 if(!eventId)return; // not linked to any calendar event — nothing to push
 let patch={};
@@ -4880,10 +5059,30 @@ if(prev.gcalColorId!==cur.gcalColorId){
 if(cur.gcalColorId)patch.colorId=String(cur.gcalColorId);
 else patch.colorId=null;
 }
+// Description-relevant fields changed? If yes, fetch the current event description and merge
+// our auto-generated info block into it (preserving any human-typed notes outside our markers).
+let descFields=['n','ph','em','st','pst','pr','py','bl','di','dnotes','crane','extra_person','water_truck','tb','ss','lf','cv','su','spd','assigned_to'];
+let descChanged=descFields.some(f=>prev[f]!==cur[f]);
+if(descChanged){
+// GET the existing event so we can preserve any manually-typed content outside our marker block
+let existingEvent=await gcalGetEvent(eventId);
+if(existingEvent){
+let existingDesc=existingEvent.description||'';
+let ourBlock=gcalBuildDescriptionBlock(cur);
+patch.description=gcalMergeDescription(existingDesc,ourBlock);
+// Also tag the event as managed so future updates know it's safe to keep editing the block
+patch.extendedProperties={private:{aspenManaged:'1'}};
+}else{
+// GET failed (network error, 404, permission, whatever). Be conservative: skip the description
+// update this round so we don't accidentally overwrite a human-typed description with just our
+// block. The next save attempt will retry. Date and color updates still proceed.
+console.warn('[GCAL] Skipping description update — GET event failed for',eventId);
+}
+}
 // IMPORTANT: deliberately NOT patching summary/title. The calendar event title stays as the
-// team originally typed it. Only date and color are bidirectional.
-if(Object.keys(patch).length===0)return; // nothing changed that the calendar cares about
-console.log('[GCAL] Pushing changes to calendar event',eventId,patch);
+// team originally typed it. Title-related changes (n / sn / city) only affect the description.
+if(Object.keys(patch).length===0)return;
+console.log('[GCAL] Pushing changes to calendar event',eventId,Object.keys(patch));
 let ok=await gcalPatchEvent(eventId,patch);
 if(ok)showToast('&#10003; Calendar updated','success')}
 
@@ -4892,6 +5091,12 @@ if(ok)showToast('&#10003; Calendar updated','success')}
 async function gcalPushNewTicket(r){
 if(!gcalWriteEnabled())return;
 if(!r||!r.dd||!r.n)return; // need at least a date and a name
+// HISTORICAL PROTECTION: never create calendar events for past dates. The company calendar
+// is a forward-looking schedule; backfilling it with past entries would pollute the record.
+if(isCalendarReadOnly(r)){
+console.log('[GCAL] New ticket not pushed — date is in the past or ticket already done');
+showToast('&#9888; New ticket has a past/completed date — not added to Google Calendar','warn');
+return}
 // COLOR GATE: a new delivery without an allowed color is NOT pushed to the calendar. This
 // matches Alberto's rule that only events with the configured colors are part of the
 // calendar workflow. The user can pick a color via the Calendar Color pills in the modal.
@@ -4906,8 +5111,8 @@ console.log('[GCAL] Created calendar event',ev.id,'for ticket',r.i);
 let updates={gcalId:ev.id};
 if(ev.colorId)updates.gcalColorId=ev.colorId;
 let ai=ADDED.findIndex(x=>x.i===r.i||String(x.i)===String(r.i));
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],updates);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
 // Also register in gcalMap so the next pull sync recognizes it
 let mapUpd={};mapUpd['gcal_map/'+ev.id]=r.i;db.ref().update(mapUpd);
 showToast('&#10003; Created in Google Calendar','success')}
@@ -4917,6 +5122,12 @@ showToast('&#10003; Created in Google Calendar','success')}
 async function gcalPushDelete(r){
 if(!gcalWriteEnabled())return;
 if(!r)return;
+// HISTORICAL PROTECTION: never delete calendar events for past dates. Even if the local
+// ticket gets removed in the app, the calendar record stays — it's part of the company's
+// permanent history.
+if(isCalendarReadOnly(r)){
+console.log('[GCAL] Delete blocked — event is past/completed, calendar record preserved');
+return}
 // COLOR GATE: only delete events from calendar that match the allowed color filter.
 if(!r.gcalColorId||!isAllowedColor(r.gcalColorId))return;
 let eventId=r.gcalId;
@@ -5389,7 +5600,7 @@ let evClass='cal-ev'+(gStyle?'':' '+e.s);
 let evStyle=gStyle?' style="'+gStyle+'"':'';
 // Only events with an allowed color can be dragged (matches Alberto's bidirectional rule).
 // Completed events are non-draggable too — moving a delivered event makes no sense.
-let canDrag=!r.co&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
+let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
 h+='<div class="'+evClass+'"'+evStyle+dragAttrs+' onclick="event.stopPropagation();openDet('+r.i+')" title="'+escHtml(titleAttr)+(canDrag?' (drag to move date)':'')+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
 if(dayEvs.length>3)h+='<div class="cal-more" onclick="calDate=new Date('+y+','+(m)+','+d+');setCalView(\'day\')">+' +(dayEvs.length-3)+' more</div>';
@@ -5421,6 +5632,15 @@ ev.preventDefault();
 let cell=ev.currentTarget;cell.style.background='';
 let id=ev.dataTransfer.getData('text/plain');if(!id)return;
 let ticket=AD().find(r=>String(r.i)===String(id));if(!ticket)return;
+// HISTORICAL PROTECTION: refuse to drop onto a past date — that would create a backdated
+// calendar entry that pollutes the company's historical record. Today and future dates only.
+if(isPastDate(targetDateKey)){
+showToast('&#9888; Cannot move events to past dates — calendar must stay clean','warn');
+return}
+// Also refuse if the ticket itself is already a historical record (past/completed/delivered)
+if(isCalendarReadOnly(ticket)){
+showToast('&#9888; Cannot move historical or completed deliveries','warn');
+return}
 // Preserve the time slot suffix (am / pm / all day) from the original date string
 let oldDdLower=String(ticket.dd||'').toLowerCase();
 let suffix=' am';
@@ -5432,8 +5652,16 @@ if(newDd===ticket.dd)return; // dropped on same day, nothing to do
 let prevSnapshot=Object.assign({},ticket);
 let updates={dd:newDd};
 let ai=ADDED.findIndex(x=>String(x.i)===String(id));
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[ticket.i])EDITS[ticket.i]={};Object.assign(EDITS[ticket.i],updates);saveE()}
+if(ai>=0){
+Object.assign(ADDED[ai],updates);
+rememberAddedEdit(ADDED[ai]);
+saveA()
+}else{
+if(!EDITS[ticket.i])EDITS[ticket.i]={};
+Object.assign(EDITS[ticket.i],updates);
+rememberEditsEdit(ticket.i,EDITS[ticket.i]);
+saveE()
+}
 showToast('&#128197; Moved to '+targetDateKey);
 renderAll();
 // Push to Google Calendar (will be skipped if color is not in allowed filter)
@@ -5458,7 +5686,7 @@ if(!dayEvs.length)h+='<div style="font-size:12px;color:#d1d5db;padding:8px">No d
 dayEvs.forEach(e=>{
 let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
-let canDrag=!r.co&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
+let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
 h+='<div class="cal-wk-ev"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+r.n+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
