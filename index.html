@@ -5116,17 +5116,21 @@ if(prev.gcalColorId!==cur.gcalColorId){
 if(cur.gcalColorId)patch.colorId=String(cur.gcalColorId);
 else patch.colorId=null;
 }
-// Address changed? Update Google Calendar's location field so the map pin / geocoded
-// address in the event reflects the latest delivery destination from the ticket.
-if(prev.st!==cur.st){
-patch.location=gcalBuildLocation(cur);
-}
-// Description-relevant fields changed? If yes, fetch the current event description and merge
-// our auto-generated info block into it (preserving any human-typed notes outside our markers).
+// Description-relevant fields changed? If yes, we update BOTH the location field (single
+// line for the map pin) AND the description body (full info block).
 let descFields=['n','ph','em','st','pst','pr','py','bl','di','dnotes','crane','extra_person','water_truck','tb','ss','lf','cv','su','spd','assigned_to'];
 let descChanged=descFields.some(f=>prev[f]!==cur[f]);
 if(descChanged){
-// GET the existing event so we can preserve any manually-typed content outside our marker block
+// LOCATION FIELD (separate from the description body — gives the map pin / clickable address):
+// We push the current address whenever ANY customer-facing field changed. This handles two
+// scenarios: (1) the address itself changed, and (2) backfilling — events that were created
+// in Google Calendar without a location pick up the address the first time the user saves
+// any field on the linked ticket. Without this, events that already had an address typed
+// before today's deploy would never get their location populated.
+let loc=gcalBuildLocation(cur);
+if(loc)patch.location=loc;
+// DESCRIPTION BODY: GET the existing event so we can preserve any manually-typed content
+// outside our marker block before merging our auto-generated content back in.
 let existingEvent=await gcalGetEvent(eventId);
 if(existingEvent){
 let existingDesc=existingEvent.description||'';
@@ -5137,7 +5141,7 @@ patch.extendedProperties={private:{aspenManaged:'1'}};
 }else{
 // GET failed (network error, 404, permission, whatever). Be conservative: skip the description
 // update this round so we don't accidentally overwrite a human-typed description with just our
-// block. The next save attempt will retry. Date and color updates still proceed.
+// block. The next save attempt will retry. Date, color, and location updates still proceed.
 console.warn('[GCAL] Skipping description update — GET event failed for',eventId);
 }
 }
