@@ -43,7 +43,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;
 body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 
 /* ASPEN HEADER (black bar with logo) */
-.aspen-hdr{background:var(--aspen-black);color:#fff;padding:22px 40px 26px;position:relative}
+.aspen-hdr{background:var(--aspen-black);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 22px) max(40px,env(safe-area-inset-right,0px)) 26px max(40px,env(safe-area-inset-left,0px));position:relative}
 .aspen-hdr-inner{display:flex;justify-content:space-between;align-items:center;max-width:1400px;margin:0 auto}
 .aspen-logo{display:flex;align-items:center;gap:8px}
 .aspen-leaf{width:40px;height:40px;flex-shrink:0}
@@ -58,7 +58,7 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .sync-dot.on{background:#10b981}.sync-dot.off{background:#ef4444}
 
 /* TABS BAR (sticky white bar with tabs and actions) */
-.aspen-tabs-bar{background:#fff;border-bottom:1px solid var(--border-soft);padding:0 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:10}
+.aspen-tabs-bar{background:#fff;border-bottom:1px solid var(--border-soft);padding:0 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:10}
 .aspen-tabs{display:flex;align-items:flex-end;overflow-x:auto;flex:1;min-width:0}
 .aspen-tabs::-webkit-scrollbar{height:4px}
 .aspen-tabs::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
@@ -230,7 +230,7 @@ tbody tr{cursor:pointer}
 body{font-size:14px}
 
 /* Header — compact, single line */
-.aspen-hdr{padding:12px 14px 14px}
+.aspen-hdr{padding:calc(env(safe-area-inset-top,0px) + 12px) max(14px,env(safe-area-inset-right,0px)) 14px max(14px,env(safe-area-inset-left,0px))}
 .aspen-hdr-inner{gap:10px}
 .aspen-logo-text{font-size:18px}
 .aspen-leaf{width:32px;height:32px}
@@ -320,7 +320,7 @@ th,td{padding:7px 6px}
 .logout-btn-hdr,.logout-btn{width:28px;height:28px;font-size:13px}
 
 /* === TECH VIEW MOBILE === */
-.tech-hdr{padding:12px 14px}
+.tech-hdr{padding:calc(env(safe-area-inset-top,0px) + 12px) max(14px,env(safe-area-inset-right,0px)) 12px max(14px,env(safe-area-inset-left,0px))}
 .tech-body{padding:12px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 40px)}
 .tech-date-bar{padding:8px;gap:6px;margin-bottom:12px}
 .tech-nav{padding:8px 11px;font-size:13px;flex-shrink:0}
@@ -330,7 +330,7 @@ th,td{padding:7px 6px}
 .tech-card .name{font-size:16px}
 .tech-card .row{font-size:12.5px}
 .tech-detail .tech-section{margin:10px;padding:14px}
-.tech-detail .back-bar{padding:11px 14px}
+.tech-detail .back-bar{padding:calc(env(safe-area-inset-top,0px) + 11px) max(14px,env(safe-area-inset-right,0px)) 11px max(14px,env(safe-area-inset-left,0px))}
 .tech-detail h2{font-size:18px}
 .tech-detail .meta{font-size:12px}
 .tech-action-grid{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
@@ -343,11 +343,12 @@ th,td{padding:7px 6px}
 .auth-card h1{font-size:20px}
 .tech-hdr-inner .aspen-leaf{width:36px;height:36px}
 .tech-hdr-inner div div:first-child{font-size:16px}
+#tech-user-label{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 }
 
 /* === EXTRA SMALL PHONES: 380px and below === */
 @media(max-width:380px){
-.aspen-hdr{padding:10px 10px 12px}
+.aspen-hdr{padding:calc(env(safe-area-inset-top,0px) + 10px) max(10px,env(safe-area-inset-right,0px)) 12px max(10px,env(safe-area-inset-left,0px))}
 .aspen-logo-text{font-size:16px}
 .aspen-leaf{width:28px;height:28px}
 .aspen-logo-svg{height:26px}
@@ -377,6 +378,7 @@ th,td{padding:7px 6px}
 #tech-date-label{font-size:12px!important}
 .tech-card{padding:11px 12px}
 .tech-card .name{font-size:15px}
+#tech-user-label{max-width:60px}
 .tech-action-grid{padding:10px;gap:7px}
 .tech-action-btn{padding:12px 6px;font-size:11.5px}
 .tech-action-btn .ico{font-size:22px}
@@ -531,7 +533,7 @@ th,td{padding:7px 6px}
 
 /* === TECH VIEW === */
 .tech-view{position:fixed;inset:0;background:var(--bg-cream);z-index:50;display:flex;flex-direction:column;overflow:hidden}
-.tech-hdr{background:var(--aspen-black);color:#fff;padding:14px 18px;flex-shrink:0}
+.tech-hdr{background:var(--aspen-black);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) max(18px,env(safe-area-inset-right,0px)) 14px max(18px,env(safe-area-inset-left,0px));flex-shrink:0}
 .tech-hdr-inner{display:flex;justify-content:space-between;align-items:center;max-width:600px;margin:0 auto}
 .tech-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:600px;margin:0 auto;width:100%;padding:14px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 40px)}
 .tech-date-bar{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:10px;margin-bottom:14px;box-shadow:var(--shadow-card)}
@@ -561,7 +563,7 @@ th,td{padding:7px 6px}
 /* Tech Detail full-screen */
 .tech-detail{position:fixed;inset:0;background:var(--bg-cream);z-index:55;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .tech-detail-inner{max-width:600px;margin:0 auto;padding:0 0 calc(env(safe-area-inset-bottom,0px) + 80px)}
-.tech-detail .back-bar{position:sticky;top:0;background:var(--aspen-black);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;z-index:5}
+.tech-detail .back-bar{position:sticky;top:0;background:var(--aspen-black);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) max(18px,env(safe-area-inset-right,0px)) 14px max(18px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px;z-index:5}
 .tech-detail .back-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600}
 .tech-detail .back-btn:hover{background:rgba(255,255,255,.2)}
 .tech-detail .tech-section{background:#fff;border-radius:12px;margin:14px;padding:16px 18px;border:1px solid var(--border-soft);box-shadow:var(--shadow-card)}
