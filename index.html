@@ -4855,6 +4855,15 @@ let nd=new Date(d);nd.setDate(nd.getDate()+1);
 let nextIso=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');
 return{start:{date:iso},end:{date:nextIso}}}
 
+// Build the calendar event location from a ticket's address field. Google Calendar's location
+// is a single string (with map preview / geocoding), so we collapse multi-line addresses to a
+// single comma-separated line. Returns empty string if the ticket has no address.
+//   r.st = "6504 Southwest Avenue\nSt. Louis, MO 63139"
+//   →     "6504 Southwest Avenue, St. Louis, MO 63139"
+function gcalBuildLocation(r){
+if(!r||!r.st)return'';
+return String(r.st).split('\n').map(s=>s.trim()).filter(Boolean).join(', ')}
+
 // Description block markers — the app writes its auto-generated content BETWEEN these two
 // lines. Anything the user types ABOVE the start marker or BELOW the end marker is preserved.
 // This way a tech writing manual notes in the calendar event keeps their notes, while the
@@ -4976,6 +4985,11 @@ if(!gcalWriteEnabled())return null;
 if(!gcalToken||!gcalCalendarId)return null;
 let dates=gcalBuildDates(r);if(!dates)return null;
 let body={summary:gcalBuildSummary(r),start:dates.start,end:dates.end};
+// Address goes into Google Calendar's dedicated location field (single line, geocodable).
+// This makes the address show up as a clickable map preview in the event card, separate
+// from the description body.
+let loc=gcalBuildLocation(r);
+if(loc)body.location=loc;
 // Description: write the full ticket info into the event so the team sees customer details,
 // payment status, spa specs, etc. directly in the calendar. Wrapped in our markers so future
 // updates can replace just this block without erasing any manual notes the team adds.
@@ -5101,6 +5115,11 @@ if(dates){patch.start=dates.start;patch.end=dates.end}
 if(prev.gcalColorId!==cur.gcalColorId){
 if(cur.gcalColorId)patch.colorId=String(cur.gcalColorId);
 else patch.colorId=null;
+}
+// Address changed? Update Google Calendar's location field so the map pin / geocoded
+// address in the event reflects the latest delivery destination from the ticket.
+if(prev.st!==cur.st){
+patch.location=gcalBuildLocation(cur);
 }
 // Description-relevant fields changed? If yes, fetch the current event description and merge
 // our auto-generated info block into it (preserving any human-typed notes outside our markers).
