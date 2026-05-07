@@ -676,6 +676,7 @@ th,td{padding:7px 6px}
 <button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
 <label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
 <label style="font-size:12px;font-weight:700;color:#0b8043;display:flex;align-items:center;gap:6px;background:#dcfce7;padding:4px 9px;border-radius:6px;border:1px solid #bbf7d0" title="When ON, changes you make in this app (new deliveries, date changes, color changes, deletions) are pushed to Google Calendar."><input type="checkbox" id="gcalWrite" onchange="gcalToggleWrite()"> &#8644; Two-way sync</label>
+<button class="pbtn" onclick="gcalRequestWriteScope()" style="font-size:11px;padding:4px 10px;background:#fff;border:1px solid #d1d5db;color:#374151;font-weight:600" title="If your calendar isn't being updated when you save tickets, click this to grant write permission to Google Calendar.">&#128274; Grant Write Access</button>
 <button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
 </div>
 <div class="row" id="gcalRowColors" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;background:#f9fafb;padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb">
@@ -4725,6 +4726,26 @@ gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(e){console.warn('Co
 }else{
 showToast('Two-way sync OFF — calendar changes won\'t be pushed','warn')}}
 
+// Manual "fix-it" button for users whose existing OAuth token only has read access (because
+// they connected before two-way sync was added). Clicking this re-runs Google's consent flow
+// with prompt:'consent' which forces re-authorization, letting them grant the calendar.events
+// write scope. After this completes, future PATCH/INSERT/DELETE calls succeed.
+function gcalRequestWriteScope(){
+if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
+if(!gcalTokenClient){showToast('&#9888; Calendar client not ready — try refreshing the page','warn');return}
+showToast('Opening Google permission screen…');
+try{
+gcalTokenClient.callback=(resp)=>{
+if(resp&&resp.access_token){
+gcalToken=resp.access_token;
+showToast('&#10003; Write access granted — your edits will now sync to the calendar','success')
+}else if(resp&&resp.error){
+showToast('&#9888; '+(resp.error_description||resp.error),'warn')
+}
+};
+gcalTokenClient.requestAccessToken({prompt:'consent'});
+}catch(e){console.error('gcalRequestWriteScope err:',e);showToast('&#9888; Could not open permission screen — see console','err')}}
+
 function gcalCleanImported(){
 // Find ALL ADDED records that came from gcal AND meet any cleanup criteria:
 //  (a) non-delivery label title (COLOR, WEEK, MEMORIAL, etc.), or
@@ -4974,6 +4995,17 @@ if(e.status===401){
 let r2=await gcalRefreshTokenNow();
 if(r2){try{let res=await gapi.client.calendar.events.insert({calendarId:gcalCalendarId,resource:body});return res.result}catch(re){console.error('retry failed:',re)}}
 }
+// 403 = insufficient scope; the existing token doesn't have write access. Prompt the user
+// for consent so they can grant the calendar.events scope. After they grant, future writes
+// will succeed; this particular create has to be retried by the user (we can't auto-retry
+// reliably across the async consent flow).
+if(e.status===403){
+showToast('&#9888; Calendar needs write permission — please grant access in the popup','warn');
+if(gcalTokenClient){
+try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){gcalToken=resp.access_token;showToast('&#10003; Permission granted — please save the ticket again','success')}};
+gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(er){console.warn('Could not request consent:',er)}
+}
+}
 return null;
 }finally{_gcalWritesInFlight=Math.max(0,_gcalWritesInFlight-1)}}
 
@@ -4990,6 +5022,17 @@ console.error('gcalPatchEvent err:',e);
 if(e.status===401){
 let r2=await gcalRefreshTokenNow();
 if(r2){try{await gapi.client.calendar.events.patch({calendarId:gcalCalendarId,eventId:eventId,resource:patch});return true}catch(re){console.error('retry failed:',re)}}
+}
+// 403 = insufficient scope. The user's OAuth token only has read access (probably from before
+// two-way sync was added). Trigger Google's consent flow so they can grant write permission,
+// then ask them to retry the save. This is the most common silent-failure scenario.
+if(e.status===403){
+showToast('&#9888; Calendar needs write permission — please grant access in the popup','warn');
+if(gcalTokenClient){
+try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){gcalToken=resp.access_token;showToast('&#10003; Permission granted — please save the ticket again','success')}};
+gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(er){console.warn('Could not request consent:',er)}
+}
+return false;
 }
 // 404 = event was deleted in calendar; clean up our gcalMap entry so we don't keep retrying
 // against an event that doesn't exist. Next sync will re-link if a matching event reappears.
@@ -5084,7 +5127,10 @@ console.warn('[GCAL] Skipping description update — GET event failed for',event
 if(Object.keys(patch).length===0)return;
 console.log('[GCAL] Pushing changes to calendar event',eventId,Object.keys(patch));
 let ok=await gcalPatchEvent(eventId,patch);
-if(ok)showToast('&#10003; Calendar updated','success')}
+if(ok)showToast('&#10003; Calendar updated','success');
+// On failure, gcalPatchEvent already showed a specific toast (e.g. 403 → "Calendar needs
+// write permission"). We don't add a generic failure toast here to avoid double-notifications.
+}
 
 // Push a brand-new local delivery up to Google Calendar. Saves the new event's id into
 // gcalId on the ticket so future edits target the same event.
