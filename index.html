@@ -40,6 +40,43 @@
 --shadow-card:0 1px 2px rgba(26,20,16,.04),0 1px 3px rgba(26,20,16,.06);
 --shadow-card-hover:0 4px 12px rgba(26,20,16,.08),0 2px 6px rgba(26,20,16,.05);
 }
+/* Dark mode — triggered by OS-level preference. Overrides the CSS variables so
+   the entire app inverts without any per-component changes. Inputs, modals, and
+   white-background utility classes use explicit colors in many places though,
+   so this is a "soft" dark mode rather than a full theme — readable but not
+   pixel-perfect. Users who want strict light mode can override via OS setting. */
+@media (prefers-color-scheme: dark){
+  :root{
+    --aspen-black:#0a0805;
+    --bg-cream:#16120e;
+    --bg-card:#211a14;
+    --text-primary:#f5efe5;
+    --text-secondary:#c4baa8;
+    --text-tertiary:#8a8273;
+    --border-soft:#3a302a;
+    --border-mid:#4d423a;
+    --shadow-card:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.5);
+    --shadow-card-hover:0 4px 12px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.45);
+  }
+  /* Cards, inputs, modals — flip backgrounds. We use color-mix so we keep the
+     tint of accent colors (Hold purple, Action orange) but recover legibility. */
+  .card,.aspen-tabs-bar,.gcal-panel,.ov-box,.hold-toolbar,#tableWrap table{background:var(--bg-card)!important;color:var(--text-primary)}
+  /* Soften the bright white badge backgrounds so they don't glare in dark */
+  .badge.upcoming{background:#3a2a14;color:#fbbf24}
+  .badge.overdue{background:#3a1414;color:#fca5a5}
+  .badge.action{background:#3a2010;color:#fdba74}
+  .badge.delivered{background:#102030;color:#93c5fd}
+  .badge.complete{background:#0e2a1f;color:#86efac}
+  .badge.hold{background:#251530;color:#d8b4fe}
+  /* Subtle border tint for hold elements in dark mode */
+  .hold-chip{background:#211a14;color:#d8b4fe;border-color:#3a2a3a}
+  .hold-chip:hover{background:#2a1f2a}
+  .hold-activity{background:#251a30;border-color:#3a2a3a;color:#d8b4fe}
+  /* Inputs need explicit dark backgrounds since they don't inherit from body */
+  input,select,textarea{background:#1a1410;color:#f5efe5;border-color:#3a302a}
+  /* Tab counters need contrast on dark backgrounds */
+  .tab-count{background:#3a302a;color:#f5efe5}
+}
 body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;background:var(--bg-cream);color:var(--text-primary);font-size:14px;-webkit-text-size-adjust:100%;-webkit-overflow-scrolling:touch}
 body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 
@@ -64,6 +101,9 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .aspen-tabs::-webkit-scrollbar{height:4px}
 .aspen-tabs::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
 .aspen-tab{padding:18px 0 16px;display:flex;align-items:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-secondary);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;margin-right:28px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.aspen-tab .tab-icon{font-size:14px;line-height:1;opacity:.72;transition:opacity .15s,transform .15s;display:inline-flex;align-items:center}
+.aspen-tab:hover .tab-icon{opacity:1;transform:scale(1.08)}
+.aspen-tab.active .tab-icon{opacity:1}
 .aspen-tab:hover{color:var(--text-primary)}
 .aspen-tab.active{color:var(--aspen-orange);border-bottom-color:var(--aspen-orange)}
 .aspen-tab .tab-count{background:var(--aspen-black);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:11px;min-width:24px;text-align:center;letter-spacing:0}
@@ -78,6 +118,16 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .aspen-action-btn.connected .gcal-dot{background:#10b981}
 .aspen-action-btn.syncing .gcal-dot{background:#f59e0b;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* Confetti — short celebration shower when a ticket is marked Complete. Each
+   piece is a tiny absolutely-positioned div animated with a randomized fall +
+   spin. Container is fixed/full-viewport with pointer-events:none so it never
+   blocks UI. Confetti is auto-removed after 2s. */
+@keyframes confetti-fall{
+  0%{transform:translate3d(0,-20vh,0) rotate(0deg);opacity:1}
+  100%{transform:translate3d(var(--cx,0),110vh,0) rotate(var(--cr,720deg));opacity:0}
+}
+.confetti-host{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.confetti-host .piece{position:absolute;top:-20px;width:9px;height:14px;border-radius:2px;animation:confetti-fall var(--cd,1.8s) cubic-bezier(.25,.46,.45,.94) forwards}
 .aspen-view-toggle{display:flex;background:var(--bg-cream);border:1px solid var(--border-soft);border-radius:8px;padding:2px;gap:2px}
 .vt-btn{padding:6px 12px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:14px;color:var(--text-secondary);font-family:inherit;transition:all .12s}
 .vt-btn:hover{color:var(--text-primary)}
@@ -105,14 +155,43 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .card.overdue{border-left-color:#dc2626}
 .card.upcoming{border-left-color:var(--aspen-orange)}
 .card.action{border-left-color:#ea580c}
+.card.hold{border-left-color:#7c3aed;background:linear-gradient(180deg,#fdfbff 0%,#fff 30%)}
+.card.hold .c-name::before{content:"⏸ ";color:#7c3aed;font-weight:900}
+/* Avatar circle — 2-letter initials, color derived from SN hash for stable identification */
+.c-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;letter-spacing:.02em;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.12);text-shadow:0 1px 1px rgba(0,0,0,.15);user-select:none}
+/* Stale-hold pill shown on cards that have been sitting in Hold too long */
+.stale-hold{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.04em;line-height:1.35}
+.stale-hold span:first-child{font-weight:900}
+/* Hold audit line preview — the most recent [HOLD]/[GCAL] note from delivery notes */
+.hold-activity{background:#faf5ff;border:1px solid #e9d5ff;color:#581c87;font-size:11px;padding:7px 10px;border-radius:7px;margin-top:8px;line-height:1.4;font-weight:500}
+/* Hold-tab toolbar: reason filter chips + CSV export button. Sits between the
+   context header and the board. Only rendered when Alberto is on the Hold tab. */
+#holdToolbarHost{margin:0 40px 12px}
+#holdToolbarHost:empty{display:none}
+.hold-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 14px;box-shadow:0 1px 2px rgba(124,58,237,.06)}
+.hold-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hold-chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #e9d5ff;color:#6b21a8;padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .12s}
+.hold-chip:hover{background:#faf5ff;border-color:#c084fc}
+.hold-chip.active{background:#7c3aed;border-color:#7c3aed;color:#fff;box-shadow:0 2px 6px rgba(124,58,237,.3)}
+.hold-chip .hold-chip-n{background:rgba(0,0,0,.08);padding:1px 7px;border-radius:999px;font-size:10.5px;min-width:18px;text-align:center}
+.hold-chip.active .hold-chip-n{background:rgba(255,255,255,.25)}
+.hold-export-btn{background:#7c3aed;color:#fff;border:none;padding:7px 13px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 3px rgba(124,58,237,.25);white-space:nowrap}
+.hold-export-btn:hover{background:#6d28d9;transform:translateY(-1px);box-shadow:0 3px 8px rgba(124,58,237,.4)}
+/* Hold-specific stats badges in the context meta row */
+.ctx-meta .hold-preserved{background:#f3e8ff;color:#6b21a8;font-weight:700;padding:3px 10px;border-radius:999px;font-size:12px}
+.ctx-meta .hold-oldest{background:#fef3c7;color:#92400e;font-weight:700;padding:3px 10px;border-radius:999px;font-size:12px}
+.ctx-meta .hold-stale{background:#fee2e2;color:#b91c1c;font-weight:800;padding:3px 10px;border-radius:999px;font-size:12px}
 .sbar{display:none}
 .c-name{font-size:12px;font-weight:700;color:var(--text-primary);letter-spacing:.005em}
 .c-spa{font-size:9.5px;color:var(--text-secondary);margin-top:2px;font-weight:500}
 .badge{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:5px;text-transform:uppercase;white-space:nowrap;letter-spacing:.06em}
-.badge.complete{background:#dcfce7;color:#059669}.badge.delivered{background:#dbeafe;color:#2563eb}.badge.overdue{background:#fef2f2;color:#dc2626}.badge.upcoming{background:#fef3c7;color:#92400e}.badge.action{background:#ffedd5;color:#c2410c}
+.badge.complete{background:#dcfce7;color:#059669}.badge.delivered{background:#dbeafe;color:#2563eb}.badge.overdue{background:#fef2f2;color:#dc2626}.badge.upcoming{background:#fef3c7;color:#92400e}.badge.action{background:#ffedd5;color:#c2410c}.badge.hold{background:#f3e8ff;color:#6b21a8}
 .c-meta{display:flex;gap:9px;font-size:9.5px;color:var(--text-secondary);margin:7px 0;flex-wrap:wrap;font-weight:500;align-items:center}
 .c-meta .bal{color:#dc2626;font-weight:700}
 .c-meta .phone{color:var(--aspen-orange);font-weight:600}
+.c-meta .sms-mini{display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#059669;font-weight:700;padding:1px 7px;border-radius:6px;font-size:11px;letter-spacing:.02em}
+.c-meta .sms-mini.limit-near{background:#fef3c7;color:#92400e}
+.c-meta .sms-mini.limit-reached{background:#fee2e2;color:#b91c1c}
 .pl{font-size:8px;color:var(--text-tertiary);margin-bottom:2px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .pbar{display:flex;align-items:center;gap:5px;margin-bottom:4px}
 .ptrk{flex:1;height:4px;background:var(--bg-cream);border-radius:3px;overflow:hidden}
@@ -171,6 +250,13 @@ tbody tr{cursor:pointer}
 .presms-btn{background:#059669;color:#fff;border:none;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit;transition:all .15s;white-space:nowrap;box-shadow:0 1px 3px rgba(5,150,105,.25)}
 .presms-btn:hover{background:#047857;transform:translateY(-1px);box-shadow:0 3px 8px rgba(5,150,105,.35)}
 .presms-btn:active{transform:translateY(0)}
+.presms-btn .sms-count-badge{display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.22);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:3px;min-width:30px;letter-spacing:.02em}
+.presms-btn.limit-near{background:#d97706;box-shadow:0 1px 3px rgba(217,119,6,.3)}
+.presms-btn.limit-near:hover{background:#b45309}
+.presms-btn.limit-near .sms-count-badge{background:rgba(255,255,255,.28)}
+.presms-btn.limit-reached{background:#dc2626;box-shadow:0 1px 3px rgba(220,38,38,.3)}
+.presms-btn.limit-reached:hover{background:#b91c1c}
+.presms-btn.limit-reached .sms-count-badge{background:rgba(255,255,255,.3);animation:pulse 1.6s infinite}
 .ct{font-size:13px;font-weight:800;color:#374151;margin-bottom:8px}
 .spa-specs{margin:18px 0;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-cream);overflow:hidden}
 .spa-specs summary{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border-bottom:1px solid var(--border-soft);list-style:none;flex-wrap:wrap}
@@ -787,6 +873,7 @@ th,td{padding:7px 6px}
 </div>
 </div>
 <div class="ctx-hdr" id="ctxHdr"></div>
+<div id="holdToolbarHost"></div>
 <div class="filters"><input class="search" id="searchBox" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;renderBoard();renderTable();if(tab==='cal')renderCalendar()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button></div>
 <div class="board" id="board"></div>
 <div class="twrap hidden" id="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
@@ -1123,6 +1210,56 @@ html+='<div class="tech-card'+cardCls+'" onclick="techOpenDetail('+r.i+')">'+
 listEl.innerHTML=html}
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+// Generate a small colored circle with the customer's initials. Color is derived
+// from a stable hash of (SN || name) so the same customer always gets the same
+// color across renders — useful for fast visual scanning when scrolling cards.
+function avatarFor(r){
+if(!r||!r.n)return'';
+let raw=String(r.n).trim();
+// Build 2-letter initials. Prefer "Last, First" → take first letter of each.
+let parts=raw.replace(/[,&\/]+/g,' ').split(/\s+/).filter(p=>p&&!/^(Mr\.?|Mrs\.?|Ms\.?|Dr\.?)$/i.test(p));
+let initials=(parts[0]||raw)[0]||'?';
+if(parts[1])initials+=parts[1][0];
+initials=initials.toUpperCase().substring(0,2);
+// Stable hash → HSL hue. SN gives the best uniqueness; fall back to name.
+let seed=String(r.sn||r.n||'X');
+let h=0;for(let i=0;i<seed.length;i++)h=((h<<5)-h+seed.charCodeAt(i))|0;
+let hue=Math.abs(h)%360;
+// Saturation/lightness tuned for legibility against white card background
+let bg='hsl('+hue+',58%,52%)';
+return '<div class="c-avatar" style="background:'+bg+'" aria-hidden="true">'+escHtml(initials)+'</div>'}
+
+// Calculate how many days ago a record went on Hold. Used to flag "stale" holds
+// (typically >30 days) so Alberto sees them and can reach out to the customer.
+function holdDaysAgo(r){
+if(!r||!r.hold||!r.hold_at)return 0;
+return Math.floor((Date.now()-Number(r.hold_at))/(86400000))}
+
+// Returns an inline pill warning when a Hold has been sitting around too long.
+// Empty string for non-hold records or fresh holds — safe to concatenate anywhere.
+function staleHoldBadge(r){
+if(!r||!r.hold)return'';
+let days=holdDaysAgo(r);
+if(days<14)return'';
+let critical=days>=60,warn=days>=30;
+let bg=critical?'#fee2e2':(warn?'#fef3c7':'#f3e8ff');
+let color=critical?'#b91c1c':(warn?'#92400e':'#6b21a8');
+let label=critical?'CRITICAL':(warn?'STALE':'AGING');
+let icon=critical?'&#128680;':(warn?'&#9203;':'&#9209;&#65039;');
+return '<div class="stale-hold" style="background:'+bg+';color:'+color+';margin-top:6px"><span>'+icon+' '+label+'</span><span style="opacity:.85">On hold '+days+' days — '+(critical?'follow up immediately':(warn?'time to call':'consider following up'))+'</span></div>'}
+
+// For Hold cards, pull the most recent [HOLD] or [GCAL] audit line out of the
+// delivery notes so the card shows WHY it's parked without opening the modal.
+// Falls back to the generic dn preview for non-hold cards (handled by caller).
+function lastActivityPreview(r){
+if(!r||!r.hold||!r.dn)return'';
+let lines=String(r.dn).split('\n').map(s=>s.trim()).filter(Boolean);
+// Walk backward and pick the freshest audit line
+let auditLine=null;
+for(let i=lines.length-1;i>=0;i--){
+if(/^\[(HOLD|GCAL)\]/.test(lines[i])){auditLine=lines[i];break}}
+if(!auditLine)return'';
+return '<div class="hold-activity"><span style="font-weight:800;color:#7c3aed">&#128221;</span> '+escHtml(auditLine.substring(0,160))+(auditLine.length>160?'…':'')+'</div>'}
 
 function techOpenDetail(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
@@ -2202,11 +2339,28 @@ lines.push('Aspen Spas Service');
 
 return lines.join('\n')}
 
+// Soft cap on outgoing SMS per customer. After 5 we still ALLOW sending (with a
+// confirmation prompt) so the rep isn't blocked in genuine emergencies — but the
+// counter and history make it visible that the customer is being over-messaged.
+const SMS_LIMIT_PER_CUSTOMER=5;
+
 function sendPreDeliverySMS(id){
 let r=AD().find(x=>x.i===id||String(x.i)===String(id));
 if(!r){alert('Ticket not found.');return}
 let phones=parsePhones(r.ph);
 if(!phones.length){alert('No phone number on file for this customer. Add a phone number first.');return}
+
+let currentCount=Number(r.sms_count||0);
+
+// Soft cap: warn before exceeding the limit, but allow override
+if(currentCount>=SMS_LIMIT_PER_CUSTOMER){
+let proceed=confirm('⚠️ SMS LIMIT REACHED\n\n'+(r.n||'This customer')+' has already received '+currentCount+' pre-delivery messages.\n\nThe recommended limit is '+SMS_LIMIT_PER_CUSTOMER+' messages per customer to avoid spam complaints.\n\nDo you want to send another one anyway?');
+if(!proceed)return;
+}else if(currentCount===SMS_LIMIT_PER_CUSTOMER-1){
+let proceed=confirm('Heads up: this will be message '+(currentCount+1)+' of '+SMS_LIMIT_PER_CUSTOMER+' for '+(r.n||'this customer')+'.\n\nAfter this one, you should call instead of texting again.\n\nContinue?');
+if(!proceed)return;
+}
+
 let phone=phones[0];
 // If multiple numbers on file, let the user pick which one to use
 if(phones.length>1){
@@ -2221,12 +2375,36 @@ let label=phoneLabel(phone);
 let digits=phoneDigits(label.num||phone);
 if(!digits||digits.length<7){alert('That phone number does not look valid: '+phone);return}
 let msg=buildPreDeliverySMS(r);
+
+// Increment counter and append to history BEFORE opening Messages — once the
+// browser navigates to the sms: URL, focus leaves the page and any code after
+// window.location.href= may not run consistently across mobile browsers.
+let now=Date.now();
+let history=Array.isArray(r.sms_history)?r.sms_history.slice():[];
+history.push({ts:now,phone:digits,n:currentCount+1});
+let updates={
+sms_count:currentCount+1,
+sms_last:now,
+sms_history:history};
+let ai=ADDED.findIndex(x=>x.i===r.i);
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],updates);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+// Refresh in-memory curRec so a subsequent renderModal sees the new count
+if(curRec&&curRec.i===r.i)curRec=AD().find(x=>x.i===r.i);
+// Update the visible counter on the button without a full re-render (preserves
+// any unsaved typing in other modal fields).
+let btn=document.querySelector('.presms-btn[data-rec-id="'+r.i+'"]')||document.querySelector('.presms-btn');
+if(btn){let badge=btn.querySelector('.sms-count-badge');
+if(badge)badge.textContent=(currentCount+1)+'/'+SMS_LIMIT_PER_CUSTOMER;
+if(currentCount+1>=SMS_LIMIT_PER_CUSTOMER)btn.classList.add('limit-reached');
+else if(currentCount+1>=SMS_LIMIT_PER_CUSTOMER-1)btn.classList.add('limit-near');}
+
 // Use the same sms: URL format already used elsewhere in the app
 let href='sms:'+digits+'?&body='+encodeURIComponent(msg);
 // Open in the same window — iOS Safari + Android handle this natively
 window.location.href=href;
 // Toast feedback
-if(typeof showToast==='function')showToast('&#128241; Opening Messages with pre-delivery SMS for '+(r.n||'customer'))}
+if(typeof showToast==='function')showToast('&#128241; Opening Messages ('+(currentCount+1)+'/'+SMS_LIMIT_PER_CUSTOMER+') for '+(r.n||'customer'))}
 // === END PRE-DELIVERY SMS ===
 
 
@@ -2255,6 +2433,10 @@ function st(r){if(r.co)return"complete";
 if(r.dl&&!r.ep)return"action";
 // Tech marked Delivered AND Email PW done → "Follow-Up" tab (was "delivered")
 if(r.dl)return"delivered";
+// HOLD: record was manually paused or the calendar event was deleted (kept for
+// possible reactivation later). Hold takes priority over date checks so a paused
+// ticket never bubbles up to "Needs Action" while it's parked.
+if(r.hold)return"hold";
 // Tech sent notes that require attention → "Needs Action" tab (was "overdue")
 // Important: this check runs BEFORE the date check so attention notes are surfaced
 // even for upcoming/future deliveries.
@@ -2266,9 +2448,12 @@ let d=parseDate(r.dd);
 if(d&&!isNaN(d)){let today=new Date();today.setHours(0,0,0,0);
 if(d.getTime()<today.getTime())return"overdue"}
 return"upcoming"}
-function sL(s){return{complete:"Complete",delivered:"Follow-Up",overdue:"Needs Action",upcoming:"Upcoming",action:"Delivered"}[s]}
-function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]}
-function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
+function sL(s){return{complete:"Complete",delivered:"Follow-Up",overdue:"Needs Action",upcoming:"Upcoming",action:"Delivered",hold:"Hold"}[s]}
+function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c",hold:"#7c3aed"}[s]}
+function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;
+// Hold tab can further narrow by hold_reason chip
+if(statusF==="hold"&&typeof holdReasonF!=="undefined"&&holdReasonF&&(r.hold_reason||"manual")!==holdReasonF)return 0;
+if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
 // Sort
 // useProximity: order by closeness to today (yesterday first, far future last).
 // Used for tabs where "what's most relevant right now" matters more than raw date order:
@@ -2306,6 +2491,7 @@ upcoming:{label:'Upcoming',color:'#d97706',bg:'#fef3c7',border:'#d97706',sub:'De
 overdue:{label:'Needs Action',color:'#dc2626',bg:'#fef2f2',border:'#dc2626',sub:'Not marked as delivered by the tech — or tech sent notes that need attention'},
 action:{label:'Delivered',color:'#ea580c',bg:'#fff7ed',border:'#ea580c',sub:'Tech marked delivered — paperwork email pending'},
 delivered:{label:'Follow-Up',color:'#2563eb',bg:'#eff6ff',border:'#2563eb',sub:'Paperwork sent — awaiting final sign-off'},
+hold:{label:'Hold',color:'#7c3aed',bg:'#faf5ff',border:'#7c3aed',sub:'Paused — removed from calendar but info is preserved. Returns to Upcoming when re-added.'},
 complete:{label:'Complete',color:'#059669',bg:'#f0fdf4',border:'#059669',sub:'Fully delivered and signed off'},
 all:{label:'All',color:'#374151',bg:'#f9fafb',border:'#6b7280',sub:'All deliveries across every status'}};
 
@@ -2316,33 +2502,104 @@ upcoming:a.filter(r=>st(r)==='upcoming').length,
 overdue:a.filter(r=>st(r)==='overdue').length,
 action:a.filter(r=>st(r)==='action').length,
 delivered:a.filter(r=>st(r)==='delivered').length,
+hold:a.filter(r=>st(r)==='hold').length,
 complete:a.filter(r=>st(r)==='complete').length,
 all:a.length};
-let order=['upcoming','overdue','action','delivered','complete','all'];
+let order=['upcoming','overdue','action','delivered','hold','complete','all'];
+// Icons rendered before each tab label for fast visual scanning.
+// Mapping intentionally mirrors the empty-state icons used elsewhere.
+const TAB_ICONS={upcoming:'&#128197;',overdue:'&#9888;&#65039;',action:'&#128666;',delivered:'&#128221;',hold:'&#9209;&#65039;',complete:'&#9989;',all:'&#128194;'};
 let html=order.map(k=>{
 let m=STATUS_META[k],active=statusF===k;
-return '<button class="aspen-tab'+(active?' active':'')+'" onclick="setStatusFilter(\''+k+'\')">'+m.label.toUpperCase()+'<span class="tab-count">'+counts[k]+'</span></button>'
+return '<button class="aspen-tab'+(active?' active':'')+'" onclick="setStatusFilter(\''+k+'\')"><span class="tab-icon">'+TAB_ICONS[k]+'</span>'+m.label.toUpperCase()+'<span class="tab-count">'+counts[k]+'</span></button>'
 }).join('');
 document.getElementById('aspenTabs').innerHTML=html}
 
 function renderCtxHdr(){
 let m=STATUS_META[statusF]||STATUS_META.all;
 let list=AD().filter(r=>r.n).filter(r=>statusF==='all'||st(r)===statusF);
+// For the Hold tab, optionally narrow further by reason chip (set via setHoldReasonFilter)
+if(statusF==='hold'&&typeof holdReasonF!=='undefined'&&holdReasonF){
+list=list.filter(r=>(r.hold_reason||'manual')===holdReasonF)}
 let totalBal=list.reduce((s,r)=>s+(r.bl||0),0);
 let attnCount=AD().filter(r=>r.n&&r.needs_attention).length;
 let metaParts=[];
 metaParts.push('<strong>'+list.length+'</strong> '+(list.length===1?'delivery':'deliveries'));
 if(totalBal>0)metaParts.push('<span class="bal">Balance Due '+fmt(totalBal)+'</span>');
-if(attnCount>0)metaParts.push('<span style="background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;padding:3px 10px;border-radius:999px;font-weight:800;font-size:12px;box-shadow:0 2px 6px rgba(245,158,11,.4)"><span class="pulse" style="display:inline-block">&#128276;</span> '+attnCount+' need'+(attnCount===1?'s':'')+' attention</span>');
+if(attnCount>0&&statusF!=='hold')metaParts.push('<span style="background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;padding:3px 10px;border-radius:999px;font-weight:800;font-size:12px;box-shadow:0 2px 6px rgba(245,158,11,.4)"><span class="pulse" style="display:inline-block">&#128276;</span> '+attnCount+' need'+(attnCount===1?'s':'')+' attention</span>');
+
+// HOLD TAB enrichments: preserved value, oldest hold age, reason filter chips, export CSV
+let holdExtras='';
+if(statusF==='hold'&&list.length>0){
+let preservedValue=list.reduce((s,r)=>s+(r.pr||0),0);
+let oldestDays=list.reduce((max,r)=>Math.max(max,holdDaysAgo(r)),0);
+let staleCount=list.filter(r=>holdDaysAgo(r)>=30).length;
+if(preservedValue>0)metaParts.push('<span class="hold-preserved" title="Total sales price of records currently parked">&#128176; '+fmt(preservedValue)+' preserved</span>');
+if(oldestDays>0)metaParts.push('<span class="hold-oldest" title="Oldest hold in this list">&#9203; oldest: '+oldestDays+'d</span>');
+if(staleCount>0)metaParts.push('<span class="hold-stale" title="Holds older than 30 days that may need follow-up">&#128680; '+staleCount+' stale</span>');
+
+// Reason filter chips — count by hold_reason. Always show "All" as the un-filtered option.
+let allHolds=AD().filter(r=>r.n&&st(r)==='hold');
+let reasons={};
+allHolds.forEach(r=>{let k=r.hold_reason||'manual';reasons[k]=(reasons[k]||0)+1});
+let chipDefs=[
+{k:'',l:'All',ico:'&#128194;',count:allHolds.length},
+{k:'calendar_removed',l:'Calendar removed',ico:'&#128197;',count:reasons['calendar_removed']||0},
+{k:'manual',l:'Manual pause',ico:'&#9209;&#65039;',count:reasons['manual']||0}];
+// Surface any custom-reason buckets the user typed by hand
+Object.keys(reasons).forEach(k=>{if(k!=='calendar_removed'&&k!=='manual')chipDefs.push({k:k,l:k,ico:'&#128221;',count:reasons[k]})});
+let activeReason=typeof holdReasonF!=='undefined'?holdReasonF:'';
+let chips=chipDefs.filter(c=>c.k===''||c.count>0).map(c=>{
+let active=activeReason===c.k;
+return '<button class="hold-chip'+(active?' active':'')+'" onclick="setHoldReasonFilter(\''+c.k+'\')">'+c.ico+' '+escHtml(c.l)+' <span class="hold-chip-n">'+c.count+'</span></button>'}).join('');
+holdExtras='<div class="hold-toolbar"><div class="hold-chips">'+chips+'</div><button class="hold-export-btn" onclick="exportHoldCsv()" title="Download all Hold records as a CSV for follow-up campaigns">&#128229; Export CSV</button></div>';
+}
+
 let h='<div><h2 style="color:'+m.color+'">'+m.label+(statusF==='all'?' Deliveries':' Deliveries')+'</h2>'+
 '<div style="font-size:11px;color:var(--text-tertiary);margin-top:3px;font-weight:500">'+m.sub+'</div></div>'+
 '<div class="ctx-meta">'+metaParts.join(' &nbsp;&middot;&nbsp; ')+'</div>';
 let el=document.getElementById('ctxHdr');
 el.style.borderLeftColor=m.border;
-el.innerHTML=h}
+el.innerHTML=h;
+// Inject the Hold toolbar OUTSIDE the inner-flex ctx-meta, into the host node, AFTER ctxHdr
+let host=document.getElementById('holdToolbarHost');
+if(host)host.innerHTML=holdExtras;
+}
+
+// Reason filter state for the Hold tab. Empty string means "all reasons".
+let holdReasonF='';
+function setHoldReasonFilter(r){holdReasonF=r||'';renderCtxHdr();render()}
+
+// Export all Hold records as CSV — useful for outreach campaigns to dormant clients.
+// Includes preserved value, days on hold, prev date, last activity note, contact info.
+function exportHoldCsv(){
+let rows=AD().filter(r=>r.n&&st(r)==='hold');
+if(!rows.length){alert('No Hold records to export.');return}
+let header=['Customer','SN','Spa','Phone','Email','Sales Price','Balance','Was Scheduled','Days on Hold','Reason','Last Activity Note'];
+let csvRows=[header];
+rows.forEach(r=>{
+let dn=String(r.dn||'').split('\n').reverse().find(l=>/^\[(HOLD|GCAL)\]/.test(l.trim()))||'';
+csvRows.push([
+r.n||'',r.sn||'',r.sp||'',(r.ph||'').replace(/\n/g,' / '),r.em||'',
+String(r.pr||0),String(r.bl||0),
+r.hold_prev_dd||'',String(holdDaysAgo(r)),
+r.hold_reason||'manual',dn.trim()
+])});
+// CSV escape: wrap in quotes, double-up internal quotes
+let csv=csvRows.map(row=>row.map(c=>{let s=String(c||'');if(/[",\n]/.test(s))s='"'+s.replace(/"/g,'""')+'"';return s}).join(',')).join('\n');
+let blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+let url=URL.createObjectURL(blob);
+let a=document.createElement('a');
+a.href=url;a.download='aspen-hold-'+new Date().toISOString().slice(0,10)+'.csv';
+document.body.appendChild(a);a.click();
+setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},100);
+if(typeof showToast==='function')showToast('&#128229; Exported '+rows.length+' Hold records to CSV')}
 
 function setStatusFilter(s){
 statusF=s;
+// Clear the secondary "hold reason" filter whenever the user navigates away from
+// or into a different status tab — otherwise stale chips would confuse the count.
+if(s!=='hold')holdReasonF='';
 // Smart default sort by date:
 // - upcoming: ASC (next delivery first → oldest/closest date at top)
 // - action / overdue: PROXIMITY sort (yesterday first, going back in time → futures at the very end)
@@ -2399,9 +2656,9 @@ reqBadgeHtml+='<span style="display:inline-flex;align-items:center;gap:4px;backg
 });
 reqBadgeHtml+='</div>';
 }
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return pl.num+(pl.tag?' '+pl.tag:'')});return'<span class="phone">&#128222; '+escHtml(parts.join(' &middot; '))+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+(function(){let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div>'+staleHoldBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return pl.num+(pl.tag?' '+pl.tag:'')});return'<span class="phone">&#128222; '+escHtml(parts.join(' &middot; '))+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
-let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
+let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',hold:'&#9209;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
 let sub=search?'Try a different search term':(statusF==='all'?'Click "+ New Delivery" to add one':'All caught up here.');
 h='<div class="empty-state"><div class="es-icon">'+icon+'</div><div class="es-title">'+msg+'</div><div class="es-sub">'+sub+'</div></div>'}
@@ -2906,9 +3163,17 @@ return!!(r.spd||r.di||r.yr||r.vt||r.jt||r.jm||r.p1||r.p2||r.pks||r.ts||r.tsn||r.
 function renderModal(){let r=curRec,s=st(r);
 let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
 let h='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px"><div><h2>'+esc(r.n)+'</h2><p class="sub">'+esc(r.sp||"")+(r.sn?" &bull; SN: "+esc(r.sn):"")+'</p></div><button class="xbtn" onclick="closeOv()">&#10005;</button></div>';
+// HOLD banner — visible when the record is parked. Explains why and offers a one-click resume.
+if(r.hold){
+let prevDD=r.hold_prev_dd?fmtDate(r.hold_prev_dd):'unknown';
+let heldOn=r.hold_at?new Date(r.hold_at).toLocaleDateString():'';
+let reason=r.hold_reason==='calendar_removed'?'Removed from Google Calendar':(r.hold_reason||'Manually paused');
+h+='<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:2px solid #c084fc;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:#6b21a8;margin-bottom:2px">&#9209; ON HOLD'+(heldOn?' since '+heldOn:'')+'</div><div style="font-size:11.5px;color:#7c3aed;line-height:1.4">'+esc(reason)+(prevDD!=='unknown'?' &middot; was scheduled for '+prevDD:'')+'. Customer info is preserved.</div></div><button class="mbtn-complete" style="background:#7c3aed;border:none;color:#fff;font-weight:800;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap" onclick="resumeFromHold('+r.i+')">&#9654; Resume Delivery</button></div>';}
 h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap"><span class="badge '+s+'">'+sL(s)+'</span>';
-if(s!=='complete'){let canCompl=r.cl&&(r.gb||r.ngb);
-h+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete Ticket':'&#9888; Complete (Call + G.B./N.G.B. Required)')+'</button>';}
+if(s!=='complete'&&!r.hold){let canCompl=r.cl&&(r.gb||r.ngb);
+h+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete Ticket':'&#9888; Complete (Call + G.B./N.G.B. Required)')+'</button>';
+// Manual Hold button — for when Alberto wants to pause a delivery without touching the calendar
+h+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved, can resume later" style="background:#fff;border:2px solid #c084fc;color:#7c3aed;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:11.5px">&#9208; Put on Hold</button>';}
 h+='</div>';
 // All fields always editable
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
@@ -3146,7 +3411,17 @@ else{h+='<div></div>'}
 h+='</div>'
 }
 // Pre-Delivery Checklist
-h+='<div class="cs"><div class="ct" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>Pre-Delivery Checklist</span><button type="button" class="presms-btn" onclick="sendPreDeliverySMS('+r.i+')" title="Send a text message to the customer requesting the missing pre-delivery items">&#128241; Send Pre-Delivery SMS</button></div><div class="cg">';
+h+='<div class="cs"><div class="ct" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>Pre-Delivery Checklist</span>'+
+(function(){
+let n=Number(r.sms_count||0);
+let near=n>=SMS_LIMIT_PER_CUSTOMER-1&&n<SMS_LIMIT_PER_CUSTOMER;
+let max=n>=SMS_LIMIT_PER_CUSTOMER;
+let cls='presms-btn'+(max?' limit-reached':(near?' limit-near':''));
+let lastTxt='';
+if(r.sms_last){let d=new Date(r.sms_last);lastTxt=' &middot; Last: '+d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
+return '<button type="button" class="'+cls+'" data-rec-id="'+r.i+'" onclick="sendPreDeliverySMS('+r.i+')" title="Send a text message to the customer requesting the missing pre-delivery items'+(n>0?' — '+n+' already sent'+lastTxt.replace(/&middot;/g,'·').replace(/&[^;]+;/g,'')+'.':'')+'">&#128241; Send Pre-Delivery SMS<span class="sms-count-badge">'+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span></button>';
+})()
++'</div><div class="cg">';
 PRE.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
 h+='</div></div>';
 // Delivered Notes (between checklists)
@@ -4230,7 +4505,91 @@ if(!confirm('Mark "'+rec.n+'" as COMPLETE?'))return;
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){ADDED[ai].co=true;rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};EDITS[id].co=true;rememberEditsEdit(id,EDITS[id]);saveE()}
-curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll()}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll();
+fireConfetti()}
+
+// Brief one-shot confetti shower. Builds ~60 pieces with random color/x/duration,
+// appends them to a fixed-position host, and cleans up after 2.4s. No deps.
+function fireConfetti(){
+// Respect users who set prefers-reduced-motion — animations may make them
+// dizzy or be flagged as accessibility issues.
+try{if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return}catch(e){}
+let host=document.createElement('div');
+host.className='confetti-host';
+let colors=['#e67e2e','#059669','#2563eb','#d97706','#dc2626','#7c3aed','#10b981','#f59e0b'];
+let pieces=60;
+let frag=document.createDocumentFragment();
+for(let i=0;i<pieces;i++){
+let p=document.createElement('div');
+p.className='piece';
+let color=colors[Math.floor(Math.random()*colors.length)];
+let leftPct=Math.random()*100;
+let cx=(Math.random()*200-100)+'px'; // horizontal drift
+let cr=(360+Math.random()*1080)+'deg'; // rotation amount
+let cd=(1.2+Math.random()*1.2)+'s';
+let delay=Math.random()*0.35+'s';
+p.style.left=leftPct+'%';
+p.style.background=color;
+p.style.setProperty('--cx',cx);
+p.style.setProperty('--cr',cr);
+p.style.setProperty('--cd',cd);
+p.style.animationDelay=delay;
+// Random shape: half rectangles, half thin strips
+if(i%3===0){p.style.width='6px';p.style.height='16px';p.style.borderRadius='1px'}
+else if(i%3===1){p.style.borderRadius='50%';p.style.width='10px';p.style.height='10px'}
+frag.appendChild(p)}
+host.appendChild(frag);
+document.body.appendChild(host);
+setTimeout(()=>{if(host&&host.parentNode)host.parentNode.removeChild(host)},2400)}
+
+// === HOLD / RESUME ===
+// Manually park a delivery (and the linked customer info) without deleting it. Useful when
+// the client postpones indefinitely or when the calendar event was removed but we still want
+// to keep the record around. Hold survives across sessions because it's a real field on the
+// record — it lives in EDITS/ADDED like every other property.
+function putOnHold(id){
+let rec=AD().find(x=>x.i===id||String(x.i)===String(id));
+if(!rec)return;
+if(rec.hold){alert('This delivery is already on Hold.');return}
+let reason=prompt('Why are you putting "'+(rec.n||'this delivery')+'" on Hold?\n\n(Optional — leave blank to skip. Example: "Customer postponed indefinitely")','');
+if(reason===null)return; // user canceled
+let stamp=new Date();
+let note='[HOLD] Manually placed on Hold on '+stamp.toLocaleDateString()+(reason?' — '+reason:'')+(rec.dd?' (was scheduled for '+rec.dd+')':'');
+let updates={
+hold:true,
+hold_at:stamp.getTime(),
+hold_prev_dd:rec.dd||null,
+hold_reason:reason||'manual',
+dn:((rec.dn||'')+'\n'+note).trim()};
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
+showToast('&#9209; '+(rec.n||'Delivery')+' moved to Hold');
+renderModal();renderAll()}
+
+function resumeFromHold(id){
+let rec=AD().find(x=>x.i===id||String(x.i)===String(id));
+if(!rec||!rec.hold)return;
+let prev=rec.hold_prev_dd||rec.dd||'';
+let newDD=prompt('Resume "'+(rec.n||'this delivery')+'" from Hold.\n\nEnter the new delivery date (YYYY-MM-DD), or leave it as the previous date.\n\nPrevious date: '+(prev||'none'),prev);
+if(newDD===null)return; // user canceled
+newDD=String(newDD||'').trim()||null;
+let stamp=new Date();
+let note='[HOLD] Resumed from Hold on '+stamp.toLocaleDateString()+(newDD?' — new date '+newDD:'');
+let updates={
+hold:null,
+hold_lifted_at:stamp.getTime(),
+dn:((rec.dn||'')+'\n'+note).trim()};
+if(newDD)updates.dd=newDD;
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
+showToast('&#9654; '+(rec.n||'Delivery')+' resumed from Hold');
+renderModal();renderAll()}
+// === END HOLD / RESUME ===
+
 
 function saveInlineNote(id,key,elId){
 let val=document.getElementById(elId).value.trim()||null;
@@ -4861,15 +5220,28 @@ return false}
 
 async function processGcalEvent(ev){
 try{
-// Deleted event -> if mapped, mark the local delivery (we don't auto-delete; just leave a note)
+// Deleted/cancelled event → move local delivery to HOLD instead of deleting it.
+// Hold preserves all customer info (name, SN, phone, payment history, checklist
+// progress) so the record can return to Upcoming later if the customer reactivates.
+// We snapshot the previous delivery date so we can show it on the Hold card.
 if(ev.status==='cancelled'){
 let mappedId=gcalMap[ev.id];if(mappedId){
 let local=AD().find(r=>r.i===mappedId);
-if(local&&!local.co){
-let note=(local.dn||'')+'\n[GCAL] Event removed from calendar on '+new Date().toLocaleDateString();
+if(local&&!local.co&&!local.hold){
+let prevDD=local.dd||null;
+let stamp=new Date();
+let holdNote='[GCAL] Removed from calendar on '+stamp.toLocaleDateString()+
+(prevDD?' — was scheduled for '+prevDD:'')+'. Moved to Hold.';
+let updates={
+hold:true,
+hold_at:stamp.getTime(),
+hold_prev_dd:prevDD,
+hold_reason:'calendar_removed',
+dn:((local.dn||'')+'\n'+holdNote).trim()};
 let ai=ADDED.findIndex(x=>x.i===mappedId);
-if(ai>=0){ADDED[ai].dn=note.trim();saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};EDITS[mappedId].dn=note.trim();saveE()}
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
+console.log('[GCAL] Delivery',mappedId,'moved to Hold (was scheduled for '+(prevDD||'?')+')');
 gcalStats.updated++}}
 return}
 // Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) — these are recurring legend items
@@ -4907,6 +5279,17 @@ let u={};
 if(local.dd!==newDD)u.dd=newDD;
 let newColor=evColorId||null;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
+// HOLD-LIFT: if the calendar event is back (we got a real, valid newDD) and the
+// local record was sitting in Hold, lift the hold automatically. Works whether
+// the event is matched by gcalMap[id] (same id reappeared) OR via SN-fallback
+// (the customer was re-added later with the same SN under a brand-new event id).
+if(local.hold&&newDD){
+let stamp=new Date();
+let resumeNote='[GCAL] Returned to calendar on '+stamp.toLocaleDateString()+' — Hold lifted, new delivery date '+newDD+'.';
+u.hold=null;
+u.hold_lifted_at=stamp.getTime();
+u.dn=((local.dn||'')+'\n'+resumeNote).trim();
+console.log('[GCAL] Hold lifted for delivery',local.i,'— back on calendar for',newDD);}
 return u}
 
 let mappedId=gcalMap[ev.id];
@@ -5093,6 +5476,7 @@ function isCalendarReadOnly(r){
 if(!r)return true;
 if(r.co)return true;       // completed deliveries are immutable history
 if(r.dl)return true;       // tech-delivered tickets are done — calendar shouldn't change
+if(r.hold)return true;     // parked tickets shouldn't be drag-rescheduled — use Resume instead
 return isPastDate(r.dd)}   // dates strictly before today are the company's permanent record
 
 // Convert a ticket dd field into Google Calendar event start/end blocks. We use all-day events
@@ -5915,7 +6299,9 @@ let sub=subParts.join(' · ');
 let titleAttr=r.n+(r.sp?' — '+r.sp:'')+(r.sn?' (SN '+r.sn+')':'');
 // Use Google Calendar color if the ticket was imported with a recognized colorId — otherwise
 // fall back to the status-based class (.upcoming / .delivered / etc.).
-let gStyle=gcalColorStyle(r);
+// EXCEPTION: tickets on Hold always use the .hold class so they look visibly parked even if
+// they kept their original GCal color.
+let gStyle=r.hold?null:gcalColorStyle(r);
 let evClass='cal-ev'+(gStyle?'':' '+e.s);
 let evStyle=gStyle?' style="'+gStyle+'"':'';
 // Only events with an allowed color can be dragged (matches Alberto's bidirectional rule).
