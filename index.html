@@ -167,6 +167,9 @@ tbody tr{cursor:pointer}
 .ai span{font-size:12px;color:#1f2937;font-weight:600}
 .ai select{padding:4px 6px;border:2px solid #e5e7eb;border-radius:5px;font-size:12px;background:#fff;color:#1f2937;outline:none;max-width:160px}
 .cs{margin-bottom:16px}
+.presms-btn{background:#059669;color:#fff;border:none;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit;transition:all .15s;white-space:nowrap;box-shadow:0 1px 3px rgba(5,150,105,.25)}
+.presms-btn:hover{background:#047857;transform:translateY(-1px);box-shadow:0 3px 8px rgba(5,150,105,.35)}
+.presms-btn:active{transform:translateY(0)}
 .ct{font-size:13px;font-weight:800;color:#374151;margin-bottom:8px}
 .spa-specs{margin:18px 0;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-cream);overflow:hidden}
 .spa-specs summary{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border-bottom:1px solid var(--border-soft);list-style:none;flex-wrap:wrap}
@@ -445,7 +448,7 @@ th,td{padding:7px 6px}
 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.55), 0 4px 12px rgba(220,38,38,.3)}
 50%{box-shadow:0 0 0 8px rgba(220,38,38,0), 0 4px 12px rgba(220,38,38,.5)}
 }
-/* Card badge (small version that shows in the upcoming/past due grid) */
+/* Card badge (small version that shows in the upcoming/needs-action grid) */
 .pst-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent}
 .pst-badge.paid{background:#dcfce7;color:#059669;border-color:#a7f3d0}
 .pst-badge.check{background:#fef3c7;color:#b45309;border-color:#fde68a}
@@ -814,7 +817,7 @@ let OPT_SU=["@ Ease [SPA]","Tru-Blu [SPA]","Tru-Blu [SWIM]","Bromine Tablets"];
 // Loaded from Firebase custom_opts.__cats__ on startup. Persisted via saveCats().
 let CUSTOM_CATS=[];
 // Load custom options from Firebase (will be populated after init)
-const PRE=[{k:"pf",l:"Pay Full"},{k:"iv",l:"Invoice"},{k:"el",l:"Electricity"},{k:"wp",l:"WIP"},{k:"lv",l:"Level"},{k:"pt",l:"Photos"},{k:"ch",l:"Chemistry"},{k:"rc",l:"Receipt"}];
+const PRE=[{k:"pf",l:"Pay Full"},{k:"iv",l:"Invoice"},{k:"el",l:"Electricity"},{k:"wp",l:"WIP"},{k:"lv",l:"Level"},{k:"pt",l:"Photos"}];
 const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"po",l:"Portal"},{k:"oo",l:"O.O."},{k:"il",l:"I.L."},{k:"cl",l:"Call"},{k:"pk",l:"Packets"},{k:"gb",l:"G.B."},{k:"ngb",l:"N.G.B."}];
 
 // === FIREBASE CONFIG ===
@@ -2089,6 +2092,106 @@ let m=String(p||'').match(/^([\(\)\d\s\.\-+]+)(.*)$/);
 if(m)return{num:m[1].trim(),tag:m[2].replace(/[()]/g,'').trim()};
 return{num:String(p||'').trim(),tag:''}}
 
+// === PRE-DELIVERY SMS ===
+// Builds a courteous customer-facing text message asking the customer to
+// confirm the items still missing from the Pre-Delivery checklist:
+//   - WIP: enough cable + conduit from breaker to hot tub
+//   - LEVEL: spa pad is level
+//   - ELECTRICITY: if installed, remind them to email photos/videos to service@aspenspas.com
+//   - PHOTOS: send pictures of the install site
+// Payment reminder is included ONLY when r.bl > 0 (per Alberto's spec —
+// if the spa is already paid in full, do NOT mention payment at all).
+function getCustomerFirstName(name){
+if(!name)return'';
+let n=String(name).trim();
+let raw;
+// "Last, First [...]" pattern → take part after first comma
+if(n.indexOf(',')>=0){raw=n.split(',').slice(1).join(',').trim()}
+else{raw=n}
+// First token, splitting on whitespace and conjunctions
+let first=raw.split(/[\s&\/]+/)[0]||'';
+// Strip titles ("Dr.", "Mr.", etc.) — if the first token is a title, use the next
+if(/^(Mr\.?|Mrs\.?|Ms\.?|Miss|Dr\.?|Sir|Madam)$/i.test(first)){
+let parts=raw.split(/[\s&\/]+/);first=parts[1]||''}
+return first}
+
+function buildPreDeliverySMS(r){
+let lines=[];
+let first=getCustomerFirstName(r.n);
+let greeting=first?'Hi '+first+',':'Hello,';
+lines.push(greeting);
+lines.push('');
+let spaName=r.sp||'spa';
+let dateStr=r.dd?' on '+fmtDate(r.dd):'';
+lines.push('This is Aspen Spas Service. We are getting ready for your '+spaName+' delivery'+dateStr+'. To make sure everything goes smoothly, please confirm the following:');
+lines.push('');
+
+let qNum=1;let askedAnything=false;
+
+if(!r.wp){
+lines.push(qNum+'. WIP / WIRING — Please confirm that you have enough cable and conduit installed from your electrical breaker to where the hot tub will sit.');
+qNum++;askedAnything=true;}
+
+if(!r.lv){
+lines.push(qNum+'. LEVEL SURFACE — Please confirm the area where your '+(spaName.toLowerCase().indexOf('swim')>=0?'swim spa':'spa')+' will be placed is completely level.');
+qNum++;askedAnything=true;}
+
+// Electricity: tailored message depending on whether the customer already has it installed
+if(r.el){
+lines.push(qNum+'. PHOTOS & VIDEOS — Now that your electricity is installed, please send us photos AND videos of the breaker, the whip connection, and the spa area at service@aspenspas.com so we can confirm everything is ready.');
+qNum++;askedAnything=true;
+}else{
+lines.push(qNum+'. ELECTRICITY — Please let us know once your electrician finishes the install. Once it is done, send photos AND videos of the breaker, the whip connection, and the spa area at service@aspenspas.com.');
+qNum++;askedAnything=true;}
+
+// Generic photos ask only when no electricity-related ask already covered photos
+if(!r.pt && r.el){
+lines.push(qNum+'. INSTALL SITE PHOTOS — Please also send a few clear photos of the path we will use to bring the spa in, and the final spot where it will sit.');
+qNum++;askedAnything=true;}
+
+if(askedAnything)lines.push('');
+
+// Payment reminder — ONLY if balance > 0. If fully paid, omit entirely.
+if((r.bl||0)>0){
+let balStr=fmt(r.bl);
+lines.push('A friendly reminder, your remaining balance is '+balStr+'. Please plan to have payment ready by delivery day — we accept check, cash, or financing.');
+lines.push('');}
+
+lines.push('If you have any questions, please reply to this message or call us at 314-776-5050.');
+lines.push('');
+lines.push('Thank you,');
+lines.push('Aspen Spas Service');
+
+return lines.join('\n')}
+
+function sendPreDeliverySMS(id){
+let r=AD().find(x=>x.i===id||String(x.i)===String(id));
+if(!r){alert('Ticket not found.');return}
+let phones=parsePhones(r.ph);
+if(!phones.length){alert('No phone number on file for this customer. Add a phone number first.');return}
+let phone=phones[0];
+// If multiple numbers on file, let the user pick which one to use
+if(phones.length>1){
+let optsStr=phones.map((p,i)=>(i+1)+'. '+p).join('\n');
+let choice=prompt('Multiple phone numbers on file for '+(r.n||'this customer')+'.\n\n'+optsStr+'\n\nWhich number should the SMS go to? Enter 1-'+phones.length+':','1');
+if(!choice)return;
+let idx=parseInt(choice,10)-1;
+if(isNaN(idx)||idx<0||idx>=phones.length){alert('Invalid choice.');return}
+phone=phones[idx]}
+// Strip annotation (e.g. "314-555-1234 Tom" → "314-555-1234")
+let label=phoneLabel(phone);
+let digits=phoneDigits(label.num||phone);
+if(!digits||digits.length<7){alert('That phone number does not look valid: '+phone);return}
+let msg=buildPreDeliverySMS(r);
+// Use the same sms: URL format already used elsewhere in the app
+let href='sms:'+digits+'?&body='+encodeURIComponent(msg);
+// Open in the same window — iOS Safari + Android handle this natively
+window.location.href=href;
+// Toast feedback
+if(typeof showToast==='function')showToast('&#128241; Opening Messages with pre-delivery SMS for '+(r.n||'customer'))}
+// === END PRE-DELIVERY SMS ===
+
+
 // Robust date parser for all formats
 function parseDate(dd){if(!dd)return null;let s=String(dd).trim();
 let iso=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
@@ -2110,19 +2213,30 @@ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.g
 function dateNote(dd){if(!dd)return'';let m=String(dd).match(/(am|pm|all\s*day)/i);return m?' '+m[0]:''}
 
 function st(r){if(r.co)return"complete";
-// NEW RULE: if marked Delivered but Email PW (ep) is NOT checked → Needs Action (don't move to Delivered yet)
+// Tech marked Delivered but Email PW (ep) is NOT checked → "Delivered" tab (was "action")
 if(r.dl&&!r.ep)return"action";
+// Tech marked Delivered AND Email PW done → "Follow-Up" tab (was "delivered")
 if(r.dl)return"delivered";
-let d=parseDate(r.dd);if(d&&!isNaN(d)&&d<=new Date()){if(r.pf)return"action";return"overdue"}return"upcoming"}
-function sL(s){return{complete:"Complete",delivered:"Delivered",overdue:"Past Due",upcoming:"Upcoming",action:"Needs Action"}[s]}
+// Tech sent notes that require attention → "Needs Action" tab (was "overdue")
+// Important: this check runs BEFORE the date check so attention notes are surfaced
+// even for upcoming/future deliveries.
+if(r.needs_attention)return"overdue";
+// Date check — strict: only deliveries scheduled BEFORE today (yesterday or earlier)
+// and not yet marked as delivered by the tech land in "Needs Action".
+// Same-day deliveries stay in "Upcoming" until the next calendar day.
+let d=parseDate(r.dd);
+if(d&&!isNaN(d)){let today=new Date();today.setHours(0,0,0,0);
+if(d.getTime()<today.getTime())return"overdue"}
+return"upcoming"}
+function sL(s){return{complete:"Complete",delivered:"Follow-Up",overdue:"Needs Action",upcoming:"Upcoming",action:"Delivered"}[s]}
 function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c"}[s]}
 function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
 // Sort
 // useProximity: order by closeness to today (yesterday first, far future last).
 // Used for tabs where "what's most relevant right now" matters more than raw date order:
-//   - Past Due: oldest overdue closer to today first → far past (still unmoved) at end
-//   - Needs Action: yesterday first → futures sorted last
-//   - Delivered: most recently delivered first → far-future scheduled deliveries at end
+//   - Needs Action (overdue): oldest still-unmoved closer to today first → far past at end
+//   - Delivered (action): yesterday first → futures sorted last
+//   - Follow-Up (delivered): most recently delivered first → far-future scheduled deliveries at end
 let useProximity=(sortCol==="date"&&(statusF==="action"||statusF==="overdue"||statusF==="delivered"));
 let todayMs=(function(){let d=new Date();d.setHours(0,0,0,0);return d.getTime()})();
 let DAY=86400000;let FUTURE_BOOST=1e10;
@@ -2151,9 +2265,9 @@ function opt(arr,sel){return'<option value="">—</option>'+arr.map(v=>'<option'
 // Status meta: order, label, color, accent bg, accent border
 const STATUS_META={
 upcoming:{label:'Upcoming',color:'#d97706',bg:'#fef3c7',border:'#d97706',sub:'Deliveries scheduled in the future'},
-overdue:{label:'Past Due',color:'#dc2626',bg:'#fef2f2',border:'#dc2626',sub:'Past their delivery date — needs attention'},
-action:{label:'Needs Action',color:'#ea580c',bg:'#fff7ed',border:'#ea580c',sub:'Paid but pending delivery'},
-delivered:{label:'Delivered',color:'#2563eb',bg:'#eff6ff',border:'#2563eb',sub:'Delivered but not yet completed'},
+overdue:{label:'Needs Action',color:'#dc2626',bg:'#fef2f2',border:'#dc2626',sub:'Not marked as delivered by the tech — or tech sent notes that need attention'},
+action:{label:'Delivered',color:'#ea580c',bg:'#fff7ed',border:'#ea580c',sub:'Tech marked delivered — paperwork email pending'},
+delivered:{label:'Follow-Up',color:'#2563eb',bg:'#eff6ff',border:'#2563eb',sub:'Paperwork sent — awaiting final sign-off'},
 complete:{label:'Complete',color:'#059669',bg:'#f0fdf4',border:'#059669',sub:'Fully delivered and signed off'},
 all:{label:'All',color:'#374151',bg:'#f9fafb',border:'#6b7280',sub:'All deliveries across every status'}};
 
@@ -2994,7 +3108,7 @@ else{h+='<div></div>'}
 h+='</div>'
 }
 // Pre-Delivery Checklist
-h+='<div class="cs"><div class="ct">Pre-Delivery Checklist</div><div class="cg">';
+h+='<div class="cs"><div class="ct" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>Pre-Delivery Checklist</span><button type="button" class="presms-btn" onclick="sendPreDeliverySMS('+r.i+')" title="Send a text message to the customer requesting the missing pre-delivery items">&#128241; Send Pre-Delivery SMS</button></div><div class="cg">';
 PRE.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
 h+='</div></div>';
 // Delivered Notes (between checklists)
@@ -4645,7 +4759,7 @@ try{await dbGcal.update({syncToken:null})}catch(e){console.warn('Failed to clear
 try{
 let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,showDeleted:true};
 if(gcalSyncToken){params.syncToken=gcalSyncToken}
-else{// First sync: pull from today forward only (avoid pulling old delivered events as Past Due)
+else{// First sync: pull from today forward only (avoid pulling old delivered events as Needs Action)
 let now=new Date();now.setHours(0,0,0,0);
 params.timeMin=now.toISOString();
 params.orderBy='startTime'}
