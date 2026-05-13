@@ -18,6 +18,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <!-- Google Calendar API (Identity Services + GAPI) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -843,9 +844,15 @@ storageBucket:"tech-tickets-a9485.firebasestorage.app",
 messagingSenderId:"680308339087",
 appId:"1:680308339087:web:3d18766c4b0e465a1a9bfa"};
 
-let serviceApp=null,svcDb=null,svcTickets=null;
+let serviceApp=null,svcDb=null,svcTickets=null,svcAuth=null;
 let SVC_LOG_READY=false;        // becomes true after first successful read
 let SVC_LOG_ERROR=null;          // last connection error (null = ok)
+// Promise that resolves when the secondary app has finished anonymous sign-in.
+// All Firestore reads/writes against `svcTickets` should be chained off this so we
+// never hit the Service Log without an authenticated context — the project's
+// Firestore Security Rules require `request.auth != null` (Anonymous Auth, same
+// pattern used by the Invoice Tracker and TECH-TICKETS dashboards).
+let SVC_AUTH_READY=null;
 
 function initServiceLog(){
 try{
@@ -853,23 +860,54 @@ if(typeof firebase==='undefined'||!firebase.firestore){
 SVC_LOG_ERROR='Firestore SDK not loaded. The page must include firebase-firestore-compat.js.';
 console.error('[SVC-LOG]',SVC_LOG_ERROR);
 return}
+if(!firebase.auth){
+SVC_LOG_ERROR='Firebase Auth SDK not loaded. The page must include firebase-auth-compat.js.';
+console.error('[SVC-LOG]',SVC_LOG_ERROR);
+return}
 // Avoid re-initializing if hot-reloaded
 let existing=firebase.apps.find(a=>a.name==='service');
 serviceApp=existing||firebase.initializeApp(SERVICE_LOG_CONFIG,'service');
 svcDb=serviceApp.firestore();
 svcTickets=svcDb.collection('tickets');
+svcAuth=serviceApp.auth();
 console.log('[SVC-LOG] Initialized secondary Firebase app for project:',SERVICE_LOG_CONFIG.projectId);
-// Probe connection by reading a single doc — verifies API key, network, rules
-svcTickets.limit(1).get()
+
+// Anonymous sign-in to satisfy Firestore Security Rules that require auth.
+// We expose the resulting Promise as SVC_AUTH_READY so writers can await it.
+SVC_AUTH_READY=svcAuth.signInAnonymously()
+.then(cred=>{
+let uid=cred&&cred.user&&cred.user.uid;
+console.log('[SVC-LOG] ✓ Anonymous auth OK. UID:',uid);
+return cred.user})
+.catch(err=>{
+SVC_LOG_ERROR='Anonymous auth failed: '+(err.code||'')+' '+(err.message||err);
+console.error('[SVC-LOG] ✗ Anonymous auth FAILED:',err);
+console.error('[SVC-LOG] Enable Anonymous sign-in: Firebase Console → Authentication → Sign-in method → Anonymous → Enable.');
+// Re-throw so chained .then() handlers below skip and downstream writers know auth failed.
+throw err});
+
+// Probe connection AFTER auth is established — verifies API key, rules, network
+SVC_AUTH_READY
+.then(()=>svcTickets.limit(1).get())
 .then(snap=>{SVC_LOG_READY=true;SVC_LOG_ERROR=null;
 console.log('[SVC-LOG] ✓ Connection test passed. Tickets collection accessible. Sample size:',snap.size)})
-.catch(err=>{SVC_LOG_ERROR='Read test failed: '+(err.code||'')+' '+(err.message||err);
+.catch(err=>{
+// Only overwrite SVC_LOG_ERROR if the auth step didn't already set one
+if(!SVC_LOG_ERROR)SVC_LOG_ERROR='Read test failed: '+(err.code||'')+' '+(err.message||err);
 console.error('[SVC-LOG] ✗ Connection test FAILED.',err);
-console.error('[SVC-LOG] Common causes: (1) Firestore Security Rules block reads. (2) API key has HTTP referrer restrictions blocking this origin. (3) Network/firewall.')});
+console.error('[SVC-LOG] Common causes: (1) Anonymous Auth disabled in Firebase Console. (2) Firestore Security Rules block reads even for authenticated users. (3) API key has HTTP referrer restrictions blocking this origin.')});
 }catch(e){
 SVC_LOG_ERROR='Init failed: '+e.message;
 console.error('[SVC-LOG] Init exception:',e);
 }}
+
+// Helper used by every Firestore writer below. Returns a Promise that resolves
+// once Anonymous Auth has finished. If init never ran or auth permanently failed,
+// the rejection carries a clear error message.
+function ensureSvcAuth(){
+if(!SVC_AUTH_READY)return Promise.reject(new Error('Service Log not initialized — reload the page.'));
+return SVC_AUTH_READY}
+
 initServiceLog();
 const dbUsers=db.ref('users');              // user accounts {id: {email, name, role, pin}}
 
@@ -4328,16 +4366,16 @@ console.log('[SVC-LOG] Payload built. Customer:',payload.customer,'| visitNum:',
 // in Firestore — we discard them and create a fresh ticket.
 let existingId=rec.svc_id&&!String(rec.svc_id).startsWith('SVC_')?rec.svc_id:null;
 
-let writePromise;
+// Make sure Anonymous Auth is ready before writing — Firestore Security Rules
+// require an authenticated request even for the secondary `service` app.
+let writePromise=ensureSvcAuth().then(()=>{
 if(existingId){
 console.log('[SVC-LOG] Updating existing ticket:',existingId);
-writePromise=svcTickets.doc(existingId).set(payload,{merge:true}).then(()=>existingId);
-}else{
+return svcTickets.doc(existingId).set(payload,{merge:true}).then(()=>existingId)}
 console.log('[SVC-LOG] Creating new ticket via .add()');
-writePromise=svcTickets.add(payload).then(docRef=>{
+return svcTickets.add(payload).then(docRef=>{
 console.log('[SVC-LOG] ✓ New ticket created with id:',docRef.id);
-return docRef.id});
-}
+return docRef.id})});
 
 // Race the write against a 20s timeout so a hung connection doesn't trap the user
 let timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout after 20s — Firestore did not respond. Check your internet connection.')),20000));
@@ -4360,9 +4398,9 @@ SVC_LOG_ERROR=detail;
 console.error('[SVC-LOG] ✗ WRITE FAILED:',err);
 console.error('[SVC-LOG] Payload that failed:',payload);
 let helpText='Could not send ticket to Service Log.\n\nDetail: '+detail+'\n\n';
-if(err&&err.code==='permission-denied')helpText+='Cause: Firestore Security Rules in project "tech-tickets-a9485" are blocking writes. Open the Firebase Console → Firestore → Rules and ensure the `tickets` collection allows writes (e.g. allow read, write: if true).';
+if(err&&err.code==='permission-denied')helpText+='Cause: Firestore Security Rules in project "tech-tickets-a9485" are blocking writes for this user.\n\nFIX (one of):\n  • Make sure Anonymous Auth is enabled — Firebase Console → Authentication → Sign-in method → Anonymous → Enable.\n  • Open Firestore → Rules and ensure the `tickets` collection allows authenticated writes:\n\n    rules_version = "2";\n    service cloud.firestore {\n      match /databases/{db}/documents {\n        match /tickets/{doc} {\n          allow read, write: if request.auth != null;\n        }\n      }\n    }';
+else if(err&&err.code==='unauthenticated')helpText+='Cause: This page never finished signing in anonymously to the Service Log project. Enable Anonymous Auth in the Firebase Console (Authentication → Sign-in method → Anonymous), then reload.';
 else if(err&&err.code==='unavailable')helpText+='Cause: Network or Firestore service unavailable. Try again in a moment.';
-else if(err&&err.code==='unauthenticated')helpText+='Cause: API key issue or auth required. Check the Firebase Console.';
 else helpText+='Open the browser console (F12) and look for [SVC-LOG] entries for full details.';
 alert('❌ '+helpText);
 showToast('&#10005; Send failed — see alert for details','err');
@@ -4387,7 +4425,8 @@ console.log('[SVC-LOG] Legacy id detected — clearing locally only');
 clearLocal();return}
 
 if(!svcTickets){alert('Service Log not initialized. Cannot cancel remotely.');return}
-svcTickets.doc(rec.svc_id).delete()
+ensureSvcAuth()
+.then(()=>svcTickets.doc(rec.svc_id).delete())
 .then(()=>{console.log('[SVC-LOG] ✓ Ticket deleted from Firestore');clearLocal()})
 .catch(err=>{console.error('[SVC-LOG] ✗ Cancel failed:',err);showToast('&#10005; Could not cancel: '+(err.message||err),'err')})}
 
@@ -4397,7 +4436,9 @@ svcTickets.doc(rec.svc_id).delete()
 // a `delivery_id` field linking back to the originating delivery — that field is what we filter on.
 function startServiceLogListener(){
 if(!svcTickets){console.warn('[SVC-LOG] Listener skipped — svcTickets not ready');return}
-console.log('[SVC-LOG] Starting Firestore listener for tickets with delivery_id field');
+ensureSvcAuth()
+.then(()=>{
+console.log('[SVC-LOG] Auth ready — starting Firestore listener for tickets with delivery_id field');
 svcTickets.where('delivery_id','>',0).onSnapshot(snap=>{
 let byDocId={};
 snap.forEach(doc=>{byDocId[doc.id]=doc.data()||{}});
@@ -4475,7 +4516,8 @@ console.error('[SVC-LOG] ✗ Listener error:',err);
 SVC_LOG_ERROR='Listener: '+(err.code||'')+' '+(err.message||err);
 if(err.code==='failed-precondition'){
 console.error('[SVC-LOG] Firestore needs a single-field index on `delivery_id`. Open the link in the error above to auto-create it (one click).');
-}})}
+}})})
+.catch(err=>{console.error('[SVC-LOG] ✗ Listener could not start — auth failed:',err)})}
 // Defer listener start until SDK is initialized and DOM ready
 if(svcTickets)startServiceLogListener();
 else setTimeout(startServiceLogListener,500);
@@ -4486,11 +4528,14 @@ console.log('[SVC-LOG] === MANUAL CONNECTION TEST ===');
 console.log('[SVC-LOG] svcTickets ready:',!!svcTickets);
 console.log('[SVC-LOG] SVC_LOG_READY:',SVC_LOG_READY);
 console.log('[SVC-LOG] SVC_LOG_ERROR:',SVC_LOG_ERROR);
+console.log('[SVC-LOG] Auth current user:',svcAuth&&svcAuth.currentUser?svcAuth.currentUser.uid:'(none)');
 if(!svcTickets){alert('svcTickets is null. Reload the page.');return}
-svcTickets.add({customer:'__TEST_PING__',source:'dispatch',status:'pending',date:'',techs:[],workTypes:[],notes:'Connection test from Delivery Tracker',createdAt:firebase.firestore.FieldValue.serverTimestamp(),visitNum:5,delivery_id:1,_test:true})
+ensureSvcAuth()
+.then(()=>{console.log('[SVC-LOG] ✓ Auth ready, attempting test write');
+return svcTickets.add({customer:'__TEST_PING__',source:'dispatch',status:'pending',date:'',techs:[],workTypes:[],notes:'Connection test from Delivery Tracker',createdAt:firebase.firestore.FieldValue.serverTimestamp(),visitNum:5,delivery_id:1,_test:true})})
 .then(ref=>{console.log('[SVC-LOG] ✓ Test write succeeded. Doc id:',ref.id);
 return svcTickets.doc(ref.id).delete().then(()=>{console.log('[SVC-LOG] ✓ Test cleanup OK');alert('✓ Service Log connection works! Test ticket written and deleted. Check console for details.')})})
-.catch(err=>{console.error('[SVC-LOG] ✗ Test failed:',err);alert('✗ Test FAILED: ['+(err.code||'?')+'] '+err.message+'\n\nCheck the browser console for full details.')})};
+.catch(err=>{console.error('[SVC-LOG] ✗ Test failed:',err);alert('✗ Test FAILED: ['+(err.code||'?')+'] '+(err.message||err)+'\n\nCheck the browser console for full details.')})};
 
 
 // === GOOGLE CALENDAR INTEGRATION ===
