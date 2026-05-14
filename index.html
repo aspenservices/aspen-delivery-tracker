@@ -5743,7 +5743,46 @@ return u}
 
 let mappedId=gcalMap[ev.id];
 if(mappedId){
-let local=AD().find(r=>r.i===mappedId);if(!local)return;
+let local=AD().find(r=>r.i===mappedId);
+// CASE A: stale mapping — the linked record has been deleted. Clean up and fall through
+// to the create-new path so this event gets a fresh ticket (otherwise it'd be silently
+// dropped forever).
+if(!local){
+console.log('[GCAL] Stale mapping: event '+ev.id+' → deleted record '+mappedId+'. Unlinking and re-processing.');
+db.ref('gcal_map/'+ev.id).remove();
+delete gcalMap[ev.id];
+mappedId=null;
+}
+// CASE B: suspicious mapping — the linked record is already delivered/completed AND its
+// date is far (>60 days) from this event's date. This is the signature of a bad match
+// made by the OLD (date-blind) name-fallback (e.g. May "PM-Taylor" event linked to a
+// January "Taylor, Justin" sauna delivery). Unlink, optionally revert the bad date edit,
+// fall through to create-new.
+else if(local.dl||local.co){
+let evDate=null;
+let nm=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+if(nm)evDate=new Date(+nm[1],+nm[2]-1,+nm[3]);
+let rd=parseDate(local.dd);
+let gap=(evDate&&rd&&!isNaN(rd))?Math.abs(evDate.getTime()-rd.getTime()):0;
+if(gap>60*86400000){
+console.log('[GCAL] Suspicious mapping: event '+ev.id+' → delivered/completed record '+mappedId+' ("'+local.n+'") with date '+local.dd+' but event is for '+newDD+' (gap='+(gap/86400000).toFixed(0)+' days). Unlinking.');
+db.ref('gcal_map/'+ev.id).remove();
+delete gcalMap[ev.id];
+// If the bad mapping had previously overwritten the record's date with this event's date,
+// revert it. Only safe to do for BASE records (since we can fall back to BASE.dd). For ADDED
+// records, leave alone — they're user-owned.
+let baseRec=BASE.find(b=>b.i===mappedId);
+if(baseRec&&EDITS[mappedId]&&EDITS[mappedId].dd===newDD){
+console.log('[GCAL] Reverting bad date update on record '+mappedId+' (was set to '+newDD+', restoring '+baseRec.dd+')');
+delete EDITS[mappedId].dd;
+if(Object.keys(EDITS[mappedId]).length===0)delete EDITS[mappedId];
+saveE();
+}
+mappedId=null;
+}
+}
+// Normal path (only if we still have a valid mapping after the cleanup checks above)
+if(mappedId&&local){
 let updates=buildGcalUpdates(local,parsed,newDD,ev.colorId);
 if(Object.keys(updates).length){
 let ai=ADDED.findIndex(x=>x.i===mappedId);
@@ -5751,6 +5790,7 @@ if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);saveE()}
 gcalStats.updated++}
 return}
+}
 // Look up by SN first (most reliable)
 let existing=null;
 if(parsed.sn){existing=AD().find(r=>r.n&&String(r.sn||'').replace(/\.0$/,'')===parsed.sn)}
