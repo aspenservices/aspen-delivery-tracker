@@ -5754,10 +5754,35 @@ return}
 // Look up by SN first (most reliable)
 let existing=null;
 if(parsed.sn){existing=AD().find(r=>r.n&&String(r.sn||'').replace(/\.0$/,'')===parsed.sn)}
-// Fallback: match by last-name + nearby date
+// Fallback: match by last-name + nearby date.
+// CRITICAL (Alberto bug 5/14): the old logic matched by name substring WITHOUT checking
+// the date — so a new "PM-Taylor" event in May would steal an old "Taylor, Justin" Jan
+// sauna ticket and the new event would never get its own card. Fix: require the existing
+// record to be within MAX_GAP days of the new event date, AND skip records that are
+// already linked to a different calendar event, delivered, or completed.
 if(!existing&&parsed.name){
 let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
-existing=AD().find(r=>{if(!r.n)return false;let rn=r.n.toLowerCase();return rn.indexOf(nameKey)>=0&&!r.co})}
+// Skip very short name keys — too ambiguous (matches everything)
+if(nameKey&&nameKey.length>=3){
+let newDate=null;
+let nm=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+if(nm)newDate=new Date(+nm[1],+nm[2]-1,+nm[3]);
+let DAY=86400000;
+let MAX_GAP=60*DAY; // a delivery reschedule within ~2 months is plausible; beyond that, it's a different sale
+existing=AD().find(r=>{
+if(!r.n)return false;
+if(r.co)return false;          // completed → don't relink
+if(r.gcalId&&r.gcalId!==ev.id)return false; // already linked to a DIFFERENT calendar event
+if(r.dl)return false;          // already marked delivered → don't relink
+let rn=r.n.toLowerCase();
+if(rn.indexOf(nameKey)<0)return false;
+// Date proximity guard — only match if the existing record's date is within MAX_GAP
+// of the new event's date. Manual entries with no parseable date fall through.
+if(!newDate)return true;
+let rd=parseDate(r.dd);
+if(!rd||isNaN(rd))return true; // unparseable record date → still allow (manual entries)
+return Math.abs(newDate.getTime()-rd.getTime())<=MAX_GAP;
+});}}
 if(existing){
 // Link this event to the existing delivery — but DO NOT touch any of its fields except dd.
 // The ticket already exists, so it's owned by the user (manually entered or previously imported
