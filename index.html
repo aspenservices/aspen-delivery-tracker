@@ -811,6 +811,14 @@ th,td{padding:7px 6px}
 <div id="users-modal" class="ov hidden" onclick="closeUsersModal(event)">
 <div class="mdl" id="users-mdl" onclick="event.stopPropagation()" style="max-width:640px"></div>
 </div>
+<!-- Backup Center modal — admin-only. Inserted after the May 14 2026 data-loss incident.
+     Goals: (a) manual JSON export so the team can save backups to Drive/iCloud manually,
+            (b) restore-from-file recovery path, (c) auto-backup-to-Drive once per session,
+            (d) visible status of when the last backup happened. -->
+<div id="backup-modal" class="ov hidden" onclick="closeBackupModal(event)">
+<div class="mdl" id="backup-mdl" onclick="event.stopPropagation()" style="max-width:640px"></div>
+</div>
+<input type="file" id="backupFileInput" accept=".json,application/json" style="display:none" onchange="handleBackupFileSelected(event)" />
 <div class="aspen-hdr">
 <div class="aspen-hdr-inner">
 <div class="aspen-logo">
@@ -830,6 +838,7 @@ th,td{padding:7px 6px}
 <button class="vt-btn" id="tbCal" onclick="setTab('cal')" title="Calendar view">&#128197;</button>
 </div>
 <button class="aspen-action-btn outline" id="usersBtn" onclick="openUsersPanel()" style="display:none" title="Manage Users">&#128100; Users</button>
+<button class="aspen-action-btn outline" id="backupBtn" onclick="openBackupCenter()" style="display:none" title="Backup &amp; Restore">&#128737;&#65039; Backup</button>
 <button class="aspen-action-btn outline" id="gcalBtn" onclick="toggleGcalPanel()" title="Google Calendar Sync"><span class="gcal-dot"></span><span id="gcalBtnLabel" class="gcal-btn-label">Google Calendar</span></button>
 </div>
 </div>
@@ -1122,6 +1131,7 @@ let roleEl=document.getElementById('userRoleBadge');if(roleEl){roleEl.textConten
 let techLbl=document.getElementById('tech-user-label');if(techLbl)techLbl.textContent=currentUser.name;
 // Show admin-only features
 let usersBtn=document.getElementById('usersBtn');if(usersBtn)usersBtn.style.display=currentUser.role==='admin'?'flex':'none';
+let backupBtn=document.getElementById('backupBtn');if(backupBtn)backupBtn.style.display=currentUser.role==='admin'?'flex':'none';
 // Tech sees a different view entirely
 if(currentUser.role==='tech'){
 document.getElementById('tech-view').classList.remove('hidden');
@@ -1839,6 +1849,268 @@ if(e&&e.target.id!=='users-modal')return;
 document.getElementById('users-modal').classList.add('hidden');
 document.body.classList.remove('modal-open')}
 
+// ============================================================================
+// BACKUP CENTER — Added after the May 14 2026 data-loss incident.
+// Provides: manual JSON export, restore-from-file, Drive auto-backup, status display.
+// All operations require admin role (already enforced via the toolbar button visibility).
+// ============================================================================
+function openBackupCenter(){
+if(!currentUser||currentUser.role!=='admin')return;
+document.getElementById('backup-modal').classList.remove('hidden');
+document.body.classList.add('modal-open');
+renderBackupCenter()}
+
+function closeBackupModal(e){
+if(e&&e.target.id!=='backup-modal')return;
+document.getElementById('backup-modal').classList.add('hidden');
+document.body.classList.remove('modal-open')}
+
+// Build a backup object containing all the data the user could possibly want to recover.
+// Photos in EDITS are stored inline as base64 strings, so this snapshot is fully
+// self-contained — restoring it brings back EVERYTHING including images.
+function buildBackupSnapshot(){
+return{
+version:'aspen_delivery_tracker_backup_v1',
+exportedAt:new Date().toISOString(),
+exportedBy:(currentUser&&currentUser.name)||'unknown',
+counts:{edits:Object.keys(EDITS).length,added:Array.isArray(ADDED)?ADDED.length:0,users:Object.keys(USERS).length},
+edits:EDITS,
+added:ADDED,
+users:USERS,
+custom_opts:{tb:OPT_TB.slice(),ss:OPT_SS.slice(),lf:OPT_LF.slice(),cv:OPT_CV.slice(),su:OPT_SU.slice(),__cats__:CUSTOM_CATS}
+}}
+
+// Manual download — triggered by the "Download Backup Now" button.
+// Saves the JSON to the user's Downloads folder. They should also copy it to Drive/iCloud.
+function downloadManualBackup(){
+let snap=buildBackupSnapshot();
+let json=JSON.stringify(snap,null,2);
+let blob=new Blob([json],{type:'application/json'});
+let url=URL.createObjectURL(blob);
+let stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+let a=document.createElement('a');
+a.href=url;a.download='AspenDelivery_Backup_'+stamp+'.json';
+document.body.appendChild(a);a.click();document.body.removeChild(a);
+setTimeout(()=>URL.revokeObjectURL(url),100);
+// Remember when we last did this so we can show "Last backup: X" status
+try{localStorage.setItem('aspen_backup_last_manual',Date.now().toString())}catch(e){}
+renderBackupCenter();
+if(typeof showToast==='function')showToast('&#128229; Backup descargado — Edits: '+snap.counts.edits+' &middot; Added: '+snap.counts.added+' &middot; Users: '+snap.counts.users)}
+
+// Restore — opens the file picker. Validation + preview happens in handleBackupFileSelected.
+function pickBackupFileToRestore(){
+let inp=document.getElementById('backupFileInput');
+inp.value='';// clear so re-selecting same file fires onchange
+inp.click()}
+
+function handleBackupFileSelected(e){
+let f=e.target.files&&e.target.files[0];if(!f)return;
+let reader=new FileReader();
+reader.onload=ev=>{
+let parsed=null;
+try{parsed=JSON.parse(ev.target.result)}
+catch(err){alert('No se pudo leer el archivo — no parece ser un JSON válido.\n\nError: '+err.message);return}
+if(!parsed||typeof parsed!=='object'){alert('El archivo no tiene la estructura esperada.');return}
+// Accept either the new schema (aspen_delivery_tracker_backup_v1) or the old localStorage dump
+let isCurrentSchema=parsed.version==='aspen_delivery_tracker_backup_v1';
+let isLegacyLocalStorage=parsed.version==='aspen_delivery_localStorage_backup';
+if(!isCurrentSchema&&!isLegacyLocalStorage&&!('edits' in parsed)&&!('added' in parsed)){
+alert('Este archivo no parece ser un backup del Delivery Tracker.\n\nEsperaba un JSON con "edits" y "added", o versión "aspen_delivery_tracker_backup_v1".');return}
+// Preview counts
+let editsCount=parsed.edits?Object.keys(parsed.edits).length:0;
+let addedCount=Array.isArray(parsed.added)?parsed.added.length:(parsed.added?Object.keys(parsed.added).length:0);
+let usersCount=parsed.users?Object.keys(parsed.users).length:0;
+let exportedAt=parsed.exportedAt||'desconocida';
+let by=parsed.exportedBy||'';
+let confirmMsg='RESTAURAR DESDE BACKUP\n\n'+
+'Archivo: '+f.name+'\n'+
+'Fecha del backup: '+exportedAt+'\n'+
+(by?'Exportado por: '+by+'\n':'')+
+'\nContenido:\n'+
+'  • Edits: '+editsCount+' records\n'+
+'  • Added: '+addedCount+' records\n'+
+'  • Users: '+usersCount+' accounts\n'+
+'\n⚠️ Esto va a SOBRESCRIBIR los datos actuales en Firebase con los del backup.\n\n'+
+'Edits actuales: '+Object.keys(EDITS).length+'\n'+
+'Added actuales: '+(ADDED?ADDED.length:0)+'\n'+
+'\n¿Continuar?';
+if(!confirm(confirmMsg))return;
+applyBackupRestore(parsed)};
+reader.onerror=()=>alert('Error leyendo el archivo.');
+reader.readAsText(f)}
+
+async function applyBackupRestore(snap){
+try{
+let writes=[];
+// We MUST set _pendingFlush flags so our own listener defenses don't reject these writes.
+// And we have to write everything atomically via a multi-path update to keep state consistent.
+let updates={};
+if(snap.edits&&typeof snap.edits==='object'){updates['/edits']=snap.edits}
+if(snap.added){
+// Normalize added: must be an array
+let a=Array.isArray(snap.added)?snap.added:Object.values(snap.added||{});
+updates['/added']=a}
+if(snap.users&&typeof snap.users==='object'){updates['/users']=snap.users}
+if(snap.custom_opts&&typeof snap.custom_opts==='object'){updates['/custom_opts']=snap.custom_opts}
+if(Object.keys(updates).length===0){alert('El backup no contiene datos para restaurar.');return}
+// Mark in-flight so our listener defenses don't kick back in
+_saveInFlight.edits++;_saveInFlight.added++;_lastLocalSave.edits=Date.now();_lastLocalSave.added=Date.now();
+await db.ref().update(updates);
+_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1);
+alert('✅ Restauración exitosa.\n\nLa app va a recargarse para refrescar todos los datos.');
+location.reload()
+}catch(err){
+console.error('Restore failed:',err);
+alert('❌ Error al restaurar:\n\n'+(err.message||err)+'\n\nLos datos actuales NO se cambiaron.');
+_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1)
+}}
+
+// Drive auto-backup — runs once per session (max 1 per 6 hours) if Google OAuth is connected.
+// Uses the existing gapi client already loaded for the Calendar feature.
+// Saves to a folder named "Aspen Delivery Backups" in the user's Drive root.
+let _driveBackupAttempted=false;
+async function autoBackupToDrive(){
+if(_driveBackupAttempted)return;_driveBackupAttempted=true;
+try{
+if(!gcalToken||!gdriveScopeOk||typeof gapi==='undefined'||!gapi.client){return}
+// Throttle: max once per 6 hours
+let last=parseInt(localStorage.getItem('aspen_drive_backup_last')||'0',10);
+if(last&&Date.now()-last<6*3600*1000){return}
+// Skip if there's basically nothing to back up yet (avoid creating noise on fresh installs)
+let editsN=Object.keys(EDITS).length,addedN=Array.isArray(ADDED)?ADDED.length:0;
+if(editsN===0&&addedN<=1)return;
+let snap=buildBackupSnapshot();
+let json=JSON.stringify(snap);
+let stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+let filename='AspenDelivery_AutoBackup_'+stamp+'.json';
+// Find or create the "Aspen Delivery Backups" folder so backups stay organized
+let folderId=await driveFindOrCreateFolder('Aspen Delivery Backups');
+// Multipart upload of the JSON content with folder parent
+let boundary='-------aspen_'+Math.random().toString(36).slice(2);
+let metadata={name:filename,mimeType:'application/json',parents:folderId?[folderId]:undefined};
+let body='--'+boundary+'\r\n'+
+'Content-Type: application/json; charset=UTF-8\r\n\r\n'+
+JSON.stringify(metadata)+'\r\n'+
+'--'+boundary+'\r\n'+
+'Content-Type: application/json\r\n\r\n'+
+json+'\r\n'+
+'--'+boundary+'--';
+let resp=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+method:'POST',
+headers:{'Authorization':'Bearer '+gcalToken,'Content-Type':'multipart/related; boundary='+boundary},
+body:body});
+if(!resp.ok){throw new Error('Drive upload failed: '+resp.status)}
+let res=await resp.json();
+console.log('[Backup] Auto-uploaded to Drive:',filename,'(',Math.round(json.length/1024),'KB)');
+try{localStorage.setItem('aspen_drive_backup_last',Date.now().toString())}catch(e){}
+try{localStorage.setItem('aspen_drive_backup_last_name',filename)}catch(e){}
+try{localStorage.setItem('aspen_drive_backup_last_id',res.id||'')}catch(e){}
+// Best-effort rotation: keep only the last 14 auto-backups in the folder
+driveRotateOldBackups(folderId).catch(()=>{})
+}catch(err){console.warn('[Backup] Drive auto-backup failed (non-fatal):',err.message||err)}}
+
+async function driveFindOrCreateFolder(name){
+try{
+let q="name='"+name.replace(/'/g,"\\'")+"' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+let r=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name)',{
+headers:{'Authorization':'Bearer '+gcalToken}});
+let d=await r.json();
+if(d.files&&d.files.length){return d.files[0].id}
+// Create
+let r2=await fetch('https://www.googleapis.com/drive/v3/files',{
+method:'POST',
+headers:{'Authorization':'Bearer '+gcalToken,'Content-Type':'application/json'},
+body:JSON.stringify({name:name,mimeType:'application/vnd.google-apps.folder'})});
+let d2=await r2.json();
+return d2.id
+}catch(e){console.warn('driveFindOrCreateFolder:',e);return null}}
+
+async function driveRotateOldBackups(folderId){
+if(!folderId)return;
+let q="'"+folderId+"' in parents and trashed=false and name contains 'AspenDelivery_AutoBackup_'";
+let r=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name,createdTime)&orderBy=createdTime desc',{
+headers:{'Authorization':'Bearer '+gcalToken}});
+let d=await r.json();
+let files=d.files||[];
+// Keep the newest 14, delete the rest
+let toDelete=files.slice(14);
+for(let f of toDelete){
+try{await fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:{'Authorization':'Bearer '+gcalToken}})}catch(e){}
+}}
+
+function renderBackupCenter(){
+let lastManual=parseInt(localStorage.getItem('aspen_backup_last_manual')||'0',10);
+let lastDrive=parseInt(localStorage.getItem('aspen_drive_backup_last')||'0',10);
+let lastDriveName=localStorage.getItem('aspen_drive_backup_last_name')||'';
+let editsN=Object.keys(EDITS).length;
+let addedN=Array.isArray(ADDED)?ADDED.length:0;
+let usersN=Object.keys(USERS).length;
+let fmtAgo=(ts)=>{if(!ts)return'<span style="color:#dc2626">nunca</span>';let diff=Date.now()-ts;let d=Math.floor(diff/86400000),h=Math.floor(diff/3600000),m=Math.floor(diff/60000);if(d>0)return d+'d ago';if(h>0)return h+'h ago';if(m>0)return m+'m ago';return'just now'};
+let driveStatusColor=lastDrive&&Date.now()-lastDrive<7*86400000?'#059669':(lastDrive?'#d97706':'#dc2626');
+let driveReady=gcalToken&&gdriveScopeOk;
+
+let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+'<h2 style="font-size:18px;font-weight:800">&#128737;&#65039; Backup Center</h2>'+
+'<button class="xbtn" onclick="closeBackupModal({target:{id:\'backup-modal\'}})">&#10005;</button>'+
+'</div>'+
+
+// CURRENT STATE
+'<div style="background:#f9fafb;border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:14px">'+
+'<div style="font-size:11px;font-weight:800;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Estado actual de la base</div>'+
+'<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px">'+
+'<div><strong style="font-size:18px;color:var(--aspen-orange)">'+addedN+'</strong> &nbsp;<span style="color:var(--text-secondary)">added records</span></div>'+
+'<div><strong style="font-size:18px;color:#2563eb">'+editsN+'</strong> &nbsp;<span style="color:var(--text-secondary)">edits</span></div>'+
+'<div><strong style="font-size:18px;color:#059669">'+usersN+'</strong> &nbsp;<span style="color:var(--text-secondary)">users</span></div>'+
+'</div></div>'+
+
+// MANUAL BACKUP
+'<div style="background:#fff;border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">'+
+'<div><div style="font-weight:800;font-size:14px;margin-bottom:3px">&#128229; Descargar Backup Manual</div>'+
+'<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4">Descarga un archivo JSON con toda la data (edits, added, users, fotos). Cópialo a Drive o iCloud como respaldo permanente.</div></div>'+
+'</div>'+
+'<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">Último manual: <strong>'+fmtAgo(lastManual)+'</strong></div>'+
+'<button onclick="downloadManualBackup()" style="background:var(--aspen-orange);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128229; Descargar Backup Ahora</button>'+
+'</div>'+
+
+// DRIVE AUTO-BACKUP
+'<div style="background:#fff;border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">'+
+'<div><div style="font-weight:800;font-size:14px;margin-bottom:3px">&#9729;&#65039; Auto-Backup a Google Drive</div>'+
+'<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4">Cada 6 horas la app sube automáticamente un backup a tu Drive → carpeta "Aspen Delivery Backups". Mantiene los últimos 14.</div></div>'+
+'<span style="background:'+(driveReady?'#dcfce7':'#fee2e2')+';color:'+(driveReady?'#059669':'#dc2626')+';font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap">'+(driveReady?'CONECTADO':'NO CONECTADO')+'</span>'+
+'</div>'+
+'<div style="font-size:11px;margin-top:6px;color:'+driveStatusColor+'">Último auto: <strong>'+fmtAgo(lastDrive)+'</strong>'+(lastDriveName?' <br><span style="color:var(--text-tertiary);font-size:10.5px">('+escHtml(lastDriveName)+')</span>':'')+'</div>'+
+(driveReady?
+'<button onclick="manualTriggerDriveBackup()" style="background:#fff;color:#2563eb;border:1.5px solid #2563eb;padding:8px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;margin-top:10px;width:100%">&#128259; Subir a Drive Ahora</button>'
+:'<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;font-style:italic">Conecta Google Calendar para habilitar auto-backup a Drive (el mismo OAuth da acceso a la carpeta de backups).</div>')+
+'</div>'+
+
+// RESTORE
+'<div style="background:#fff;border:2px solid #fee2e2;border-radius:10px;padding:14px">'+
+'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">'+
+'<div><div style="font-weight:800;font-size:14px;margin-bottom:3px;color:#dc2626">&#128260; Restaurar desde Backup</div>'+
+'<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4">Selecciona un archivo de backup (.json) para restaurar a Firebase. <strong style="color:#dc2626">Sobrescribe la data actual.</strong></div></div>'+
+'</div>'+
+'<button onclick="pickBackupFileToRestore()" style="background:#fff;color:#dc2626;border:1.5px solid #dc2626;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128194; Seleccionar archivo de backup...</button>'+
+'</div>'+
+
+'<div style="font-size:10.5px;color:var(--text-tertiary);margin-top:14px;line-height:1.5">'+
+'<strong>Tip:</strong> Descarga un backup manual al menos una vez por semana y guárdalo en Drive/iCloud. El auto-backup a Drive corre solo si abriste Google Calendar — si lo deshabilitas, no hay auto-backup.'+
+'</div>';
+
+document.getElementById('backup-mdl').innerHTML=h}
+
+async function manualTriggerDriveBackup(){
+_driveBackupAttempted=false;// reset throttle
+// Also reset the time check
+try{localStorage.removeItem('aspen_drive_backup_last')}catch(e){}
+await autoBackupToDrive();
+renderBackupCenter()}
+
+
 function renderUsersPanel(){
 let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:18px;font-weight:800">&#128100; User Management</h2><button class="xbtn" onclick="closeUsersModal({target:{id:\'users-modal\'}})">&#10005;</button></div>';
 h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">Add team members and assign roles. Tech accounts only see their assigned deliveries.</div>';
@@ -2165,9 +2437,27 @@ let localKeys=Object.keys(EDITS),snapKeys=Object.keys(v);
 let missing=localKeys.filter(k=>!(k in v));
 if(missing.length){console.warn('[FB] Discarding stale edits snapshot — missing local keys:',missing);return}
 }
+// ===================================================================================
+// ANTI-WIPE DEFENSE (this is the protection added after the May 14 2026 incident
+// where Firebase returned empty data and the listener overwrote ALL local edits).
+// If we have substantial local state (5+ edits) and the server snapshot is EMPTY
+// or near-empty, that's suspicious. Refuse to overwrite, log a warning, and show
+// a banner so Alberto can investigate before any data is lost.
+// ===================================================================================
+let localCount=Object.keys(EDITS).length;
+let serverCount=Object.keys(v).length;
+if(localCount>=5&&serverCount===0){
+console.error('[ANTI-WIPE] Firebase returned EMPTY edits but local has '+localCount+' records. REFUSING to overwrite. Press Backup → Restore if you need to investigate.');
+showAntiWipeBanner('edits',localCount,0);
+return;
+}
+// Also catch dramatic drops (e.g. 100 records → 3 records). Likely a sync race or bug.
+if(localCount>=20&&serverCount<localCount*0.3){
+console.error('[ANTI-WIPE] Firebase returned '+serverCount+' edits but local has '+localCount+' — dramatic drop. REFUSING to overwrite.');
+showAntiWipeBanner('edits',localCount,serverCount);
+return;
+}
 // Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
-// Even if the snapshot is stale and missing a typed field, our recent-edit overlay puts
-// it back. This is the absolute last line of defense against the user seeing data revert.
 EDITS=overlayRecentEditsEdits(v);
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
@@ -2185,13 +2475,39 @@ let missingId=Object.keys(localById).find(id=>!serverById[id]);
 if(missingId){console.warn('[FB] Discarding stale added snapshot — missing recently-saved ticket id:',missingId);return}
 }
 let nextArr=Array.isArray(v)?v:Object.values(v||{});
+// ===================================================================================
+// ANTI-WIPE DEFENSE for ADDED — same logic as for EDITS above.
+// ===================================================================================
+let localArrCount=ADDED.length;
+let serverArrCount=nextArr.length;
+if(localArrCount>=5&&serverArrCount===0){
+console.error('[ANTI-WIPE] Firebase returned EMPTY added but local has '+localArrCount+' records. REFUSING to overwrite.');
+showAntiWipeBanner('added',localArrCount,0);
+return;
+}
+if(localArrCount>=20&&serverArrCount<localArrCount*0.3){
+console.error('[ANTI-WIPE] Firebase returned '+serverArrCount+' added but local has '+localArrCount+' — dramatic drop. REFUSING to overwrite.');
+showAntiWipeBanner('added',localArrCount,serverArrCount);
+return;
+}
 // Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
-// If the user just typed a phone number and the server's snapshot doesn't reflect it yet,
-// our overlay re-applies the edit. This guarantees the typed data is never lost — period.
 ADDED=overlayRecentAddedEdits(nextArr);
 try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
+
+// Big yellow warning banner that appears at the top of the screen when the anti-wipe
+// defense kicks in. Alberto sees this immediately and knows something is wrong.
+// He can click the banner to open Backup Center to inspect/restore.
+function showAntiWipeBanner(kind,localCount,serverCount){
+let existing=document.getElementById('anti-wipe-banner');if(existing)existing.remove();
+let div=document.createElement('div');
+div.id='anti-wipe-banner';
+div.style.cssText='position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#dc2626,#ea580c);color:#fff;padding:14px 20px;text-align:center;font-weight:800;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);cursor:pointer;letter-spacing:.02em';
+div.innerHTML='&#9888;&#65039; PROTECCIÓN ANTI-WIPE ACTIVADA &mdash; Firebase devolvió '+serverCount+' '+kind+' pero localmente tienes '+localCount+'. <u>Click aquí para abrir Backup Center</u> e investigar antes de hacer cambios.';
+div.onclick=()=>{div.remove();if(currentUser&&currentUser.role==='admin')openBackupCenter()};
+document.body.appendChild(div);
+}
 
 // If a tech has the delivery detail open, re-render it whenever Firebase pushes new data
 // (e.g. the manager uploads new photos from desktop). Without this, the tech sees a stale view
@@ -4920,6 +5236,10 @@ function _checkDriveScope(resp){
 let scopes=(resp&&resp.scope)?resp.scope.split(/\s+/):[];
 gdriveScopeOk=scopes.some(s=>s==='https://www.googleapis.com/auth/drive'||s==='https://www.googleapis.com/auth/drive.file');
 console.log('OAuth scopes granted:',scopes,'| Drive ok?',gdriveScopeOk);
+// Once Drive scope is confirmed, schedule the auto-backup. We delay a few seconds so
+// the Firebase listeners finish loading and EDITS/ADDED reflect real data — otherwise
+// autoBackupToDrive() would skip the upload (it bails on near-empty installs).
+if(gdriveScopeOk&&typeof autoBackupToDrive==='function'){setTimeout(autoBackupToDrive,8000)}
 return gdriveScopeOk}
 let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
 let gcalMap={}; // {gcalEventId: localDeliveryId}
