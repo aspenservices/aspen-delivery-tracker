@@ -2629,17 +2629,21 @@ qNum++;askedAnything=true;
 lines.push(qNum+'. ELECTRICITY — Please let us know once your electrician finishes the install. Once it is done, send photos AND videos of the breaker, the whip connection, and the spa area at service@aspenspas.com.');
 qNum++;askedAnything=true;}
 
-// Generic photos ask only when no electricity-related ask already covered photos
-if(!r.pt && r.el){
-lines.push(qNum+'. INSTALL SITE PHOTOS — Please also send a few clear photos of the path we will use to bring the spa in, and the final spot where it will sit.');
+// Install-site photos — ALWAYS ask (when not yet on file), regardless of electricity status.
+// Per Alberto: the delivery team needs to see the entrance/path to the house AND the
+// exact spot where the spa will sit so they can prepare the right equipment and crew.
+if(!r.pt){
+lines.push(qNum+'. INSTALL SITE PHOTOS — Please send a few clear photos of: (a) the entrance to your home and the path we will use to bring the spa in, and (b) the exact area where the spa will be placed. These help our delivery team prepare for your delivery.');
 qNum++;askedAnything=true;}
 
 if(askedAnything)lines.push('');
 
 // Payment reminder — ONLY if balance > 0. If fully paid, omit entirely.
+// Per Alberto: only checks are accepted. Customer can either hand the check to the
+// delivery team on delivery day, or stop by the office in advance to pay.
 if((r.bl||0)>0){
 let balStr=fmt(r.bl);
-lines.push('A friendly reminder, your remaining balance is '+balStr+'. Please plan to have payment ready by delivery day — we accept check, cash, or financing.');
+lines.push('A friendly reminder, your remaining balance is '+balStr+'. We accept payment by check only. You can hand the check to our delivery team on delivery day, or stop by our office in advance at 4609 McRee Avenue, Saint Louis, MO 63110.');
 lines.push('');}
 
 lines.push('If you have any questions, please reply to this message or call us at 314-776-5050.');
@@ -3292,9 +3296,48 @@ let suMatch=findOptionWithContext(text,OPT_SU,['Start-up','Startup','Sanitizer',
 if(suMatch)result._startup=suMatch;
 // Aliases — vendor-specific product names that map to standard dropdown options.
 // "Genesis Blu Fusion" salt system → maps to our "Tru-Blu [SPA]" startup option.
-// Runs only if no exact match was found above, so explicit options always win.
+// "@Frog @Ease" / "Frog Ease" → maps to "@ Ease [SPA]" (sometimes the @ symbol is
+// dropped, mis-OCR'd, or written as "@Frog" by QuickBooks). Runs only if no exact
+// match was found above, so explicit options always win.
 if(!result._startup){
-if(/Genesis\s+Blu\s+Fusion|Blu\s+Fusion/i.test(text))result._startup='Tru-Blu [SPA]';
+if(/Genesis\s+Blu\s+Fusion|Blu\s+Fusion|BluFusion/i.test(text))result._startup='Tru-Blu [SPA]';
+else if(/@?\s*Frog\s*@?\s*Ease|@\s*Ease|Frog\s+Ease|FROG\s+@\s*EASE/i.test(text))result._startup='@ Ease [SPA]';
+}
+
+// === CUSTOM CATEGORIES (e.g. "Special Accessories", "Heat Pump") ===
+// CUSTOM_CATS is loaded from Firebase at app start; iterate every custom category
+// and try to match its options in the PDF text. Generic words (NONE, NO, —) are
+// skipped. Specific terms (e.g. "Black Handrail") need no surrounding context.
+result._customCats={};
+if(typeof CUSTOM_CATS!=='undefined'&&Array.isArray(CUSTOM_CATS)){
+CUSTOM_CATS.forEach(cat=>{
+if(!cat||!cat.k||!Array.isArray(cat.opts))return;
+let opts=cat.opts.filter(o=>o&&!/^(NONE|NO|—|-|N\/A)$/i.test(String(o).trim()));
+opts.sort((a,b)=>b.length-a.length); // longest match wins
+for(let opt of opts){
+let pattern=opt.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s*-\s*/g,'\\s*[-\\u2013]?\\s*').replace(/\s+/g,'\\s+');
+let re=new RegExp('\\b'+pattern+'\\b','i');
+if(re.test(text)){result._customCats[cat.k]=opt;break}
+}
+});
+}
+
+// === HANDRAIL & HEAT PUMP — special detection ===
+// These are common Aspen accessories that customers buy. When the QuickBooks invoice
+// mentions "handrail" or "heat pump" but the user hasn't added a matching option to
+// the custom category yet, we surface a clean label so applyExtractedToForm can
+// auto-add it as a new option (similar pattern to A&B custom steps/tables).
+let handrailMatch=text.match(/\b(Black|White|Bronze|Brushed|Stainless|Chrome|Silver)?\s*Handrail\b/i);
+if(handrailMatch){
+let color=handrailMatch[1]?handrailMatch[1].trim():'';
+result._handrailLabel=(color?color+' ':'')+'Handrail';
+}
+let heatPumpMatch=text.match(/\b(Heat\s*Pump|HeatPump)\b/i);
+if(heatPumpMatch){
+// Try to capture brand/model nearby (e.g. "Heat Pump - Aspen Pro 6kW")
+let ctx=text.substring(Math.max(0,heatPumpMatch.index-20),Math.min(text.length,heatPumpMatch.index+100));
+let brandM=ctx.match(/Heat\s*Pump[\s\-:]+([A-Z][A-Za-z0-9\.\s\-]{2,40}?)(?=\n|,|\.|$|\s{3,})/i);
+result._heatPumpLabel=brandM?'Heat Pump - '+brandM[1].trim():'Heat Pump';
 }
 
 // === A&B CUSTOM STEPS / TABLE — auto-detect items that aren't built-in options ===
@@ -3451,6 +3494,49 @@ return false;
 }
 if(d._stepsCustomLabel){if(autoAddOption('e_ss',d._stepsCustomLabel,OPT_SS))count++}
 if(d._tableCustomLabel){if(autoAddOption('e_tb',d._tableCustomLabel,OPT_TB))count++}
+
+// === Apply custom categories (Special Accessories, Heat Pump, etc.) ===
+// For each custom category detected by the parser, select the matching option in the
+// dropdown. If the user hasn't already chosen something for that category.
+if(d._customCats&&typeof CUSTOM_CATS!=='undefined'){
+Object.keys(d._customCats).forEach(catKey=>{
+let val=d._customCats[catKey];
+if(!val)return;
+let el=document.getElementById('e_'+catKey);
+if(!el)return;
+if(el.value&&el.value!=='')return; // respect user's manual choice
+let opt=Array.from(el.options).find(o=>o.value.toLowerCase()===val.toLowerCase()||o.text.toLowerCase()===val.toLowerCase());
+if(opt){el.value=opt.value;count++}
+});
+}
+
+// === Auto-add HANDRAIL as a "Special Accessories" option ===
+// If the PDF mentions a handrail (e.g. "Black Handrail") and no custom-category option
+// already matches, we look for the "Special Accessories" / "Handrail" custom category
+// and add it as a new option, then auto-select it. Same persistence pattern as A&B.
+function findCustomCatByLabelHints(hints){
+if(typeof CUSTOM_CATS==='undefined'||!Array.isArray(CUSTOM_CATS))return null;
+for(let h of hints){
+let re=new RegExp(h,'i');
+let cat=CUSTOM_CATS.find(c=>c&&c.l&&re.test(c.l));
+if(cat)return cat;
+}
+return null;
+}
+if(d._handrailLabel){
+let cat=findCustomCatByLabelHints(['Handrail','Special\\s*Acces','Accesor','Extras','Add[- ]?on']);
+if(cat){
+let added=autoAddOption('e_'+cat.k,d._handrailLabel,cat.opts||(cat.opts=[]));
+if(added)count++;
+}
+}
+if(d._heatPumpLabel){
+let cat=findCustomCatByLabelHints(['Heat\\s*Pump','HeatPump','Pump','Heater']);
+if(cat){
+let added=autoAddOption('e_'+cat.k,d._heatPumpLabel,cat.opts||(cat.opts=[]));
+if(added)count++;
+}
+}
 
 // Try matching SPA model dropdown (if Quattro/Eldorado/etc detected)
 if(d._model){
@@ -4589,10 +4675,35 @@ curRec=AD().find(r=>r.i===id||String(r.i)===String(id));
 let dot=el.querySelector(".cd"),on=curRec[key];
 dot.className="cd "+(on?"on":"off");el.className="ci "+(on?"on":"off");
 renderKPIs();renderCtxHdr();
-if(key==='pf'){renderModal()}}
+// Pay Full toggle ON: update the Payment input + Balance span in place WITHOUT
+// re-rendering the entire modal. A full re-render would wipe out any unsaved typing
+// the user has on other fields (spa description, notes, address edits, etc.).
+if(key==='pf'&&curRec.pf){updatePaymentDisplayInPlace(curRec)}}
+
+// Update the Payment input + Balance span inside the open modal without re-rendering.
+// Called whenever py / bl change programmatically (toggling Pay Full, marking Paid, etc).
+function updatePaymentDisplayInPlace(r){
+let pyEl=document.getElementById('e_py');
+if(pyEl)pyEl.value=r.py||0;
+// Balance span sits right after a <label>Balance (auto)</label> — find it by label text.
+let labels=document.querySelectorAll('#md label');
+labels.forEach(lab=>{
+if(/Balance\s*\(auto\)/i.test(lab.textContent||'')){
+let span=lab.nextElementSibling;
+if(span&&span.tagName==='SPAN'){
+let bl=Number(r.bl||0);
+span.textContent=fmt(bl);
+span.style.color=bl>0?'#dc2626':'#059669';
+}
+}
+});
+}
 
 // Toggle the payment status pill. Click the active one again to clear it.
 // Persists immediately to Firebase so it shows up on cards without needing Save Edit.
+// Per Alberto: when "Paid" is selected, also auto-mark "Pay Full" in the Pre-Delivery
+// checklist and zero out the balance (since the spa is fully paid). This way the user
+// only needs ONE click instead of two.
 function togglePaymentStatus(k){
 if(!curRec)return;
 let id=curRec.i;
@@ -4602,9 +4713,22 @@ let prevSnapshot=prev?Object.assign({},prev):null;
 let cur=curRec.pst||null;
 let next=cur===k?null:k;
 curRec.pst=next;
+// Build the updates object. If we're transitioning INTO 'paid', also flip pf=true
+// and reset py=pr / bl=0 so the checklist + money match reality.
+let extraUpdates={pst:next};
+let alsoFlippedPF=false;
+if(next==='paid'&&!curRec.pf){
+curRec.pf=true;
+curRec.py=Number(curRec.pr||0);
+curRec.bl=0;
+extraUpdates.pf=true;
+extraUpdates.py=Number(curRec.pr||0);
+extraUpdates.bl=0;
+alsoFlippedPF=true;
+}
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){ADDED[ai].pst=next;rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pst=next;rememberEditsEdit(id,EDITS[id]);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],extraUpdates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],extraUpdates);rememberEditsEdit(id,EDITS[id]);saveE()}
 // Update buttons in place without full modal re-render (snappier UX)
 let row=document.querySelector('.pst-row');
 if(row){
@@ -4623,9 +4747,20 @@ if(active){btn.style.cssText='background:'+def.color+';color:#fff;border-color:'
 else{btn.style.cssText='color:'+def.color+';border-color:'+def.color+'66'}
 });
 }
+// If we auto-flipped Pay Full to ON, also update the PF checkbox visual + Payment/Balance
+// displays in place (no full re-render → preserves unsaved typing elsewhere).
+if(alsoFlippedPF){
+let pfBtn=document.querySelector('.ci[onclick*="\'pf\'"]');
+if(pfBtn){
+let dot=pfBtn.querySelector('.cd');
+if(dot)dot.className='cd on';
+pfBtn.className='ci on';
+}
+updatePaymentDisplayInPlace(curRec);
+}
 // Update the card in the background list too
 renderBoard();
-showToast(next?'Payment status: '+next:'Payment status cleared');
+showToast(next?'Payment status: '+next+(alsoFlippedPF?' · Pay Full auto-marked':''):'Payment status cleared');
 // Push the change to Google Calendar (description includes payment status). Skipped if
 // not linked to an event or color not in allowed filter — see gcalPushTicketChanges.
 let curAfter=AD().find(x=>x.i===id||String(x.i)===String(id));
