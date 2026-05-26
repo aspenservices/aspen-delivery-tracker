@@ -6030,6 +6030,29 @@ ADDED.push(rec);saveA();
 let u={};u['gcal_map/'+ev.id]=newId;db.ref().update(u);
 return rec}
 
+// Return all calendar event ids currently linked to a ticket — both via the gcalMap table and
+// via a gcalId field stored on the record itself.
+function gcalTicketLinkedEventIds(r){
+let ids=[];
+if(r.gcalId)ids.push(String(r.gcalId));
+if(gcalMap){Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],r.i)&&ids.indexOf(String(eid))<0)ids.push(String(eid))})}
+return ids}
+
+// Unlink a ticket from every calendar event and (for BASE records) restore its original
+// delivery date. Used to clean up a delivered/historical ticket whose date got dragged onto a
+// future event by the old name-fallback logic (the Taylor SAUNA → 5/27 case).
+function gcalUnlinkTicket(r,restoreDate){
+let ids=gcalTicketLinkedEventIds(r);
+let upd={};
+ids.forEach(eid=>{upd['gcal_map/'+eid]=null;delete gcalMap[eid]});
+if(Object.keys(upd).length)db.ref().update(upd);
+let patch={gcalId:null};
+if(restoreDate){let baseRec=BASE.find(b=>sameId(b.i,r.i));if(baseRec&&baseRec.dd&&baseRec.dd!==r.dd)patch.dd=baseRec.dd}
+let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
+if(ai>=0){Object.assign(ADDED[ai],patch);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);if(patch.gcalId===null)EDITS[r.i].gcalId=null;rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+return ids.length}
+
 async function gcalDiagnoseRepair(){
 if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
 if(!gcalCalendarId){showToast('&#9888; Choose a calendar first','warn');return}
@@ -6066,8 +6089,22 @@ let ek=dayKey(evDD),tk=dayKey(r.dd);
 if(ek&&tk&&ek!==tk){conflicts.push({r:r,ev:ev,evDD:evDD,evDayKey:ek})}
 }
 
-// 2) MISSING PUSH: upcoming, allowed-color, non-read-only tickets that no event matched to.
-let missing=AD().filter(r=>r.n&&st(r)==='upcoming'&&!isCalendarReadOnly(r)&&r.gcalColorId&&isAllowedColor(r.gcalColorId)&&!matchedTicketIds.has(String(r.i)));
+// 2) MISSING PUSH: upcoming, allowed-color, non-read-only tickets that have NO calendar event
+//    representing them. We check by CONTENT (serial, or last-name + nearby date) rather than by
+//    the current gcalMap link — otherwise a ticket whose event is temporarily mis-linked to a
+//    hijacked record would be seen as "missing" and pushed, creating a duplicate event.
+function eventMatchesTicketContent(ev,r){
+let p=parseGcalTitle(ev.summary);
+let snC=(p.sns&&p.sns.length)?p.sns:(p.sn?[p.sn]:[]);
+let rsn=String(r.sn||'').replace(/\.0$/,'').trim();
+if(rsn&&snC.includes(rsn))return true;
+let nk=(p.name||'').toLowerCase().split(/[\s,]+/)[0];
+if(!nk||nk.length<3)return false;
+if((r.n||'').toLowerCase().indexOf(nk)<0)return false;
+let a=parseDate(gcalDeliveryDD(ev,p)),b=parseDate(r.dd);
+if(!a||isNaN(a)||!b||isNaN(b))return true; // name matches and a date is unknown — assume related
+return Math.abs(a.getTime()-b.getTime())<=60*86400000}
+let missing=AD().filter(r=>r.n&&st(r)==='upcoming'&&!isCalendarReadOnly(r)&&r.gcalColorId&&isAllowedColor(r.gcalColorId)&&!deliv.some(ev=>eventMatchesTicketContent(ev,r)));
 
 // 4) DUPLICATE SERIALS: the same SN on more than one ticket (data-entry error that causes
 //    calendar events to link to the wrong delivery and the date to look wrong).
@@ -6075,15 +6112,22 @@ let bySN={};
 AD().forEach(r=>{if(!r.n)return;let s=String(r.sn||'').replace(/\.0$/,'').trim();if(!s)return;(bySN[s]=bySN[s]||[]).push(r)});
 let dupSN=Object.keys(bySN).filter(s=>bySN[s].length>1);
 
+// 5) HIJACKED HISTORY: delivered/completed tickets that are still linked to a calendar event.
+//    A delivered ticket is permanent history — it should never be tied to an active event,
+//    because a future event can drag its date (the Taylor SAUNA that jumped to 5/27). We list
+//    them so they can be unlinked and (for BASE records) restored to their original date.
+let hijacked=AD().filter(r=>r.n&&(r.dl||r.co)&&gcalTicketLinkedEventIds(r).length>0);
+
 console.log('[GCAL][REPAIR] events scanned:',deliv.length,
 '| orphans:',orphans.map(e=>e.summary),
 '| missing:',missing.map(r=>r.n+(r.sn?' / SN '+r.sn:'')),
 '| date conflicts:',conflicts.map(c=>c.r.n+' ticket='+c.r.dd+' vs event='+c.evDD),
-'| duplicate SNs:',dupSN.map(s=>s+' → '+bySN[s].map(r=>r.n).join(' & ')));
+'| duplicate SNs:',dupSN.map(s=>s+' → '+bySN[s].map(r=>r.n).join(' & ')),
+'| hijacked history:',hijacked.map(r=>r.n+' ('+(r.dd||'?')+')'));
 btn.classList.remove('syncing');
 
-if(!orphans.length&&!missing.length&&!conflicts.length&&!dupSN.length){
-showToast('&#10003; Everything is in sync — no orphans, no missing tickets, no date conflicts','success');
+if(!orphans.length&&!missing.length&&!conflicts.length&&!dupSN.length&&!hijacked.length){
+showToast('&#10003; Everything is in sync — no orphans, conflicts, or stuck deliveries','success');
 return}
 
 let report='Sync check complete.\n\n';
@@ -6107,12 +6151,27 @@ report+='▸ '+missing.length+' upcoming ticket(s) are NOT on the calendar:\n';
 report+=missing.slice(0,6).map(r=>'   • '+r.n+(r.sn?' / SN '+r.sn:'')+'  ['+(r.dd||'?')+']').join('\n');
 if(missing.length>6)report+='\n   …and '+(missing.length-6)+' more';
 report+='\n\n'}
+if(hijacked.length){
+report+='▸ '+hijacked.length+' DELIVERED ticket(s) are still tied to a calendar event (this is the Taylor SAUNA problem — a finished delivery dragged onto a new date):\n';
+report+=hijacked.slice(0,6).map(r=>'   • '+r.n+(r.sp?' / '+String(r.sp).split(',')[0]:'')+'  —  now showing '+(r.dd||'?')).join('\n');
+if(hijacked.length>6)report+='\n   …and '+(hijacked.length-6)+' more';
+report+='\n\n'}
 alert(report+'You will now be asked, one group at a time, whether to repair each.');
 
 // Repair orphans → re-import as Upcoming deliveries
 let reimported=0;
 if(orphans.length&&confirm('Re-import '+orphans.length+' calendar event(s) that have no ticket?\n\nThis re-creates them as Upcoming deliveries and re-links them to their calendar events. (Nothing is deleted.)')){
 for(let ev of orphans){if(gcalReimportEvent(ev))reimported++}
+}
+
+// Fix hijacked history → unlink delivered/completed tickets from the calendar and restore
+// their original date (for BASE records). This removes the duplicate "Taylor SAUNA" from 5/27.
+let unlinked=0;
+if(hijacked.length&&confirm('Unlink '+hijacked.length+' delivered ticket(s) from the calendar?\n\n'+
+hijacked.slice(0,8).map(r=>'• '+r.n+(r.sp?' ('+String(r.sp).split(',')[0]+')':'')+' — currently '+(r.dd||'?')).join('\n')+
+(hijacked.length>8?'\n…and '+(hijacked.length-8)+' more':'')+
+'\n\nThese are finished deliveries that should not be tied to an active event. They will be removed from the calendar link and (where possible) moved back to their original delivery date. Their calendar events are NOT deleted.')){
+for(let r of hijacked){gcalUnlinkTicket(r,true);unlinked++}
 }
 
 // Fix date conflicts → move the ticket's date to match its calendar event (calendar is master).
@@ -6127,7 +6186,6 @@ let nm2=String(c.evDD).match(/(am|pm|all\s*day|all)/i);
 // Preserve the ticket's own am/pm suffix if the event date has none
 let suffix=nm2?'':((String(c.r.dd||'').match(/(am|pm|all\s*day|all)/i)||[''])[0]);
 let newDd=c.evDayKey+(nm2?(' '+nm2[0].toLowerCase()):(suffix?' '+suffix:''));
-let prev=Object.assign({},c.r);
 let ai=ADDED.findIndex(x=>sameId(x.i,c.r.i));
 let upd={dd:newDd,gcal_date_conflict:null};
 if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
@@ -6150,7 +6208,7 @@ for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.w
 }
 
 renderAll();
-showToast('&#10003; Repair done — '+reimported+' re-imported, '+realigned+' date(s) realigned, '+pushed+' pushed'+(dupSN.length?'. '+dupSN.length+' duplicate SN(s) need manual fixing.':''),'success');
+showToast('&#10003; Repair done — '+unlinked+' delivered unlinked, '+realigned+' date(s) realigned, '+reimported+' re-imported, '+pushed+' pushed'+(dupSN.length?'. '+dupSN.length+' duplicate SN(s) need manual fixing.':''),'success');
 }catch(e){btn.classList.remove('syncing');console.error('[GCAL][REPAIR] error:',e);showToast('&#10005; Repair scan failed: '+(e.result?e.result.error.message:e.message),'err')}}
 
 // === BIDIRECTIONAL CALENDAR SYNC: APP → GOOGLE CALENDAR ===
