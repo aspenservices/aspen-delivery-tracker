@@ -853,6 +853,7 @@ th,td{padding:7px 6px}
 <select id="gcalSelect" style="min-width:200px"></select>
 <button class="pbtn" id="gcalSyncBtn" onclick="gcalSync()">&#128260; Sync Now</button>
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
+<button class="pbtn" onclick="gcalDiagnoseRepair()" title="Scan for tickets that disappeared from the app but still exist on the calendar, and upcoming tickets that never made it onto the calendar — then fix both." style="background:#7c3aed">&#128295; Diagnose &amp; Repair</button>
 <button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
 <label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
 <label style="font-size:12px;font-weight:700;color:#0b8043;display:flex;align-items:center;gap:6px;background:#dcfce7;padding:4px 9px;border-radius:6px;border:1px solid #bbf7d0" title="When ON, changes you make in this app (new deliveries, date changes, color changes, deletions) are pushed to Google Calendar."><input type="checkbox" id="gcalWrite" onchange="gcalToggleWrite()"> &#8644; Two-way sync</label>
@@ -2193,6 +2194,19 @@ sel.innerHTML=opts}
 let EDITS={},ADDED=[];
 let fbReady=false;
 function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED)}
+
+// === ID-SAFE LOOKUP HELPERS ===
+// Record ids (r.i) come from three sources with potentially different JS types:
+//   • BASE: small integers (1, 2, 3 …)
+//   • ADDED / new tickets: Date.now()+rand (large numbers)
+//   • gcalMap values: written as numbers but, after a Firebase round-trip or a manual
+//     edit in the console, can come back as strings ("1747...").
+// A strict === between a number and the "same" string is FALSE, which previously made the
+// calendar sync think a perfectly-valid mapping pointed at a deleted record (CASE A), causing
+// it to unlink the event and re-create a duplicate — or silently do nothing on a calendar
+// deletion. Always compare ids through these helpers so type never matters.
+function sameId(a,b){return a!=null&&b!=null&&String(a)===String(b)}
+function findRecById(id){if(id==null)return null;let s=String(id);return AD().find(r=>String(r.i)===s)||null}
 
 // === SAVE-IN-FLIGHT TRACKING ===
 // Critical for preventing data loss. Without this counter, the following race-condition can wipe
@@ -5536,8 +5550,13 @@ function parseGcalTitle(title){
 let t=String(title||'').trim();
 let slot='am';let slotM=t.match(/^(ALL\s*DAY(\+Haul)?|AM|PM)/i);
 if(slotM){let s=slotM[1].toUpperCase();slot=s.indexOf('PM')===0?'pm':(s.indexOf('ALL')===0?'allday':'am');t=t.replace(slotM[0],'').replace(/^[\s\-+]+/,'')}
-// Try to extract a 4-5 digit serial number anywhere
-let snM=t.match(/\b(\d{4,6})\b/);let sn=snM?snM[1]:null;
+// Extract EVERY 4-6 digit number in the title as a serial candidate. Human-typed titles
+// are inconsistent: some are "name-SERIAL-zip" (PM-Kerry-30767-63139) and some are
+// "name-zip-SERIAL" (AM-Hohenberg-63122-31030). Grabbing only the FIRST number used to pick
+// the ZIP instead of the serial, so the SN-match failed and the event got mis-linked by name
+// (or duplicated). We now keep all candidates and try each when matching to a ticket.
+let sns=(t.match(/\b\d{4,6}\b/g)||[]).map(String);
+let sn=sns.length?sns[0]:null; // back-compat single value
 // Split on - or | with spaces
 let parts=t.split(/\s*[-|]\s*/).map(p=>p.trim()).filter(Boolean);
 let name=parts[0]||t;let city=null;
@@ -5545,7 +5564,7 @@ if(parts.length>=3)city=parts[parts.length-1];
 else if(parts.length===2)city=parts[1];
 // If name looks like a number, fall back
 if(/^\d+$/.test(name))name=t;
-return{name:name,sn:sn,city:city,slot:slot}}
+return{name:name,sn:sn,sns:sns,city:city,slot:slot}}
 
 function gcalEventToDate(ev){
 if(ev.start&&ev.start.date)return ev.start.date; // YYYY-MM-DD all-day
@@ -5675,7 +5694,7 @@ try{
 // We snapshot the previous delivery date so we can show it on the Hold card.
 if(ev.status==='cancelled'){
 let mappedId=gcalMap[ev.id];if(mappedId){
-let local=AD().find(r=>r.i===mappedId);
+let local=findRecById(mappedId);
 if(local&&!local.co&&!local.hold){
 let prevDD=local.dd||null;
 let stamp=new Date();
@@ -5687,7 +5706,7 @@ hold_at:stamp.getTime(),
 hold_prev_dd:prevDD,
 hold_reason:'calendar_removed',
 dn:((local.dn||'')+'\n'+holdNote).trim()};
-let ai=ADDED.findIndex(x=>x.i===mappedId);
+let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
 console.log('[GCAL] Delivery',mappedId,'moved to Hold (was scheduled for '+(prevDD||'?')+')');
@@ -5743,10 +5762,11 @@ return u}
 
 let mappedId=gcalMap[ev.id];
 if(mappedId){
-let local=AD().find(r=>r.i===mappedId);
+let local=findRecById(mappedId);
 // CASE A: stale mapping — the linked record has been deleted. Clean up and fall through
 // to the create-new path so this event gets a fresh ticket (otherwise it'd be silently
-// dropped forever).
+// dropped forever). NOTE: findRecById compares ids as strings, so a number/string type
+// mismatch can no longer fake a "deleted record" and destroy a valid link.
 if(!local){
 console.log('[GCAL] Stale mapping: event '+ev.id+' → deleted record '+mappedId+'. Unlinking and re-processing.');
 db.ref('gcal_map/'+ev.id).remove();
@@ -5771,7 +5791,7 @@ delete gcalMap[ev.id];
 // If the bad mapping had previously overwritten the record's date with this event's date,
 // revert it. Only safe to do for BASE records (since we can fall back to BASE.dd). For ADDED
 // records, leave alone — they're user-owned.
-let baseRec=BASE.find(b=>b.i===mappedId);
+let baseRec=BASE.find(b=>sameId(b.i,mappedId));
 if(baseRec&&EDITS[mappedId]&&EDITS[mappedId].dd===newDD){
 console.log('[GCAL] Reverting bad date update on record '+mappedId+' (was set to '+newDD+', restoring '+baseRec.dd+')');
 delete EDITS[mappedId].dd;
@@ -5785,15 +5805,17 @@ mappedId=null;
 if(mappedId&&local){
 let updates=buildGcalUpdates(local,parsed,newDD,ev.colorId);
 if(Object.keys(updates).length){
-let ai=ADDED.findIndex(x=>x.i===mappedId);
+let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);saveE()}
 gcalStats.updated++}
 return}
 }
-// Look up by SN first (most reliable)
+// Look up by SN first (most reliable). Try every numeric candidate from the title so a
+// "name-zip-serial" ordering still matches the right ticket.
 let existing=null;
-if(parsed.sn){existing=AD().find(r=>r.n&&String(r.sn||'').replace(/\.0$/,'')===parsed.sn)}
+let snCands=(parsed.sns&&parsed.sns.length)?parsed.sns:(parsed.sn?[parsed.sn]:[]);
+if(snCands.length){existing=AD().find(r=>{if(!r.n)return false;let rsn=String(r.sn||'').replace(/\.0$/,'');return rsn&&snCands.includes(rsn)})}
 // Fallback: match by last-name + nearby date.
 // CRITICAL (Alberto bug 5/14): the old logic matched by name substring WITHOUT checking
 // the date — so a new "PM-Taylor" event in May would steal an old "Taylor, Justin" Jan
@@ -5830,7 +5852,7 @@ if(existing){
 let mapUpd={};mapUpd['gcal_map/'+ev.id]=existing.i;db.ref().update(mapUpd);
 let updates=buildGcalUpdates(existing,parsed,newDD,ev.colorId);
 if(Object.keys(updates).length){
-let ai=ADDED.findIndex(x=>x.i===existing.i);
+let ai=ADDED.findIndex(x=>sameId(x.i,existing.i));
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
 else{if(!EDITS[existing.i])EDITS[existing.i]={};Object.assign(EDITS[existing.i],updates);saveE()}
 gcalStats.updated++}
@@ -5921,6 +5943,134 @@ db.ref().update(updates);
 gcalSyncToken=null;
 showToast('&#10003; Cleaned '+candidates.length+' imported records');
 renderAll()}
+
+// === DIAGNOSE & REPAIR SYNC ===
+// Two failure modes this tool detects and fixes (the exact symptoms Alberto reported):
+//   1. "A ticket disappeared completely" — a delivery event still lives on Google Calendar
+//      but no ticket in the app matches it (the local record was removed via Clean Imported,
+//      or a bad unlink left it orphaned). Because incremental sync only returns CHANGED
+//      events, an unchanged orphan never re-imports on its own. → We RE-IMPORT it.
+//   2. "A ticket wasn't written to the calendar" — an upcoming ticket with an allowed
+//      calendar color exists in the app but no calendar event represents it (two-way sync
+//      was off, write scope wasn't granted, or the create silently failed). → We PUSH it.
+//
+// This pull is READ-ONLY for diagnosis: it does NOT touch the syncToken, so it won't disturb
+// the normal incremental sync. Repairs only CREATE tickets / events — never delete anything.
+
+// Read-only: given a calendar event, return the local ticket it belongs to, or null. Uses the
+// same matching ladder as the live importer (map → gcalId field → any SN candidate → name+date).
+function gcalMatchEventToTicket(ev){
+let mid=gcalMap[ev.id];
+if(mid!=null){let r=findRecById(mid);if(r)return r}
+let r2=AD().find(r=>r.gcalId&&sameId(r.gcalId,ev.id));if(r2)return r2;
+let parsed=parseGcalTitle(ev.summary);
+let snCands=(parsed.sns&&parsed.sns.length)?parsed.sns:(parsed.sn?[parsed.sn]:[]);
+if(snCands.length){let r3=AD().find(r=>{if(!r.n)return false;let rsn=String(r.sn||'').replace(/\.0$/,'');return rsn&&snCands.includes(rsn)});if(r3)return r3}
+let newDD=gcalDeliveryDD(ev,parsed);
+if(parsed.name){
+let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
+if(nameKey&&nameKey.length>=3){
+let newDate=null,nm=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+if(nm)newDate=new Date(+nm[1],+nm[2]-1,+nm[3]);
+let MAX_GAP=60*86400000;
+let r4=AD().find(r=>{
+if(!r.n||r.co||r.dl)return false;
+if(r.gcalId&&!sameId(r.gcalId,ev.id))return false;
+if(r.n.toLowerCase().indexOf(nameKey)<0)return false;
+if(!newDate)return true;
+let rd=parseDate(r.dd);if(!rd||isNaN(rd))return true;
+return Math.abs(newDate.getTime()-rd.getTime())<=MAX_GAP});
+if(r4)return r4}}
+return null}
+
+// Re-create an Upcoming ticket from an orphaned calendar event (mirrors the create-new path in
+// processGcalEvent) and re-link it in gcalMap so future syncs keep them connected.
+function gcalReimportEvent(ev){
+let parsed=parseGcalTitle(ev.summary);
+let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return null;
+let newId=Date.now()+Math.floor(Math.random()*1000);
+let rec={i:newId,n:parsed.name,sp:null,sn:(parsed.sns&&parsed.sns.length?parsed.sns[0]:parsed.sn)||null,dd:newDD,
+st:parsed.city||null,ph:null,em:null,cn:'Re-imported from Google Calendar (Diagnose & Repair)',
+pr:0,py:0,bl:0,ck:false,
+pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
+tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
+dl:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,
+crane:false,extra_person:false,water_truck:false,
+gcalId:ev.id,gcalColorId:ev.colorId||null};
+ADDED.push(rec);saveA();
+let u={};u['gcal_map/'+ev.id]=newId;db.ref().update(u);
+return rec}
+
+async function gcalDiagnoseRepair(){
+if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
+if(!gcalCalendarId){showToast('&#9888; Choose a calendar first','warn');return}
+let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
+showToast('&#128295; Scanning calendar and tickets…');
+try{
+// Pull a fresh window (today − 7 days forward) WITHOUT using the syncToken, so we see the
+// current full picture instead of just incremental changes.
+let from=new Date();from.setDate(from.getDate()-7);from.setHours(0,0,0,0);
+let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,showDeleted:false,timeMin:from.toISOString(),orderBy:'startTime'};
+let events=[],pageToken=null;
+do{if(pageToken)params.pageToken=pageToken;
+let res;try{res=await gapi.client.calendar.events.list(params)}
+catch(e){if(e.status===401){let ok=await gcalRefreshTokenNow();if(ok){res=await gapi.client.calendar.events.list(params)}else{btn.classList.remove('syncing');showToast('&#9888; Session expired — reconnect','warn');return}}else throw e}
+events=events.concat(res.result.items||[]);pageToken=res.result.nextPageToken;
+}while(pageToken);
+
+// Keep only real delivery events (allowed color, delivery-style title, parseable date).
+let deliv=events.filter(ev=>ev.status!=='cancelled'&&!isNonDeliveryTitle(ev.summary)&&isAllowedColor(ev.colorId)&&gcalDeliveryDD(ev,parseGcalTitle(ev.summary)));
+
+// 1) ORPHANS: calendar delivery events with no matching ticket.
+let orphans=[];let matchedTicketIds=new Set();
+for(let ev of deliv){let r=gcalMatchEventToTicket(ev);if(r)matchedTicketIds.add(String(r.i));else orphans.push(ev)}
+
+// 2) MISSING PUSH: upcoming, allowed-color, non-read-only tickets that no event matched to.
+let missing=AD().filter(r=>r.n&&st(r)==='upcoming'&&!isCalendarReadOnly(r)&&r.gcalColorId&&isAllowedColor(r.gcalColorId)&&!matchedTicketIds.has(String(r.i)));
+
+console.log('[GCAL][REPAIR] delivery events scanned:',deliv.length,'| orphans (on calendar, not in app):',orphans.map(e=>e.summary),'| missing (in app, not on calendar):',missing.map(r=>r.n+(r.sn?' / SN '+r.sn:'')));
+btn.classList.remove('syncing');
+
+if(!orphans.length&&!missing.length){
+showToast('&#10003; Everything is in sync — no orphaned events and no missing tickets found','success');
+return}
+
+let report='Sync check complete.\n\n';
+if(orphans.length){
+report+='&#128313; '+orphans.length+' calendar event(s) have NO ticket in the app (these "disappeared"):\n';
+report+=orphans.slice(0,8).map(e=>'   • '+(e.summary||'(no title)')+'  ['+(gcalDeliveryDD(e,parseGcalTitle(e.summary))||'?')+']').join('\n');
+if(orphans.length>8)report+='\n   …and '+(orphans.length-8)+' more';
+report+='\n\n'}
+if(missing.length){
+report+='&#128314; '+missing.length+' upcoming ticket(s) are NOT on the calendar:\n';
+report+=missing.slice(0,8).map(r=>'   • '+r.n+(r.sn?' / SN '+r.sn:'')+'  ['+(r.dd||'?')+']').join('\n');
+if(missing.length>8)report+='\n   …and '+(missing.length-8)+' more';
+report+='\n\n'}
+report=report.replace(/&#128313;/g,'▸').replace(/&#128314;/g,'▸');
+alert(report+'You will now be asked, one group at a time, whether to repair each.');
+
+// Repair orphans → re-import as Upcoming deliveries
+let reimported=0;
+if(orphans.length&&confirm('Re-import '+orphans.length+' calendar event(s) that have no ticket?\n\nThis re-creates them as Upcoming deliveries and re-links them to their calendar events. (Nothing is deleted.)')){
+for(let ev of orphans){if(gcalReimportEvent(ev))reimported++}
+}
+
+// Repair missing → push to Google Calendar (needs two-way sync ON + write access)
+let pushed=0;
+if(missing.length){
+if(!gcalWriteEnabled()){
+if(confirm('Pushing tickets to the calendar requires Two-way sync to be ON. Turn it on now and push the '+missing.length+' missing ticket(s)?')){
+setGcalWriteEnabled(true);let wChk=document.getElementById('gcalWrite');if(wChk)wChk.checked=true;
+for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.warn('push failed for',r.n,e)}}
+}
+}else if(confirm('Push '+missing.length+' missing ticket(s) to Google Calendar now?')){
+for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.warn('push failed for',r.n,e)}}
+}
+}
+
+renderAll();
+showToast('&#10003; Repair done — '+reimported+' re-imported, '+pushed+' pushed to calendar'+((missing.length&&!pushed)?' (grant write access if pushes were skipped)':''),'success');
+}catch(e){btn.classList.remove('syncing');console.error('[GCAL][REPAIR] error:',e);showToast('&#10005; Repair scan failed: '+(e.result?e.result.error.message:e.message),'err')}}
 
 // === BIDIRECTIONAL CALENDAR SYNC: APP → GOOGLE CALENDAR ===
 // When the user creates / edits / deletes a delivery in the app, propagate the change to
