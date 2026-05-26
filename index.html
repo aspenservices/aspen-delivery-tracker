@@ -7049,12 +7049,13 @@ let c=GCAL_COLOR_MAP[String(r.gcalColorId)];if(!c)return null;
 return c.solid}
 function calEvents(){return AD().filter(r=>{
 if(!r.n||!r.dd)return false;
-// The calendar grid mirrors Google Calendar: it shows EVERY scheduled delivery regardless of
-// which list-tab (Upcoming / Needs Action / Delivered / Hold / …) is currently selected. The
-// status is still reflected by each event's COLOR, but a delivery must never vanish from the
-// calendar just because its status changed — that's exactly what made the Kerry (5/28) ticket
-// look like it had "disappeared": it still existed, but its status was no longer "upcoming"
-// so the Upcoming-tab filter hid it from the grid. Search still narrows the calendar.
+// The calendar grid follows the active list-tab: on "Upcoming" it shows only upcoming
+// deliveries, on "Delivered" only delivered ones, etc. To see EVERYTHING on the calendar
+// (the full month schedule), switch to the ALL tab. This keeps the calendar logical — a
+// delivered tub like Wolk should not appear under "Upcoming". (A delivery that seems to be
+// "missing" from the calendar is almost always on a different date or in a different tab —
+// use Diagnose & Repair to find date/link problems.)
+if(statusF!=='all'&&st(r)!==statusF)return false;
 if(search){let q=search.toLowerCase();
 if(![r.n,r.sp,r.st,r.ph,String(r.sn||''),r.em].some(v=>(v||'').toLowerCase().includes(q)))return false}
 return true
