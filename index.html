@@ -5769,18 +5769,12 @@ let u={};
 if(local.dd!==newDD)u.dd=newDD;
 let newColor=evColorId||null;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
-// CALENDAR IS THE SOURCE OF TRUTH for DATE and SERIAL (Alberto, Option B refined):
-// SERIAL: use the ZIP-aware serial from the title (a single non-6xxxx number). If the title
-// has a clear serial that differs from the ticket's, adopt it. If it's ambiguous (parsed.serial
-// is null) we leave the ticket's SN untouched — never write a ZIP into the SN field.
-if(parsed&&parsed.serial){
-let s=String(parsed.serial);
-if(String(local.sn||'').replace(/\.0$/,'').trim()!==s)u.sn=s;
-}
-// NAME: the calendar only SEEDS the name when the ticket is first created. After that the NAME
-// is owned by the app — you can complete it ("Kerry" → "John and Beth Kerry") and the sync will
-// NOT revert it, and the Google Calendar TITLE is never touched. (The full name you type still
-// flows into the event DESCRIPTION via the push rule below — just not the title.)
+// SN and NAME are USER-OWNED (sacred): the calendar SEEDS them only when a ticket is first
+// created, and the parsed serial is used to MATCH events to tickets — but a routine pull NEVER
+// overwrites them afterward. This matters because if a ticket is ever linked to the wrong event
+// (a duplicate/cross-linked calendar entry), overwriting the SN/name from that event would
+// corrupt good data (e.g. Kerry's SN getting clobbered to a neighbor's 30705). Only the DATE and
+// the COLOR follow the calendar. To correct a serial or name, edit the ticket in the dashboard.
 // HOLD-LIFT: if the calendar event is back (we got a real, valid newDD) and the
 // local record was sitting in Hold, lift the hold automatically. Works whether
 // the event is matched by gcalMap[id] (same id reappeared) OR via SN-fallback
@@ -6220,8 +6214,15 @@ let nm2=String(c.evDD).match(/(am|pm|all\s*day|all)/i);
 // Preserve the ticket's own am/pm suffix if the event date has none
 let suffix=nm2?'':((String(c.r.dd||'').match(/(am|pm|all\s*day|all)/i)||[''])[0]);
 let newDd=c.evDayKey+(nm2?(' '+nm2[0].toLowerCase()):(suffix?' '+suffix:''));
+// CRITICAL: re-point this ticket's link to the CORRECT event (c.ev) and drop EVERY OTHER
+// calendar link pointing at it. This is what stops a ticket from being dragged back: if Kerry
+// was wrongly mapped to a June-19 event, that stray mapping is removed here, and from now on
+// only the correct event (e.g. the May-28 Kerry event) drives its date.
+let linkUpd={};
+Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],c.r.i)&&String(eid)!==String(c.ev.id)){linkUpd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
+linkUpd['gcal_map/'+c.ev.id]=c.r.i;db.ref().update(linkUpd);gcalMap[c.ev.id]=c.r.i;
 let ai=ADDED.findIndex(x=>sameId(x.i,c.r.i));
-let upd={dd:newDd,gcal_date_conflict:null,gcalSyncPending:null,gcalSyncReason:null};
+let upd={dd:newDd,gcalId:c.ev.id,gcal_date_conflict:null,gcalSyncPending:null,gcalSyncReason:null};
 if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[c.r.i])EDITS[c.r.i]={};Object.assign(EDITS[c.r.i],upd);rememberEditsEdit(c.r.i,EDITS[c.r.i]);saveE()}
 realigned++;
