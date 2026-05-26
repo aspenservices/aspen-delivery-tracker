@@ -5573,6 +5573,12 @@ if(slotM){let s=slotM[1].toUpperCase();slot=s.indexOf('PM')===0?'pm':(s.indexOf(
 // (or duplicated). We now keep all candidates and try each when matching to a ticket.
 let sns=(t.match(/\b\d{4,6}\b/g)||[]).map(String);
 let sn=sns.length?sns[0]:null; // back-compat single value
+// SERIAL vs ZIP: Aspen serials live in the 1xxxx–3xxxx range; local ZIP codes all start with 6
+// (St. Louis 63xxx, IL 62xxx). So a 5-digit number starting with 6 is a ZIP, not a serial. The
+// "serial" is the single non-ZIP candidate — if there's exactly one, we trust it; if it's
+// ambiguous (zero or several non-ZIP numbers) we return null and leave the ticket's SN alone.
+let nonZip=sns.filter(n=>!/^6\d{4}$/.test(n));
+let serial=(nonZip.length===1)?nonZip[0]:null;
 // Split on - or | with spaces
 let parts=t.split(/\s*[-|]\s*/).map(p=>p.trim()).filter(Boolean);
 let name=parts[0]||t;let city=null;
@@ -5580,7 +5586,7 @@ if(parts.length>=3)city=parts[parts.length-1];
 else if(parts.length===2)city=parts[1];
 // If name looks like a number, fall back
 if(/^\d+$/.test(name))name=t;
-return{name:name,sn:sn,sns:sns,city:city,slot:slot}}
+return{name:name,sn:sn,sns:sns,serial:serial,city:city,slot:slot}}
 
 function gcalEventToDate(ev){
 if(ev.start&&ev.start.date)return ev.start.date; // YYYY-MM-DD all-day
@@ -5763,6 +5769,18 @@ let u={};
 if(local.dd!==newDD)u.dd=newDD;
 let newColor=evColorId||null;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
+// CALENDAR IS THE SOURCE OF TRUTH for DATE and SERIAL (Alberto, Option B refined):
+// SERIAL: use the ZIP-aware serial from the title (a single non-6xxxx number). If the title
+// has a clear serial that differs from the ticket's, adopt it. If it's ambiguous (parsed.serial
+// is null) we leave the ticket's SN untouched — never write a ZIP into the SN field.
+if(parsed&&parsed.serial){
+let s=String(parsed.serial);
+if(String(local.sn||'').replace(/\.0$/,'').trim()!==s)u.sn=s;
+}
+// NAME: the calendar only SEEDS the name when the ticket is first created. After that the NAME
+// is owned by the app — you can complete it ("Kerry" → "John and Beth Kerry") and the sync will
+// NOT revert it, and the Google Calendar TITLE is never touched. (The full name you type still
+// flows into the event DESCRIPTION via the push rule below — just not the title.)
 // HOLD-LIFT: if the calendar event is back (we got a real, valid newDD) and the
 // local record was sitting in Hold, lift the hold automatically. Works whether
 // the event is matched by gcalMap[id] (same id reappeared) OR via SN-fallback
@@ -5904,7 +5922,7 @@ gcalStats.updated++}
 return}
 // Create a new Upcoming delivery
 let newId=Date.now()+Math.floor(Math.random()*1000);
-let rec={i:newId,n:parsed.name,sp:null,sn:parsed.sn||null,dd:newDD,
+let rec={i:newId,n:parsed.name,sp:null,sn:(parsed.serial||parsed.sn)||null,dd:newDD,
 st:parsed.city||null,ph:null,em:null,cn:'Auto-created from Google Calendar event',
 pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
@@ -6034,7 +6052,7 @@ function gcalReimportEvent(ev){
 let parsed=parseGcalTitle(ev.summary);
 let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return null;
 let newId=Date.now()+Math.floor(Math.random()*1000);
-let rec={i:newId,n:parsed.name,sp:null,sn:(parsed.sns&&parsed.sns.length?parsed.sns[0]:parsed.sn)||null,dd:newDD,
+let rec={i:newId,n:parsed.name,sp:null,sn:(parsed.serial||(parsed.sns&&parsed.sns.length?parsed.sns[0]:parsed.sn))||null,dd:newDD,
 st:parsed.city||null,ph:null,em:null,cn:'Re-imported from Google Calendar (Diagnose & Repair)',
 pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
