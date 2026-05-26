@@ -2209,7 +2209,7 @@ sel.innerHTML=opts}
 
 let EDITS={},ADDED=[];
 let fbReady=false;
-function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED)}
+function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED).filter(r=>!r._deleted)}
 
 // === ID-SAFE LOOKUP HELPERS ===
 // Record ids (r.i) come from three sources with potentially different JS types:
@@ -3893,7 +3893,9 @@ else if(svcStat==='completed'){
 h+='<button class="tv-dl" onclick="sendServiceRequest('+r.i+')">&#128228; Submit New Request</button>'}
 h+='</div></div>';
 // Save
-h+='<div class="mactions"><button class="mbtn mbtn-c" onclick="closeOv()">Cancel</button><button class="mbtn mbtn-s" onclick="saveEdit()">Save Changes</button></div>';
+h+='<div class="mactions">';
+if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))h+='<button class="mbtn" onclick="deleteDelivery(curRec.i)" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;margin-right:auto">&#128465; Delete</button>';
+h+='<button class="mbtn mbtn-c" onclick="closeOv()">Cancel</button><button class="mbtn mbtn-s" onclick="saveEdit()">Save Changes</button></div>';
 document.getElementById("md").innerHTML=h;populateTechDropdown()}
 
 function ib(l,id,val){return'<div class="ib"><label>'+l+'</label><input id="'+id+'" value="'+String(val||"").replace(/"/g,'&quot;')+'"></div>'}
@@ -4927,6 +4929,31 @@ curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();sh
 // the app. Title is intentionally NOT pushed — see gcalPushTicketChanges. Only runs when
 // two-way sync is enabled.
 if(prevSnapshot&&curRec)gcalPushTicketChanges(prevSnapshot,curRec)}
+
+// DELETE a delivery ticket (admin/organizer only — the button is gated in the modal). Used mainly
+// to remove duplicate tickets, like the "CRANE" / "Thomas" pair created from a single calendar
+// event "Thomas-30730-63021-CRANE" (CRANE = the trailing word in the title). Safety:
+//  • Confirms with a clear summary of exactly which ticket is being removed.
+//  • Removes any Google Calendar LINK pointing at this ticket (gcal_map) so no stale mapping is
+//    left behind — but it does NOT touch the Google Calendar event itself (that stays as the
+//    historical record; the team can delete the event in Google if they also want it gone).
+//  • ADDED records are removed outright; BASE records are soft-hidden via a _deleted flag (AD()
+//    filters them) since the BASE dataset can't be mutated directly.
+//  • This is permanent in-app — recoverable only from a backup — so we say so in the prompt.
+function deleteDelivery(id){
+let r=AD().find(x=>sameId(x.i,id));
+if(!r){showToast('Ticket not found','err');return}
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){showToast('Only admin/organizer can delete','err');return}
+let label=(r.n||'(no name)')+(r.sn?'  \u00b7  SN '+r.sn:'')+(r.dd?'  \u00b7  '+r.dd:'');
+if(!confirm('Delete this delivery ticket?\n\n'+label+'\n\n\u2022 Removes the ticket from the app and unlinks it from Google Calendar.\n\u2022 Does NOT delete the Google Calendar event.\n\u2022 Permanent in-app (recover from a backup if needed).'))return;
+// Drop any calendar mapping that points at this ticket
+let upd={};
+Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],id)){upd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
+if(Object.keys(upd).length)db.ref().update(upd);
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
+if(ai>=0){ADDED.splice(ai,1);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id]._deleted=true;rememberEditsEdit(id,EDITS[id]);saveE()}
+closeOv();renderAll();showToast('&#128465; Delivery deleted: '+(r.n||'(no name)'))}
 
 // Safely refresh the edit modal after a background update (photo upload, drive sync, external
 // service-log change, etc.). If the modal is open and showing the same ticket, this captures
@@ -6214,6 +6241,30 @@ let bySN={};
 AD().forEach(r=>{if(!r.n)return;let s=String(r.sn||'').replace(/\.0$/,'').trim();if(!s)return;(bySN[s]=bySN[s]||[]).push(r)});
 let dupSN=Object.keys(bySN).filter(s=>bySN[s].length>1);
 
+// 4b) EMPTY DUPLICATES that are safe to auto-remove. Within each duplicate-SN group we pick ONE
+// ticket to KEEP and flag the REST only if they are empty stubs (no customer info). Keeper rule:
+//   • exactly one enriched ticket  → keep that one;
+//   • all empty                    → keep the one whose name matches the calendar event's PRIMARY
+//                                     name for that serial (so "Thomas" wins over the stray "CRANE"
+//                                     spawned from "Thomas-30730-63021-CRANE").
+// If it's ambiguous (2+ enriched, or no event to decide), we DON'T auto-delete — leave it for the
+// manual Delete button. An enriched ticket is NEVER deleted by this tool.
+let dupDeletable=[]; // {r, sn, keeper}
+let dupAmbiguous=[];
+dupSN.forEach(s=>{
+let group=bySN[s];
+let enriched=group.filter(r=>gcalRecordIsEnriched(r));
+let keeper=null;
+if(enriched.length===1)keeper=enriched[0];
+else if(enriched.length===0){
+let evForSN=deliv.find(e=>{let p=parseGcalTitle(e.summary);return p&&(p.serial===s||(p.sns&&p.sns.indexOf(s)>=0));});
+if(evForSN){let prim=parseGcalTitle(evForSN.summary).name;keeper=group.find(r=>gcalNamesRelated(prim,r.n))||null;}
+}
+if(keeper&&enriched.length<=1){
+group.forEach(r=>{if(r!==keeper&&!gcalRecordIsEnriched(r))dupDeletable.push({r:r,sn:s,keeper:keeper})});
+}else dupAmbiguous.push(s);
+});
+
 // 5) HIJACKED HISTORY: delivered/completed tickets that are still linked to a calendar event.
 //    A delivered ticket is permanent history — it should never be tied to an active event,
 //    because a future event can drag its date (the Taylor SAUNA that jumped to 5/27). We list
@@ -6247,6 +6298,11 @@ if(dupSN.length){
 report+='▸ '+dupSN.length+' serial number(s) are on MORE THAN ONE ticket (fix these by hand — a duplicate SN makes the calendar link to the wrong delivery):\n';
 report+=dupSN.slice(0,6).map(s=>'   • SN '+s+' → '+bySN[s].map(r=>r.n+' ('+(r.dd||'?')+')').join('  &  ')).join('\n');
 if(dupSN.length>6)report+='\n   …and '+(dupSN.length-6)+' more';
+report+='\n\n'}
+if(dupDeletable.length){
+report+='▸ '+dupDeletable.length+' EMPTY duplicate ticket(s) can be auto-removed (the copy with info — or the one whose name matches the event — is KEPT):\n';
+report+=dupDeletable.slice(0,6).map(d=>'   • remove "'+d.r.n+'" (SN '+d.sn+', empty)   →   keep "'+d.keeper.n+'"').join('\n');
+if(dupDeletable.length>6)report+='\n   …and '+(dupDeletable.length-6)+' more';
 report+='\n\n'}
 if(missing.length){
 report+='▸ '+missing.length+' upcoming ticket(s) are NOT on the calendar:\n';
@@ -6303,6 +6359,24 @@ realigned++;
 }
 }
 
+// Remove EMPTY duplicate tickets (opt-in). Only empty copies are deleted; the keeper stays, and
+// any ticket with customer info is never touched. Calendar events are NOT deleted.
+let dupDeleted=0;
+if(dupDeletable.length&&confirm('Remove '+dupDeletable.length+' EMPTY duplicate ticket(s)?\n\n'+
+dupDeletable.slice(0,12).map(d=>'• DELETE "'+d.r.n+'"  (SN '+d.sn+', no info)\n     keep → "'+d.keeper.n+'"').join('\n')+
+(dupDeletable.length>12?'\n…and '+(dupDeletable.length-12)+' more':'')+
+'\n\nOnly the EMPTY copies are removed. Anything with customer info you typed is protected. Google Calendar events are NOT deleted.')){
+let touchedA=false,touchedE=false;
+dupDeletable.forEach(d=>{
+Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],d.r.i)){db.ref('gcal_map/'+eid).remove();delete gcalMap[eid]}});
+let ai=ADDED.findIndex(x=>sameId(x.i,d.r.i));
+if(ai>=0){ADDED.splice(ai,1);touchedA=true}
+else{if(!EDITS[d.r.i])EDITS[d.r.i]={};EDITS[d.r.i]._deleted=true;rememberEditsEdit(d.r.i,EDITS[d.r.i]);touchedE=true}
+dupDeleted++;
+});
+if(touchedA)saveA();if(touchedE)saveE();
+}
+
 // Repair missing → push to Google Calendar (needs two-way sync ON + write access)
 let pushed=0;
 if(missing.length){
@@ -6317,7 +6391,7 @@ for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.w
 }
 
 renderAll();
-showToast('&#10003; Repair done — '+unlinked+' delivered unlinked, '+realigned+' date(s) realigned, '+reimported+' re-imported, '+pushed+' pushed'+(dupSN.length?'. '+dupSN.length+' duplicate SN(s) need manual fixing.':''),'success');
+showToast('&#10003; Repair done — '+unlinked+' delivered unlinked, '+realigned+' date(s) realigned, '+reimported+' re-imported, '+pushed+' pushed'+(dupDeleted?', '+dupDeleted+' empty duplicate(s) removed':'')+(dupAmbiguous.length?'. '+dupAmbiguous.length+' duplicate SN(s) need manual review (use the Delete button).':''),'success');
 }catch(e){btn.classList.remove('syncing');console.error('[GCAL][REPAIR] error:',e);showToast('&#10005; Repair scan failed: '+(e.result?e.result.error.message:e.message),'err')}}
 
 // === BIDIRECTIONAL CALENDAR SYNC: APP → GOOGLE CALENDAR ===
