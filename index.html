@@ -5812,10 +5812,16 @@ gcalStats.updated++}
 return}
 }
 // Look up by SN first (most reliable). Try every numeric candidate from the title so a
-// "name-zip-serial" ordering still matches the right ticket.
+// "name-zip-serial" ordering still matches the right ticket. GUARD: never hijack a ticket
+// that is already linked to a DIFFERENT calendar event — that's the signature of a duplicate
+// or mistyped serial number, and hijacking it would yank a real delivery onto the wrong date.
 let existing=null;
 let snCands=(parsed.sns&&parsed.sns.length)?parsed.sns:(parsed.sn?[parsed.sn]:[]);
-if(snCands.length){existing=AD().find(r=>{if(!r.n)return false;let rsn=String(r.sn||'').replace(/\.0$/,'');return rsn&&snCands.includes(rsn)})}
+if(snCands.length){existing=AD().find(r=>{
+if(!r.n)return false;
+if(r.gcalId&&!sameId(r.gcalId,ev.id))return false; // already bound to another event — don't steal it
+let rsn=String(r.sn||'').replace(/\.0$/,'').trim();
+return rsn&&snCands.includes(rsn)})}
 // Fallback: match by last-name + nearby date.
 // CRITICAL (Alberto bug 5/14): the old logic matched by name substring WITHOUT checking
 // the date — so a new "PM-Taylor" event in May would steal an old "Taylor, Justin" Jan
@@ -5834,7 +5840,7 @@ let MAX_GAP=60*DAY; // a delivery reschedule within ~2 months is plausible; beyo
 existing=AD().find(r=>{
 if(!r.n)return false;
 if(r.co)return false;          // completed → don't relink
-if(r.gcalId&&r.gcalId!==ev.id)return false; // already linked to a DIFFERENT calendar event
+if(r.gcalId&&!sameId(r.gcalId,ev.id))return false; // already linked to a DIFFERENT calendar event
 if(r.dl)return false;          // already marked delivered → don't relink
 let rn=r.n.toLowerCase();
 if(rn.indexOf(nameKey)<0)return false;
@@ -5850,7 +5856,30 @@ if(existing){
 // The ticket already exists, so it's owned by the user (manually entered or previously imported
 // and then edited). Calendar's only job here is keeping the date and color in sync.
 let mapUpd={};mapUpd['gcal_map/'+ev.id]=existing.i;db.ref().update(mapUpd);
+// DATE SAFETY (Kerry 5/28 vs 6/19 case): when this is the FIRST time we link this event to
+// the ticket (i.e. it wasn't already mapped to THIS event id) and the ticket already has a
+// real date that is more than 45 days away from the event's date, we do NOT move the ticket's
+// date. A jump that large via a fuzzy SN/name link almost always means a duplicate or mistyped
+// serial number linking two unrelated deliveries — silently changing the date would be wrong.
+// We keep the user's date and record a conflict note instead. (Normal small reschedules, and
+// re-syncs of an already-mapped event, still update the date as before — calendar stays master.)
+let wasLinkedToThisEvent=existing.gcalId&&sameId(existing.gcalId,ev.id);
+let suppressDate=false;
+if(!wasLinkedToThisEvent){
+let rd=parseDate(existing.dd);
+let nm2=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+let ed=nm2?new Date(+nm2[1],+nm2[2]-1,+nm2[3]):null;
+if(rd&&!isNaN(rd)&&ed&&Math.abs(rd.getTime()-ed.getTime())>45*86400000){
+suppressDate=true;
+console.warn('[GCAL] DATE CONFLICT: event "'+(ev.summary||'')+'" ('+newDD+') links by SN/name to ticket "'+existing.n+'" dated '+existing.dd+' — >45 days apart. Keeping the ticket date and flagging the conflict. Check for a duplicate/incorrect serial number.');
+}}
 let updates=buildGcalUpdates(existing,parsed,newDD,ev.colorId);
+if(suppressDate){
+delete updates.dd;
+updates.gcal_date_conflict='Calendar event "'+(ev.summary||'')+'" is dated '+newDD+', but this ticket is set to '+(existing.dd||'?')+'. The date was NOT changed automatically because they are more than 45 days apart — likely a duplicate or incorrect serial number. Verify which date is correct.';
+}else if(existing.gcal_date_conflict){
+updates.gcal_date_conflict=null; // clear a previously-flagged conflict once dates agree again
+}
 if(Object.keys(updates).length){
 let ai=ADDED.findIndex(x=>sameId(x.i,existing.i));
 if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
@@ -6021,38 +6050,90 @@ events=events.concat(res.result.items||[]);pageToken=res.result.nextPageToken;
 // Keep only real delivery events (allowed color, delivery-style title, parseable date).
 let deliv=events.filter(ev=>ev.status!=='cancelled'&&!isNonDeliveryTitle(ev.summary)&&isAllowedColor(ev.colorId)&&gcalDeliveryDD(ev,parseGcalTitle(ev.summary)));
 
+// Day-only key for comparing a ticket date to an event date (ignores am/pm/all-day suffix).
+function dayKey(dd){let d=parseDate(dd);if(!d||isNaN(d))return null;return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
 // 1) ORPHANS: calendar delivery events with no matching ticket.
-let orphans=[];let matchedTicketIds=new Set();
-for(let ev of deliv){let r=gcalMatchEventToTicket(ev);if(r)matchedTicketIds.add(String(r.i));else orphans.push(ev)}
+// 3) DATE CONFLICTS: events that DO match a ticket, but the ticket's date is a different DAY
+//    than the event (the Kerry 5/28-vs-6/19 case). Calendar is meant to be master of the date.
+let orphans=[];let matchedTicketIds=new Set();let conflicts=[];
+for(let ev of deliv){
+let r=gcalMatchEventToTicket(ev);
+if(!r){orphans.push(ev);continue}
+matchedTicketIds.add(String(r.i));
+let evDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));
+let ek=dayKey(evDD),tk=dayKey(r.dd);
+if(ek&&tk&&ek!==tk){conflicts.push({r:r,ev:ev,evDD:evDD,evDayKey:ek})}
+}
 
 // 2) MISSING PUSH: upcoming, allowed-color, non-read-only tickets that no event matched to.
 let missing=AD().filter(r=>r.n&&st(r)==='upcoming'&&!isCalendarReadOnly(r)&&r.gcalColorId&&isAllowedColor(r.gcalColorId)&&!matchedTicketIds.has(String(r.i)));
 
-console.log('[GCAL][REPAIR] delivery events scanned:',deliv.length,'| orphans (on calendar, not in app):',orphans.map(e=>e.summary),'| missing (in app, not on calendar):',missing.map(r=>r.n+(r.sn?' / SN '+r.sn:'')));
+// 4) DUPLICATE SERIALS: the same SN on more than one ticket (data-entry error that causes
+//    calendar events to link to the wrong delivery and the date to look wrong).
+let bySN={};
+AD().forEach(r=>{if(!r.n)return;let s=String(r.sn||'').replace(/\.0$/,'').trim();if(!s)return;(bySN[s]=bySN[s]||[]).push(r)});
+let dupSN=Object.keys(bySN).filter(s=>bySN[s].length>1);
+
+console.log('[GCAL][REPAIR] events scanned:',deliv.length,
+'| orphans:',orphans.map(e=>e.summary),
+'| missing:',missing.map(r=>r.n+(r.sn?' / SN '+r.sn:'')),
+'| date conflicts:',conflicts.map(c=>c.r.n+' ticket='+c.r.dd+' vs event='+c.evDD),
+'| duplicate SNs:',dupSN.map(s=>s+' → '+bySN[s].map(r=>r.n).join(' & ')));
 btn.classList.remove('syncing');
 
-if(!orphans.length&&!missing.length){
-showToast('&#10003; Everything is in sync — no orphaned events and no missing tickets found','success');
+if(!orphans.length&&!missing.length&&!conflicts.length&&!dupSN.length){
+showToast('&#10003; Everything is in sync — no orphans, no missing tickets, no date conflicts','success');
 return}
 
 let report='Sync check complete.\n\n';
 if(orphans.length){
-report+='&#128313; '+orphans.length+' calendar event(s) have NO ticket in the app (these "disappeared"):\n';
-report+=orphans.slice(0,8).map(e=>'   • '+(e.summary||'(no title)')+'  ['+(gcalDeliveryDD(e,parseGcalTitle(e.summary))||'?')+']').join('\n');
-if(orphans.length>8)report+='\n   …and '+(orphans.length-8)+' more';
+report+='▸ '+orphans.length+' calendar event(s) have NO ticket in the app (these "disappeared"):\n';
+report+=orphans.slice(0,6).map(e=>'   • '+(e.summary||'(no title)')+'  ['+(gcalDeliveryDD(e,parseGcalTitle(e.summary))||'?')+']').join('\n');
+if(orphans.length>6)report+='\n   …and '+(orphans.length-6)+' more';
+report+='\n\n'}
+if(conflicts.length){
+report+='▸ '+conflicts.length+' ticket(s) have a DIFFERENT date than their calendar event (this is the Kerry problem):\n';
+report+=conflicts.slice(0,6).map(c=>'   • '+c.r.n+(c.r.sn?' / SN '+c.r.sn:'')+'  —  ticket: '+(c.r.dd||'?')+'   |   calendar: '+c.evDD).join('\n');
+if(conflicts.length>6)report+='\n   …and '+(conflicts.length-6)+' more';
+report+='\n\n'}
+if(dupSN.length){
+report+='▸ '+dupSN.length+' serial number(s) are on MORE THAN ONE ticket (fix these by hand — a duplicate SN makes the calendar link to the wrong delivery):\n';
+report+=dupSN.slice(0,6).map(s=>'   • SN '+s+' → '+bySN[s].map(r=>r.n+' ('+(r.dd||'?')+')').join('  &  ')).join('\n');
+if(dupSN.length>6)report+='\n   …and '+(dupSN.length-6)+' more';
 report+='\n\n'}
 if(missing.length){
-report+='&#128314; '+missing.length+' upcoming ticket(s) are NOT on the calendar:\n';
-report+=missing.slice(0,8).map(r=>'   • '+r.n+(r.sn?' / SN '+r.sn:'')+'  ['+(r.dd||'?')+']').join('\n');
-if(missing.length>8)report+='\n   …and '+(missing.length-8)+' more';
+report+='▸ '+missing.length+' upcoming ticket(s) are NOT on the calendar:\n';
+report+=missing.slice(0,6).map(r=>'   • '+r.n+(r.sn?' / SN '+r.sn:'')+'  ['+(r.dd||'?')+']').join('\n');
+if(missing.length>6)report+='\n   …and '+(missing.length-6)+' more';
 report+='\n\n'}
-report=report.replace(/&#128313;/g,'▸').replace(/&#128314;/g,'▸');
 alert(report+'You will now be asked, one group at a time, whether to repair each.');
 
 // Repair orphans → re-import as Upcoming deliveries
 let reimported=0;
 if(orphans.length&&confirm('Re-import '+orphans.length+' calendar event(s) that have no ticket?\n\nThis re-creates them as Upcoming deliveries and re-links them to their calendar events. (Nothing is deleted.)')){
 for(let ev of orphans){if(gcalReimportEvent(ev))reimported++}
+}
+
+// Fix date conflicts → move the ticket's date to match its calendar event (calendar is master).
+// This is OPT-IN: dates only change if you click OK, so nothing moves behind your back.
+let realigned=0;
+if(conflicts.length&&confirm('Move '+conflicts.length+' ticket(s) to match their CALENDAR date?\n\n'+
+conflicts.slice(0,8).map(c=>'• '+c.r.n+': '+(c.r.dd||'?')+'  →  '+c.evDD).join('\n')+
+(conflicts.length>8?'\n…and '+(conflicts.length-8)+' more':'')+
+'\n\nClick OK only if the CALENDAR date is the correct one. If a ticket is wrong because of a duplicate serial number, click Cancel and fix the serial by hand first.')){
+for(let c of conflicts){
+let nm2=String(c.evDD).match(/(am|pm|all\s*day|all)/i);
+// Preserve the ticket's own am/pm suffix if the event date has none
+let suffix=nm2?'':((String(c.r.dd||'').match(/(am|pm|all\s*day|all)/i)||[''])[0]);
+let newDd=c.evDayKey+(nm2?(' '+nm2[0].toLowerCase()):(suffix?' '+suffix:''));
+let prev=Object.assign({},c.r);
+let ai=ADDED.findIndex(x=>sameId(x.i,c.r.i));
+let upd={dd:newDd,gcal_date_conflict:null};
+if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[c.r.i])EDITS[c.r.i]={};Object.assign(EDITS[c.r.i],upd);rememberEditsEdit(c.r.i,EDITS[c.r.i]);saveE()}
+realigned++;
+}
 }
 
 // Repair missing → push to Google Calendar (needs two-way sync ON + write access)
@@ -6069,7 +6150,7 @@ for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.w
 }
 
 renderAll();
-showToast('&#10003; Repair done — '+reimported+' re-imported, '+pushed+' pushed to calendar'+((missing.length&&!pushed)?' (grant write access if pushes were skipped)':''),'success');
+showToast('&#10003; Repair done — '+reimported+' re-imported, '+realigned+' date(s) realigned, '+pushed+' pushed'+(dupSN.length?'. '+dupSN.length+' duplicate SN(s) need manual fixing.':''),'success');
 }catch(e){btn.classList.remove('syncing');console.error('[GCAL][REPAIR] error:',e);showToast('&#10005; Repair scan failed: '+(e.result?e.result.error.message:e.message),'err')}}
 
 // === BIDIRECTIONAL CALENDAR SYNC: APP → GOOGLE CALENDAR ===
@@ -6910,7 +6991,12 @@ let c=GCAL_COLOR_MAP[String(r.gcalColorId)];if(!c)return null;
 return c.solid}
 function calEvents(){return AD().filter(r=>{
 if(!r.n||!r.dd)return false;
-if(statusF!=='all'&&st(r)!==statusF)return false;
+// The calendar grid mirrors Google Calendar: it shows EVERY scheduled delivery regardless of
+// which list-tab (Upcoming / Needs Action / Delivered / Hold / …) is currently selected. The
+// status is still reflected by each event's COLOR, but a delivery must never vanish from the
+// calendar just because its status changed — that's exactly what made the Kerry (5/28) ticket
+// look like it had "disappeared": it still existed, but its status was no longer "upcoming"
+// so the Upcoming-tab filter hid it from the grid. Search still narrows the calendar.
 if(search){let q=search.toLowerCase();
 if(![r.n,r.sp,r.st,r.ph,String(r.sn||''),r.em].some(v=>(v||'').toLowerCase().includes(q)))return false}
 return true
