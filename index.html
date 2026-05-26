@@ -6027,22 +6027,42 @@ showToast('&#9888; '+(resp.error_description||resp.error),'warn')
 gcalTokenClient.requestAccessToken({prompt:'consent'});
 }catch(e){console.error('gcalRequestWriteScope err:',e);showToast('&#9888; Could not open permission screen — see console','err')}}
 
+// Has the user added ANY real info to this ticket beyond the bare calendar seed (name/SN/date/city)?
+// If so it must NEVER be treated as a disposable "auto-import" — deleting it would wipe work the
+// team typed in (this is exactly what wiped Kerry, Creek, Hohenberg, etc. on 5/26). Strong signals:
+// phone, email, any money, spa model/accessories, notes, assigned tech, checklist progress, or a
+// real street address (has a space AND a digit, e.g. "6428 Marquette Ave" — a ZIP or "PM" does not).
+function gcalRecordIsEnriched(r){
+if(!r)return false;
+if(r.ph||r.em)return true;
+if((+r.pr||0)||(+r.py||0)||(+r.bl||0)||(+r.di||0))return true;
+if(r.sp||r.spd||r.dn||r.dnotes||r.fn||r.en||r.assigned_to)return true;
+if(r.tb||r.ss||r.lf||r.cv||r.su)return true;
+let flags=['pf','iv','el','wp','lv','pt','ch','rc','sl','po','oo','il','cl','pk','gb','ngb','crane','extra_person','water_truck'];
+if(flags.some(f=>r[f]===true))return true;
+if(r.st&&/\s/.test(String(r.st))&&/\d/.test(String(r.st)))return true; // real street address
+return false}
+
 function gcalCleanImported(){
 // Find ALL ADDED records that came from gcal AND meet any cleanup criteria:
 //  (a) non-delivery label title (COLOR, WEEK, MEMORIAL, etc.), or
-//  (b) untouched auto-imports (cn still says auto-created), or
+//  (b) untouched auto-imports (cn still says auto-created AND no user-entered info), or
 //  (c) saved gcalColorId is not in the currently-allowed list
-let candidates=ADDED.filter(r=>r.gcalId&&!r.co&&!r.dl&&(
+// CRITICAL SAFETY: never remove a record the user has enriched (gcalRecordIsEnriched). The old
+// version deleted EVERY record whose cn still said "Auto-created…", even fully filled-out
+// deliveries, because enriching a ticket never changed that note. That wiped real customer data.
+let candidates=ADDED.filter(r=>r.gcalId&&!r.co&&!r.dl&&!gcalRecordIsEnriched(r)&&(
 isNonDeliveryTitle(r.n)||
 r.cn==='Auto-created from Google Calendar event'||
 (r.gcalColorId&&!isAllowedColor(r.gcalColorId))));
-if(!candidates.length){showToast('Nothing to clean — no problematic auto-imported records found','warn');return}
+if(!candidates.length){showToast('Nothing to clean — no empty/auto-only records found (anything you filled in is protected)','warn');return}
 let labels=candidates.filter(r=>isNonDeliveryTitle(r.n)).length;
 let badColor=candidates.filter(r=>r.gcalColorId&&!isAllowedColor(r.gcalColorId)).length;
-let msg='Remove '+candidates.length+' auto-imported records?\n\n';
+let names=candidates.slice(0,12).map(r=>'   • '+(r.n||'(no name)')+(r.sn?' · SN '+r.sn:'')).join('\n');
+let msg='Remove '+candidates.length+' EMPTY auto-imported record(s)?\n\n';
 if(labels)msg+='• '+labels+' calendar labels (COLOR, WEEK, etc.)\n';
 if(badColor)msg+='• '+badColor+' events with non-delivery colors\n';
-msg+='\nOnly records NOT yet completed/delivered are removed.\nThis also resets the calendar mapping so they can be re-synced cleanly.';
+msg+='\nThese are the records to remove (none have customer info you typed):\n'+names+(candidates.length>12?'\n   …and '+(candidates.length-12)+' more':'')+'\n\nOnly empty, not-completed, not-delivered records are removed. Anything you filled in (phone, address, payment, specs, notes) is PROTECTED and will NOT be touched.';
 if(!confirm(msg))return;
 let idsToRemove=new Set(candidates.map(r=>r.i));
 ADDED=ADDED.filter(r=>!idsToRemove.has(r.i));
@@ -6052,7 +6072,7 @@ Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(gcalMap[eventId])){upd
 updates['gcal_config/syncToken']=null;
 db.ref().update(updates);
 gcalSyncToken=null;
-showToast('&#10003; Cleaned '+candidates.length+' imported records');
+showToast('&#10003; Cleaned '+candidates.length+' empty imported records (enriched tickets protected)');
 renderAll()}
 
 // === DIAGNOSE & REPAIR SYNC ===
