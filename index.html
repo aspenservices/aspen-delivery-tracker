@@ -1253,6 +1253,22 @@ let label=critical?'CRITICAL':(warn?'STALE':'AGING');
 let icon=critical?'&#128680;':(warn?'&#9203;':'&#9209;&#65039;');
 return '<div class="stale-hold" style="background:'+bg+';color:'+color+';margin-top:6px"><span>'+icon+' '+label+'</span><span style="opacity:.85">On hold '+days+' days — '+(critical?'follow up immediately':(warn?'time to call':'consider following up'))+'</span></div>'}
 
+// Visible "not synced to calendar" badge. Set whenever a calendar PATCH/POST actually fails
+// (the silent 403 / no-write-access case). Far more reliable than a toast that disappears.
+function gcalSyncBadge(r){
+if(!r||!r.gcalSyncPending)return'';
+let reason=r.gcalSyncReason||'Change was not written to Google Calendar';
+return '<div class="stale-hold" style="background:#fef3c7;color:#92400e;margin-top:6px" title="'+reason.replace(/"/g,'')+'"><span>&#9888;&#65039; NOT ON CALENDAR</span><span style="opacity:.85">'+reason+'</span></div>'}
+
+// Persist (or clear) the not-synced flag on a record. Used by the push functions so the badge
+// above appears on the card and the gcal panel can count how many are out of sync.
+function markGcalSync(r,pending,reason){
+if(!r)return;
+let patch=pending?{gcalSyncPending:true,gcalSyncReason:(reason||'Calendar update failed')}:{gcalSyncPending:null,gcalSyncReason:null};
+let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
+if(ai>=0){if(!pending&&!ADDED[ai].gcalSyncPending)return;Object.assign(ADDED[ai],patch);saveA()}
+else{if(!pending&&!(EDITS[r.i]&&EDITS[r.i].gcalSyncPending))return;if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);saveE()}}
+
 // For Hold cards, pull the most recent [HOLD] or [GCAL] audit line out of the
 // delivery notes so the card shows WHY it's parked without opening the modal.
 // Falls back to the generic dn preview for non-hold cards (handled by caller).
@@ -2984,7 +3000,7 @@ reqBadgeHtml+='<span style="display:inline-flex;align-items:center;gap:4px;backg
 });
 reqBadgeHtml+='</div>';
 }
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div>'+staleHoldBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',hold:'&#9209;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -6187,7 +6203,7 @@ let nm2=String(c.evDD).match(/(am|pm|all\s*day|all)/i);
 let suffix=nm2?'':((String(c.r.dd||'').match(/(am|pm|all\s*day|all)/i)||[''])[0]);
 let newDd=c.evDayKey+(nm2?(' '+nm2[0].toLowerCase()):(suffix?' '+suffix:''));
 let ai=ADDED.findIndex(x=>sameId(x.i,c.r.i));
-let upd={dd:newDd,gcal_date_conflict:null};
+let upd={dd:newDd,gcal_date_conflict:null,gcalSyncPending:null,gcalSyncReason:null};
 if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[c.r.i])EDITS[c.r.i]={};Object.assign(EDITS[c.r.i],upd);rememberEditsEdit(c.r.i,EDITS[c.r.i]);saveE()}
 realigned++;
@@ -6588,9 +6604,10 @@ console.warn('[GCAL] Skipping description update — GET event failed for',event
 if(Object.keys(patch).length===0)return;
 console.log('[GCAL] Pushing changes to calendar event',eventId,Object.keys(patch));
 let ok=await gcalPatchEvent(eventId,patch);
-if(ok)showToast('&#10003; Calendar updated','success');
+if(ok){showToast('&#10003; Calendar updated','success');markGcalSync(cur,false)}
+else{markGcalSync(cur,true,'This change was not written to Google Calendar. Grant Write Access, then click Sync Now.')}
 // On failure, gcalPatchEvent already showed a specific toast (e.g. 403 → "Calendar needs
-// write permission"). We don't add a generic failure toast here to avoid double-notifications.
+// write permission"). The persistent NOT ON CALENDAR badge now also flags it on the card.
 }
 
 // Push a brand-new local delivery up to Google Calendar. Saves the new event's id into
@@ -6612,10 +6629,10 @@ console.log('[GCAL] New ticket not pushed — no allowed color set');
 showToast('&#9888; Pick a Calendar Color to also create the event in Google Calendar','warn');
 return}
 let ev=await gcalCreateEvent(r);
-if(!ev||!ev.id)return;
+if(!ev||!ev.id){markGcalSync(r,true,'This delivery was not added to Google Calendar. Grant Write Access, then click Sync Now.');return}
 console.log('[GCAL] Created calendar event',ev.id,'for ticket',r.i);
 // Update the ticket so subsequent edits know which event to patch
-let updates={gcalId:ev.id};
+let updates={gcalId:ev.id,gcalSyncPending:null,gcalSyncReason:null};
 if(ev.colorId)updates.gcalColorId=ev.colorId;
 let ai=ADDED.findIndex(x=>x.i===r.i||String(x.i)===String(r.i));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
