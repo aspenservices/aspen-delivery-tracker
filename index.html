@@ -2224,6 +2224,20 @@ function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e)
 function sameId(a,b){return a!=null&&b!=null&&String(a)===String(b)}
 function findRecById(id){if(id==null)return null;let s=String(id);return AD().find(r=>String(r.i)===s)||null}
 
+// Do a calendar-event name and a ticket name plausibly refer to the same customer? Used to stop
+// a duplicate/corrupted SERIAL from cross-linking two unrelated deliveries (the Slaughter SN
+// 30705 grabbing Kerry, whose SN had been corrupted to 30705). Returns true when they share any
+// 3+ character token (so the abbreviated calendar title "Kerry" still matches the full ticket
+// name "John and Beth Kerry"), and only false when the names are COMPLETELY different.
+function gcalNamesRelated(evName,ticketName){
+if(!evName||!ticketName)return true; // not enough info to judge — don't block
+let a=String(evName).toLowerCase(),b=String(ticketName).toLowerCase();
+let stop={and:1,the:1,llc:1,inc:1};
+let at=a.split(/[\s,\/&-]+/).filter(x=>x.length>=3&&!stop[x]);
+let bt=b.split(/[\s,\/&-]+/).filter(x=>x.length>=3&&!stop[x]);
+if(!at.length||!bt.length)return true;
+return at.some(x=>b.indexOf(x)>=0)||bt.some(x=>a.indexOf(x)>=0)}
+
 // === SAVE-IN-FLIGHT TRACKING ===
 // Critical for preventing data loss. Without this counter, the following race-condition can wipe
 // the user's edits: (1) user saves, ADDED[i].n = "New Name", saveA() starts the Firebase write
@@ -5769,12 +5783,28 @@ let u={};
 if(local.dd!==newDD)u.dd=newDD;
 let newColor=evColorId||null;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
-// SN and NAME are USER-OWNED (sacred): the calendar SEEDS them only when a ticket is first
-// created, and the parsed serial is used to MATCH events to tickets — but a routine pull NEVER
-// overwrites them afterward. This matters because if a ticket is ever linked to the wrong event
-// (a duplicate/cross-linked calendar entry), overwriting the SN/name from that event would
-// corrupt good data (e.g. Kerry's SN getting clobbered to a neighbor's 30705). Only the DATE and
-// the COLOR follow the calendar. To correct a serial or name, edit the ticket in the dashboard.
+// CALENDAR DRIVES SERIAL + NAME (Alberto, Option B final) — but WITHOUT losing saved info.
+// This is safe now because cross-linked events are auto-severed (CASE C) and a shared serial can
+// no longer link unrelated customers (name guard in the SN-match), so buildGcalUpdates only ever
+// runs for events that genuinely belong to this ticket. That means the calendar's value is the
+// CORRECT one and should win (it even auto-heals a serial that was corrupted by an old bad link).
+//
+// SERIAL: adopt the title's ZIP-aware serial (a single non-6xxxx number). If the title is
+// ambiguous (parsed.serial is null because it has no clear serial, or a ZIP and nothing else) we
+// leave the ticket's SN alone — we never write a ZIP into the serial.
+if(parsed&&parsed.serial){
+let s=String(parsed.serial);
+if(String(local.sn||'').replace(/\.0$/,'').trim()!==s)u.sn=s;
+}
+// NAME: the calendar is the source of truth, but we PRESERVE the fuller name you typed in the app.
+// Calendar titles are abbreviated ("Kerry"), so if the title name is already contained in the
+// ticket's name we keep your full version ("John and Beth Kerry"). We only overwrite when the
+// calendar name is genuinely DIFFERENT (a real correction made on the calendar) — never to shorten.
+if(parsed&&parsed.name){
+let pn=parsed.name.trim();
+let cur=String(local.n||'');
+if(pn&&cur.toLowerCase().indexOf(pn.toLowerCase())<0&&pn.toLowerCase().indexOf(cur.toLowerCase())<0)u.n=pn;
+}
 // HOLD-LIFT: if the calendar event is back (we got a real, valid newDD) and the
 // local record was sitting in Hold, lift the hold automatically. Works whether
 // the event is matched by gcalMap[id] (same id reappeared) OR via SN-fallback
@@ -5829,7 +5859,26 @@ saveE();
 mappedId=null;
 }
 }
-// Normal path (only if we still have a valid mapping after the cleanup checks above)
+// CASE C: cross-linked mapping — the event is mapped to a ticket whose NAME is completely
+// unrelated to the event's. This is the Slaughter(30705)↔Kerry signature: a duplicate/corrupted
+// serial linked two different customers, so the event keeps dragging the wrong ticket's date.
+// Names can't be faked by a bad serial, so a total name mismatch means the link is wrong.
+// Unlink and re-process so each event finds (or creates) the correct ticket. We do NOT revert
+// any fields here — just sever the bad link so the dragging stops.
+else if(local&&local.n&&!gcalNamesRelated(parsed.name,local.n)){
+console.log('[GCAL] Cross-linked mapping: event "'+(ev.summary||'')+'" → unrelated ticket "'+local.n+'". Unlinking (names do not match — likely a duplicate serial).');
+db.ref('gcal_map/'+ev.id).remove();
+delete gcalMap[ev.id];
+// Clear the ticket's stale gcalId if it points at THIS (wrong) event, so it's free to re-link to
+// its own correct event on the next pass instead of being permanently skipped by the "already
+// bound to another event" guard.
+if(local.gcalId&&sameId(local.gcalId,ev.id)){
+let ci=ADDED.findIndex(x=>sameId(x.i,local.i));
+if(ci>=0){ADDED[ci].gcalId=null;saveA()}
+else{if(!EDITS[local.i])EDITS[local.i]={};EDITS[local.i].gcalId=null;saveE()}
+}
+mappedId=null;
+}
 if(mappedId&&local){
 let updates=buildGcalUpdates(local,parsed,newDD,ev.colorId);
 if(Object.keys(updates).length){
@@ -5849,7 +5898,12 @@ if(snCands.length){existing=AD().find(r=>{
 if(!r.n)return false;
 if(r.gcalId&&!sameId(r.gcalId,ev.id))return false; // already bound to another event — don't steal it
 let rsn=String(r.sn||'').replace(/\.0$/,'').trim();
-return rsn&&snCands.includes(rsn)})}
+if(!rsn||!snCands.includes(rsn))return false;
+// NAME GUARD: a serial match is only trusted when the names also plausibly agree. This blocks the
+// duplicate-serial trap (Slaughter SN 30705 grabbing Kerry, whose SN was corrupted to 30705): the
+// serials matched but the names are unrelated, so we reject the match and let it fall to name/create.
+if(!gcalNamesRelated(parsed.name,r.n))return false;
+return true})}
 // Fallback: match by last-name + nearby date.
 // CRITICAL (Alberto bug 5/14): the old logic matched by name substring WITHOUT checking
 // the date — so a new "PM-Taylor" event in May would steal an old "Taylor, Justin" Jan
