@@ -5017,7 +5017,7 @@ let label=(r.n||'(no name)')+(r.sn?'  \u00b7  SN '+r.sn:'')+(r.dd?'  \u00b7  '+r
 if(!confirm('Delete this delivery ticket?\n\n'+label+'\n\n\u2022 Removes the ticket from the app and unlinks it from Google Calendar.\n\u2022 Does NOT delete the Google Calendar event.\n\u2022 Permanent in-app (recover from a backup if needed).'))return;
 // Drop any calendar mapping that points at this ticket
 let upd={};
-Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],id)){upd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
+Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],id)){trackGcalMapRemoval(eid);upd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
 if(Object.keys(upd).length)db.ref().update(upd);
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){ADDED.splice(ai,1);saveA()}
@@ -5547,7 +5547,65 @@ let allowed=getGcalColors();
 document.querySelectorAll('.gcal-cf input[data-color]').forEach(cb=>{cb.checked=allowed.includes(cb.dataset.color)})}
 
 dbGcal.on('value',snap=>{let c=snap.val()||{};if(c.calendarId)gcalCalendarId=c.calendarId;if(c.syncToken)gcalSyncToken=c.syncToken;updateGcalUI()});
-dbGcalMap.on('value',snap=>{gcalMap=snap.val()||{}});
+
+// =====================================================================================
+// GCAL_MAP ANTI-RESURRECTION + ANTI-WIPE OVERLAY
+// =====================================================================================
+// Cross-links can keep coming back even after repair because of two races:
+//   1. RESURRECTION: local delete + Firebase remove() (ASYNC). Before remove() lands on
+//      server, dbGcalMap listener fires with stale snapshot → restored cross-link.
+//   2. WIPE: local set + Firebase write (ASYNC). Before write lands, listener fires with
+//      stale (pre-set) snapshot → our just-set mapping disappears.
+// We track every gcal_map mutation (set OR remove) with a 30-second timestamp. The
+// listener filters server snapshots through both trackers:
+//   • Suppresses keys we recently REMOVED (kills resurrection).
+//   • Re-applies keys we recently SET (kills wipes).
+// After 30s the tracker entry expires — by then any in-flight Firebase write has settled.
+let _recentRemovedGcalMap={}; // {eventId: timestampMs}
+let _recentSetGcalMap={};     // {eventId: {ticketId, ts}}
+function trackGcalMapRemoval(eventId){
+if(!eventId)return;
+_recentRemovedGcalMap[String(eventId)]=Date.now();
+delete _recentSetGcalMap[String(eventId)]; // any pending set is now superseded by a removal
+}
+function trackGcalMapSet(eventId,ticketId){
+if(!eventId)return;
+_recentSetGcalMap[String(eventId)]={ticketId:ticketId,ts:Date.now()};
+delete _recentRemovedGcalMap[String(eventId)]; // any pending removal is now superseded by a set
+}
+function _isRecentlyRemovedGcalMap(eventId){
+let ts=_recentRemovedGcalMap[String(eventId)];
+if(!ts)return false;
+if(Date.now()-ts>30000){delete _recentRemovedGcalMap[String(eventId)];return false}
+return true;
+}
+dbGcalMap.on('value',snap=>{
+let serverState=snap.val()||{};
+let suppressed=0,preserved=0;
+// Suppress recently-removed entries (kills resurrection race)
+Object.keys(serverState).forEach(eid=>{
+if(_isRecentlyRemovedGcalMap(eid)){
+console.log('%c[GCAL-MAP] Suppressed stale resurrected mapping','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
+eid,'\u2192',serverState[eid],'(removed locally within last 30s)');
+delete serverState[eid];
+suppressed++;
+}
+});
+// Preserve recently-set entries that the server doesn't yet have (kills wipe race)
+let now=Date.now();
+Object.keys(_recentSetGcalMap).forEach(eid=>{
+let entry=_recentSetGcalMap[eid];
+if(now-entry.ts>30000){delete _recentSetGcalMap[eid];return}
+if(String(serverState[eid]||'')!==String(entry.ticketId)){
+console.log('%c[GCAL-MAP] Preserved recent local set','background:#059669;color:#fff;padding:2px 6px;border-radius:3px',
+eid,'\u2192',entry.ticketId,'(set locally within last 30s; server snapshot does not reflect it yet)');
+serverState[eid]=entry.ticketId;
+preserved++;
+}
+});
+if(suppressed||preserved)console.log('[GCAL-MAP] Listener fired: '+suppressed+' suppressed, '+preserved+' preserved, '+Object.keys(serverState).length+' total entries.');
+gcalMap=serverState;
+});
 
 function gapiLoaded(){gapi.load('client',async()=>{
 try{await gapi.client.init({discoveryDocs:[GCAL_DISCOVERY]});gcalGapiReady=true;tryGcalInit()}
@@ -5902,7 +5960,7 @@ let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
 console.log('%c[GCAL] CROSS-LINK MID-SYNC','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
 'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
-db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
 let _u={gcalId:'',gcalColorId:'',cal:''};
 let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
@@ -5931,7 +5989,7 @@ return}
 if(mappedId&&!local){
 // Stale mapping — the linked ticket was deleted. Unlink and fall through to create a fresh one.
 console.log('[GCAL] Stale mapping: event '+ev.id+' \u2192 deleted ticket '+mappedId+'. Re-creating.');
-db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
 }
 }
 // BEFORE creating a brand-new ticket, try to find an existing ticket with the same SN. This
@@ -5948,7 +6006,7 @@ let ai=ADDED.findIndex(x=>sameId(x.i,_existing.i));
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
 else{if(!EDITS[_existing.i])EDITS[_existing.i]={};Object.assign(EDITS[_existing.i],u);saveE()}
 await db.ref().update({['gcal_map/'+ev.id]:_existing.i});
-gcalMap[ev.id]=_existing.i;
+trackGcalMapSet(ev.id,_existing.i);gcalMap[ev.id]=_existing.i;
 gcalStats.updated++;
 return;
 }
@@ -6012,7 +6070,7 @@ let tid=_relinkTicketId;
 if(!confirm('Link this ticket to:\n\n'+(ev.summary||'(no title)')+'\n'+(ev.dd||'')+'\n\nThis replaces any current calendar link on this ticket.'))return;
 let updates={};
 // sever every existing link pointing to THIS ticket (removes the wrong one)
-Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(tid)){updates['gcal_map/'+k]=null;delete gcalMap[k]}});
+Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(tid)){trackGcalMapRemoval(k);updates['gcal_map/'+k]=null;delete gcalMap[k]}});
 // link the chosen event to this ticket (also steals it away from any other ticket)
 updates['gcal_map/'+eventId]=tid;gcalMap[eventId]=tid;
 db.ref().update(updates);
@@ -6026,7 +6084,7 @@ if(curRec&&sameId(curRec.i,tid)&&typeof openDet==='function'){openDet(tid)}}
 function unlinkTicketFromCalendar(ticketId){
 if(!confirm('Unlink this ticket from Google Calendar?\n\nThe ticket and all its info stay. The calendar event will create its own separate ticket on the next sync.'))return;
 let updates={};
-Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(ticketId)){updates['gcal_map/'+k]=null;delete gcalMap[k]}});
+Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(ticketId)){trackGcalMapRemoval(k);updates['gcal_map/'+k]=null;delete gcalMap[k]}});
 if(Object.keys(updates).length)db.ref().update(updates);
 let u={gcalId:null};
 let ai=ADDED.findIndex(x=>sameId(x.i,ticketId));
@@ -6079,7 +6137,7 @@ if(rsn===parsed.serial){skipped_okMatch++;continue} // matches — link is corre
 // CROSS-LINK DETECTED
 console.log('%c[REPAIR] CROSS-LINK FOUND','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
 'ticket #'+r.i+' ("'+r.n+'", SN '+rsn+') linked to event titled "'+r.cal+'" (SN '+parsed.serial+'). Breaking wrong link.');
-db.ref('gcal_map/'+r.gcalId).remove();
+trackGcalMapRemoval(r.gcalId);db.ref('gcal_map/'+r.gcalId).remove();
 delete gcalMap[r.gcalId];
 // Use empty strings (NOT null) — Firebase strips null keys on .set().
 let _u={gcalId:'',gcalColorId:'',cal:''};
@@ -6143,7 +6201,7 @@ let ai=ADDED.findIndex(x=>sameId(x.i,real.i));
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
 else{if(!EDITS[real.i])EDITS[real.i]={};Object.assign(EDITS[real.i],u);saveE()}
 db.ref('gcal_map/'+stub.gcalId).set(real.i);
-gcalMap[stub.gcalId]=real.i;
+trackGcalMapSet(stub.gcalId,real.i);gcalMap[stub.gcalId]=real.i;
 let si=ADDED.findIndex(x=>sameId(x.i,stub.i));
 if(si>=0){ADDED.splice(si,1);saveA();}
 merged.push({stub:stub.i,real:real.i,sn:parsed.serial,name:real.n});
@@ -6221,11 +6279,33 @@ if(!local){
 // Stale mapping — the ticket was deleted. Don't leave it stuck waiting for a regular
 // sync that may never re-deliver this event (syncToken is incremental). Clear the
 // stale mapping here and fall through to create a fresh ticket below.
-db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
 mappedId=null;
 healed.staleFixed.push({summary:title,wasMapped:mappedId});
 console.log('[AUTO-AUDIT] Cleared stale mapping for event '+ev.id+' and recreating ticket.');
 }else{
+// SN VALIDATION — same protection that processGcalEvent has. The audit was previously
+// blindly applying calendar event data to whatever ticket gcal_map pointed at. If gcal_map
+// is wrong (race condition with dbGcalMap listener, manual relink mistake, or stale state),
+// the audit would overwrite the wrong ticket's date and title with the wrong event's data
+// every cycle — that's the Kerry/Slaughter loop. We refuse to heal a mapping where the
+// ticket's SN doesn't match the SN parsed from the event title; instead we break the wrong
+// link and fall through to SN-match-or-create.
+if(local.sn){
+let _evParsed=parseGcalTitle(title);
+if(_evParsed&&_evParsed.serial){
+let _rsn=String(local.sn).replace(/\.0$/,'');
+if(_rsn!==_evParsed.serial){
+console.log('%c[AUTO-AUDIT] CROSS-LINK in heal-drift','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
+'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+' (event "'+title+'"). Breaking wrong link instead of overwriting customer data.');
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+let _u={gcalId:'',gcalColorId:'',cal:''};
+let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
+if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
+mappedId=null;local=null;
+}}}
+if(mappedId&&local){
 // Heal any drift between calendar and ticket: date, title, color.
 let u={};
 if(local.dd!==newDD)u.dd=newDD;
@@ -6233,13 +6313,13 @@ if((local.cal||'')!==title)u.cal=title;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
 if(Object.keys(u).length){
 let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],u);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
 if(u.dd){healed.dateFixed.push({summary:title,from:local.dd,to:newDD});console.log('[AUTO-AUDIT] Fixed date for ticket #'+mappedId+': '+local.dd+' \u2192 '+newDD)}
 if(u.cal){healed.titleFixed.push({ticketId:mappedId,from:local.cal,to:title});console.log('[AUTO-AUDIT] Fixed title for ticket #'+mappedId+': '+JSON.stringify(local.cal)+' \u2192 '+JSON.stringify(title))}
 if('gcalColorId' in u){healed.colorFixed.push({ticketId:mappedId,from:local.gcalColorId,to:newColor});console.log('[AUTO-AUDIT] Fixed color for ticket #'+mappedId+': '+local.gcalColorId+' \u2192 '+newColor)}
 }else{skipped.synced++;}
-continue;}}
+continue;}}}
 
 // No mapping (or just-cleared stale mapping) — before creating a duplicate, try to find an
 // existing ticket with the same SN that isn't yet linked. Single-match-only keeps it safe.
@@ -6251,7 +6331,7 @@ let ai=ADDED.findIndex(x=>sameId(x.i,_existing.i));
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
 else{if(!EDITS[_existing.i])EDITS[_existing.i]={};Object.assign(EDITS[_existing.i],u);saveE()}
 await db.ref().update({['gcal_map/'+ev.id]:_existing.i});
-gcalMap[ev.id]=_existing.i;
+trackGcalMapSet(ev.id,_existing.i);gcalMap[ev.id]=_existing.i;
 healed.linkedToExisting=(healed.linkedToExisting||[]);
 healed.linkedToExisting.push({summary:title,ticketId:_existing.i,name:_existing.n,sn:_existing.sn});
 console.log('[AUTO-AUDIT] SN match: linked event to existing ticket #'+_existing.i+' ("'+_existing.n+'", SN '+_existing.sn+') instead of creating duplicate.');
@@ -6271,7 +6351,7 @@ gcalId:ev.id,gcalColorId:newColor,
 cn:'Auto-created via post-sync audit (incremental sync missed this event).'};
 ADDED.push(r);saveA();
 await db.ref().update({['gcal_map/'+ev.id]:newId});
-gcalMap[ev.id]=newId;
+trackGcalMapSet(ev.id,newId);gcalMap[ev.id]=newId;
 healed.created.push({summary:title,dd:newDD,id:newId});
 console.log('[AUTO-AUDIT] Created ticket #'+newId+' for missed event: \"'+title+'\" on '+newDD);
 }catch(perEventErr){
@@ -6393,7 +6473,7 @@ let idsToRemove=new Set(candidates.map(r=>r.i));
 ADDED=ADDED.filter(r=>!idsToRemove.has(r.i));
 saveA();
 let updates={};
-Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(gcalMap[eventId])){updates['gcal_map/'+eventId]=null}});
+Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(gcalMap[eventId])){trackGcalMapRemoval(eventId);updates['gcal_map/'+eventId]=null;delete gcalMap[eventId]}});
 updates['gcal_config/syncToken']=null;
 db.ref().update(updates);
 gcalSyncToken=null;
@@ -6471,7 +6551,7 @@ return ids}
 function gcalUnlinkTicket(r,restoreDate){
 let ids=gcalTicketLinkedEventIds(r);
 let upd={};
-ids.forEach(eid=>{upd['gcal_map/'+eid]=null;delete gcalMap[eid]});
+ids.forEach(eid=>{trackGcalMapRemoval(eid);upd['gcal_map/'+eid]=null;delete gcalMap[eid]});
 if(Object.keys(upd).length)db.ref().update(upd);
 // Use empty strings (NOT null) for EDITS overlays — Firebase's .set() strips null keys from
 // objects, which would silently revert the clear and let BASE's wrong gcalId resurface on the
@@ -6763,7 +6843,7 @@ return false;
 // against an event that doesn't exist. Next sync will re-link if a matching event reappears.
 if(e.status===404||e.status===410){
 console.warn('gcalPatchEvent: event '+eventId+' no longer exists in calendar — cleaning gcalMap');
-try{db.ref('gcal_map/'+eventId).remove();delete gcalMap[eventId]}catch(ce){}
+try{trackGcalMapRemoval(eventId);db.ref('gcal_map/'+eventId).remove();delete gcalMap[eventId]}catch(ce){}
 }
 return false;
 }finally{_gcalWritesInFlight=Math.max(0,_gcalWritesInFlight-1)}}
@@ -6917,7 +6997,7 @@ if(!eventId)return;
 let ok=await gcalDeleteEvent(eventId);
 if(ok){
 // Clean up the gcalMap entry too so we don't try to patch a deleted event later
-let mapUpd={};mapUpd['gcal_map/'+eventId]=null;db.ref().update(mapUpd);
+let mapUpd={};trackGcalMapRemoval(eventId);mapUpd['gcal_map/'+eventId]=null;delete gcalMap[eventId];db.ref().update(mapUpd);
 showToast('&#10003; Removed from Google Calendar','success')}}
 
 // === GOOGLE DRIVE PHOTO SYNC ===
