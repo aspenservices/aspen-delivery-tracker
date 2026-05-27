@@ -2795,10 +2795,14 @@ if(d.getTime()<today.getTime())return"overdue"}
 return"upcoming"}
 function sL(s){return{complete:"Complete",delivered:"Follow-Up",overdue:"Needs Action",upcoming:"Upcoming",action:"Delivered",hold:"Hold"}[s]}
 function sC(s){return{complete:"#059669",delivered:"#2563eb",overdue:"#dc2626",upcoming:"#d97706",action:"#ea580c",hold:"#7c3aed"}[s]}
-function fil(){let list=AD().filter(r=>{if(!r.n)return 0;let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;
+function fil(){let list=AD().filter(r=>{
+// Allow tickets with blank `r.n` if they have a calendar-title fallback (`r.cal`).
+// Otherwise nothing — a truly empty record (no name, no calendar) is hidden.
+if(!r.n&&!r.cal)return 0;
+let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;
 // Hold tab can further narrow by hold_reason chip
 if(statusF==="hold"&&typeof holdReasonF!=="undefined"&&holdReasonF&&(r.hold_reason||"manual")!==holdReasonF)return 0;
-if(search){let q=search.toLowerCase();return[r.n,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
+if(search){let q=search.toLowerCase();return[r.n,r.cal,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
 // Sort
 // useProximity: order by closeness to today (yesterday first, far future last).
 // Used for tabs where "what's most relevant right now" matters more than raw date order:
@@ -2841,7 +2845,7 @@ complete:{label:'Complete',color:'#059669',bg:'#f0fdf4',border:'#059669',sub:'Fu
 all:{label:'All',color:'#374151',bg:'#f9fafb',border:'#6b7280',sub:'All deliveries across every status'}};
 
 function renderKPIs(){
-let a=AD().filter(r=>r.n);
+let a=AD().filter(r=>r.n||r.cal);
 let counts={
 upcoming:a.filter(r=>st(r)==='upcoming').length,
 overdue:a.filter(r=>st(r)==='overdue').length,
@@ -2862,12 +2866,12 @@ document.getElementById('aspenTabs').innerHTML=html}
 
 function renderCtxHdr(){
 let m=STATUS_META[statusF]||STATUS_META.all;
-let list=AD().filter(r=>r.n).filter(r=>statusF==='all'||st(r)===statusF);
+let list=AD().filter(r=>r.n||r.cal).filter(r=>statusF==='all'||st(r)===statusF);
 // For the Hold tab, optionally narrow further by reason chip (set via setHoldReasonFilter)
 if(statusF==='hold'&&typeof holdReasonF!=='undefined'&&holdReasonF){
 list=list.filter(r=>(r.hold_reason||'manual')===holdReasonF)}
 let totalBal=list.reduce((s,r)=>s+(r.bl||0),0);
-let attnCount=AD().filter(r=>r.n&&r.needs_attention).length;
+let attnCount=AD().filter(r=>(r.n||r.cal)&&r.needs_attention).length;
 let metaParts=[];
 metaParts.push('<strong>'+list.length+'</strong> '+(list.length===1?'delivery':'deliveries'));
 if(totalBal>0)metaParts.push('<span class="bal">Balance Due '+fmt(totalBal)+'</span>');
@@ -2884,7 +2888,7 @@ if(oldestDays>0)metaParts.push('<span class="hold-oldest" title="Oldest hold in 
 if(staleCount>0)metaParts.push('<span class="hold-stale" title="Holds older than 30 days that may need follow-up">&#128680; '+staleCount+' stale</span>');
 
 // Reason filter chips — count by hold_reason. Always show "All" as the un-filtered option.
-let allHolds=AD().filter(r=>r.n&&st(r)==='hold');
+let allHolds=AD().filter(r=>(r.n||r.cal)&&st(r)==='hold');
 let reasons={};
 allHolds.forEach(r=>{let k=r.hold_reason||'manual';reasons[k]=(reasons[k]||0)+1});
 let chipDefs=[
@@ -2918,7 +2922,7 @@ function setHoldReasonFilter(r){holdReasonF=r||'';renderCtxHdr();render()}
 // Export all Hold records as CSV — useful for outreach campaigns to dormant clients.
 // Includes preserved value, days on hold, prev date, last activity note, contact info.
 function exportHoldCsv(){
-let rows=AD().filter(r=>r.n&&st(r)==='hold');
+let rows=AD().filter(r=>(r.n||r.cal)&&st(r)==='hold');
 if(!rows.length){alert('No Hold records to export.');return}
 let header=['Customer','SN','Spa','Phone','Email','Sales Price','Balance','Was Scheduled','Days on Hold','Reason','Last Activity Note'];
 let csvRows=[header];
@@ -5937,10 +5941,12 @@ allEvents=allEvents.concat(res.result.items||[]);
 pageToken=res.result.nextPageToken;
 }while(pageToken);
 
-let healed={created:[],dateFixed:[]};
+let healed={created:[],dateFixed:[],titleFixed:[],colorFixed:[],staleFixed:[]};
 let skipped={byTitle:0,byColor:0,bySunday:0,noDate:0,cancelled:0,synced:0};
+let perEventErrors=0;
 
 for(let ev of allEvents){
+try{
 if(ev.status==='cancelled'){skipped.cancelled++;continue}
 if(isNonDeliveryTitle(ev.summary)){skipped.byTitle++;continue}
 if(!isAllowedColor(ev.colorId)){skipped.byColor++;continue}
@@ -5952,49 +5958,75 @@ let p=dPart.split('-').map(Number);
 if(new Date(p[0],p[1]-1,p[2]).getDay()===0){skipped.bySunday++;continue}}
 
 let title=(ev.summary||'').trim();
+let newColor=ev.colorId||null;
 let mappedId=gcalMap[ev.id];
 
 if(mappedId){
 let local=findRecById(mappedId);
 if(!local){
-// Stale mapping — let the next regular sync handle it (it has the same recovery path).
-continue;}
-// Heal date mismatch: calendar always wins for `dd`.
-if(local.dd!==newDD){
+// Stale mapping — the ticket was deleted. Don't leave it stuck waiting for a regular
+// sync that may never re-deliver this event (syncToken is incremental). Clear the
+// stale mapping here and fall through to create a fresh ticket below.
+db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+mappedId=null;
+healed.staleFixed.push({summary:title,wasMapped:mappedId});
+console.log('[AUTO-AUDIT] Cleared stale mapping for event '+ev.id+' and recreating ticket.');
+}else{
+// Heal any drift between calendar and ticket: date, title, color.
+let u={};
+if(local.dd!==newDD)u.dd=newDD;
+if((local.cal||'')!==title)u.cal=title;
+if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
+if(Object.keys(u).length){
 let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-let u={dd:newDD};
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);saveE()}
-healed.dateFixed.push({summary:title,from:local.dd,to:newDD});
-console.log('[AUTO-AUDIT] Fixed date for ticket #'+mappedId+': '+local.dd+' \u2192 '+newDD);}
-else{skipped.synced++;}
-continue;}
+if(u.dd){healed.dateFixed.push({summary:title,from:local.dd,to:newDD});console.log('[AUTO-AUDIT] Fixed date for ticket #'+mappedId+': '+local.dd+' \u2192 '+newDD)}
+if(u.cal){healed.titleFixed.push({ticketId:mappedId,from:local.cal,to:title});console.log('[AUTO-AUDIT] Fixed title for ticket #'+mappedId+': '+JSON.stringify(local.cal)+' \u2192 '+JSON.stringify(title))}
+if('gcalColorId' in u){healed.colorFixed.push({ticketId:mappedId,from:local.gcalColorId,to:newColor});console.log('[AUTO-AUDIT] Fixed color for ticket #'+mappedId+': '+local.gcalColorId+' \u2192 '+newColor)}
+}else{skipped.synced++;}
+continue;}}
 
-// No mapping — create the ticket silently.
-let newId=Math.max(0,...ADDED.map(x=>+x.i||0),...BASE.map(x=>+x.i||0))+1;
+// No mapping (or just-cleared stale mapping) — create the ticket silently.
+// Use the same ID strategy as processGcalEvent (timestamp-based) to avoid collisions
+// with regular-sync creations during the same window.
+let newId=Date.now()+Math.floor(Math.random()*1000);
 let r={i:newId,n:'',cal:title,sp:null,sn:null,dd:newDD,st:null,ph:null,em:null,
-pr:0,py:0,bl:0,ck:false,pf:false,iv:false,ca:false,el:false,wp:false,lv:false,pt:false,
+pr:0,py:0,bl:0,ck:false,pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,
 ch:false,rc:false,tb:null,ss:null,lf:null,cv:null,su:null,en:null,
-dn:'[AUTO-AUDIT '+new Date().toLocaleString()+'] Created from calendar event \"'+title+'\" — caught by post-sync audit.',
+dn:'[AUTO-AUDIT '+new Date().toLocaleString()+'] Created from calendar event \"'+title+'\" \u2014 caught by post-sync audit.',
 dl:false,sl:false,po:false,oo:false,il:false,cl:false,fn:null,
-pk:false,gb:false,co:false,gcalId:ev.id,gcalColorId:ev.colorId||null,
+pk:false,gb:false,ngb:false,co:false,crane:false,extra_person:false,water_truck:false,
+gcalId:ev.id,gcalColorId:newColor,
 cn:'Auto-created via post-sync audit (incremental sync missed this event).'};
 ADDED.push(r);saveA();
 await db.ref().update({['gcal_map/'+ev.id]:newId});
 gcalMap[ev.id]=newId;
 healed.created.push({summary:title,dd:newDD,id:newId});
-console.log('[AUTO-AUDIT] Created ticket #'+newId+' for missed event: \"'+title+'\" on '+newDD);}
+console.log('[AUTO-AUDIT] Created ticket #'+newId+' for missed event: \"'+title+'\" on '+newDD);
+}catch(perEventErr){
+perEventErrors++;
+console.error('[AUTO-AUDIT] Per-event error on \"'+(ev&&ev.summary)+'\":',perEventErr);
+// Continue with the next event — one bad apple shouldn't stop the audit.
+}
+}
 
 _gcalLastAuditAt=Date.now();
 
-if(healed.created.length||healed.dateFixed.length){
-console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed event(s) and '+healed.dateFixed.length+' date mismatch(es).','font-weight:bold;color:#16a34a');
-let msg='&#128296; Auto-healed: '+healed.created.length+' missed event'+(healed.created.length===1?'':'s')+' recovered';
-if(healed.dateFixed.length)msg+=', '+healed.dateFixed.length+' date'+(healed.dateFixed.length===1?'':'s')+' corrected';
+let totalHealed=healed.created.length+healed.dateFixed.length+healed.titleFixed.length+healed.colorFixed.length+healed.staleFixed.length;
+if(totalHealed){
+console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed, '+healed.dateFixed.length+' date, '+healed.titleFixed.length+' title, '+healed.colorFixed.length+' color, '+healed.staleFixed.length+' stale-mapping fix(es).','font-weight:bold;color:#16a34a');
+let parts=[];
+if(healed.created.length)parts.push(healed.created.length+' missed event'+(healed.created.length===1?'':'s')+' recovered');
+if(healed.dateFixed.length)parts.push(healed.dateFixed.length+' date'+(healed.dateFixed.length===1?'':'s')+' corrected');
+if(healed.titleFixed.length)parts.push(healed.titleFixed.length+' title'+(healed.titleFixed.length===1?'':'s')+' updated');
+if(healed.colorFixed.length)parts.push(healed.colorFixed.length+' color'+(healed.colorFixed.length===1?'':'s')+' updated');
+if(healed.staleFixed.length)parts.push(healed.staleFixed.length+' stale link'+(healed.staleFixed.length===1?'':'s')+' cleared');
+let msg='&#128296; Auto-healed: '+parts.join(', ');
 if(typeof showToast==='function')showToast(msg,'warn');
 if(typeof renderBoard==='function')renderBoard();
 if(typeof renderCalendar==='function')renderCalendar();}
-else{console.log('[AUTO-AUDIT] Clean — '+skipped.synced+' synced, '+(skipped.byTitle+skipped.byColor+skipped.bySunday+skipped.noDate+skipped.cancelled)+' filtered.');}
+else{console.log('[AUTO-AUDIT] Clean \u2014 '+skipped.synced+' synced, '+(skipped.byTitle+skipped.byColor+skipped.bySunday+skipped.noDate+skipped.cancelled)+' filtered'+(perEventErrors?', '+perEventErrors+' per-event errors':'')+'.');}
 }catch(e){console.error('[AUTO-AUDIT] error',e);}
 finally{_gcalAuditInFlight=false;}
 }
@@ -7011,16 +7043,19 @@ if(!r||!r.gcalColorId)return null;
 let c=GCAL_COLOR_MAP[String(r.gcalColorId)];if(!c)return null;
 return c.solid}
 function calEvents(){return AD().filter(r=>{
-if(!r.n||!r.dd)return false;
+// Calendar shows ANY ticket with a delivery date AND some way to display it (real name
+// or calendar-event title fallback). Auto-created tickets from the identity-model sync
+// have r.n='' but r.cal=<event title>, which is valid. Filtering by !r.n alone used to
+// silently hide them — that was the root cause of "events not showing in app".
+if(!r.dd)return false;
+if(!r.n&&!r.cal)return false;
 // The calendar grid follows the active list-tab: on "Upcoming" it shows only upcoming
 // deliveries, on "Delivered" only delivered ones, etc. To see EVERYTHING on the calendar
 // (the full month schedule), switch to the ALL tab. This keeps the calendar logical — a
-// delivered tub like Wolk should not appear under "Upcoming". (A delivery that seems to be
-// "missing" from the calendar is almost always on a different date or in a different tab —
-// use Diagnose & Repair to find date/link problems.)
+// delivered tub like Wolk should not appear under "Upcoming".
 if(statusF!=='all'&&st(r)!==statusF)return false;
 if(search){let q=search.toLowerCase();
-if(![r.n,r.sp,r.st,r.ph,String(r.sn||''),r.em].some(v=>(v||'').toLowerCase().includes(q)))return false}
+if(![r.n,r.cal,r.sp,r.st,r.ph,String(r.sn||''),r.em].some(v=>(v||'').toLowerCase().includes(q)))return false}
 return true
 }).map(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return null;return{r:r,d:d,s:st(r)}}).filter(Boolean)}
 function evsByDate(evs){let m={};evs.forEach(e=>{let k=e.d.getFullYear()+'-'+String(e.d.getMonth()+1).padStart(2,'0')+'-'+String(e.d.getDate()).padStart(2,'0');if(!m[k])m[k]=[];m[k].push(e)});return m}
@@ -7061,7 +7096,7 @@ let dayEvs=evs[k]||[];
 let show=dayEvs.slice(0,3);
 show.forEach(e=>{
 let r=e.r;
-let nm=r.n.split(',')[0];
+let nm=dispName(r).split(',')[0];
 // Build a sub-line: spa model + SN, or time slot, whichever is more informative
 let subParts=[];
 if(r.sp){let spaShort=r.sp.split(',')[0];subParts.push(spaShort)}
@@ -7184,7 +7219,7 @@ let dotColor=gcalDotColor(r)||sC2(e.s);
 h+='<div class="cal-wk-row" style="grid-template-columns:1fr;cursor:pointer" onclick="openDet('+r.i+')">';
 h+='<div style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">';
 h+='<div class="ev-dot" style="background:'+dotColor+';width:10px;height:10px"></div>';
-h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:#111827">'+r.n+'</div><div style="font-size:12px;color:#6b7280;margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
+h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:#111827">'+escHtml(dispName(r))+'</div><div style="font-size:12px;color:#6b7280;margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
 h+='<div style="font-size:13px;font-weight:700;color:#1e40af">'+dateNote(r.dd).trim().toUpperCase()+'</div>';
 if(r.pr>0)h+='<div style="font-size:13px;font-weight:700;color:#7c3aed">'+fmt(r.pr)+'</div>';
 if(r.bl>0)h+='<div style="font-size:13px;font-weight:700;color:#dc2626">Bal: '+fmt(r.bl)+'</div>';
