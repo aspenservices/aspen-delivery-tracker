@@ -2657,56 +2657,13 @@ let parts=raw.split(/[\s&\/]+/);first=parts[1]||''}
 return first}
 
 function buildPreDeliverySMS(r){
-let lines=[];
 let first=getCustomerFirstName(r.n);
-let greeting=first?'Hi '+first+',':'Hello,';
-lines.push(greeting);
-lines.push('');
 let spaName=r.sp||'spa';
 let dateStr=r.dd?' on '+fmtDate(r.dd):'';
-lines.push('This is Aspen Spas Service. We are getting ready for your '+spaName+' delivery'+dateStr+'. To make sure everything goes smoothly, please confirm the following:');
+let lines=[];
+lines.push(first?'Hi '+first+',':'Hi,');
 lines.push('');
-
-let qNum=1;let askedAnything=false;
-
-if(!r.wp){
-lines.push(qNum+'. WIP / WIRING — Please confirm that you have enough cable and conduit installed from your electrical breaker to where the hot tub will sit.');
-qNum++;askedAnything=true;}
-
-if(!r.lv){
-lines.push(qNum+'. LEVEL SURFACE — Please confirm the area where your '+(spaName.toLowerCase().indexOf('swim')>=0?'swim spa':'spa')+' will be placed is completely level.');
-qNum++;askedAnything=true;}
-
-// Electricity: tailored message depending on whether the customer already has it installed
-if(r.el){
-lines.push(qNum+'. PHOTOS & VIDEOS — Now that your electricity is installed, please send us photos AND videos of the breaker, the whip connection, and the spa area at service@aspenspas.com so we can confirm everything is ready.');
-qNum++;askedAnything=true;
-}else{
-lines.push(qNum+'. ELECTRICITY — Please let us know once your electrician finishes the install. Once it is done, send photos AND videos of the breaker, the whip connection, and the spa area at service@aspenspas.com.');
-qNum++;askedAnything=true;}
-
-// Install-site photos — ALWAYS ask (when not yet on file), regardless of electricity status.
-// Per Alberto: the delivery team needs to see the entrance/path to the house AND the
-// exact spot where the spa will sit so they can prepare the right equipment and crew.
-if(!r.pt){
-lines.push(qNum+'. INSTALL SITE PHOTOS — Please send a few clear photos of: (a) the entrance to your home and the path we will use to bring the spa in, and (b) the exact area where the spa will be placed. These help our delivery team prepare for your delivery.');
-qNum++;askedAnything=true;}
-
-if(askedAnything)lines.push('');
-
-// Payment reminder — ONLY if balance > 0. If fully paid, omit entirely.
-// Per Alberto: only checks are accepted. Customer can either hand the check to the
-// delivery team on delivery day, or stop by the office in advance to pay.
-if((r.bl||0)>0){
-let balStr=fmt(r.bl);
-lines.push('A friendly reminder, your remaining balance is '+balStr+'. We accept payment by check only. You can hand the check to our delivery team on delivery day, or stop by our office in advance at 4609 McRee Avenue, Saint Louis, MO 63110.');
-lines.push('');}
-
-lines.push('If you have any questions, please reply to this message or call us at 314-776-5050.');
-lines.push('');
-lines.push('Thank you,');
-lines.push('Aspen Spas Service');
-
+lines.push('This is Aspen Spas Service. To prepare for your '+spaName+' delivery'+dateStr+', please complete our secure form below. It has everything we need (a few photos + quick confirmations) and takes about 2 minutes:');
 return lines.join('\n')}
 
 // Soft cap on outgoing SMS per customer. After 5 we still ALLOW sending (with a
@@ -2745,8 +2702,9 @@ let label=phoneLabel(phone);
 let digits=phoneDigits(label.num||phone);
 if(!digits||digits.length<7){alert('That phone number does not look valid: '+phone);return}
 let msg=buildPreDeliverySMS(r);
-// Attach the customer's private upload link (create one if needed) so they can submit photos/details.
-try{let _it=INTAKE[r.i];let _url=(_it&&_it.token&&!_it.submitted)?intakeUrl(r.i,_it.token):createIntakeLink(r.i);if(_url)msg+='\n\nUpload your access photos & confirm details here (closes once you submit):\n'+_url}catch(e){console.warn('intake link attach',e)}
+// Attach the customer's private upload link (create one if needed), then a short secure-note + who to call.
+try{let _it=INTAKE[r.i];let _ok=_it&&_it.token&&!_it.submitted&&!(_it.expires&&Date.now()>_it.expires);let _url=_ok?intakeUrl(r.i,_it.token):createIntakeLink(r.i);
+if(_url)msg+='\n\n'+_url+'\n\nThis link is private and secure, and it closes once you submit. To reconfirm anything, call Aspen Spas at 314-776-5050 and ask for Celia at extension 2.\n\nThank you,\nAspen Spas Service'}catch(e){console.warn('intake link attach',e)}
 
 // Increment counter and append to history BEFORE opening Messages — once the
 // browser navigates to the sms: URL, focus leaves the page and any code after
@@ -7450,7 +7408,7 @@ let h=parse(location.hash),q=parse(location.search);
 let id=h.intake||q.intake,t=h.t||q.t;
 return id?{id:String(id),token:t||''}:null}
 
-function intakeUrl(id,token){return location.origin+location.pathname+'#intake='+encodeURIComponent(id)+'&t='+encodeURIComponent(token)}
+function intakeUrl(id,token){return location.origin+location.pathname.replace(/[^/]*$/,'prep.html')+'#intake='+encodeURIComponent(id)+'&t='+encodeURIComponent(token)}
 
 function intakeDefaultRequested(r){return{access:!r.pt,level:!r.lv,wip:!r.wp,electricity:!r.el,payment:!r.pf}}
 
@@ -7458,8 +7416,8 @@ function createIntakeLink(id,opts){
 let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showToast('Ticket not found','err');return null}
 let token=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
-let node={token:token,created:Date.now(),submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested};
-db.ref('intake/'+id).set(node);INTAKE[id]=node;
+let node={token:token,created:Date.now(),expires:Date.now()+21*24*60*60*1000,submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested};
+db.ref('intake/'+id).update(node);INTAKE[id]=node;
 return intakeUrl(id,token)}
 
 function _icopy(t){try{navigator.clipboard.writeText(t)}catch(e){let ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove()}}
