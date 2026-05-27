@@ -5454,7 +5454,10 @@ if(s){try{let a=JSON.parse(s);if(Array.isArray(a))return a}catch(e){}}
 return GCAL_DEFAULT_COLORS.slice()}
 function setGcalColors(arr){localStorage.setItem('gcalAllowedColors',JSON.stringify(arr))}
 function isAllowedColor(colorId){
-if(!colorId)return false; // events without explicit color use calendar default = not a delivery
+// Events with no explicit colorId are using the calendar's default color — treat as a delivery.
+// Aspen's workflow often skips picking a color manually; the title filter still catches real
+// non-deliveries (COLOR=, WEEK A, SERVICE, etc.) regardless of color.
+if(!colorId)return true;
 return getGcalColors().includes(String(colorId))}
 function gcalToggleColor(cb){
 let allowed=getGcalColors();
@@ -5724,6 +5727,9 @@ if(gcalStats[key]>0){el.style.display='inline-block';
 el.textContent=gcalStats[key]+' '+(key==='skipped'?'skipped (color/title filter)':key.toLowerCase())}
 else{el.style.display='none'}});
 showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.updated+' updated'+(gcalStats.skipped?', '+gcalStats.skipped+' filtered (non-delivery or wrong color)':'')+(gcalStats.sundayBlocked?', '+gcalStats.sundayBlocked+' blocked (Sunday)':'')+(gcalStats.errors?', '+gcalStats.errors+' errors':''));
+// AUTO-HEALING: run a wide-window audit after every successful sync to catch anything the
+// incremental syncToken-based pull missed. Silent, auto-creates missing tickets, fixes date drift.
+setTimeout(gcalAutoAudit,1500);
 }catch(e){console.error('sync err:',e);showToast('&#10005; Sync failed: '+(e.result?e.result.error.message:e.message),'err');gcalStats.errors++}
 btn.classList.remove('syncing')}
 
@@ -5773,7 +5779,7 @@ if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;co
 if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;console.log('[GCAL skip:color]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'(undefined = no explicit color, using calendar default — will be filtered)');return}
 console.log('[GCAL process]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'date=',ev.start&&(ev.start.date||ev.start.dateTime));
 let title=(ev.summary||'').trim();
-let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));if(!newDD)return;
+let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));if(!newDD){console.log('[GCAL skip:noDate]',JSON.stringify(ev.summary),'start=',ev.start);return;}
 
 // SUNDAY BLOCK — Aspen does not deliver on Sundays. Block creation AND updates for Sunday events.
 {let dPart=newDD.split(' ')[0];if(/^\d{4}-\d{2}-\d{2}$/.test(dPart)){let p=dPart.split('-').map(Number);let dow=new Date(p[0],p[1]-1,p[2]).getDay();if(dow===0){gcalStats.sundayBlocked=(gcalStats.sundayBlocked||0)+1;console.log('[GCAL skip:sunday]',JSON.stringify(ev.summary),'date=',dPart,'(Aspen does not deliver Sundays)');return}}}
@@ -5901,6 +5907,98 @@ if(ai>=0){Object.assign(ADDED[ai],u);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[ticketId])EDITS[ticketId]={};Object.assign(EDITS[ticketId],u);rememberEditsEdit(ticketId,EDITS[ticketId]);saveE()}
 if(typeof showToast==='function')showToast('&#10003; Unlinked from calendar');
 if(curRec&&sameId(curRec.i,ticketId)&&typeof openDet==='function'){openDet(ticketId)}}
+
+// =====================================================================================
+// AUTO-HEALING AUDIT — runs silently at the end of every sync (manual or auto-sync).
+// Pulls a wide window of events (7 days back to 120 days forward) IGNORING syncToken so
+// it catches anything the incremental sync missed: stuck syncTokens, network glitches,
+// events created in the calendar before the user connected, color-filter edge cases.
+// For each missing event it auto-creates the ticket silently. For each date mismatch it
+// updates the ticket date (calendar wins). No modal, no buttons — just a brief toast if
+// anything was healed, plus full per-event detail in the console.
+// =====================================================================================
+let _gcalAuditInFlight=false;
+let _gcalLastAuditAt=0;
+async function gcalAutoAudit(){
+if(_gcalAuditInFlight)return;
+if(!gcalToken||!gcalCalendarId)return;
+// Don't run audit during local writes — they could create races.
+if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0)return;
+_gcalAuditInFlight=true;
+try{
+let timeMin=new Date();timeMin.setDate(timeMin.getDate()-7);timeMin.setHours(0,0,0,0);
+let timeMax=new Date();timeMax.setDate(timeMax.getDate()+120);timeMax.setHours(23,59,59,999);
+let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,
+timeMin:timeMin.toISOString(),timeMax:timeMax.toISOString(),orderBy:'startTime'};
+let allEvents=[];let pageToken=null;
+do{if(pageToken)params.pageToken=pageToken;
+let res=await gapi.client.calendar.events.list(params);
+allEvents=allEvents.concat(res.result.items||[]);
+pageToken=res.result.nextPageToken;
+}while(pageToken);
+
+let healed={created:[],dateFixed:[]};
+let skipped={byTitle:0,byColor:0,bySunday:0,noDate:0,cancelled:0,synced:0};
+
+for(let ev of allEvents){
+if(ev.status==='cancelled'){skipped.cancelled++;continue}
+if(isNonDeliveryTitle(ev.summary)){skipped.byTitle++;continue}
+if(!isAllowedColor(ev.colorId)){skipped.byColor++;continue}
+let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));
+if(!newDD){skipped.noDate++;continue}
+let dPart=newDD.split(' ')[0];
+if(/^\d{4}-\d{2}-\d{2}$/.test(dPart)){
+let p=dPart.split('-').map(Number);
+if(new Date(p[0],p[1]-1,p[2]).getDay()===0){skipped.bySunday++;continue}}
+
+let title=(ev.summary||'').trim();
+let mappedId=gcalMap[ev.id];
+
+if(mappedId){
+let local=findRecById(mappedId);
+if(!local){
+// Stale mapping — let the next regular sync handle it (it has the same recovery path).
+continue;}
+// Heal date mismatch: calendar always wins for `dd`.
+if(local.dd!==newDD){
+let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
+let u={dd:newDD};
+if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);saveE()}
+healed.dateFixed.push({summary:title,from:local.dd,to:newDD});
+console.log('[AUTO-AUDIT] Fixed date for ticket #'+mappedId+': '+local.dd+' \u2192 '+newDD);}
+else{skipped.synced++;}
+continue;}
+
+// No mapping — create the ticket silently.
+let newId=Math.max(0,...ADDED.map(x=>+x.i||0),...BASE.map(x=>+x.i||0))+1;
+let r={i:newId,n:'',cal:title,sp:null,sn:null,dd:newDD,st:null,ph:null,em:null,
+pr:0,py:0,bl:0,ck:false,pf:false,iv:false,ca:false,el:false,wp:false,lv:false,pt:false,
+ch:false,rc:false,tb:null,ss:null,lf:null,cv:null,su:null,en:null,
+dn:'[AUTO-AUDIT '+new Date().toLocaleString()+'] Created from calendar event \"'+title+'\" — caught by post-sync audit.',
+dl:false,sl:false,po:false,oo:false,il:false,cl:false,fn:null,
+pk:false,gb:false,co:false,gcalId:ev.id,gcalColorId:ev.colorId||null,
+cn:'Auto-created via post-sync audit (incremental sync missed this event).'};
+ADDED.push(r);saveA();
+await db.ref().update({['gcal_map/'+ev.id]:newId});
+gcalMap[ev.id]=newId;
+healed.created.push({summary:title,dd:newDD,id:newId});
+console.log('[AUTO-AUDIT] Created ticket #'+newId+' for missed event: \"'+title+'\" on '+newDD);}
+
+_gcalLastAuditAt=Date.now();
+
+if(healed.created.length||healed.dateFixed.length){
+console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed event(s) and '+healed.dateFixed.length+' date mismatch(es).','font-weight:bold;color:#16a34a');
+let msg='&#128296; Auto-healed: '+healed.created.length+' missed event'+(healed.created.length===1?'':'s')+' recovered';
+if(healed.dateFixed.length)msg+=', '+healed.dateFixed.length+' date'+(healed.dateFixed.length===1?'':'s')+' corrected';
+if(typeof showToast==='function')showToast(msg,'warn');
+if(typeof renderBoard==='function')renderBoard();
+if(typeof renderCalendar==='function')renderCalendar();}
+else{console.log('[AUTO-AUDIT] Clean — '+skipped.synced+' synced, '+(skipped.byTitle+skipped.byColor+skipped.bySunday+skipped.noDate+skipped.cancelled)+' filtered.');}
+}catch(e){console.error('[AUTO-AUDIT] error',e);}
+finally{_gcalAuditInFlight=false;}
+}
+
 
 function gcalToggleAuto(){
 let on=document.getElementById('gcalAuto').checked;
