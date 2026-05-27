@@ -3607,7 +3607,7 @@ h+='</div>';
 // exactly as-is on every sync). Shown read-only so it can never be accidentally changed; the
 // user fills the real customer fields (name, SN, etc.) below. The app never writes the title back.
 if(r.cal||r.gcalId||(gcalMap&&Object.keys(gcalMap).some(k=>String(gcalMap[k])===String(r.i)))){
-h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:#475569;font-weight:600"></div></div>';
+h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:#475569;font-weight:600"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="openRelinkPicker('+r.i+')" title="If this shows the wrong event, pick the correct one">&#128279; Fix / change linked event</button><button type="button" class="mbtn" onclick="unlinkTicketFromCalendar('+r.i+')" title="Detach this ticket from the calendar event">&#10005; Unlink</button></div></div></div>';
 }
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
@@ -5830,6 +5830,73 @@ ADDED.push(rec);saveA();
 let updates={};updates['gcal_map/'+ev.id]=newId;db.ref().update(updates);
 gcalStats.created++}
 catch(e){console.error('processGcalEvent err:',e);gcalStats.errors++}}
+
+// ===========================================================================================
+// MANUAL CALENDAR RE-LINK (identity model). A leftover bad link from the old guessing logic can
+// point a ticket at the wrong event. These tools let the user fix it BY HAND — the human picks
+// the correct event; nothing is ever guessed. Reachable from the Calendar Event box in the modal.
+// ===========================================================================================
+let _relinkTicketId=null,_relinkEvents={};
+async function gcalFetchUpcomingEvents(){
+if(!gcalToken||!gcalCalendarId||typeof gapi==='undefined'||!gapi.client||!gapi.client.calendar)return null;
+let now=new Date();now.setHours(0,0,0,0);
+let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,orderBy:'startTime',timeMin:now.toISOString()};
+let res;try{res=await gapi.client.calendar.events.list(params)}catch(e){console.warn('relink fetch err',e);return null}
+let items=(res&&res.result&&res.result.items)||[];
+let out=[];
+for(let ev of items){
+if(ev.status==='cancelled')continue;
+if(isNonDeliveryTitle(ev.summary))continue;
+if(!isAllowedColor(ev.colorId))continue;
+out.push({id:ev.id,summary:(ev.summary||'').trim(),dd:gcalDeliveryDD(ev,parseGcalTitle(ev.summary)),colorId:ev.colorId||null});
+}
+return out}
+function closeRelinkPicker(){let ov=document.getElementById('relinkOv');if(ov)ov.remove();_relinkTicketId=null}
+async function openRelinkPicker(ticketId){
+_relinkTicketId=ticketId;_relinkEvents={};
+let ov=document.getElementById('relinkOv');if(ov)ov.remove();
+ov=document.createElement('div');ov.id='relinkOv';
+ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="padding:18px 18px 0"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Link this ticket to a calendar event</div><div style="font-size:12px;color:#6b7280;margin-bottom:12px">Pick the event that truly belongs to this ticket. This replaces any wrong link and copies that event\u2019s title, date and color.</div></div><div id="relinkList" style="padding:0 18px;overflow:auto;flex:1">Loading events\u2026</div><div style="padding:14px 18px;display:flex;justify-content:flex-end;border-top:1px solid #eee"><button type="button" class="mbtn" onclick="closeRelinkPicker()">Cancel</button></div></div>';
+ov.addEventListener('click',e=>{if(e.target===ov)closeRelinkPicker()});
+document.body.appendChild(ov);
+let list=await gcalFetchUpcomingEvents();
+let el=document.getElementById('relinkList');if(!el)return;
+if(list===null){el.innerHTML='<div style="color:#b45309;font-size:13px;padding:8px 0">Could not load calendar events. Connect to Google Calendar (or click Sync Now) and try again.</div>';return}
+if(!list.length){el.innerHTML='<div style="color:#6b7280;font-size:13px;padding:8px 0">No upcoming events found.</div>';return}
+list.forEach(ev=>_relinkEvents[ev.id]=ev);
+el.innerHTML=list.map(ev=>{
+let slot=/pm/i.test(ev.dd||'')?' PM':(/am/i.test(ev.dd||'')?' AM':'');
+let dl=ev.dd?(fmtDate(ev.dd)+slot):'(no date)';
+return '<div onclick="confirmRelink(\''+String(ev.id).replace(/'/g,"\\\\'")+'\')" style="padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;cursor:pointer" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'"><div style="font-weight:600;color:#111827">'+escHtml(ev.summary||'(no title)')+'</div><div style="font-size:12px;color:#6b7280">'+escHtml(dl)+'</div></div>'}).join('')}
+async function confirmRelink(eventId){
+let ev=_relinkEvents[eventId];if(!ev||_relinkTicketId==null)return;
+let tid=_relinkTicketId;
+if(!confirm('Link this ticket to:\n\n'+(ev.summary||'(no title)')+'\n'+(ev.dd||'')+'\n\nThis replaces any current calendar link on this ticket.'))return;
+let updates={};
+// sever every existing link pointing to THIS ticket (removes the wrong one)
+Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(tid)){updates['gcal_map/'+k]=null;delete gcalMap[k]}});
+// link the chosen event to this ticket (also steals it away from any other ticket)
+updates['gcal_map/'+eventId]=tid;gcalMap[eventId]=tid;
+db.ref().update(updates);
+let u={gcalId:eventId,cal:ev.summary,dd:ev.dd,gcalColorId:ev.colorId};
+let ai=ADDED.findIndex(x=>sameId(x.i,tid));
+if(ai>=0){Object.assign(ADDED[ai],u);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[tid])EDITS[tid]={};Object.assign(EDITS[tid],u);rememberEditsEdit(tid,EDITS[tid]);saveE()}
+closeRelinkPicker();
+if(typeof showToast==='function')showToast('&#10003; Calendar link updated');
+if(curRec&&sameId(curRec.i,tid)&&typeof openDet==='function'){openDet(tid)}}
+function unlinkTicketFromCalendar(ticketId){
+if(!confirm('Unlink this ticket from Google Calendar?\n\nThe ticket and all its info stay. The calendar event will create its own separate ticket on the next sync.'))return;
+let updates={};
+Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(ticketId)){updates['gcal_map/'+k]=null;delete gcalMap[k]}});
+if(Object.keys(updates).length)db.ref().update(updates);
+let u={gcalId:null};
+let ai=ADDED.findIndex(x=>sameId(x.i,ticketId));
+if(ai>=0){Object.assign(ADDED[ai],u);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[ticketId])EDITS[ticketId]={};Object.assign(EDITS[ticketId],u);rememberEditsEdit(ticketId,EDITS[ticketId]);saveE()}
+if(typeof showToast==='function')showToast('&#10003; Unlinked from calendar');
+if(curRec&&sameId(curRec.i,ticketId)&&typeof openDet==='function'){openDet(ticketId)}}
 
 function gcalToggleAuto(){
 let on=document.getElementById('gcalAuto').checked;
