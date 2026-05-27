@@ -5823,6 +5823,25 @@ let mappedId=gcalMap[ev.id];
 if(mappedId){
 let local=findRecById(mappedId);
 if(local){
+// SN VALIDATION: if both ticket and event title carry serial numbers and they disagree,
+// the mapping is a cross-link (e.g. Kerry ticket linked to Slaughter event). Updating the
+// ticket would overwrite its `cal`/`dd` with the wrong event's data, perpetuating the
+// corruption. Break the wrong link instead — the audit's SN-matching will re-link to the
+// correct ticket on the same sync.
+if(local.sn){
+let _evParsed=parseGcalTitle(ev.summary);
+if(_evParsed&&_evParsed.serial){
+let _rsn=String(local.sn).replace(/\.0$/,'');
+if(_rsn!==_evParsed.serial){
+console.log('[GCAL] Cross-link detected mid-sync: ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
+db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+let _u={gcalId:null,gcalColorId:null,cal:null};
+let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
+if(_ai>=0){Object.assign(ADDED[_ai],_u);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);saveE()}
+mappedId=null;local=null;
+}}}}
+if(mappedId&&local){
 let u={};
 if((local.cal||'')!==title)u.cal=title;                 // keep the verbatim title in sync
 if(local.dd!==newDD)u.dd=newDD;                          // calendar drives the date
@@ -5841,9 +5860,11 @@ if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);saveE()}
 gcalStats.updated++}
 return}
+if(mappedId&&!local){
 // Stale mapping — the linked ticket was deleted. Unlink and fall through to create a fresh one.
 console.log('[GCAL] Stale mapping: event '+ev.id+' \u2192 deleted ticket '+mappedId+'. Re-creating.');
 db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+}
 }
 // BEFORE creating a brand-new ticket, try to find an existing ticket with the same SN. This
 // stops duplicate stubs from being created when an event corresponds to a customer who is
@@ -5947,6 +5968,42 @@ if(typeof showToast==='function')showToast('&#10003; Unlinked from calendar');
 if(curRec&&sameId(curRec.i,ticketId)&&typeof openDet==='function'){openDet(ticketId)}}
 
 // =====================================================================================
+// REPAIR CROSS-LINKS — find tickets whose `gcalId` points to a calendar event with a
+// different SN than the ticket itself (e.g. Kerry's ticket (SN 30767) linked to the
+// Slaughter event (SN 30705) — caused by a wrong pick in the relink picker, or by an
+// old buggy sync). These cross-links cause two problems: (a) the sync overwrites the
+// ticket's `cal`/`dd` with the wrong event's data, and (b) the actually-correct calendar
+// event has no mapping and keeps generating duplicate stubs after the user deletes them.
+// We detect cross-links by SN mismatch between r.sn and the SN parsed from r.cal, then
+// break the wrong mapping (clear gcalId/cal/gcalColorId on the ticket and remove the
+// gcal_map entry). The audit's SN-matching pass then re-links the orphaned event to
+// the correct ticket on the same run.
+// =====================================================================================
+function gcalRepairCrossLinks(){
+let repaired=[];
+let all=AD();
+for(let r of all){
+try{
+if(!r.gcalId||!r.cal||!r.sn)continue; // need all three to validate
+let parsed=parseGcalTitle(r.cal);
+if(!parsed||!parsed.serial)continue; // can't validate without SN in the event title
+let rsn=String(r.sn).replace(/\.0$/,'');
+if(rsn===parsed.serial)continue; // matches — link is correct
+// CROSS-LINK DETECTED
+console.log('[REPAIR] Cross-link: ticket #'+r.i+' ("'+r.n+'", SN '+rsn+') linked to event titled "'+r.cal+'" (SN '+parsed.serial+'). Breaking wrong link.');
+db.ref('gcal_map/'+r.gcalId).remove();
+delete gcalMap[r.gcalId];
+let u={gcalId:null,gcalColorId:null,cal:null};
+let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
+if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],u);saveE()}
+repaired.push({ticketId:r.i,name:r.n,sn:rsn,wasLinkedTo:r.cal,wasLinkedSN:parsed.serial});
+}catch(e){console.error('[REPAIR] error on ticket',r.i,e);}
+}
+return repaired;
+}
+
+// =====================================================================================
 // DEDUP — merge auto-created "stub" tickets (n='', cal=event title, gcalId set) into
 // existing "real" tickets that have the same SN. This cleans up duplicates that snuck
 // in during the period when blank-name tickets were hidden by the calendar filter.
@@ -6017,6 +6074,11 @@ if(!gcalToken||!gcalCalendarId)return;
 if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0)return;
 _gcalAuditInFlight=true;
 try{
+// Step 0: repair any cross-linked tickets (wrong gcalId → wrong event by SN mismatch).
+let repairResult=gcalRepairCrossLinks();
+if(repairResult.length){
+console.log('[AUTO-AUDIT] Repaired '+repairResult.length+' cross-linked ticket(s). Audit\'s SN-matching pass will now re-link them to the correct events.');
+}
 // Step 1: dedup any existing stub tickets into their real counterparts.
 let dedupResult=gcalDedup();
 if(dedupResult.merged.length){
@@ -6123,10 +6185,12 @@ _gcalLastAuditAt=Date.now();
 
 let linkedCount=(healed.linkedToExisting||[]).length;
 let dedupCount=dedupResult.merged.length;
-let totalHealed=healed.created.length+healed.dateFixed.length+healed.titleFixed.length+healed.colorFixed.length+healed.staleFixed.length+linkedCount+dedupCount;
+let repairCount=repairResult.length;
+let totalHealed=healed.created.length+healed.dateFixed.length+healed.titleFixed.length+healed.colorFixed.length+healed.staleFixed.length+linkedCount+dedupCount+repairCount;
 if(totalHealed){
-console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed, '+healed.dateFixed.length+' date, '+healed.titleFixed.length+' title, '+healed.colorFixed.length+' color, '+healed.staleFixed.length+' stale, '+linkedCount+' SN-linked, '+dedupCount+' duplicates merged.','font-weight:bold;color:#16a34a');
+console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed, '+healed.dateFixed.length+' date, '+healed.titleFixed.length+' title, '+healed.colorFixed.length+' color, '+healed.staleFixed.length+' stale, '+linkedCount+' SN-linked, '+dedupCount+' duplicates merged, '+repairCount+' cross-links repaired.','font-weight:bold;color:#16a34a');
 let parts=[];
+if(repairCount)parts.push(repairCount+' cross-link'+(repairCount===1?'':'s')+' repaired');
 if(dedupCount)parts.push(dedupCount+' duplicate'+(dedupCount===1?'':'s')+' merged');
 if(linkedCount)parts.push(linkedCount+' linked to existing ticket'+(linkedCount===1?'':'s')+' by SN');
 if(healed.created.length)parts.push(healed.created.length+' missed event'+(healed.created.length===1?'':'s')+' recovered');
