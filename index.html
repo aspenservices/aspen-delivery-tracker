@@ -2217,6 +2217,24 @@ sel.innerHTML=opts}
 
 let EDITS={},ADDED=[];
 let fbReady=false;
+// =====================================================================================
+// FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips sequential arrays as objects
+// with numeric keys ({"0":"a","1":"b"} instead of ["a","b"]). This happens after partial
+// writes, sparse keys, or specific SDK quirks. Any consumer using `.length`, `.forEach`,
+// `.map`, or `.slice` on those fields would silently fail. We normalize on the way in so
+// downstream code can always assume arrays. Call this on every record before it enters
+// ADDED or EDITS via the dbAdded / dbEdits listeners.
+// =====================================================================================
+function _normalizeRecord(r){
+if(!r||typeof r!=='object')return r;
+['photos','tech_photos'].forEach(k=>{
+let v=r[k];
+if(v&&!Array.isArray(v)&&typeof v==='object'){
+r[k]=Object.values(v);
+}
+});
+return r;
+}
 function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED).filter(r=>!r._deleted)}
 
 // === ID-SAFE LOOKUP HELPERS ===
@@ -2543,6 +2561,8 @@ return;
 }
 // Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
 EDITS=overlayRecentEditsEdits(v);
+// Normalize Firebase array-as-object quirks in each EDIT overlay (photos / tech_photos).
+Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
 try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
@@ -2559,6 +2579,8 @@ let missingId=Object.keys(localById).find(id=>!serverById[id]);
 if(missingId){console.warn('[FB] Discarding stale added snapshot — missing recently-saved ticket id:',missingId);return}
 }
 let nextArr=Array.isArray(v)?v:Object.values(v||{});
+// Normalize Firebase array-as-object quirks (photos / tech_photos) so consumers see arrays.
+nextArr=nextArr.map(_normalizeRecord);
 // ===================================================================================
 // ANTI-WIPE DEFENSE for ADDED — same logic as for EDITS above.
 // ===================================================================================
@@ -2644,7 +2666,27 @@ function renderAfterAuth(){
 if(!currentUser)return;
 if(typeof startIntakeListener==='function')startIntakeListener();
 if(currentUser.role==='tech'){renderTechList()}
-else{renderAll()}}
+else{renderAll()}
+// PAGE-LOAD AUTO-REPAIR: 3 seconds after the user lands, scan for cross-linked tickets and
+// break wrong links so the user never sees stale state for more than that delay. The 3-second
+// wait gives the gcalMap listener (which is not part of the _loadCount=3 gate) time to receive
+// its first snapshot. We run this ONCE per page load.
+if(!window._didStartupRepair&&currentUser.role!=='tech'){
+window._didStartupRepair=true;
+setTimeout(()=>{
+try{
+if(typeof gcalRepairCrossLinks!=='function'){console.log('[REPAIR] startup: gcalRepairCrossLinks not yet defined, skipping');return}
+console.log('[REPAIR] Running startup cross-link scan\u2026');
+let result=gcalRepairCrossLinks();
+if(result.length){
+if(typeof showToast==='function')showToast('&#128295; Auto-repaired '+result.length+' cross-link(s) on load. Sync will re-link them to the correct events.','info');
+// Trigger a sync 1s later so the SN-match pass can re-link the orphaned events to the correct tickets.
+setTimeout(()=>{if(typeof gcalSync==='function'&&gcalToken&&gcalCalendarId)gcalSync()},1000);
+}
+}catch(e){console.error('[REPAIR] startup error:',e);}
+},3000);
+}
+}
 
 let search="",statusF="all",tab="board",sortCol="date",sortDir="desc";
 function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
@@ -5682,6 +5724,19 @@ if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0||Date.now
 console.log('[GCAL] Sync deferred — write in flight (firebase saves='+_saveInFlight.added+'/'+_saveInFlight.edits+', gcal pushes='+_gcalWritesInFlight+')');
 setTimeout(gcalSync,2000);
 return}
+
+// PRE-SYNC REPAIR — before processing any events, scan all tickets for cross-links (SN of the
+// ticket doesn't match SN parsed from its linked event title). Breaking wrong links HERE means
+// the rest of the sync can safely SN-match the orphaned events to the right tickets on the same
+// run, instead of waiting for the audit at the end. This is the difference between "fixes itself
+// in one cycle" and "fixes itself in two cycles".
+try{
+if(typeof gcalRepairCrossLinks==='function'){
+let _preRepair=gcalRepairCrossLinks();
+if(_preRepair.length){console.log('%c[GCAL] Pre-sync repair broke '+_preRepair.length+' cross-link(s).','color:#16a34a;font-weight:700');}
+}
+}catch(_e){console.error('[GCAL] Pre-sync repair errored:',_e);}
+
 let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
 gcalStats={created:0,updated:0,skipped:0,sundayBlocked:0,errors:0};
 
@@ -5845,12 +5900,13 @@ let _evParsed=parseGcalTitle(ev.summary);
 if(_evParsed&&_evParsed.serial){
 let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
-console.log('[GCAL] Cross-link detected mid-sync: ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
+console.log('%c[GCAL] CROSS-LINK MID-SYNC','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
+'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
 db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
-let _u={gcalId:'',gcalColorId:'',cal:''}; // empty strings (NOT null) so Firebase preserves the override
+let _u={gcalId:'',gcalColorId:'',cal:''};
 let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(_ai>=0){Object.assign(ADDED[_ai],_u);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);saveE()}
+if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
 mappedId=null;local=null;
 }}}}
 if(mappedId&&local){
@@ -6010,28 +6066,40 @@ setTimeout(()=>{if(curRec&&sameId(curRec.i,id)&&typeof openDet==='function')open
 // =====================================================================================
 function gcalRepairCrossLinks(){
 let repaired=[];
+let scanned=0,skipped_noFields=0,skipped_noSN=0,skipped_okMatch=0;
 let all=AD();
 for(let r of all){
 try{
-if(!r.gcalId||!r.cal||!r.sn)continue; // need all three to validate
+scanned++;
+if(!r.gcalId||!r.cal||!r.sn){skipped_noFields++;continue} // need all three to validate
 let parsed=parseGcalTitle(r.cal);
-if(!parsed||!parsed.serial)continue; // can't validate without SN in the event title
+if(!parsed||!parsed.serial){skipped_noSN++;continue} // can't validate without SN in the event title
 let rsn=String(r.sn).replace(/\.0$/,'');
-if(rsn===parsed.serial)continue; // matches — link is correct
+if(rsn===parsed.serial){skipped_okMatch++;continue} // matches — link is correct
 // CROSS-LINK DETECTED
-console.log('[REPAIR] Cross-link: ticket #'+r.i+' ("'+r.n+'", SN '+rsn+') linked to event titled "'+r.cal+'" (SN '+parsed.serial+'). Breaking wrong link.');
+console.log('%c[REPAIR] CROSS-LINK FOUND','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
+'ticket #'+r.i+' ("'+r.n+'", SN '+rsn+') linked to event titled "'+r.cal+'" (SN '+parsed.serial+'). Breaking wrong link.');
 db.ref('gcal_map/'+r.gcalId).remove();
 delete gcalMap[r.gcalId];
-// IMPORTANT: use empty strings, NOT null. Firebase's .set() strips null keys from objects, so
-// `EDITS[id].gcalId = null` would be lost on the next listener fire and the cross-link would
-// reappear from BASE. Empty strings persist and are still falsy for `if(r.gcalId)` checks.
+// Use empty strings (NOT null) — Firebase strips null keys on .set().
 let _u={gcalId:'',gcalColorId:'',cal:''};
 let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){Object.assign(ADDED[ai],_u);saveA()}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],_u);saveE()}
-repaired.push({ticketId:r.i,name:r.n,sn:rsn,wasLinkedTo:r.cal,wasLinkedSN:parsed.serial});
-}catch(e){console.error('[REPAIR] error on ticket',r.i,e);}
+if(ai>=0){
+Object.assign(ADDED[ai],_u);
+rememberAddedEdit(ADDED[ai]); // CRITICAL: register in overlay tracker so listener can't revert
+saveA();
+console.log('[REPAIR] Cleared ADDED entry for ticket #'+r.i+' and registered in overlay tracker.');
+}else{
+if(!EDITS[r.i])EDITS[r.i]={};
+Object.assign(EDITS[r.i],_u);
+rememberEditsEdit(r.i,EDITS[r.i]); // CRITICAL: register in overlay tracker so listener can't revert
+saveE();
+console.log('[REPAIR] Set EDITS overlay for ticket #'+r.i+' and registered in overlay tracker.');
 }
+repaired.push({ticketId:r.i,name:r.n,sn:rsn,wasLinkedTo:r.cal,wasLinkedSN:parsed.serial});
+}catch(e){console.error('[REPAIR] error on ticket',r&&r.i,e);}
+}
+console.log('[REPAIR] Scan complete. Scanned='+scanned+', skipped(missing fields)='+skipped_noFields+', skipped(no SN in title)='+skipped_noSN+', skipped(OK match)='+skipped_okMatch+', repaired='+repaired.length);
 return repaired;
 }
 
@@ -7506,7 +7574,7 @@ let rp=it.resp||{},h='<div style="font-size:13px;line-height:1.6">';
 if(rp.payment)h+='<div>&#128181; Payment: <b>'+_iesc(_ipayLabel(rp.payment))+'</b></div>';
 if(typeof rp.levelOk!=='undefined')h+='<div>&#128208; Pad is level &amp; clear: <b>'+(rp.levelOk?'Yes':'No')+'</b></div>';
 if(typeof rp.wipOk!=='undefined')h+='<div>&#128268; WIP ready (15ft conduit + adapters): <b>'+(rp.wipOk?'Yes':'No')+'</b></div>';
-[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=rp[g[0]];if(arr&&arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>'<a href="'+b+'" target="_blank" rel="noopener"><img src="'+b+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd"></a>').join('')+'</div></div>'}});
+[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=_intakeArr(rp[g[0]]);if(arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>'<a href="'+b+'" target="_blank" rel="noopener"><img src="'+b+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd"></a>').join('')+'</div></div>'}});
 if(rp.notes)h+='<div style="margin-top:6px">&#128221; Customer notes: '+_iesc(rp.notes)+'</div>';
 return h+'</div>'}
 
@@ -7534,17 +7602,41 @@ function startIntakeListener(){
 if(_intakeListenerOn)return;_intakeListenerOn=true;
 db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};reflectIntakeSubmissions();if(curRec)refreshIntakeBox(curRec.i)},err=>console.warn('[INTAKE] listener err',err))}
 
+// =====================================================================================
+// FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips arrays as objects with numeric
+// keys (e.g. ['a','b'] becomes {0:'a',1:'b'}). This happens after partial writes, deletions,
+// or certain serialization edge cases. Any consumer using `Array.isArray()` or `.length`
+// directly would silently treat the value as empty. Use this helper everywhere we read
+// photo arrays out of intake responses to be defensive.
+// =====================================================================================
+function _intakeArr(v){
+if(Array.isArray(v))return v;
+if(v&&typeof v==='object')return Object.values(v);
+return [];
+}
+
 function reflectIntakeSubmissions(){
 if(!fbReady)return; // removed !currentUser — reflection is automatic and doesn't need a logged-in admin
+let processed=0,skipped_unsubmitted=0,skipped_reflected=0,skipped_noTicket=0;
 Object.keys(INTAKE).forEach(id=>{
-let it=INTAKE[id];if(!it||!it.submitted||it.reflected)return;
-let r=AD().find(x=>sameId(x.i,id));if(!r)return;
+let it=INTAKE[id];
+if(!it){skipped_unsubmitted++;return}
+if(!it.submitted){skipped_unsubmitted++;return}
+if(it.reflected){skipped_reflected++;return}
+let r=AD().find(x=>sameId(x.i,id));
+if(!r){skipped_noTicket++;console.warn('[INTAKE] Submission #'+id+' has no matching ticket in AD(). Skipping.');return}
 let rp=it.resp||{},upd={};
-// Pre-delivery checklist boxes
-if(rp.access&&rp.access.length)upd.pt=true;
+// Normalize potentially-object array fields back to actual arrays (Firebase quirk).
+let _access=_intakeArr(rp.access);
+let _levelPhotos=_intakeArr(rp.levelPhotos);
+let _electricity=_intakeArr(rp.electricity);
+let _wipPhotos=_intakeArr(rp.wipPhotos);
+console.log('[INTAKE] Reflecting #'+id+': access='+_access.length+' levelOk='+rp.levelOk+' levelPhotos='+_levelPhotos.length+' wipOk='+rp.wipOk+' electricity='+_electricity.length+' wipPhotos='+_wipPhotos.length+' payment='+(rp.payment||'(none)'));
+// Pre-delivery checklist boxes — set TRUE only on positive customer signal.
+if(_access.length)upd.pt=true;
 if(rp.levelOk)upd.lv=true;
 if(rp.wipOk)upd.wp=true;
-if(rp.electricity&&rp.electricity.length)upd.el=true;
+if(_electricity.length)upd.el=true;
 // Payment status — customer's choice updates the ticket's status flags so techs see it at a glance.
 //   'store'/'card'  → already paid before delivery → pf=true (Paid Full)
 //   'check'         → will pay by check at delivery → ck=true (Collect Check)
@@ -7554,17 +7646,16 @@ else if(rp.payment==='check'){upd.ck=true;upd.pf=true;upd.iv=true} // pay at del
 // section. Customer photos come in four categories — flatten them all into r.photos.
 // Idempotent: if any customer photo is already in r.photos (e.g. from a prior Re-apply), it
 // is filtered out so we don't duplicate. Alberto's manually-uploaded info photos are kept.
-let existingPhotos=Array.isArray(r.photos)?r.photos.slice():[];
-let customerPhotos=[];
-['access','levelPhotos','electricity','wipPhotos'].forEach(k=>{
-if(Array.isArray(rp[k]))customerPhotos=customerPhotos.concat(rp[k]);
-});
+let existingPhotos=Array.isArray(r.photos)?r.photos.slice():(r.photos&&typeof r.photos==='object'?Object.values(r.photos):[]);
+let customerPhotos=_access.concat(_levelPhotos,_electricity,_wipPhotos);
 if(customerPhotos.length){
 let customerSet=new Set(customerPhotos);
 let filteredExisting=existingPhotos.filter(p=>!customerSet.has(p));
 upd.photos=filteredExisting.concat(customerPhotos);
 let removedCount=existingPhotos.length-filteredExisting.length;
 console.log('[INTAKE] Merged '+customerPhotos.length+' customer photo(s) into ticket #'+id+'\'s Info Photos.'+(removedCount?(' (Removed '+removedCount+' duplicate(s) from a prior reflection.)'):''));
+}else{
+console.log('[INTAKE] No customer photos to merge for ticket #'+id+'.');
 }
 let note='[Customer intake '+new Date(it.submittedAt||Date.now()).toLocaleDateString()+'] '+
 (rp.payment?('Payment: '+_ipayLabel(rp.payment)+'. '):'')+
@@ -7573,13 +7664,19 @@ let note='[Customer intake '+new Date(it.submittedAt||Date.now()).toLocaleDateSt
 (customerPhotos.length?(customerPhotos.length+' photo'+(customerPhotos.length===1?'':'s')+' added to Info Photos. '):'')+
 (rp.notes?('Notes: '+rp.notes):'');
 upd.dn=((r.dn||'')+'\n'+note).trim();
+console.log('[INTAKE] Applying update to ticket #'+id+':',Object.keys(upd).join(', '));
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
-if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],upd);rememberEditsEdit(id,EDITS[id]);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA();console.log('[INTAKE] Updated ADDED entry for ticket #'+id+'.');}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],upd);rememberEditsEdit(id,EDITS[id]);saveE();console.log('[INTAKE] Set EDITS overlay for ticket #'+id+'.');}
 db.ref('intake/'+id+'/reflected').set(true);it.reflected=true;
+processed++;
 if(typeof showToast==='function')showToast('&#128228; '+(it.cust||'Customer')+' submitted delivery info \u2014 ticket updated'+(customerPhotos.length?(' ('+customerPhotos.length+' photos)'):''));
 if(curRec&&sameId(curRec.i,id)&&typeof safeRefreshModalIfOpen==='function')safeRefreshModalIfOpen(id);
-})}
+});
+if(processed||skipped_noTicket){
+console.log('[INTAKE] Reflection pass complete. Processed='+processed+', skipped(unsubmitted)='+skipped_unsubmitted+', skipped(already reflected)='+skipped_reflected+', skipped(no ticket)='+skipped_noTicket);
+}
+}
 
 /* ============================ THE CUSTOMER PORTAL PAGE ============================ */
 function _portalShell(inner){
