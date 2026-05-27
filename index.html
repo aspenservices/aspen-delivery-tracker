@@ -3627,7 +3627,19 @@ h+='</div>';
 // exactly as-is on every sync). Shown read-only so it can never be accidentally changed; the
 // user fills the real customer fields (name, SN, etc.) below. The app never writes the title back.
 if(r.cal||r.gcalId||(gcalMap&&Object.keys(gcalMap).some(k=>String(gcalMap[k])===String(r.i)))){
-h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:#475569;font-weight:600"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="openRelinkPicker('+r.i+')" title="If this shows the wrong event, pick the correct one">&#128279; Fix / change linked event</button><button type="button" class="mbtn" onclick="unlinkTicketFromCalendar('+r.i+')" title="Detach this ticket from the calendar event">&#10005; Unlink</button></div></div></div>';
+// Cross-link detection — surface a red warning + one-click repair if the ticket's SN doesn't
+// match the SN parsed from the linked event's title (e.g. Kerry SN 30767 linked to a Slaughter
+// event titled "AM-Slaughter-30705-..."). Sync would otherwise keep overwriting this ticket
+// with the wrong event's data on every cycle.
+let xlinkWarn='';
+if(r.sn&&r.cal&&typeof parseGcalTitle==='function'){
+let _p=parseGcalTitle(r.cal);
+if(_p&&_p.serial){
+let _rsn=String(r.sn).replace(/\.0$/,'');
+if(_rsn!==_p.serial){
+xlinkWarn='<div style="margin-top:8px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px;font-size:13px;color:#991b1b"><div style="font-weight:700;margin-bottom:4px">\u26a0 Cross-link detected</div><div>This ticket has SN <b>'+escHtml(_rsn)+'</b> but is linked to a calendar event titled "<b>'+escHtml(r.cal)+'</b>" (SN <b>'+escHtml(_p.serial)+'</b>). Every sync overwrites this ticket\'s title and date with the wrong event\'s data. Click below to break the wrong link and let SN-match find the correct event.</div><button type="button" class="mbtn mbtn-s" style="margin-top:8px;background:#dc2626;color:#fff;border-color:#dc2626" onclick="repairThisTicketCrosslink('+r.i+')">&#128295; Fix cross-link now</button></div>';
+}}}
+h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:#475569;font-weight:600"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="openRelinkPicker('+r.i+')" title="If this shows the wrong event, pick the correct one">&#128279; Fix / change linked event</button><button type="button" class="mbtn" onclick="unlinkTicketFromCalendar('+r.i+')" title="Detach this ticket from the calendar event">&#10005; Unlink</button></div>'+xlinkWarn+'</div></div>';
 }
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
@@ -5835,7 +5847,7 @@ let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
 console.log('[GCAL] Cross-link detected mid-sync: ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
 db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
-let _u={gcalId:null,gcalColorId:null,cal:null};
+let _u={gcalId:'',gcalColorId:'',cal:''}; // empty strings (NOT null) so Firebase preserves the override
 let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(_ai>=0){Object.assign(ADDED[_ai],_u);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);saveE()}
@@ -5968,6 +5980,23 @@ if(typeof showToast==='function')showToast('&#10003; Unlinked from calendar');
 if(curRec&&sameId(curRec.i,ticketId)&&typeof openDet==='function'){openDet(ticketId)}}
 
 // =====================================================================================
+// INSTANT FIX — repair the cross-link on a single ticket the user is staring at, then trigger
+// an immediate sync so the SN-match pass re-links the ticket to its correct event right away.
+// This is wired to the red "Fix cross-link now" button that appears inside the Calendar Event
+// section of any ticket whose SN doesn't match the SN parsed from its linked event title.
+// =====================================================================================
+function repairThisTicketCrosslink(id){
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
+if(!confirm('Repair this cross-link?\n\n\u2022 The wrong calendar-event link will be cleared from this ticket\n\u2022 A fresh sync will run and the SN-match pass will re-link the ticket to its CORRECT event\n\u2022 Customer data (name, SN, phone, address, payment, etc.) is NOT touched\n\nProceed?'))return;
+let result=gcalRepairCrossLinks();
+if(typeof showToast==='function')showToast('&#128295; Repaired '+result.length+' cross-link(s). Re-syncing to find the correct event\u2026','info');
+console.log('[REPAIR] Manual repair triggered from ticket #'+id+'. Result:',result);
+setTimeout(()=>{if(typeof gcalSync==='function')gcalSync()},150);
+// Refresh the modal so the warning disappears and the corrected link shows after the sync.
+setTimeout(()=>{if(curRec&&sameId(curRec.i,id)&&typeof openDet==='function')openDet(id)},3500);
+}
+
+// =====================================================================================
 // REPAIR CROSS-LINKS — find tickets whose `gcalId` points to a calendar event with a
 // different SN than the ticket itself (e.g. Kerry's ticket (SN 30767) linked to the
 // Slaughter event (SN 30705) — caused by a wrong pick in the relink picker, or by an
@@ -5993,10 +6022,13 @@ if(rsn===parsed.serial)continue; // matches — link is correct
 console.log('[REPAIR] Cross-link: ticket #'+r.i+' ("'+r.n+'", SN '+rsn+') linked to event titled "'+r.cal+'" (SN '+parsed.serial+'). Breaking wrong link.');
 db.ref('gcal_map/'+r.gcalId).remove();
 delete gcalMap[r.gcalId];
-let u={gcalId:null,gcalColorId:null,cal:null};
+// IMPORTANT: use empty strings, NOT null. Firebase's .set() strips null keys from objects, so
+// `EDITS[id].gcalId = null` would be lost on the next listener fire and the cross-link would
+// reappear from BASE. Empty strings persist and are still falsy for `if(r.gcalId)` checks.
+let _u={gcalId:'',gcalColorId:'',cal:''};
 let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],u);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],_u);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],_u);saveE()}
 repaired.push({ticketId:r.i,name:r.n,sn:rsn,wasLinkedTo:r.cal,wasLinkedSN:parsed.serial});
 }catch(e){console.error('[REPAIR] error on ticket',r.i,e);}
 }
@@ -6373,11 +6405,14 @@ let ids=gcalTicketLinkedEventIds(r);
 let upd={};
 ids.forEach(eid=>{upd['gcal_map/'+eid]=null;delete gcalMap[eid]});
 if(Object.keys(upd).length)db.ref().update(upd);
-let patch={gcalId:null};
+// Use empty strings (NOT null) for EDITS overlays — Firebase's .set() strips null keys from
+// objects, which would silently revert the clear and let BASE's wrong gcalId resurface on the
+// next listener fire. Empty strings persist and remain falsy for `if(r.gcalId)` checks.
+let patch={gcalId:'',cal:'',gcalColorId:''};
 if(restoreDate){let baseRec=BASE.find(b=>sameId(b.i,r.i));if(baseRec&&baseRec.dd&&baseRec.dd!==r.dd)patch.dd=baseRec.dd}
 let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
 if(ai>=0){Object.assign(ADDED[ai],patch);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);if(patch.gcalId===null)EDITS[r.i].gcalId=null;rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
 return ids.length}
 
 
