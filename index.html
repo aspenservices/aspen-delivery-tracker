@@ -7451,6 +7451,17 @@ if(!confirm('Create a NEW upload link?\n\nThe old link will stop working (use th
 let url=createIntakeLink(id);
 if(url){_icopy(url);showToast('&#128279; New link created and copied');if(curRec&&sameId(curRec.i,id))setTimeout(()=>refreshIntakeBox(id),60)}}
 
+// Re-apply a customer's existing submission to the ticket. Used to recover when the original
+// reflection ran with old logic (e.g. before the photo-merge or payment-status-mapping fixes
+// were deployed). We clear the `reflected` flag in Firebase; the intake listener fires on the
+// change and reflectIntakeSubmissions() processes the submission again with the current code.
+function intakeReapply(id){
+if(!confirm('Re-apply this customer\'s submission to the ticket?\n\nThis will re-merge their photos into Info Photos and re-set checklist boxes (Pay Full, WIP, Electricity, Level, Photos) and payment status based on what they answered.\n\nAny info-photos you uploaded yourself will be kept; customer photos will be appended after them. Existing checkbox states are preserved unless the customer\'s answer overrides them.'))return;
+db.ref('intake/'+id+'/reflected').set(null).then(()=>{
+showToast('&#128260; Re-applying customer submission\u2026','info');
+console.log('[INTAKE] Re-apply triggered for ticket #'+id+' \u2014 reflected flag cleared, listener will re-run reflection.');
+}).catch(e=>{console.error('[INTAKE] Re-apply failed:',e);showToast('\u26a0\ufe0f Re-apply failed: '+(e&&e.message?e.message:'unknown'),'error');});}
+
 function _iesc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function _ireqLabels(rq){rq=rq||{};let a=[];if(rq.access)a.push('Access photos');if(rq.level)a.push('Level');if(rq.wip)a.push('WIP');if(rq.electricity)a.push('Electrical');if(rq.payment)a.push('Payment');return a.join(', ')||'\u2014'}
 function _ipayLabel(p){return p==='store'?'Will pay at the store before delivery':p==='card'?'Call to pay by credit card':p==='check'?'Pay by check at delivery':p||'\u2014'}
@@ -7471,7 +7482,8 @@ inner='<div style="font-size:13px;color:#6b7280;margin-bottom:8px">Generate a pr
 '<button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128228; Create customer upload link</button>';
 }else if(it.submitted){
 inner='<div style="color:#059669;font-weight:700;margin-bottom:6px">&#10003; Customer submitted'+(it.submittedAt?(' \u00b7 '+new Date(it.submittedAt).toLocaleString()):'')+'</div>'+_irespSummary(it)+
-'<div style="margin-top:10px"><button type="button" class="mbtn" onclick="intakeRegenerate('+_ijsv(r.i)+')">Create a new link (re-request)</button></div>';
+'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="mbtn" onclick="intakeRegenerate('+_ijsv(r.i)+')">Create a new link (re-request)</button>'+
+'<button type="button" class="mbtn mbtn-s" style="background:#f59e0b;color:#fff" onclick="intakeReapply('+_ijsv(r.i)+')" title="Re-copy the customer\'s answers and photos into this ticket. Use this if a checkbox or photo didn\'t carry over.">&#128260; Re-apply submission</button></div>';
 }else{
 inner='<div style="color:#2563eb;font-weight:700;margin-bottom:4px">&#9679; Link active \u2014 waiting for customer</div>'+
 '<div style="font-size:12px;color:#6b7280;margin-bottom:8px">Requesting: '+_iesc(_ireqLabels(it.requested))+'</div>'+
@@ -7488,27 +7500,49 @@ if(_intakeListenerOn)return;_intakeListenerOn=true;
 db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};reflectIntakeSubmissions();if(curRec)refreshIntakeBox(curRec.i)},err=>console.warn('[INTAKE] listener err',err))}
 
 function reflectIntakeSubmissions(){
-if(!fbReady||!currentUser)return;
+if(!fbReady)return; // removed !currentUser — reflection is automatic and doesn't need a logged-in admin
 Object.keys(INTAKE).forEach(id=>{
 let it=INTAKE[id];if(!it||!it.submitted||it.reflected)return;
 let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let rp=it.resp||{},upd={};
+// Pre-delivery checklist boxes
 if(rp.access&&rp.access.length)upd.pt=true;
 if(rp.levelOk)upd.lv=true;
 if(rp.wipOk)upd.wp=true;
 if(rp.electricity&&rp.electricity.length)upd.el=true;
+// Payment status — customer's choice updates the ticket's status flags so techs see it at a glance.
+//   'store'/'card'  → already paid before delivery → pf=true (Paid Full)
+//   'check'         → will pay by check at delivery → ck=true (Collect Check)
+if(rp.payment==='store'||rp.payment==='card'){upd.pf=true;upd.iv=true}
+else if(rp.payment==='check'){upd.ck=true;upd.pf=true;upd.iv=true} // pay at delivery, still "invoiced"
+// MERGE CUSTOMER PHOTOS INTO INFO PHOTOS so the field tech sees them in the regular Info Photos
+// section. Customer photos come in four categories — flatten them all into r.photos.
+// Idempotent: if any customer photo is already in r.photos (e.g. from a prior Re-apply), it
+// is filtered out so we don't duplicate. Alberto's manually-uploaded info photos are kept.
+let existingPhotos=Array.isArray(r.photos)?r.photos.slice():[];
+let customerPhotos=[];
+['access','levelPhotos','electricity','wipPhotos'].forEach(k=>{
+if(Array.isArray(rp[k]))customerPhotos=customerPhotos.concat(rp[k]);
+});
+if(customerPhotos.length){
+let customerSet=new Set(customerPhotos);
+let filteredExisting=existingPhotos.filter(p=>!customerSet.has(p));
+upd.photos=filteredExisting.concat(customerPhotos);
+let removedCount=existingPhotos.length-filteredExisting.length;
+console.log('[INTAKE] Merged '+customerPhotos.length+' customer photo(s) into ticket #'+id+'\'s Info Photos.'+(removedCount?(' (Removed '+removedCount+' duplicate(s) from a prior reflection.)'):''));
+}
 let note='[Customer intake '+new Date(it.submittedAt||Date.now()).toLocaleDateString()+'] '+
 (rp.payment?('Payment: '+_ipayLabel(rp.payment)+'. '):'')+
 (typeof rp.levelOk!=='undefined'?('Pad level: '+(rp.levelOk?'OK':'NOT level')+'. '):'')+
 (typeof rp.wipOk!=='undefined'?('WIP ready: '+(rp.wipOk?'yes':'no')+'. '):'')+
-((rp.access&&rp.access.length)||(rp.electricity&&rp.electricity.length)||(rp.levelPhotos&&rp.levelPhotos.length)?'Photos uploaded (see Customer Upload Link box). ':'')+
+(customerPhotos.length?(customerPhotos.length+' photo'+(customerPhotos.length===1?'':'s')+' added to Info Photos. '):'')+
 (rp.notes?('Notes: '+rp.notes):'');
 upd.dn=((r.dn||'')+'\n'+note).trim();
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],upd);rememberEditsEdit(id,EDITS[id]);saveE()}
 db.ref('intake/'+id+'/reflected').set(true);it.reflected=true;
-if(typeof showToast==='function')showToast('&#128228; '+(it.cust||'Customer')+' submitted delivery info \u2014 ticket updated');
+if(typeof showToast==='function')showToast('&#128228; '+(it.cust||'Customer')+' submitted delivery info \u2014 ticket updated'+(customerPhotos.length?(' ('+customerPhotos.length+' photos)'):''));
 if(curRec&&sameId(curRec.i,id)&&typeof safeRefreshModalIfOpen==='function')safeRefreshModalIfOpen(id);
 })}
 
