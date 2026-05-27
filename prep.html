@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Aspen Spas — Delivery Prep</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#eef2f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a}
+.hdr{background:#0f172a;color:#fff;padding:18px 16px;text-align:center}
+.hdr .brand{font-size:13px;letter-spacing:3px;color:#f59e0b;font-weight:700}
+.hdr .ttl{font-size:18px;font-weight:700;margin-top:2px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:14px;padding:16px 16px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card h3{font-weight:700;font-size:15px;color:#0f172a;margin:0 0 8px}
+.lead{color:#475569;font-size:14px;line-height:1.5}
+.hint{font-size:13px;color:#475569;line-height:1.55;margin-bottom:10px}
+.addbtn{background:#0f766e;color:#fff;border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:600;width:100%;cursor:pointer}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.thumbs .t{position:relative}
+.thumbs img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
+.thumbs .x{position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;border:0;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:22px;cursor:pointer}
+label.ck{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#0f172a;margin-bottom:12px;cursor:pointer}
+label.ck input{width:20px;height:20px;margin-top:1px;flex:0 0 auto}
+label.rd{display:flex;align-items:center;gap:10px;font-size:14px;color:#0f172a;padding:8px 0;cursor:pointer}
+label.rd input{width:20px;height:20px}
+.wipnote{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;margin-bottom:10px}
+textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-size:14px;min-height:70px;font-family:inherit}
+.submit{background:#15803d;color:#fff;border:0;border-radius:12px;padding:15px;font-size:17px;font-weight:700;width:100%;cursor:pointer;box-shadow:0 2px 6px rgba(21,128,61,.3)}
+.foot{text-align:center;color:#94a3b8;font-size:12px;margin-top:10px}
+.msg{background:#fff;border-radius:14px;padding:30px 22px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.msg .ic{font-size:42px}
+.msg .t{font-size:20px;font-weight:700;margin:10px 0 6px}
+.msg .s{color:#6b7280;font-size:14px;line-height:1.5}
+.center{text-align:center;color:#6b7280;padding:40px}
+</style>
+</head>
+<body>
+<div class="hdr"><div class="brand">ASPEN SPAS</div><div class="ttl">Delivery Preparation</div></div>
+<div id="root" class="wrap"><div class="center">Loading…</div></div>
+<script>
+// RTDB only — no API key needed for this scoped path. (A Firebase web apiKey is not a secret,
+// but this page does not need it: it only reads/writes its own intake/<id> node.)
+firebase.initializeApp({databaseURL:"https://aspen-delivery-tracker-default-rtdb.firebaseio.com",projectId:"aspen-delivery-tracker"});
+const db=firebase.database();
+let _PORTAL=null;
+
+function getIntakeParams(){
+function parse(str){let o={};(str||'').replace(/^[#?]/,'').split('&').forEach(p=>{let i=p.indexOf('=');if(i>0)o[decodeURIComponent(p.slice(0,i))]=decodeURIComponent(p.slice(i+1))});return o}
+let h=parse(location.hash),q=parse(location.search);
+let id=h.intake||q.intake,t=h.t||q.t;
+return id?{id:String(id),token:t||''}:null}
+
+function compressImage(file,maxDim,quality){
+return new Promise((res,rej)=>{
+let img=new Image();let url=URL.createObjectURL(file);
+img.onload=function(){
+let w=img.width,h=img.height;
+if(w>maxDim||h>maxDim){let r=Math.min(maxDim/w,maxDim/h);w=Math.round(w*r);h=Math.round(h*r)}
+let canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+canvas.getContext('2d').drawImage(img,0,0,w,h);
+URL.revokeObjectURL(url);
+res(canvas.toDataURL('image/jpeg',quality||0.7))};
+img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('Could not load image'))};
+img.src=url})}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function payLabel(p){return p==='store'?'Will pay at the store before delivery':p==='card'?'Call to pay by credit card':p==='check'?'Pay by check at delivery':p}
+
+function showMsg(title,sub){document.getElementById('root').innerHTML='<div class="msg"><div class="ic">&#128231;</div><div class="t">'+esc(title)+'</div><div class="s">'+esc(sub)+'</div></div>'}
+
+function boot(){
+let ip=getIntakeParams();
+if(!ip){showMsg('Link not valid','This link is incomplete. Please use the exact link Aspen Spas sent you, or call us.');return}
+db.ref('intake/'+ip.id).once('value').then(function(snap){
+let it=snap.val();
+if(!it||!it.token||String(it.token)!==String(ip.token)){showMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return}
+if(it.submitted){showMsg('Thank you!','We have already received your information. This link is now closed. Aspen Spas will be in touch about your delivery.');return}
+if(it.expires&&Date.now()>it.expires){showMsg('Link expired','This link has expired. Please call Aspen Spas and ask for Celia at extension 2 for a new one.');return}
+_PORTAL={id:ip.id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelOk:false,wipOk:false,payment:'',notes:''};
+renderForm(it);
+}).catch(function(e){console.error(e);showMsg('Something went wrong','Please reload the page or contact Aspen Spas.')})}
+
+function card(title,body){return '<div class="card"><h3>'+title+'</h3>'+body+'</div>'}
+function photoField(group,hint){
+return '<div class="hint">'+hint+'</div>'+
+'<input id="file_'+group+'" type="file" accept="image/*" multiple capture="environment" style="display:none" onchange="pickFiles(this,\''+group+'\')">'+
+'<button type="button" class="addbtn" onclick="document.getElementById(\'file_'+group+'\').click()">&#128247; Add photos</button>'+
+'<div class="thumbs" id="thumbs_'+group+'"></div>'}
+
+function renderForm(it){
+let rq=it.requested||{},h='';
+h+='<div class="card"><div style="font-size:15px">Hi'+(it.cust?' '+esc(String(it.cust).split(/[ ,]/)[0]):'')+',</div>'+
+'<div class="lead" style="margin-top:6px">We are getting ready for your '+esc(it.spa||'spa')+' delivery'+(it.date?' on '+esc(String(it.date).replace(/\s*(am|pm|all day)/i,'')):'')+'. Please complete the items below so the crew is fully prepared. It only takes a couple of minutes.</div></div>';
+
+if(rq.access)h+=card('&#128205; Access photos','<div class="hint">Please take photos showing the <b>full path</b> our crew will use to bring the spa in:<br>1) The <b>entrance / driveway</b> to your property<br>2) The <b>path or walkway</b> from the entrance to where the spa will go (gates, steps, slopes, tight spots)<br>3) The <b>patio / pad</b> where the spa will sit<br>4) The <b>surrounding area</b> &mdash; anything that affects access</div>'+photoField('access','Add as many as needed so we can see the whole route from the street to the spot.'));
+
+if(rq.level)h+=card('&#128208; Level surface','<label class="ck"><input type="checkbox" onchange="_PORTAL.levelOk=this.checked"><span>The pad / patio where the spa will sit is <b>solid and level</b>, with nothing in the way.</span></label>'+photoField('levelPhotos','Add a photo of the pad / patio where the spa will be placed.'));
+
+if(rq.wip)h+=card('&#128268; Wiring (WIP)','<div class="wipnote">Please have ready before delivery: <b>15 ft of conduit / whip cable</b> and the <b>adapters</b> needed to connect the spa.</div><label class="ck"><input type="checkbox" onchange="_PORTAL.wipOk=this.checked"><span>I have the <b>15 ft conduit + adapters</b> ready.</span></label>'+photoField('wipPhotos','Optional: add a photo of the conduit / whip run if you have it.'));
+
+if(rq.electricity)h+=card('&#9889; Electrical panel','<div class="hint">Please send a clear photo of your <b>breaker box / electrical panel</b> &mdash; with the cover open so the breakers are visible.</div>'+photoField('electricity','Add a photo of the open breaker box.'));
+
+if(rq.payment)h+=card('&#128181; Remaining balance','<div class="hint">How would you like to pay the remaining balance?</div>'+
+[['store','I will pay at the Aspen Spas store before delivery'],['card','Please call me to pay by credit card'],['check','I will pay by check at delivery']].map(function(o){return '<label class="rd"><input type="radio" name="ipay" onchange="_PORTAL.payment=\''+o[0]+'\'"><span>'+o[1]+'</span></label>'}).join(''));
+
+h+=card('&#128221; Anything else? (optional)','<textarea id="notes" oninput="_PORTAL.notes=this.value" placeholder="Gate codes, dogs, parking, best times, etc."></textarea>');
+
+h+='<button type="button" class="submit" onclick="submitForm()">Send Information</button>'+
+'<div class="foot">Aspen Spas &middot; This private link closes once you submit.</div>';
+document.getElementById('root').innerHTML=h}
+
+async function pickFiles(input,group){
+let files=Array.prototype.slice.call(input.files||[]);
+for(let i=0;i<files.length;i++){
+if(_PORTAL[group].length>=10){alert('Up to 10 photos per section.');break}
+try{let b64=await compressImage(files[i],1100,0.6);if(b64.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}_PORTAL[group].push(b64)}catch(e){console.error(e)}
+}
+input.value='';renderThumbs(group)}
+
+function renderThumbs(group){
+let c=document.getElementById('thumbs_'+group);if(!c)return;
+c.innerHTML=_PORTAL[group].map(function(b,i){return '<div class="t"><img src="'+b+'"><button type="button" class="x" onclick="_PORTAL.'+group+'.splice('+i+',1);renderThumbs(\''+group+'\')">&times;</button></div>'}).join('')}
+
+function submitForm(){
+let it=_PORTAL.it,rq=it.requested||{},miss=[];
+if(rq.access&&!_PORTAL.access.length)miss.push('access photos');
+if(rq.level){if(!_PORTAL.levelOk)miss.push('confirm the pad is level');if(!_PORTAL.levelPhotos.length)miss.push('a photo of the pad');}
+if(rq.wip&&!_PORTAL.wipOk)miss.push('confirm the 15ft conduit + adapters are ready');
+if(rq.electricity&&!_PORTAL.electricity.length)miss.push('a photo of the breaker box');
+if(rq.payment&&!_PORTAL.payment)miss.push('how you will pay the balance');
+if(miss.length){alert('Before sending, please add:\n\n\u2022 '+miss.join('\n\u2022 '));return}
+let resp={};
+if(rq.access)resp.access=_PORTAL.access;
+if(rq.level){resp.levelOk=_PORTAL.levelOk;resp.levelPhotos=_PORTAL.levelPhotos}
+if(rq.wip){resp.wipOk=_PORTAL.wipOk;if(_PORTAL.wipPhotos.length)resp.wipPhotos=_PORTAL.wipPhotos}
+if(rq.electricity)resp.electricity=_PORTAL.electricity;
+if(rq.payment)resp.payment=_PORTAL.payment;
+if(_PORTAL.notes)resp.notes=_PORTAL.notes;
+document.getElementById('root').innerHTML='<div class="center">Sending…</div>';
+db.ref('intake/'+_PORTAL.id).update({resp:resp,submitted:true,submittedAt:Date.now()}).then(function(){
+showMsg('Thank you!','Your information was sent to Aspen Spas. This link is now closed. We will be in touch about your delivery.');
+}).catch(function(e){console.error(e);showMsg('Could not send','Please check your connection and try again, or call Aspen Spas (Celia, extension 2).')})}
+
+boot();
+</script>
+</body></html>
