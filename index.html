@@ -2231,6 +2231,22 @@ function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e)
 // deletion. Always compare ids through these helpers so type never matters.
 function sameId(a,b){return a!=null&&b!=null&&String(a)===String(b)}
 function findRecById(id){if(id==null)return null;let s=String(id);return AD().find(r=>String(r.i)===s)||null}
+
+// SN-based match for un-linked tickets. Used by the sync to avoid creating a duplicate ticket
+// when an existing customer's ticket already has the same serial number. Returns a single
+// match only — ambiguous matches (zero or multiple) return null so we never auto-merge by SN
+// when there's any doubt.  Skips tickets that are already linked to a different calendar event.
+function findExistingTicketBySN(parsed,currentEventId){
+if(!parsed||!parsed.serial)return null;
+let candidates=AD().filter(r=>{
+if(!r.n)return false; // skip stubs / blank-name autocreates
+if(r.gcalId&&r.gcalId!==currentEventId)return false; // already linked to a different event
+let rsn=String(r.sn||'').replace(/\.0$/,'');
+return rsn===parsed.serial;
+});
+return candidates.length===1?candidates[0]:null;
+}
+
 // Display name for a ticket. Falls back to the verbatim Google Calendar title (r.cal) when the
 // customer name hasn't been filled in yet (newly imported events), so list cards never show blank.
 function dispName(r){return (r&&(r.n||r.cal))||'(no name yet)'}
@@ -5829,6 +5845,24 @@ return}
 console.log('[GCAL] Stale mapping: event '+ev.id+' \u2192 deleted ticket '+mappedId+'. Re-creating.');
 db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
 }
+// BEFORE creating a brand-new ticket, try to find an existing ticket with the same SN. This
+// stops duplicate stubs from being created when an event corresponds to a customer who is
+// already in the system but wasn't yet linked to the calendar (common after a gcal_map reset
+// or a relink operation). Single-match-only by SN keeps it safe — ambiguous matches fall
+// through to the normal create path so we never silently merge unrelated deliveries.
+let _parsed=parseGcalTitle(title);
+let _existing=findExistingTicketBySN(_parsed,ev.id);
+if(_existing){
+console.log('[GCAL] SN match: linking event '+ev.id+' to existing ticket #'+_existing.i+' ("'+_existing.n+'", SN '+_existing.sn+') instead of creating a duplicate.');
+let u={gcalId:ev.id,cal:title,dd:newDD,gcalColorId:ev.colorId||null};
+let ai=ADDED.findIndex(x=>sameId(x.i,_existing.i));
+if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
+else{if(!EDITS[_existing.i])EDITS[_existing.i]={};Object.assign(EDITS[_existing.i],u);saveE()}
+await db.ref().update({['gcal_map/'+ev.id]:_existing.i});
+gcalMap[ev.id]=_existing.i;
+gcalStats.updated++;
+return;
+}
 // NEW EVENT → create an Upcoming ticket holding the verbatim title. Customer fields are left
 // BLANK for the user to fill in. The calendar owns cal (title), date, and color only.
 let newId=Date.now()+Math.floor(Math.random()*1000);
@@ -5913,6 +5947,59 @@ if(typeof showToast==='function')showToast('&#10003; Unlinked from calendar');
 if(curRec&&sameId(curRec.i,ticketId)&&typeof openDet==='function'){openDet(ticketId)}}
 
 // =====================================================================================
+// DEDUP — merge auto-created "stub" tickets (n='', cal=event title, gcalId set) into
+// existing "real" tickets that have the same SN. This cleans up duplicates that snuck
+// in during the period when blank-name tickets were hidden by the calendar filter.
+// Returns {merged: [...], unmerged: [...]} so the audit can report what was reconciled.
+// =====================================================================================
+function gcalDedup(){
+let all=AD();
+let stubs=all.filter(r=>!r.n&&r.cal&&r.gcalId);
+let merged=[],unmerged=[];
+for(let stub of stubs){
+try{
+let parsed=parseGcalTitle(stub.cal);
+if(!parsed||!parsed.serial){unmerged.push({stub:stub.i,reason:'no SN in title'});continue}
+// Find a "real" ticket (has a name) with the same SN, not already linked to a different event
+let candidates=all.filter(r=>{
+if(sameId(r.i,stub.i))return false;
+if(!r.n)return false;
+let rsn=String(r.sn||'').replace(/\.0$/,'');
+if(rsn!==parsed.serial)return false;
+if(r.gcalId&&r.gcalId!==stub.gcalId)return false;
+return true;
+});
+if(candidates.length===0){unmerged.push({stub:stub.i,reason:'no SN match'});continue}
+if(candidates.length>1){unmerged.push({stub:stub.i,reason:'multiple SN matches'});continue}
+let real=candidates[0];
+// Safety: if the real ticket has a date and it differs from the stub's date by more than
+// the day component, these might be different deliveries for the same customer. Skip.
+if(real.dd&&stub.dd){
+let realDay=String(real.dd).substring(0,10);
+let stubDay=String(stub.dd).substring(0,10);
+if(realDay!==stubDay){unmerged.push({stub:stub.i,real:real.i,reason:'date mismatch '+realDay+' vs '+stubDay});continue}
+}
+// MERGE: move calendar metadata from stub to real, repoint gcal_map, delete stub.
+let u={gcalId:stub.gcalId,gcalColorId:stub.gcalColorId,cal:stub.cal};
+if(stub.dd)u.dd=stub.dd;
+let ai=ADDED.findIndex(x=>sameId(x.i,real.i));
+if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
+else{if(!EDITS[real.i])EDITS[real.i]={};Object.assign(EDITS[real.i],u);saveE()}
+db.ref('gcal_map/'+stub.gcalId).set(real.i);
+gcalMap[stub.gcalId]=real.i;
+let si=ADDED.findIndex(x=>sameId(x.i,stub.i));
+if(si>=0){ADDED.splice(si,1);saveA();}
+merged.push({stub:stub.i,real:real.i,sn:parsed.serial,name:real.n});
+console.log('[DEDUP] Merged stub #'+stub.i+' ("'+stub.cal+'") into real ticket #'+real.i+' ("'+real.n+'", SN '+parsed.serial+'). gcal_map repointed.');
+}catch(perStubErr){
+console.error('[DEDUP] error on stub',stub.i,perStubErr);
+unmerged.push({stub:stub.i,reason:'error: '+perStubErr.message});
+}
+}
+return {merged,unmerged};
+}
+
+// =====================================================================================
 // AUTO-HEALING AUDIT — runs silently at the end of every sync (manual or auto-sync).
 // Pulls a wide window of events (7 days back to 120 days forward) IGNORING syncToken so
 // it catches anything the incremental sync missed: stuck syncTokens, network glitches,
@@ -5930,6 +6017,11 @@ if(!gcalToken||!gcalCalendarId)return;
 if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0)return;
 _gcalAuditInFlight=true;
 try{
+// Step 1: dedup any existing stub tickets into their real counterparts.
+let dedupResult=gcalDedup();
+if(dedupResult.merged.length){
+console.log('[AUTO-AUDIT] Dedup merged '+dedupResult.merged.length+' duplicate stub ticket(s) into real tickets.');
+}
 let timeMin=new Date();timeMin.setDate(timeMin.getDate()-7);timeMin.setHours(0,0,0,0);
 let timeMax=new Date();timeMax.setDate(timeMax.getDate()+120);timeMax.setHours(23,59,59,999);
 let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,
@@ -5987,7 +6079,23 @@ if('gcalColorId' in u){healed.colorFixed.push({ticketId:mappedId,from:local.gcal
 }else{skipped.synced++;}
 continue;}}
 
-// No mapping (or just-cleared stale mapping) — create the ticket silently.
+// No mapping (or just-cleared stale mapping) — before creating a duplicate, try to find an
+// existing ticket with the same SN that isn't yet linked. Single-match-only keeps it safe.
+let _parsed=parseGcalTitle(title);
+let _existing=findExistingTicketBySN(_parsed,ev.id);
+if(_existing){
+let u={gcalId:ev.id,cal:title,dd:newDD,gcalColorId:newColor};
+let ai=ADDED.findIndex(x=>sameId(x.i,_existing.i));
+if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
+else{if(!EDITS[_existing.i])EDITS[_existing.i]={};Object.assign(EDITS[_existing.i],u);saveE()}
+await db.ref().update({['gcal_map/'+ev.id]:_existing.i});
+gcalMap[ev.id]=_existing.i;
+healed.linkedToExisting=(healed.linkedToExisting||[]);
+healed.linkedToExisting.push({summary:title,ticketId:_existing.i,name:_existing.n,sn:_existing.sn});
+console.log('[AUTO-AUDIT] SN match: linked event to existing ticket #'+_existing.i+' ("'+_existing.n+'", SN '+_existing.sn+') instead of creating duplicate.');
+continue;
+}
+// Truly new — create the ticket silently.
 // Use the same ID strategy as processGcalEvent (timestamp-based) to avoid collisions
 // with regular-sync creations during the same window.
 let newId=Date.now()+Math.floor(Math.random()*1000);
@@ -6013,10 +6121,14 @@ console.error('[AUTO-AUDIT] Per-event error on \"'+(ev&&ev.summary)+'\":',perEve
 
 _gcalLastAuditAt=Date.now();
 
-let totalHealed=healed.created.length+healed.dateFixed.length+healed.titleFixed.length+healed.colorFixed.length+healed.staleFixed.length;
+let linkedCount=(healed.linkedToExisting||[]).length;
+let dedupCount=dedupResult.merged.length;
+let totalHealed=healed.created.length+healed.dateFixed.length+healed.titleFixed.length+healed.colorFixed.length+healed.staleFixed.length+linkedCount+dedupCount;
 if(totalHealed){
-console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed, '+healed.dateFixed.length+' date, '+healed.titleFixed.length+' title, '+healed.colorFixed.length+' color, '+healed.staleFixed.length+' stale-mapping fix(es).','font-weight:bold;color:#16a34a');
+console.log('%c[AUTO-AUDIT] Healed '+healed.created.length+' missed, '+healed.dateFixed.length+' date, '+healed.titleFixed.length+' title, '+healed.colorFixed.length+' color, '+healed.staleFixed.length+' stale, '+linkedCount+' SN-linked, '+dedupCount+' duplicates merged.','font-weight:bold;color:#16a34a');
 let parts=[];
+if(dedupCount)parts.push(dedupCount+' duplicate'+(dedupCount===1?'':'s')+' merged');
+if(linkedCount)parts.push(linkedCount+' linked to existing ticket'+(linkedCount===1?'':'s')+' by SN');
 if(healed.created.length)parts.push(healed.created.length+' missed event'+(healed.created.length===1?'':'s')+' recovered');
 if(healed.dateFixed.length)parts.push(healed.dateFixed.length+' date'+(healed.dateFixed.length===1?'':'s')+' corrected');
 if(healed.titleFixed.length)parts.push(healed.titleFixed.length+' title'+(healed.titleFixed.length===1?'':'s')+' updated');
