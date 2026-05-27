@@ -853,7 +853,6 @@ th,td{padding:7px 6px}
 <select id="gcalSelect" style="min-width:200px"></select>
 <button class="pbtn" id="gcalSyncBtn" onclick="gcalSync()">&#128260; Sync Now</button>
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
-<button class="pbtn" onclick="gcalDiagnoseRepair()" title="Scan for tickets that disappeared from the app but still exist on the calendar, and upcoming tickets that never made it onto the calendar — then fix both." style="background:#7c3aed">&#128295; Diagnose &amp; Repair</button>
 <button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
 <label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
 <label style="font-size:12px;font-weight:700;color:#0b8043;display:flex;align-items:center;gap:6px;background:#dcfce7;padding:4px 9px;border-radius:6px;border:1px solid #bbf7d0" title="When ON, changes you make in this app (new deliveries, date changes, color changes, deletions) are pushed to Google Calendar."><input type="checkbox" id="gcalWrite" onchange="gcalToggleWrite()"> &#8644; Two-way sync</label>
@@ -916,6 +915,15 @@ const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"po",l:"Portal"},{k:"oo",
 const firebaseConfig={apiKey:"PASTE_YOUR_API_KEY",authDomain:"aspen-delivery-tracker.firebaseapp.com",databaseURL:"https://aspen-delivery-tracker-default-rtdb.firebaseio.com",projectId:"aspen-delivery-tracker",storageBucket:"aspen-delivery-tracker.appspot.com",messagingSenderId:"000000000000",appId:"PASTE_YOUR_APP_ID"};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
+// === ANONYMOUS AUTH GATE ===
+// Sign the dashboard in anonymously so Firebase rules can require auth!=null (closes the
+// "public database" hole + warning). This is transparent — it does NOT change the PIN login.
+// AUTH_READY resolves once the sign-in attempt finishes (success or fail) so data listeners
+// attach with a token. If Anonymous sign-in is disabled in the Firebase console it logs an
+// error and the app still falls back to cached data via the 8s safety timeout.
+const AUTH_READY=firebase.auth().signInAnonymously()
+.then(()=>{console.log('[AUTH] anonymous session ready')})
+.catch(e=>{console.error('[AUTH] anonymous sign-in failed — enable Authentication \u2192 Sign-in method \u2192 Anonymous in the Firebase console',e)});
 const dbEdits=db.ref('edits');
 const dbAdded=db.ref('added');
 const dbOpts=db.ref('custom_opts');
@@ -1206,7 +1214,7 @@ let cardCls=r.dl?' delivered':'';
 if(r.assigned_to===currentUser.id){assignBadge='<span class="assign-pill mine" title="This delivery is assigned to you">&#9733; Assigned to you</span>';cardCls+=' mine'}
 else if(r.assigned_to&&USERS[r.assigned_to]){assignBadge='<span class="assign-pill other">&#9888; '+escHtml(USERS[r.assigned_to].name)+'</span>'}
 html+='<div class="tech-card'+cardCls+'" onclick="techOpenDetail('+r.i+')">'+
-'<div class="name">'+escHtml(r.n)+assignBadge+'</div>'+
+'<div class="name">'+escHtml(dispName(r))+assignBadge+'</div>'+
 (timeLabel?'<div class="row"><span class="time-pill">'+timeLabel+'</span></div>':'')+
 (r.sp?'<div class="row">&#129716; '+escHtml(r.sp)+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>':'')+
 (addrShort?'<div class="row">&#128205; '+escHtml(addrShort)+'</div>':'')+
@@ -2223,6 +2231,9 @@ function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e)
 // deletion. Always compare ids through these helpers so type never matters.
 function sameId(a,b){return a!=null&&b!=null&&String(a)===String(b)}
 function findRecById(id){if(id==null)return null;let s=String(id);return AD().find(r=>String(r.i)===s)||null}
+// Display name for a ticket. Falls back to the verbatim Google Calendar title (r.cal) when the
+// customer name hasn't been filled in yet (newly imported events), so list cards never show blank.
+function dispName(r){return (r&&(r.n||r.cal))||'(no name yet)'}
 
 // Do a calendar-event name and a ticket name plausibly refer to the same customer? Used to stop
 // a duplicate/corrupted SERIAL from cross-linking two unrelated deliveries (the Slaughter SN
@@ -2470,6 +2481,9 @@ document.getElementById('syncDot').className='sync-dot off';document.getElementB
 showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn');
 bootAuth()}},8000);
 
+// Attach all real-time data listeners only AFTER the anonymous auth attempt completes, so
+// reads carry an auth token once the rules require auth!=null.
+AUTH_READY.then(function(){
 if(getIntakeParams()){
 // CUSTOMER PORTAL MODE: a customer opened a private upload link. Do NOT subscribe to any delivery
 // data (we must never download the full ticket list into a customer's browser). Mark ready so the
@@ -2607,6 +2621,7 @@ if(c.__cats__&&Array.isArray(c.__cats__)){CUSTOM_CATS=c.__cats__.filter(x=>x&&x.
 if(typeof emailPw_applyFirebaseOpts==='function'){try{emailPw_applyFirebaseOpts(c)}catch(e){console.warn('emailPw_applyFirebaseOpts:',e)}}
 if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbOpts error:',err);if(!fbReady)checkReady()});
 } // end non-intake data listeners
+}); // end AUTH_READY gate
 
 // Wrapper that renders the right view based on the current user's role
 function renderAfterAuth(){
@@ -2986,7 +3001,7 @@ reqBadgeHtml+='<span style="display:inline-flex;align-items:center;gap:4px;backg
 });
 reqBadgeHtml+='</div>';
 }
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+r.n+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+dispName(r)+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',hold:'&#9209;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -2995,7 +3010,7 @@ h='<div class="empty-state"><div class="es-icon">'+icon+'</div><div class="es-ti
 document.getElementById("board").innerHTML=h}
 function thH(label,col){let active=sortCol===col;let arrow=active?(sortDir==="desc"?"▼":"▲"):"⇅";return'<th class="'+(active?"act-sort":"")+'" onclick="toggleSort(\''+col+'\')">'+label+' <span class="srt">'+arrow+'</span></th>'}
 function renderTable(){document.getElementById("th").innerHTML="<tr>"+thH("Status","status")+thH("Customer","name")+thH("Spa","name")+thH("Date","date")+thH("Balance Due","balance")+"<th>Pre</th><th>Post</th><th>Cover</th><th>Lift</th></tr>";
-let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:#111827;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.n+'</td><td style="color:#6b7280">'+(r.sp||"—")+'</td><td style="color:#6b7280;white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:#6b7280;font-size:12px">'+(r.cv||"—")+'</td><td style="color:#6b7280;font-size:12px">'+(r.lf||"—")+'</td></tr>'});
+let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:#111827;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+dispName(r)+'</td><td style="color:#6b7280">'+(r.sp||"—")+'</td><td style="color:#6b7280;white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:#6b7280;font-size:12px">'+(r.cv||"—")+'</td><td style="color:#6b7280;font-size:12px">'+(r.lf||"—")+'</td></tr>'});
 document.getElementById("tb").innerHTML=h}
 function renderCharts(){let mo={},md={};AD().filter(r=>r.dd&&r.n).forEach(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return;let k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");mo[k]=(mo[k]||0)+1});
 AD().filter(r=>r.sp&&r.n).forEach(r=>{let b=r.sp.split(",")[0].trim();md[b]=(md[b]||0)+1});
@@ -3588,6 +3603,12 @@ h+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCo
 h+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved, can resume later" style="background:#fff;border:2px solid #c084fc;color:#7c3aed;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:11.5px">&#9208; Put on Hold</button>';}
 h+='</div>';
 // All fields always editable
+// CALENDAR EVENT — the verbatim Google Calendar title. The calendar OWNS this (it is copied
+// exactly as-is on every sync). Shown read-only so it can never be accidentally changed; the
+// user fills the real customer fields (name, SN, etc.) below. The app never writes the title back.
+if(r.cal||r.gcalId||(gcalMap&&Object.keys(gcalMap).some(k=>String(gcalMap[k])===String(r.i)))){
+h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:#475569;font-weight:600"></div></div>';
+}
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
 h+='<div class="ib"><label>SERIES</label><select id="e_spa_series">'+opt(SPA_SERIES,((r.sp||"").split(",")[1]||"").trim())+'</select></div>';
@@ -4849,7 +4870,7 @@ function gatherEdits(){
 let pr=parseFloat(document.getElementById("e_pr").value)||0,py=parseFloat(document.getElementById("e_py").value)||0;
 let sB=document.getElementById("e_spa_base").value,sS=document.getElementById("e_spa_series").value;
 let getV=function(id){let el=document.getElementById(id);return el?(el.value||'').trim()||null:null};
-let result={n:document.getElementById("e_n").value.trim(),dd:(function(){let dv=document.getElementById("e_dd_date"),sv=document.getElementById("e_dd_slot");if(!dv||!dv.value)return null;let slot=sv?sv.value:'am';let label={'am':' am','pm':' pm','allday':' all day'}[slot]||' am';return dv.value+(label||'')})(),
+let result={n:document.getElementById("e_n").value.trim(),cal:getV('e_cal'),dd:(function(){let dv=document.getElementById("e_dd_date"),sv=document.getElementById("e_dd_slot");if(!dv||!dv.value)return null;let slot=sv?sv.value:'am';let label={'am':' am','pm':' pm','allday':' all day'}[slot]||' am';return dv.value+(label||'')})(),
 sp:sB?(sS?sB+", "+sS:sB):null,sn:document.getElementById("e_sn").value.trim()||null,
 ph:document.getElementById("e_ph").value.trim()||null,em:document.getElementById("e_em").value.trim()||null,
 st:document.getElementById("e_st").value.trim()||null,pr:pr,py:py,bl:Math.round((pr-py)*100)/100,
@@ -5726,9 +5747,7 @@ return false}
 async function processGcalEvent(ev){
 try{
 // Deleted/cancelled event → move local delivery to HOLD instead of deleting it.
-// Hold preserves all customer info (name, SN, phone, payment history, checklist
-// progress) so the record can return to Upcoming later if the customer reactivates.
-// We snapshot the previous delivery date so we can show it on the Hold card.
+// Hold preserves all customer info so the record can return to Upcoming later.
 if(ev.status==='cancelled'){
 let mappedId=gcalMap[ev.id];if(mappedId){
 let local=findRecById(mappedId);
@@ -5736,7 +5755,7 @@ if(local&&!local.co&&!local.hold){
 let prevDD=local.dd||null;
 let stamp=new Date();
 let holdNote='[GCAL] Removed from calendar on '+stamp.toLocaleDateString()+
-(prevDD?' — was scheduled for '+prevDD:'')+'. Moved to Hold.';
+(prevDD?' \u2014 was scheduled for '+prevDD:'')+'. Moved to Hold.';
 let updates={
 hold:true,
 hold_at:stamp.getTime(),
@@ -5746,233 +5765,61 @@ dn:((local.dn||'')+'\n'+holdNote).trim()};
 let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
-console.log('[GCAL] Delivery',mappedId,'moved to Hold (was scheduled for '+(prevDD||'?')+')');
+console.log('[GCAL] Delivery',mappedId,'moved to Hold');
 gcalStats.updated++}}
 return}
-// Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) — these are recurring legend items
+// Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) and disallowed colors.
 if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
-// Skip events whose color is not in the allowed delivery-color list (set in panel)
 if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
-let parsed=parseGcalTitle(ev.summary);
-let newDD=gcalDeliveryDD(ev,parsed);if(!newDD)return;
+let title=(ev.summary||'').trim();
+let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));if(!newDD)return;
 
-// SAFETY: never run sync while the user has the edit modal open for THIS event. The modal
-// could be holding unsaved changes in form fields, and a sync that touches the underlying
-// ticket would cause confusing behavior (or a stale-state save that wipes data). The next
-// sync tick will catch up. We check two ways:
-//   (a) curRec.gcalId === ev.id — auto-imported tickets store gcalId directly
-//   (b) gcalMap[ev.id] === curRec.i — BASE tickets linked via SN store the link separately
+// SAFETY: never sync while the edit modal for THIS event is open (unsaved changes in fields).
 let ovOpen=document.getElementById('ov');
 let isEditingThisEvent=ovOpen&&!ovOpen.classList.contains('hidden')&&curRec&&(
 curRec.gcalId===ev.id||
-(gcalMap&&String(gcalMap[ev.id])===String(curRec.i))
-);
-if(isEditingThisEvent){
-gcalStats.skipped=(gcalStats.skipped||0)+1;return}
+(gcalMap&&String(gcalMap[ev.id])===String(curRec.i)));
+if(isEditingThisEvent){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 
-// PHILOSOPHY (per Alberto's explicit request): once a ticket exists in our app,
-// Google Calendar is ONLY the master of the delivery date (dd) and color (gcalColorId).
-// • The first time a calendar event is imported, we DO populate name / SN / city from the title.
-// • After that, even if the title changes in the calendar, we NEVER update those fields again.
-// • The user's edits to name / SN / address / phone / etc. are sacred — only the user can
-//   change them through the dashboard.
-// • Color is kept in sync because it represents the spa size/category coding that Alberto
-//   uses to plan deliveries — it's metadata about the event, not user-entered customer data.
-//   E.g. flipping from gray "Awaiting Conf." to red "Standard 8'" must propagate.
-function buildGcalUpdates(local,parsed,newDD,evColorId){
-let u={};
-if(local.dd!==newDD)u.dd=newDD;
-let newColor=evColorId||null;
-if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
-// CALENDAR DRIVES SERIAL + NAME (Alberto, Option B final) — but WITHOUT losing saved info.
-// This is safe now because cross-linked events are auto-severed (CASE C) and a shared serial can
-// no longer link unrelated customers (name guard in the SN-match), so buildGcalUpdates only ever
-// runs for events that genuinely belong to this ticket. That means the calendar's value is the
-// CORRECT one and should win (it even auto-heals a serial that was corrupted by an old bad link).
-//
-// SERIAL: adopt the title's ZIP-aware serial (a single non-6xxxx number). If the title is
-// ambiguous (parsed.serial is null because it has no clear serial, or a ZIP and nothing else) we
-// leave the ticket's SN alone — we never write a ZIP into the serial.
-if(parsed&&parsed.serial){
-let s=String(parsed.serial);
-if(String(local.sn||'').replace(/\.0$/,'').trim()!==s)u.sn=s;
-}
-// NAME: the calendar is the source of truth, but we PRESERVE the fuller name you typed in the app.
-// Calendar titles are abbreviated ("Kerry"), so if the title name is already contained in the
-// ticket's name we keep your full version ("John and Beth Kerry"). We only overwrite when the
-// calendar name is genuinely DIFFERENT (a real correction made on the calendar) — never to shorten.
-if(parsed&&parsed.name){
-let pn=parsed.name.trim();
-let cur=String(local.n||'');
-if(pn&&cur.toLowerCase().indexOf(pn.toLowerCase())<0&&pn.toLowerCase().indexOf(cur.toLowerCase())<0)u.n=pn;
-}
-// HOLD-LIFT: if the calendar event is back (we got a real, valid newDD) and the
-// local record was sitting in Hold, lift the hold automatically. Works whether
-// the event is matched by gcalMap[id] (same id reappeared) OR via SN-fallback
-// (the customer was re-added later with the same SN under a brand-new event id).
-if(local.hold&&newDD){
-let stamp=new Date();
-let resumeNote='[GCAL] Returned to calendar on '+stamp.toLocaleDateString()+' — Hold lifted, new delivery date '+newDD+'.';
-u.hold=null;
-u.hold_lifted_at=stamp.getTime();
-u.dn=((local.dn||'')+'\n'+resumeNote).trim();
-console.log('[GCAL] Hold lifted for delivery',local.i,'— back on calendar for',newDD);}
-return u}
-
+// =====================================================================================
+// IDENTITY MODEL (per Alberto, May 2026): the Google Calendar EVENT ID is the one and only
+// link between an event and a ticket. The event TITLE is copied VERBATIM into the ticket's
+// `cal` field and is NEVER parsed for name / SN / city. The calendar owns exactly three
+// things: the title (cal), the date (dd), and the color. Everything else — name, SN, address,
+// phone, payment — is entered by the user in the dashboard and is NEVER touched by sync.
+// This removes the old title-guessing logic that occasionally cross-linked unrelated customers.
+// =====================================================================================
 let mappedId=gcalMap[ev.id];
 if(mappedId){
 let local=findRecById(mappedId);
-// CASE A: stale mapping — the linked record has been deleted. Clean up and fall through
-// to the create-new path so this event gets a fresh ticket (otherwise it'd be silently
-// dropped forever). NOTE: findRecById compares ids as strings, so a number/string type
-// mismatch can no longer fake a "deleted record" and destroy a valid link.
-if(!local){
-console.log('[GCAL] Stale mapping: event '+ev.id+' → deleted record '+mappedId+'. Unlinking and re-processing.');
-db.ref('gcal_map/'+ev.id).remove();
-delete gcalMap[ev.id];
-mappedId=null;
-}
-// CASE B: suspicious mapping — the linked record is already delivered/completed AND its
-// date is far (>60 days) from this event's date. This is the signature of a bad match
-// made by the OLD (date-blind) name-fallback (e.g. May "PM-Taylor" event linked to a
-// January "Taylor, Justin" sauna delivery). Unlink, optionally revert the bad date edit,
-// fall through to create-new.
-else if(local.dl||local.co){
-let evDate=null;
-let nm=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-if(nm)evDate=new Date(+nm[1],+nm[2]-1,+nm[3]);
-let rd=parseDate(local.dd);
-let gap=(evDate&&rd&&!isNaN(rd))?Math.abs(evDate.getTime()-rd.getTime()):0;
-if(gap>60*86400000){
-console.log('[GCAL] Suspicious mapping: event '+ev.id+' → delivered/completed record '+mappedId+' ("'+local.n+'") with date '+local.dd+' but event is for '+newDD+' (gap='+(gap/86400000).toFixed(0)+' days). Unlinking.');
-db.ref('gcal_map/'+ev.id).remove();
-delete gcalMap[ev.id];
-// If the bad mapping had previously overwritten the record's date with this event's date,
-// revert it. Only safe to do for BASE records (since we can fall back to BASE.dd). For ADDED
-// records, leave alone — they're user-owned.
-let baseRec=BASE.find(b=>sameId(b.i,mappedId));
-if(baseRec&&EDITS[mappedId]&&EDITS[mappedId].dd===newDD){
-console.log('[GCAL] Reverting bad date update on record '+mappedId+' (was set to '+newDD+', restoring '+baseRec.dd+')');
-delete EDITS[mappedId].dd;
-if(Object.keys(EDITS[mappedId]).length===0)delete EDITS[mappedId];
-saveE();
-}
-mappedId=null;
-}
-}
-// CASE C: cross-linked mapping — the event is mapped to a ticket whose NAME is completely
-// unrelated to the event's. This is the Slaughter(30705)↔Kerry signature: a duplicate/corrupted
-// serial linked two different customers, so the event keeps dragging the wrong ticket's date.
-// Names can't be faked by a bad serial, so a total name mismatch means the link is wrong.
-// Unlink and re-process so each event finds (or creates) the correct ticket. We do NOT revert
-// any fields here — just sever the bad link so the dragging stops.
-else if(local&&local.n&&!gcalNamesRelated(parsed.name,local.n)){
-console.log('[GCAL] Cross-linked mapping: event "'+(ev.summary||'')+'" → unrelated ticket "'+local.n+'". Unlinking (names do not match — likely a duplicate serial).');
-db.ref('gcal_map/'+ev.id).remove();
-delete gcalMap[ev.id];
-// Clear the ticket's stale gcalId if it points at THIS (wrong) event, so it's free to re-link to
-// its own correct event on the next pass instead of being permanently skipped by the "already
-// bound to another event" guard.
-if(local.gcalId&&sameId(local.gcalId,ev.id)){
-let ci=ADDED.findIndex(x=>sameId(x.i,local.i));
-if(ci>=0){ADDED[ci].gcalId=null;saveA()}
-else{if(!EDITS[local.i])EDITS[local.i]={};EDITS[local.i].gcalId=null;saveE()}
-}
-mappedId=null;
-}
-if(mappedId&&local){
-let updates=buildGcalUpdates(local,parsed,newDD,ev.colorId);
-if(Object.keys(updates).length){
+if(local){
+let u={};
+if((local.cal||'')!==title)u.cal=title;                 // keep the verbatim title in sync
+if(local.dd!==newDD)u.dd=newDD;                          // calendar drives the date
+let newColor=ev.colorId||null;
+if(local.gcalColorId!==newColor)u.gcalColorId=newColor;  // calendar drives the color
+// HOLD-LIFT: event is back on the calendar → lift a previous calendar-removed hold.
+if(local.hold&&newDD){
+let stamp=new Date();
+u.hold=null;
+u.hold_lifted_at=stamp.getTime();
+u.dn=((local.dn||'')+'\n'+'[GCAL] Returned to calendar on '+stamp.toLocaleDateString()+' \u2014 Hold lifted, delivery date '+newDD+'.').trim();
+console.log('[GCAL] Hold lifted for delivery',local.i);}
+if(Object.keys(u).length){
 let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);saveE()}
+if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
+else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);saveE()}
 gcalStats.updated++}
 return}
+// Stale mapping — the linked ticket was deleted. Unlink and fall through to create a fresh one.
+console.log('[GCAL] Stale mapping: event '+ev.id+' \u2192 deleted ticket '+mappedId+'. Re-creating.');
+db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
 }
-// Look up by SN first (most reliable). Try every numeric candidate from the title so a
-// "name-zip-serial" ordering still matches the right ticket. GUARD: never hijack a ticket
-// that is already linked to a DIFFERENT calendar event — that's the signature of a duplicate
-// or mistyped serial number, and hijacking it would yank a real delivery onto the wrong date.
-let existing=null;
-let snCands=(parsed.sns&&parsed.sns.length)?parsed.sns:(parsed.sn?[parsed.sn]:[]);
-if(snCands.length){existing=AD().find(r=>{
-if(!r.n)return false;
-if(r.gcalId&&!sameId(r.gcalId,ev.id))return false; // already bound to another event — don't steal it
-let rsn=String(r.sn||'').replace(/\.0$/,'').trim();
-if(!rsn||!snCands.includes(rsn))return false;
-// NAME GUARD: a serial match is only trusted when the names also plausibly agree. This blocks the
-// duplicate-serial trap (Slaughter SN 30705 grabbing Kerry, whose SN was corrupted to 30705): the
-// serials matched but the names are unrelated, so we reject the match and let it fall to name/create.
-if(!gcalNamesRelated(parsed.name,r.n))return false;
-return true})}
-// Fallback: match by last-name + nearby date.
-// CRITICAL (Alberto bug 5/14): the old logic matched by name substring WITHOUT checking
-// the date — so a new "PM-Taylor" event in May would steal an old "Taylor, Justin" Jan
-// sauna ticket and the new event would never get its own card. Fix: require the existing
-// record to be within MAX_GAP days of the new event date, AND skip records that are
-// already linked to a different calendar event, delivered, or completed.
-if(!existing&&parsed.name){
-let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
-// Skip very short name keys — too ambiguous (matches everything)
-if(nameKey&&nameKey.length>=3){
-let newDate=null;
-let nm=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-if(nm)newDate=new Date(+nm[1],+nm[2]-1,+nm[3]);
-let DAY=86400000;
-let MAX_GAP=60*DAY; // a delivery reschedule within ~2 months is plausible; beyond that, it's a different sale
-existing=AD().find(r=>{
-if(!r.n)return false;
-if(r.co)return false;          // completed → don't relink
-if(r.gcalId&&!sameId(r.gcalId,ev.id))return false; // already linked to a DIFFERENT calendar event
-if(r.dl)return false;          // already marked delivered → don't relink
-let rn=r.n.toLowerCase();
-if(rn.indexOf(nameKey)<0)return false;
-// Date proximity guard — only match if the existing record's date is within MAX_GAP
-// of the new event's date. Manual entries with no parseable date fall through.
-if(!newDate)return true;
-let rd=parseDate(r.dd);
-if(!rd||isNaN(rd))return true; // unparseable record date → still allow (manual entries)
-return Math.abs(newDate.getTime()-rd.getTime())<=MAX_GAP;
-});}}
-if(existing){
-// Link this event to the existing delivery — but DO NOT touch any of its fields except dd.
-// The ticket already exists, so it's owned by the user (manually entered or previously imported
-// and then edited). Calendar's only job here is keeping the date and color in sync.
-let mapUpd={};mapUpd['gcal_map/'+ev.id]=existing.i;db.ref().update(mapUpd);
-// DATE SAFETY (Kerry 5/28 vs 6/19 case): when this is the FIRST time we link this event to
-// the ticket (i.e. it wasn't already mapped to THIS event id) and the ticket already has a
-// real date that is more than 45 days away from the event's date, we do NOT move the ticket's
-// date. A jump that large via a fuzzy SN/name link almost always means a duplicate or mistyped
-// serial number linking two unrelated deliveries — silently changing the date would be wrong.
-// We keep the user's date and record a conflict note instead. (Normal small reschedules, and
-// re-syncs of an already-mapped event, still update the date as before — calendar stays master.)
-let wasLinkedToThisEvent=existing.gcalId&&sameId(existing.gcalId,ev.id);
-let suppressDate=false;
-if(!wasLinkedToThisEvent){
-let rd=parseDate(existing.dd);
-let nm2=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-let ed=nm2?new Date(+nm2[1],+nm2[2]-1,+nm2[3]):null;
-if(rd&&!isNaN(rd)&&ed&&Math.abs(rd.getTime()-ed.getTime())>45*86400000){
-suppressDate=true;
-console.warn('[GCAL] DATE CONFLICT: event "'+(ev.summary||'')+'" ('+newDD+') links by SN/name to ticket "'+existing.n+'" dated '+existing.dd+' — >45 days apart. Keeping the ticket date and flagging the conflict. Check for a duplicate/incorrect serial number.');
-}}
-let updates=buildGcalUpdates(existing,parsed,newDD,ev.colorId);
-if(suppressDate){
-delete updates.dd;
-updates.gcal_date_conflict='Calendar event "'+(ev.summary||'')+'" is dated '+newDD+', but this ticket is set to '+(existing.dd||'?')+'. The date was NOT changed automatically because they are more than 45 days apart — likely a duplicate or incorrect serial number. Verify which date is correct.';
-}else if(existing.gcal_date_conflict){
-updates.gcal_date_conflict=null; // clear a previously-flagged conflict once dates agree again
-}
-if(Object.keys(updates).length){
-let ai=ADDED.findIndex(x=>sameId(x.i,existing.i));
-if(ai>=0){Object.assign(ADDED[ai],updates);saveA()}
-else{if(!EDITS[existing.i])EDITS[existing.i]={};Object.assign(EDITS[existing.i],updates);saveE()}
-gcalStats.updated++}
-return}
-// Create a new Upcoming delivery
+// NEW EVENT → create an Upcoming ticket holding the verbatim title. Customer fields are left
+// BLANK for the user to fill in. The calendar owns cal (title), date, and color only.
 let newId=Date.now()+Math.floor(Math.random()*1000);
-let rec={i:newId,n:parsed.name,sp:null,sn:(parsed.serial||parsed.sn)||null,dd:newDD,
-st:parsed.city||null,ph:null,em:null,cn:'Auto-created from Google Calendar event',
+let rec={i:newId,n:'',cal:title,sp:null,sn:null,dd:newDD,
+st:null,ph:null,em:null,cn:'Auto-created from Google Calendar event',
 pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
 tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
@@ -6156,217 +6003,6 @@ if(ai>=0){Object.assign(ADDED[ai],patch);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);if(patch.gcalId===null)EDITS[r.i].gcalId=null;rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
 return ids.length}
 
-async function gcalDiagnoseRepair(){
-if(!gcalToken){showToast('&#9888; Connect Google account first','warn');return}
-if(!gcalCalendarId){showToast('&#9888; Choose a calendar first','warn');return}
-let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
-showToast('&#128295; Scanning calendar and tickets…');
-try{
-// Pull a fresh window (today − 7 days forward) WITHOUT using the syncToken, so we see the
-// current full picture instead of just incremental changes.
-let from=new Date();from.setDate(from.getDate()-7);from.setHours(0,0,0,0);
-let params={calendarId:gcalCalendarId,maxResults:250,singleEvents:true,showDeleted:false,timeMin:from.toISOString(),orderBy:'startTime'};
-let events=[],pageToken=null;
-do{if(pageToken)params.pageToken=pageToken;
-let res;try{res=await gapi.client.calendar.events.list(params)}
-catch(e){if(e.status===401){let ok=await gcalRefreshTokenNow();if(ok){res=await gapi.client.calendar.events.list(params)}else{btn.classList.remove('syncing');showToast('&#9888; Session expired — reconnect','warn');return}}else throw e}
-events=events.concat(res.result.items||[]);pageToken=res.result.nextPageToken;
-}while(pageToken);
-
-// Keep only real delivery events (allowed color, delivery-style title, parseable date).
-let deliv=events.filter(ev=>ev.status!=='cancelled'&&!isNonDeliveryTitle(ev.summary)&&isAllowedColor(ev.colorId)&&gcalDeliveryDD(ev,parseGcalTitle(ev.summary)));
-
-// Day-only key for comparing a ticket date to an event date (ignores am/pm/all-day suffix).
-function dayKey(dd){let d=parseDate(dd);if(!d||isNaN(d))return null;return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-
-// 1) ORPHANS: calendar delivery events with no matching ticket.
-// 3) DATE CONFLICTS: events that DO match a ticket, but the ticket's date is a different DAY
-//    than the event (the Kerry 5/28-vs-6/19 case). Calendar is meant to be master of the date.
-let orphans=[];let matchedTicketIds=new Set();let conflicts=[];
-for(let ev of deliv){
-let r=gcalMatchEventToTicket(ev);
-if(!r){orphans.push(ev);continue}
-matchedTicketIds.add(String(r.i));
-let evDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));
-let ek=dayKey(evDD),tk=dayKey(r.dd);
-if(ek&&tk&&ek!==tk){conflicts.push({r:r,ev:ev,evDD:evDD,evDayKey:ek})}
-}
-
-// 2) MISSING PUSH: upcoming, allowed-color, non-read-only tickets that have NO calendar event
-//    representing them. We check by CONTENT (serial, or last-name + nearby date) rather than by
-//    the current gcalMap link — otherwise a ticket whose event is temporarily mis-linked to a
-//    hijacked record would be seen as "missing" and pushed, creating a duplicate event.
-function eventMatchesTicketContent(ev,r){
-let p=parseGcalTitle(ev.summary);
-let snC=(p.sns&&p.sns.length)?p.sns:(p.sn?[p.sn]:[]);
-let rsn=String(r.sn||'').replace(/\.0$/,'').trim();
-if(rsn&&snC.includes(rsn))return true;
-let nk=(p.name||'').toLowerCase().split(/[\s,]+/)[0];
-if(!nk||nk.length<3)return false;
-if((r.n||'').toLowerCase().indexOf(nk)<0)return false;
-let a=parseDate(gcalDeliveryDD(ev,p)),b=parseDate(r.dd);
-if(!a||isNaN(a)||!b||isNaN(b))return true; // name matches and a date is unknown — assume related
-return Math.abs(a.getTime()-b.getTime())<=60*86400000}
-let missing=AD().filter(r=>r.n&&st(r)==='upcoming'&&!isCalendarReadOnly(r)&&r.gcalColorId&&isAllowedColor(r.gcalColorId)&&!deliv.some(ev=>eventMatchesTicketContent(ev,r)));
-
-// 4) DUPLICATE SERIALS: the same SN on more than one ticket (data-entry error that causes
-//    calendar events to link to the wrong delivery and the date to look wrong).
-let bySN={};
-AD().forEach(r=>{if(!r.n)return;let s=String(r.sn||'').replace(/\.0$/,'').trim();if(!s)return;(bySN[s]=bySN[s]||[]).push(r)});
-let dupSN=Object.keys(bySN).filter(s=>bySN[s].length>1);
-
-// 4b) EMPTY DUPLICATES that are safe to auto-remove. Within each duplicate-SN group we pick ONE
-// ticket to KEEP and flag the REST only if they are empty stubs (no customer info). Keeper rule:
-//   • exactly one enriched ticket  → keep that one;
-//   • all empty                    → keep the one whose name matches the calendar event's PRIMARY
-//                                     name for that serial (so "Thomas" wins over the stray "CRANE"
-//                                     spawned from "Thomas-30730-63021-CRANE").
-// If it's ambiguous (2+ enriched, or no event to decide), we DON'T auto-delete — leave it for the
-// manual Delete button. An enriched ticket is NEVER deleted by this tool.
-let dupDeletable=[]; // {r, sn, keeper}
-let dupAmbiguous=[];
-dupSN.forEach(s=>{
-let group=bySN[s];
-let enriched=group.filter(r=>gcalRecordIsEnriched(r));
-let keeper=null;
-if(enriched.length===1)keeper=enriched[0];
-else if(enriched.length===0){
-let evForSN=deliv.find(e=>{let p=parseGcalTitle(e.summary);return p&&(p.serial===s||(p.sns&&p.sns.indexOf(s)>=0));});
-if(evForSN){let prim=parseGcalTitle(evForSN.summary).name;keeper=group.find(r=>gcalNamesRelated(prim,r.n))||null;}
-}
-if(keeper&&enriched.length<=1){
-group.forEach(r=>{if(r!==keeper&&!gcalRecordIsEnriched(r))dupDeletable.push({r:r,sn:s,keeper:keeper})});
-}else dupAmbiguous.push(s);
-});
-
-// 5) HIJACKED HISTORY: delivered/completed tickets that are still linked to a calendar event.
-//    A delivered ticket is permanent history — it should never be tied to an active event,
-//    because a future event can drag its date (the Taylor SAUNA that jumped to 5/27). We list
-//    them so they can be unlinked and (for BASE records) restored to their original date.
-let hijacked=AD().filter(r=>r.n&&(r.dl||r.co)&&gcalTicketLinkedEventIds(r).length>0);
-
-console.log('[GCAL][REPAIR] events scanned:',deliv.length,
-'| orphans:',orphans.map(e=>e.summary),
-'| missing:',missing.map(r=>r.n+(r.sn?' / SN '+r.sn:'')),
-'| date conflicts:',conflicts.map(c=>c.r.n+' ticket='+c.r.dd+' vs event='+c.evDD),
-'| duplicate SNs:',dupSN.map(s=>s+' → '+bySN[s].map(r=>r.n).join(' & ')),
-'| hijacked history:',hijacked.map(r=>r.n+' ('+(r.dd||'?')+')'));
-btn.classList.remove('syncing');
-
-if(!orphans.length&&!missing.length&&!conflicts.length&&!dupSN.length&&!hijacked.length){
-showToast('&#10003; Everything is in sync — no orphans, conflicts, or stuck deliveries','success');
-return}
-
-let report='Sync check complete.\n\n';
-if(orphans.length){
-report+='▸ '+orphans.length+' calendar event(s) have NO ticket in the app (these "disappeared"):\n';
-report+=orphans.slice(0,6).map(e=>'   • '+(e.summary||'(no title)')+'  ['+(gcalDeliveryDD(e,parseGcalTitle(e.summary))||'?')+']').join('\n');
-if(orphans.length>6)report+='\n   …and '+(orphans.length-6)+' more';
-report+='\n\n'}
-if(conflicts.length){
-report+='▸ '+conflicts.length+' ticket(s) have a DIFFERENT date than their calendar event (this is the Kerry problem):\n';
-report+=conflicts.slice(0,6).map(c=>'   • '+c.r.n+(c.r.sn?' / SN '+c.r.sn:'')+'  —  ticket: '+(c.r.dd||'?')+'   |   calendar: '+c.evDD).join('\n');
-if(conflicts.length>6)report+='\n   …and '+(conflicts.length-6)+' more';
-report+='\n\n'}
-if(dupSN.length){
-report+='▸ '+dupSN.length+' serial number(s) are on MORE THAN ONE ticket (fix these by hand — a duplicate SN makes the calendar link to the wrong delivery):\n';
-report+=dupSN.slice(0,6).map(s=>'   • SN '+s+' → '+bySN[s].map(r=>r.n+' ('+(r.dd||'?')+')').join('  &  ')).join('\n');
-if(dupSN.length>6)report+='\n   …and '+(dupSN.length-6)+' more';
-report+='\n\n'}
-if(dupDeletable.length){
-report+='▸ '+dupDeletable.length+' EMPTY duplicate ticket(s) can be auto-removed (the copy with info — or the one whose name matches the event — is KEPT):\n';
-report+=dupDeletable.slice(0,6).map(d=>'   • remove "'+d.r.n+'" (SN '+d.sn+', empty)   →   keep "'+d.keeper.n+'"').join('\n');
-if(dupDeletable.length>6)report+='\n   …and '+(dupDeletable.length-6)+' more';
-report+='\n\n'}
-if(missing.length){
-report+='▸ '+missing.length+' upcoming ticket(s) are NOT on the calendar:\n';
-report+=missing.slice(0,6).map(r=>'   • '+r.n+(r.sn?' / SN '+r.sn:'')+'  ['+(r.dd||'?')+']').join('\n');
-if(missing.length>6)report+='\n   …and '+(missing.length-6)+' more';
-report+='\n\n'}
-if(hijacked.length){
-report+='▸ '+hijacked.length+' DELIVERED ticket(s) are still tied to a calendar event (this is the Taylor SAUNA problem — a finished delivery dragged onto a new date):\n';
-report+=hijacked.slice(0,6).map(r=>'   • '+r.n+(r.sp?' / '+String(r.sp).split(',')[0]:'')+'  —  now showing '+(r.dd||'?')).join('\n');
-if(hijacked.length>6)report+='\n   …and '+(hijacked.length-6)+' more';
-report+='\n\n'}
-alert(report+'You will now be asked, one group at a time, whether to repair each.');
-
-// Repair orphans → re-import as Upcoming deliveries
-let reimported=0;
-if(orphans.length&&confirm('Re-import '+orphans.length+' calendar event(s) that have no ticket?\n\nThis re-creates them as Upcoming deliveries and re-links them to their calendar events. (Nothing is deleted.)')){
-for(let ev of orphans){if(gcalReimportEvent(ev))reimported++}
-}
-
-// Fix hijacked history → unlink delivered/completed tickets from the calendar and restore
-// their original date (for BASE records). This removes the duplicate "Taylor SAUNA" from 5/27.
-let unlinked=0;
-if(hijacked.length&&confirm('Unlink '+hijacked.length+' delivered ticket(s) from the calendar?\n\n'+
-hijacked.slice(0,8).map(r=>'• '+r.n+(r.sp?' ('+String(r.sp).split(',')[0]+')':'')+' — currently '+(r.dd||'?')).join('\n')+
-(hijacked.length>8?'\n…and '+(hijacked.length-8)+' more':'')+
-'\n\nThese are finished deliveries that should not be tied to an active event. They will be removed from the calendar link and (where possible) moved back to their original delivery date. Their calendar events are NOT deleted.')){
-for(let r of hijacked){gcalUnlinkTicket(r,true);unlinked++}
-}
-
-// Fix date conflicts → move the ticket's date to match its calendar event (calendar is master).
-// This is OPT-IN: dates only change if you click OK, so nothing moves behind your back.
-let realigned=0;
-if(conflicts.length&&confirm('Move '+conflicts.length+' ticket(s) to match their CALENDAR date?\n\n'+
-conflicts.slice(0,8).map(c=>'• '+c.r.n+': '+(c.r.dd||'?')+'  →  '+c.evDD).join('\n')+
-(conflicts.length>8?'\n…and '+(conflicts.length-8)+' more':'')+
-'\n\nClick OK only if the CALENDAR date is the correct one. If a ticket is wrong because of a duplicate serial number, click Cancel and fix the serial by hand first.')){
-for(let c of conflicts){
-let nm2=String(c.evDD).match(/(am|pm|all\s*day|all)/i);
-// Preserve the ticket's own am/pm suffix if the event date has none
-let suffix=nm2?'':((String(c.r.dd||'').match(/(am|pm|all\s*day|all)/i)||[''])[0]);
-let newDd=c.evDayKey+(nm2?(' '+nm2[0].toLowerCase()):(suffix?' '+suffix:''));
-// CRITICAL: re-point this ticket's link to the CORRECT event (c.ev) and drop EVERY OTHER
-// calendar link pointing at it. This is what stops a ticket from being dragged back: if Kerry
-// was wrongly mapped to a June-19 event, that stray mapping is removed here, and from now on
-// only the correct event (e.g. the May-28 Kerry event) drives its date.
-let linkUpd={};
-Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],c.r.i)&&String(eid)!==String(c.ev.id)){linkUpd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
-linkUpd['gcal_map/'+c.ev.id]=c.r.i;db.ref().update(linkUpd);gcalMap[c.ev.id]=c.r.i;
-let ai=ADDED.findIndex(x=>sameId(x.i,c.r.i));
-let upd={dd:newDd,gcalId:c.ev.id,gcal_date_conflict:null,gcalSyncPending:null,gcalSyncReason:null};
-if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[c.r.i])EDITS[c.r.i]={};Object.assign(EDITS[c.r.i],upd);rememberEditsEdit(c.r.i,EDITS[c.r.i]);saveE()}
-realigned++;
-}
-}
-
-// Remove EMPTY duplicate tickets (opt-in). Only empty copies are deleted; the keeper stays, and
-// any ticket with customer info is never touched. Calendar events are NOT deleted.
-let dupDeleted=0;
-if(dupDeletable.length&&confirm('Remove '+dupDeletable.length+' EMPTY duplicate ticket(s)?\n\n'+
-dupDeletable.slice(0,12).map(d=>'• DELETE "'+d.r.n+'"  (SN '+d.sn+', no info)\n     keep → "'+d.keeper.n+'"').join('\n')+
-(dupDeletable.length>12?'\n…and '+(dupDeletable.length-12)+' more':'')+
-'\n\nOnly the EMPTY copies are removed. Anything with customer info you typed is protected. Google Calendar events are NOT deleted.')){
-let touchedA=false,touchedE=false;
-dupDeletable.forEach(d=>{
-Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],d.r.i)){db.ref('gcal_map/'+eid).remove();delete gcalMap[eid]}});
-let ai=ADDED.findIndex(x=>sameId(x.i,d.r.i));
-if(ai>=0){ADDED.splice(ai,1);touchedA=true}
-else{if(!EDITS[d.r.i])EDITS[d.r.i]={};EDITS[d.r.i]._deleted=true;rememberEditsEdit(d.r.i,EDITS[d.r.i]);touchedE=true}
-dupDeleted++;
-});
-if(touchedA)saveA();if(touchedE)saveE();
-}
-
-// Repair missing → push to Google Calendar (needs two-way sync ON + write access)
-let pushed=0;
-if(missing.length){
-if(!gcalWriteEnabled()){
-if(confirm('Pushing tickets to the calendar requires Two-way sync to be ON. Turn it on now and push the '+missing.length+' missing ticket(s)?')){
-setGcalWriteEnabled(true);let wChk=document.getElementById('gcalWrite');if(wChk)wChk.checked=true;
-for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.warn('push failed for',r.n,e)}}
-}
-}else if(confirm('Push '+missing.length+' missing ticket(s) to Google Calendar now?')){
-for(let r of missing){try{await gcalPushNewTicket(r);pushed++}catch(e){console.warn('push failed for',r.n,e)}}
-}
-}
-
-renderAll();
-showToast('&#10003; Repair done — '+unlinked+' delivered unlinked, '+realigned+' date(s) realigned, '+reimported+' re-imported, '+pushed+' pushed'+(dupDeleted?', '+dupDeleted+' empty duplicate(s) removed':'')+(dupAmbiguous.length?'. '+dupAmbiguous.length+' duplicate SN(s) need manual review (use the Delete button).':''),'success');
-}catch(e){btn.classList.remove('syncing');console.error('[GCAL][REPAIR] error:',e);showToast('&#10005; Repair scan failed: '+(e.result?e.result.error.message:e.message),'err')}}
 
 // === BIDIRECTIONAL CALENDAR SYNC: APP → GOOGLE CALENDAR ===
 // When the user creates / edits / deletes a delivery in the app, propagate the change to
@@ -7361,7 +6997,7 @@ let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
 let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
-h+='<div class="cal-wk-ev"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+r.n+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
+h+='<div class="cal-wk-ev"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+dispName(r)+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
