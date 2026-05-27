@@ -871,7 +871,7 @@ th,td{padding:7px 6px}
 <span class="gcal-stat" id="gcalLastSync">Never synced</span>
 <span class="gcal-stat ok" id="gcalCreated" style="display:none">0 created</span>
 <span class="gcal-stat ok" id="gcalUpdated" style="display:none">0 updated</span>
-<span class="gcal-stat" id="gcalSkipped" style="display:none">0 skipped (weekends)</span>
+<span class="gcal-stat" id="gcalSkipped" style="display:none">0 skipped (color/title filter)</span>
 <span class="gcal-stat err" id="gcalErrors" style="display:none">0 errors</span>
 </div>
 </div>
@@ -5444,7 +5444,7 @@ if(gdriveScopeOk&&typeof autoBackupToDrive==='function'){setTimeout(autoBackupTo
 return gdriveScopeOk}
 let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
 let gcalMap={}; // {gcalEventId: localDeliveryId}
-let gcalStats={created:0,updated:0,skipped:0,errors:0};
+let gcalStats={created:0,updated:0,skipped:0,sundayBlocked:0,errors:0};
 
 // Allowed colorIds for delivery events. Default: red, green, orange, gray (Awaiting Conf).
 const GCAL_DEFAULT_COLORS=['11','10','6','8'];
@@ -5648,7 +5648,7 @@ console.log('[GCAL] Sync deferred — write in flight (firebase saves='+_saveInF
 setTimeout(gcalSync,2000);
 return}
 let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
-gcalStats={created:0,updated:0,skipped:0,errors:0};
+gcalStats={created:0,updated:0,skipped:0,sundayBlocked:0,errors:0};
 
 // COLOR MIGRATION: tickets that were imported BEFORE color tracking was added have
 // gcalColorId === null/undefined. Google Calendar's syncToken is incremental — it only
@@ -5721,9 +5721,9 @@ document.getElementById('gcalLastSync').textContent='Last sync: '+stamp;
 let key=['created','updated','skipped','errors'][i];
 let el=document.getElementById('gcal'+k);
 if(gcalStats[key]>0){el.style.display='inline-block';
-el.textContent=gcalStats[key]+' '+(key==='skipped'?'skipped (weekends)':key.toLowerCase())}
+el.textContent=gcalStats[key]+' '+(key==='skipped'?'skipped (color/title filter)':key.toLowerCase())}
 else{el.style.display='none'}});
-showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.updated+' updated'+(gcalStats.skipped?', '+gcalStats.skipped+' weekend events skipped':'')+(gcalStats.errors?', '+gcalStats.errors+' errors':''));
+showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.updated+' updated'+(gcalStats.skipped?', '+gcalStats.skipped+' filtered (non-delivery or wrong color)':'')+(gcalStats.sundayBlocked?', '+gcalStats.sundayBlocked+' blocked (Sunday)':'')+(gcalStats.errors?', '+gcalStats.errors+' errors':''));
 }catch(e){console.error('sync err:',e);showToast('&#10005; Sync failed: '+(e.result?e.result.error.message:e.message),'err');gcalStats.errors++}
 btn.classList.remove('syncing')}
 
@@ -5769,10 +5769,14 @@ console.log('[GCAL] Delivery',mappedId,'moved to Hold');
 gcalStats.updated++}}
 return}
 // Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) and disallowed colors.
-if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
-if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
+if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;console.log('[GCAL skip:title]',JSON.stringify(ev.summary),'colorId=',ev.colorId);return}
+if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;console.log('[GCAL skip:color]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'(undefined = no explicit color, using calendar default — will be filtered)');return}
+console.log('[GCAL process]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'date=',ev.start&&(ev.start.date||ev.start.dateTime));
 let title=(ev.summary||'').trim();
 let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));if(!newDD)return;
+
+// SUNDAY BLOCK — Aspen does not deliver on Sundays. Block creation AND updates for Sunday events.
+{let dPart=newDD.split(' ')[0];if(/^\d{4}-\d{2}-\d{2}$/.test(dPart)){let p=dPart.split('-').map(Number);let dow=new Date(p[0],p[1]-1,p[2]).getDay();if(dow===0){gcalStats.sundayBlocked=(gcalStats.sundayBlocked||0)+1;console.log('[GCAL skip:sunday]',JSON.stringify(ev.summary),'date=',dPart,'(Aspen does not deliver Sundays)');return}}}
 
 // SAFETY: never sync while the edit modal for THIS event is open (unsaved changes in fields).
 let ovOpen=document.getElementById('ov');
