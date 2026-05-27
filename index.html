@@ -2453,6 +2453,8 @@ bootAuth()}}
 
 // Auth boot: try to restore session from localStorage; if invalid or missing, show login
 async function bootAuth(){
+let _ip=getIntakeParams();
+if(_ip){renderIntakePortal(_ip.id,_ip.token);return}
 let session=loadSession();
 if(session){let u=USERS[session.id];
 if(u&&u.name&&u.name.trim().toLowerCase()===String(session.name||'').trim().toLowerCase()){
@@ -2468,6 +2470,14 @@ document.getElementById('syncDot').className='sync-dot off';document.getElementB
 showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn');
 bootAuth()}},8000);
 
+if(getIntakeParams()){
+// CUSTOMER PORTAL MODE: a customer opened a private upload link. Do NOT subscribe to any delivery
+// data (we must never download the full ticket list into a customer's browser). Mark ready so the
+// 8s fallback stays idle, drop the loading overlay, and render only their private intake form.
+fbReady=true;
+let _lo=document.getElementById('loading-ov');if(_lo)_lo.remove();
+let _ip=getIntakeParams();renderIntakePortal(_ip.id,_ip.token);
+}else{
 dbEdits.on('value',snap=>{
 let v=snap.val()||{};
 // Defense layer 1: explicit offline-queue lock — flushing pending changes, don't clobber.
@@ -2596,10 +2606,12 @@ if(c.__cats__&&Array.isArray(c.__cats__)){CUSTOM_CATS=c.__cats__.filter(x=>x&&x.
 // Pick up the Microsoft Graph Client ID set by another team member
 if(typeof emailPw_applyFirebaseOpts==='function'){try{emailPw_applyFirebaseOpts(c)}catch(e){console.warn('emailPw_applyFirebaseOpts:',e)}}
 if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.error('dbOpts error:',err);if(!fbReady)checkReady()});
+} // end non-intake data listeners
 
 // Wrapper that renders the right view based on the current user's role
 function renderAfterAuth(){
 if(!currentUser)return;
+if(typeof startIntakeListener==='function')startIntakeListener();
 if(currentUser.role==='tech'){renderTechList()}
 else{renderAll()}}
 
@@ -2733,6 +2745,8 @@ let label=phoneLabel(phone);
 let digits=phoneDigits(label.num||phone);
 if(!digits||digits.length<7){alert('That phone number does not look valid: '+phone);return}
 let msg=buildPreDeliverySMS(r);
+// Attach the customer's private upload link (create one if needed) so they can submit photos/details.
+try{let _it=INTAKE[r.i];let _url=(_it&&_it.token&&!_it.submitted)?intakeUrl(r.i,_it.token):createIntakeLink(r.i);if(_url)msg+='\n\nUpload your access photos & confirm details here (closes once you submit):\n'+_url}catch(e){console.warn('intake link attach',e)}
 
 // Increment counter and append to history BEFORE opening Messages — once the
 // browser navigates to the sms: URL, focus leaves the page and any code after
@@ -3864,6 +3878,8 @@ return '<button type="button" class="'+cls+'" data-rec-id="'+r.i+'" onclick="sen
 +'</div><div class="cg">';
 PRE.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
 h+='</div></div>';
+// Customer Upload Link (intake portal)
+h+=intakeBoxHtml(r);
 // Delivered Notes (between checklists)
 h+='<div class="nb"><label>Delivered Notes</label><textarea id="e_dn">'+(r.dn||"")+'</textarea></div>';
 // Post-Delivery Checklist
@@ -7417,5 +7433,198 @@ function render(){renderBoard();renderTable()}
 function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();render();renderCharts();if(tab==='cal')renderCalendar()}
 // Initial render is triggered by Firebase listeners via checkReady()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeOv()});
+
+/* ===================== CUSTOMER INTAKE PORTAL (Alberto, 5/26) =====================
+A private per-ticket link the customer opens on their phone to upload access photos and
+confirm delivery details. Data lives in RTDB at intake/<ticketId>. The link EXPIRES the
+moment the customer taps "Send Information" (submitted=true). When submitted, the
+authenticated dashboard reflects it into the ticket (checklist + a note) and shows the
+photos inside the ticket's "Customer Upload Link" box. Customer-facing text is English. */
+let INTAKE={};
+let _intakeListenerOn=false;
+let _PORTAL=null;
+
+function getIntakeParams(){
+function parse(str){let o={};(str||'').replace(/^[#?]/,'').split('&').forEach(p=>{let i=p.indexOf('=');if(i>0)o[decodeURIComponent(p.slice(0,i))]=decodeURIComponent(p.slice(i+1))});return o}
+let h=parse(location.hash),q=parse(location.search);
+let id=h.intake||q.intake,t=h.t||q.t;
+return id?{id:String(id),token:t||''}:null}
+
+function intakeUrl(id,token){return location.origin+location.pathname+'#intake='+encodeURIComponent(id)+'&t='+encodeURIComponent(token)}
+
+function intakeDefaultRequested(r){return{access:!r.pt,level:!r.lv,wip:!r.wp,electricity:!r.el,payment:!r.pf}}
+
+function createIntakeLink(id,opts){
+let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showToast('Ticket not found','err');return null}
+let token=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
+let node={token:token,created:Date.now(),submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested};
+db.ref('intake/'+id).set(node);INTAKE[id]=node;
+return intakeUrl(id,token)}
+
+function _icopy(t){try{navigator.clipboard.writeText(t)}catch(e){let ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove()}}
+
+function intakeCreateAndCopy(id){
+let it=INTAKE[id];
+let url=(it&&it.token&&!it.submitted)?intakeUrl(id,it.token):createIntakeLink(id);
+if(!url)return;
+_icopy(url);
+showToast('&#128279; Customer upload link copied — paste into a text/email, or it is added automatically when you Send Pre-Delivery SMS');
+if(curRec&&sameId(curRec.i,id))setTimeout(()=>refreshIntakeBox(id),60)}
+
+function intakeRegenerate(id){
+if(!confirm('Create a NEW upload link?\n\nThe old link will stop working (use this to re-request info after the customer already submitted).'))return;
+let url=createIntakeLink(id);
+if(url){_icopy(url);showToast('&#128279; New link created and copied');if(curRec&&sameId(curRec.i,id))setTimeout(()=>refreshIntakeBox(id),60)}}
+
+function _iesc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function _ireqLabels(rq){rq=rq||{};let a=[];if(rq.access)a.push('Access photos');if(rq.level)a.push('Level');if(rq.wip)a.push('WIP');if(rq.electricity)a.push('Electrical');if(rq.payment)a.push('Payment');return a.join(', ')||'\u2014'}
+function _ipayLabel(p){return p==='store'?'Will pay at the store before delivery':p==='card'?'Call to pay by credit card':p==='check'?'Pay by check at delivery':p||'\u2014'}
+
+function _irespSummary(it){
+let rp=it.resp||{},h='<div style="font-size:13px;line-height:1.6">';
+if(rp.payment)h+='<div>&#128181; Payment: <b>'+_iesc(_ipayLabel(rp.payment))+'</b></div>';
+if(typeof rp.levelOk!=='undefined')h+='<div>&#128208; Pad is level &amp; clear: <b>'+(rp.levelOk?'Yes':'No')+'</b></div>';
+if(typeof rp.wipOk!=='undefined')h+='<div>&#128268; WIP ready (15ft conduit + adapters): <b>'+(rp.wipOk?'Yes':'No')+'</b></div>';
+[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=rp[g[0]];if(arr&&arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>'<a href="'+b+'" target="_blank" rel="noopener"><img src="'+b+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd"></a>').join('')+'</div></div>'}});
+if(rp.notes)h+='<div style="margin-top:6px">&#128221; Customer notes: '+_iesc(rp.notes)+'</div>';
+return h+'</div>'}
+
+function intakeBoxHtml(r){
+let it=INTAKE[r.i],inner;
+if(!it||!it.token){
+inner='<div style="font-size:13px;color:#6b7280;margin-bottom:8px">Generate a private link the customer opens on their phone to upload access photos and confirm details. It updates this ticket automatically and expires once they submit.</div>'+
+'<button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128228; Create customer upload link</button>';
+}else if(it.submitted){
+inner='<div style="color:#059669;font-weight:700;margin-bottom:6px">&#10003; Customer submitted'+(it.submittedAt?(' \u00b7 '+new Date(it.submittedAt).toLocaleString()):'')+'</div>'+_irespSummary(it)+
+'<div style="margin-top:10px"><button type="button" class="mbtn" onclick="intakeRegenerate('+_ijsv(r.i)+')">Create a new link (re-request)</button></div>';
+}else{
+inner='<div style="color:#2563eb;font-weight:700;margin-bottom:4px">&#9679; Link active \u2014 waiting for customer</div>'+
+'<div style="font-size:12px;color:#6b7280;margin-bottom:8px">Requesting: '+_iesc(_ireqLabels(it.requested))+'</div>'+
+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128203; Copy link</button>'+
+'<button type="button" class="mbtn" onclick="intakeRegenerate('+_ijsv(r.i)+')">New link</button></div>';
+}
+return '<div class="cs" id="intakeBox_'+r.i+'"><div class="ct">Customer Upload Link</div><div style="padding:4px 2px">'+inner+'</div></div>'}
+function _ijsv(v){return (typeof v==='number')?v:("'"+String(v).replace(/'/g,"\\'")+"'")}
+function refreshIntakeBox(id){let el=document.getElementById('intakeBox_'+id);if(!el)return;let r=AD().find(x=>sameId(x.i,id));if(r)el.outerHTML=intakeBoxHtml(r)}
+
+// ---- Reflect a customer submission back into the ticket (dashboard side only) ----
+function startIntakeListener(){
+if(_intakeListenerOn)return;_intakeListenerOn=true;
+db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};reflectIntakeSubmissions();if(curRec)refreshIntakeBox(curRec.i)},err=>console.warn('[INTAKE] listener err',err))}
+
+function reflectIntakeSubmissions(){
+if(!fbReady||!currentUser)return;
+Object.keys(INTAKE).forEach(id=>{
+let it=INTAKE[id];if(!it||!it.submitted||it.reflected)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
+let rp=it.resp||{},upd={};
+if(rp.access&&rp.access.length)upd.pt=true;
+if(rp.levelOk)upd.lv=true;
+if(rp.wipOk)upd.wp=true;
+if(rp.electricity&&rp.electricity.length)upd.el=true;
+let note='[Customer intake '+new Date(it.submittedAt||Date.now()).toLocaleDateString()+'] '+
+(rp.payment?('Payment: '+_ipayLabel(rp.payment)+'. '):'')+
+(typeof rp.levelOk!=='undefined'?('Pad level: '+(rp.levelOk?'OK':'NOT level')+'. '):'')+
+(typeof rp.wipOk!=='undefined'?('WIP ready: '+(rp.wipOk?'yes':'no')+'. '):'')+
+((rp.access&&rp.access.length)||(rp.electricity&&rp.electricity.length)||(rp.levelPhotos&&rp.levelPhotos.length)?'Photos uploaded (see Customer Upload Link box). ':'')+
+(rp.notes?('Notes: '+rp.notes):'');
+upd.dn=((r.dn||'')+'\n'+note).trim();
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
+if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],upd);rememberEditsEdit(id,EDITS[id]);saveE()}
+db.ref('intake/'+id+'/reflected').set(true);it.reflected=true;
+if(typeof showToast==='function')showToast('&#128228; '+(it.cust||'Customer')+' submitted delivery info \u2014 ticket updated');
+if(curRec&&sameId(curRec.i,id)&&typeof safeRefreshModalIfOpen==='function')safeRefreshModalIfOpen(id);
+})}
+
+/* ============================ THE CUSTOMER PORTAL PAGE ============================ */
+function _portalShell(inner){
+return '<div style="min-height:100%;background:#eef2f6;padding:0 0 40px">'+
+'<div style="background:#0f172a;color:#fff;padding:18px 16px;text-align:center"><div style="font-size:13px;letter-spacing:3px;color:#f59e0b;font-weight:700">ASPEN SPAS</div><div style="font-size:18px;font-weight:700;margin-top:2px">Delivery Preparation</div></div>'+
+'<div style="max-width:560px;margin:0 auto;padding:16px">'+inner+'</div></div>'}
+
+function _portalMsg(title,sub){
+return _portalShell('<div style="background:#fff;border-radius:14px;padding:30px 22px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)"><div style="font-size:42px">&#128231;</div><div style="font-size:20px;font-weight:700;margin:10px 0 6px">'+_iesc(title)+'</div><div style="color:#6b7280;font-size:14px;line-height:1.5">'+_iesc(sub)+'</div></div>')}
+
+function renderIntakePortal(id,token){
+document.title='Aspen Spas \u2014 Delivery Prep';
+let lo=document.getElementById('loading-ov');if(lo)lo.remove();
+let host=document.getElementById('intakePortalRoot');
+if(!host){host=document.createElement('div');host.id='intakePortalRoot';host.style.cssText='position:fixed;inset:0;z-index:100000;overflow:auto;-webkit-overflow-scrolling:touch;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif';document.body.appendChild(host)}
+host.innerHTML=_portalShell('<div style="text-align:center;color:#6b7280;padding:40px">Loading\u2026</div>');
+db.ref('intake/'+id).once('value').then(snap=>{
+let it=snap.val();
+if(!it||!it.token||String(it.token)!==String(token)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return}
+if(it.submitted){host.innerHTML=_portalMsg('Thank you!','We have already received your information. This link is now closed. Aspen Spas will be in touch about your delivery.');return}
+_PORTAL={id:id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelOk:false,wipOk:false,payment:'',notes:''};
+host.innerHTML=_portalShell(_portalFormHtml(it));
+}).catch(e=>{console.error('[INTAKE] load',e);host.innerHTML=_portalMsg('Something went wrong','Please reload the page or contact Aspen Spas.')})}
+
+function _card(title,body){return '<div style="background:#fff;border-radius:14px;padding:16px 16px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:8px">'+title+'</div>'+body+'</div>'}
+function _photoField(group,hint){
+return '<div style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:10px">'+hint+'</div>'+
+'<input id="file_'+group+'" type="file" accept="image/*" multiple capture="environment" style="display:none" onchange="intakeFiles(this,\''+group+'\')">'+
+'<button type="button" onclick="document.getElementById(\'file_'+group+'\').click()" style="background:#0f766e;color:#fff;border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:600;width:100%;cursor:pointer">&#128247; Add photos</button>'+
+'<div id="thumbs_'+group+'" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>'}
+
+function _portalFormHtml(it){
+let rq=it.requested||{},h='';
+h+='<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'+
+'<div style="font-size:15px">Hi'+(it.cust?' '+_iesc(String(it.cust).split(/[ ,]/)[0]):'')+',</div>'+
+'<div style="color:#475569;font-size:14px;line-height:1.5;margin-top:6px">We are getting ready for your '+_iesc(it.spa||'spa')+' delivery'+(it.date?' on '+_iesc(String(it.date).replace(/\s*(am|pm|all day)/i,'')):'')+'. Please complete the items below so the crew is fully prepared. It only takes a couple of minutes.</div></div>';
+
+if(rq.access)h+=_card('&#128205; Access photos','<div style="font-size:13px;color:#475569;line-height:1.55;margin-bottom:10px">Please take photos showing the <b>full path</b> our crew will use to bring the spa in:<br>1) The <b>entrance / driveway</b> to your property<br>2) The <b>path or walkway</b> from the entrance to where the spa will go (gates, steps, slopes, tight spots)<br>3) The <b>patio / pad</b> where the spa will sit<br>4) The <b>surrounding area</b> &mdash; anything that affects access</div>'+_photoField('access','Add as many as needed so we can see the whole route from the street to the spot.'));
+
+if(rq.level)h+=_card('&#128208; Level surface','<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#0f172a;margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.levelOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>The pad / patio where the spa will sit is <b>solid and level</b>, with nothing in the way.</span></label>'+_photoField('levelPhotos','Add a photo of the pad / patio where the spa will be placed.'));
+
+if(rq.wip)h+=_card('&#128268; Wiring (WIP)','<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;margin-bottom:10px">Please have ready before delivery: <b>15 ft of conduit / whip cable</b> and the <b>adapters</b> needed to connect the spa.</div><label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#0f172a;margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.wipOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>I have the <b>15 ft conduit + adapters</b> ready.</span></label>'+_photoField('wipPhotos','Optional: add a photo of the conduit / whip run if you have it.'));
+
+if(rq.electricity)h+=_card('&#9889; Electrical panel','<div style="font-size:13px;color:#475569;line-height:1.55;margin-bottom:10px">Please send a clear photo of your <b>breaker box / electrical panel</b> &mdash; with the cover open so the breakers are visible.</div>'+_photoField('electricity','Add a photo of the open breaker box.'));
+
+if(rq.payment)h+=_card('&#128181; Remaining balance','<div style="font-size:13px;color:#475569;margin-bottom:10px">How would you like to pay the remaining balance?</div>'+
+['store|I will pay at the Aspen Spas store before delivery','card|Please call me to pay by credit card','check|I will pay by check at delivery'].map(o=>{let v=o.split('|')[0],l=o.split('|')[1];return '<label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#0f172a;padding:8px 0;cursor:pointer"><input type="radio" name="ipay" onchange="_PORTAL.payment=\''+v+'\'" style="width:20px;height:20px"><span>'+l+'</span></label>'}).join(''));
+
+h+=_card('&#128221; Anything else? (optional)','<textarea id="intakeNotes" oninput="_PORTAL.notes=this.value" placeholder="Gate codes, dogs, parking, best times, etc." style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-size:14px;min-height:70px;font-family:inherit"></textarea>');
+
+h+='<button type="button" onclick="submitIntake()" style="background:#15803d;color:#fff;border:0;border-radius:12px;padding:15px;font-size:17px;font-weight:700;width:100%;cursor:pointer;box-shadow:0 2px 6px rgba(21,128,61,.3)">Send Information</button>'+
+'<div style="text-align:center;color:#94a3b8;font-size:12px;margin-top:10px">Aspen Spas &middot; This link closes once you submit.</div>';
+return h}
+
+async function intakeFiles(input,group){
+let files=Array.from(input.files||[]);if(!files.length)return;
+let btn=input.previousElementSibling;
+for(let f of files){
+if(_PORTAL[group].length>=10){showToast&&showToast('Max 10 photos per section','warn');break}
+try{let b64=await compressImage(f,1100,0.6);if(b64.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}_PORTAL[group].push(b64)}catch(e){console.error('compress',e)}
+}
+input.value='';_intakeThumbs(group)}
+
+function _intakeThumbs(group){
+let c=document.getElementById('thumbs_'+group);if(!c)return;
+c.innerHTML=_PORTAL[group].map((b,i)=>'<div style="position:relative"><img src="'+b+'" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #ddd"><button type="button" onclick="_PORTAL.'+group+'.splice('+i+',1);_intakeThumbs(\''+group+'\')" style="position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;border:0;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:22px;cursor:pointer">&times;</button></div>').join('')}
+
+function submitIntake(){
+let it=_PORTAL.it,rq=it.requested||{},miss=[];
+if(rq.access&&!_PORTAL.access.length)miss.push('access photos');
+if(rq.level){if(!_PORTAL.levelOk)miss.push('confirm the pad is level');if(!_PORTAL.levelPhotos.length)miss.push('a photo of the pad');}
+if(rq.wip&&!_PORTAL.wipOk)miss.push('confirm the 15ft conduit + adapters are ready');
+if(rq.electricity&&!_PORTAL.electricity.length)miss.push('a photo of the breaker box');
+if(rq.payment&&!_PORTAL.payment)miss.push('how you will pay the balance');
+if(miss.length){alert('Before sending, please add:\n\n\u2022 '+miss.join('\n\u2022 '));return}
+let resp={};
+if(rq.access)resp.access=_PORTAL.access;
+if(rq.level){resp.levelOk=_PORTAL.levelOk;resp.levelPhotos=_PORTAL.levelPhotos}
+if(rq.wip){resp.wipOk=_PORTAL.wipOk;if(_PORTAL.wipPhotos.length)resp.wipPhotos=_PORTAL.wipPhotos}
+if(rq.electricity)resp.electricity=_PORTAL.electricity;
+if(rq.payment)resp.payment=_PORTAL.payment;
+if(_PORTAL.notes)resp.notes=_PORTAL.notes;
+let host=document.getElementById('intakePortalRoot');
+if(host)host.innerHTML=_portalShell('<div style="text-align:center;color:#6b7280;padding:40px">Sending\u2026</div>');
+let id=_PORTAL.id;
+db.ref('intake/'+id).update({resp:resp,submitted:true,submittedAt:Date.now()}).then(()=>{
+if(host)host.innerHTML=_portalMsg('Thank you!','Your information was sent to Aspen Spas. This link is now closed. We will be in touch about your delivery.');
+}).catch(e=>{console.error('[INTAKE] submit',e);if(host)host.innerHTML=_portalMsg('Could not send','Please check your connection and try again, or contact Aspen Spas.')})}
+
 </script>
 </body></html>
