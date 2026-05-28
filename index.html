@@ -938,14 +938,12 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <label class="gcal-cf"><input type="checkbox" data-color="11" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#d50000"></span> Standard 8' (red)</label>
 <label class="gcal-cf"><input type="checkbox" data-color="10" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#0b8043"></span> 7' or Smaller (green)</label>
 <label class="gcal-cf"><input type="checkbox" data-color="6" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#f4511e"></span> Non-Standard (orange)</label>
-<label class="gcal-cf"><input type="checkbox" data-color="8" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#616161"></span> Awaiting Conf. (gray)</label>
-<label class="gcal-cf"><input type="checkbox" data-color="5" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#e4c441"></span> Slot N/A (yellow)</label>
 </div>
 <div class="row" id="gcalRowStatus" style="display:none">
 <span class="gcal-stat" id="gcalLastSync">Never synced</span>
 <span class="gcal-stat ok" id="gcalCreated" style="display:none">0 created</span>
 <span class="gcal-stat ok" id="gcalUpdated" style="display:none">0 updated</span>
-<span class="gcal-stat" id="gcalSkipped" style="display:none">0 skipped (color/title filter)</span>
+<span class="gcal-stat" id="gcalSkipped" style="display:none;cursor:pointer;text-decoration:underline" onclick="showGcalSkipLog()" title="Click para ver qué eventos se saltaron y por qué">0 skipped (color/title filter)</span>
 <span class="gcal-stat err" id="gcalErrors" style="display:none">0 errors</span>
 </div>
 </div>
@@ -3877,9 +3875,7 @@ let allowedColors=getGcalColors();
 let colorDefs=[
 {id:'11',l:"Standard 8'",hex:'#d50000',text:'#fff'},
 {id:'10',l:"7' or Smaller",hex:'#0b8043',text:'#fff'},
-{id:'6',l:'Non-Standard',hex:'#f4511e',text:'#fff'},
-{id:'8',l:'Awaiting Conf.',hex:'#616161',text:'#fff'},
-{id:'5',l:'Slot N/A',hex:'#e4c441',text:'#3b2f00'}
+{id:'6',l:'Non-Standard',hex:'#f4511e',text:'#fff'}
 ].filter(c=>allowedColors.includes(c.id));
 if(colorDefs.length){
 h+='<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);display:block;margin-bottom:8px">Calendar Color <span style="font-weight:400;color:var(--text-tertiary);font-size:10px;text-transform:none;letter-spacing:0">(syncs to Google Calendar)</span></label>';
@@ -5658,19 +5654,31 @@ return gdriveScopeOk}
 let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
 let gcalMap={}; // {gcalEventId: localDeliveryId}
 let gcalStats={created:0,updated:0,skipped:0,sundayBlocked:0,errors:0};
+// Detailed log of every event the sync skipped, so the "skipped" counter can be opened
+// and inspected. Each entry: {summary, colorId, reason:'title'|'color'|'sunday'|'noDate', date}.
+// Reset at the start of each gcalSync(). Lets Alberto see WHICH real deliveries got filtered.
+let gcalSkipLog=[];
+// Google Calendar's 11 named event colors → human label, for the skip-log readout.
+const GCAL_COLOR_NAMES={'1':'Lavender (morado claro)','2':'Sage (verde claro)','3':'Grape (morado)','4':'Flamingo (rosa)','5':'Banana (amarillo)','6':'Tangerine (naranja)','7':'Peacock (azul)','8':'Graphite (gris)','9':'Blueberry (azul oscuro)','10':'Basil (verde)','11':'Tomato (rojo)'};
+function gcalColorName(id){if(!id)return 'Sin color (default)';return GCAL_COLOR_NAMES[String(id)]||('Color '+id)}
 
 // Allowed colorIds for delivery events. Default: red, green, orange, gray (Awaiting Conf).
-const GCAL_DEFAULT_COLORS=['11','10','6','8'];
+// Per Alberto (May 2026): sync ONLY these three colors — Standard 8' (red/11),
+// 7' or Smaller (green/10), Non-Standard (orange/6). Gray and yellow were removed.
+const GCAL_DEFAULT_COLORS=['11','10','6'];
+// The only colors offered in the UI. Any other value saved in localStorage from before
+// (e.g. old gray '8' or yellow '5') is stripped out so the effective filter is exactly these.
+const GCAL_VALID_COLORS=['11','10','6'];
 function getGcalColors(){
 let s=localStorage.getItem('gcalAllowedColors');
-if(s){try{let a=JSON.parse(s);if(Array.isArray(a))return a}catch(e){}}
+if(s){try{let a=JSON.parse(s);if(Array.isArray(a)){let f=a.filter(c=>GCAL_VALID_COLORS.includes(String(c)));if(f.length)return f}}catch(e){}}
 return GCAL_DEFAULT_COLORS.slice()}
 function setGcalColors(arr){localStorage.setItem('gcalAllowedColors',JSON.stringify(arr))}
 function isAllowedColor(colorId){
-// Events with no explicit colorId are using the calendar's default color — treat as a delivery.
-// Aspen's workflow often skips picking a color manually; the title filter still catches real
-// non-deliveries (COLOR=, WEEK A, SERVICE, etc.) regardless of color.
-if(!colorId)return true;
+// Per Alberto (May 2026): ONLY events explicitly colored red/green/orange sync. An event
+// with NO color (the calendar's default color) is NOT a delivery and is skipped — the color
+// is the trigger. Title rules still apply afterward to the allowed-color events.
+if(!colorId)return false;
 return getGcalColors().includes(String(colorId))}
 function gcalToggleColor(cb){
 let allowed=getGcalColors();
@@ -5852,6 +5860,49 @@ sel.onchange=function(){gcalCalendarId=this.value;dbGcal.update({calendarId:gcal
 console.log('Calendars loaded:',gcalCalendars.map(c=>c.summary+' ['+c.accessRole+']').join(', '))}
 catch(e){console.error('loadCalendars:',e);showToast('&#10005; Could not load calendars: '+(e.result?e.result.error.message:e.message),'err')}}
 
+// Open a panel listing every event the last sync skipped, grouped by reason. Lets Alberto
+// see at a glance which REAL deliveries got filtered out (wrong color, or a title that
+// accidentally matched the non-delivery filter like "Holiday").
+function showGcalSkipLog(){
+let old=document.getElementById('skipLogOv');if(old)old.remove();
+let log=gcalSkipLog||[];
+let reasonMeta={
+title:{l:'Filtrado por TÍTULO',d:'El título coincide con un patrón no-delivery (WEEK A, SERVICE, HOLIDAY, COLOR=, empieza con *, etc.)',c:'#7c3aed'},
+color:{l:'Filtrado por COLOR',d:'El color del evento no está en tu lista de colores permitidos.',c:'#ea580c'},
+sunday:{l:'Bloqueado: DOMINGO',d:'Aspen no entrega los domingos.',c:'#dc2626'},
+noDate:{l:'Sin FECHA reconocible',d:'El evento no tiene una fecha que el sistema pueda leer.',c:'#64748b'}};
+let groups={};log.forEach(e=>{(groups[e.reason]=groups[e.reason]||[]).push(e)});
+let body='';
+if(!log.length){
+body='<div style="padding:30px;text-align:center;color:#6b7280;font-size:14px">No hay eventos saltados en la última sincronización.<br><span style="font-size:12px">Corre <b>Sync Now</b> y vuelve a abrir esta lista para ver el detalle.</span></div>';
+}else{
+['color','title','sunday','noDate'].forEach(rk=>{
+let items=groups[rk];if(!items||!items.length)return;
+let m=reasonMeta[rk];
+body+='<div style="margin-bottom:18px">';
+body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="background:'+m.c+';color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px">'+items.length+'</span><span style="font-size:13px;font-weight:800;color:#111827">'+m.l+'</span></div>';
+body+='<div style="font-size:11px;color:#6b7280;margin-bottom:8px;line-height:1.4">'+m.d+'</div>';
+body+='<div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">';
+items.slice(0,200).forEach((e,idx)=>{
+let bg=idx%2?'#f9fafb':'#fff';
+let colorTag=(rk==='color')?'<span style="font-size:10px;font-weight:700;color:'+m.c+'"> — '+escHtml(gcalColorName(e.colorId))+'</span>':'';
+body+='<div style="padding:8px 11px;background:'+bg+';font-size:12px;color:#374151;display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:600">'+escHtml(e.summary)+colorTag+'</span><span style="font-size:11px;color:#9ca3af;white-space:nowrap">'+escHtml(e.date||'—')+'</span></div>';
+});
+if(items.length>200)body+='<div style="padding:8px 11px;font-size:11px;color:#9ca3af;background:#fff">…y '+(items.length-200)+' más</div>';
+body+='</div></div>';
+});
+}
+let ov=document.createElement('div');
+ov.id='skipLogOv';
+ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch';
+ov.onclick=function(ev){if(ev.target===ov)ov.remove()};
+ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="font-size:18px;font-weight:800;color:#111827;margin:0">Eventos saltados en el último sync</h2><button onclick="document.getElementById(\'skipLogOv\').remove()" style="background:#f3f4f6;border:2px solid #e5e7eb;color:#6b7280;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px">&#10005;</button></div>'+
+'<div style="font-size:12px;color:#6b7280;margin-bottom:16px">Total filtrados: <b>'+log.length+'</b>. Si ves una <b>entrega real</b> aquí, el problema es su color (cámbialo en el calendario o agrega ese color al filtro) o su título.</div>'+
+body+'</div>';
+document.body.appendChild(ov);
+}
+
 function updateGcalUI(){
 let btn=document.getElementById('gcalBtn'),lbl=document.getElementById('gcalBtnLabel');
 let connected=!!gcalToken;
@@ -5936,6 +5987,7 @@ if(_preRepair.length){console.log('%c[GCAL] Pre-sync repair broke '+_preRepair.l
 
 let btn=document.getElementById('gcalBtn');btn.classList.add('syncing');
 gcalStats={created:0,updated:0,skipped:0,sundayBlocked:0,errors:0};
+gcalSkipLog=[];
 
 // COLOR MIGRATION: tickets that were imported BEFORE color tracking was added have
 // gcalColorId === null/undefined. Google Calendar's syncToken is incremental — it only
@@ -6059,14 +6111,14 @@ console.log('[GCAL] Delivery',mappedId,'moved to Hold');
 gcalStats.updated++}}
 return}
 // Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) and disallowed colors.
-if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;console.log('[GCAL skip:title]',JSON.stringify(ev.summary),'colorId=',ev.colorId);return}
-if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;console.log('[GCAL skip:color]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'(undefined = no explicit color, using calendar default — will be filtered)');return}
+if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;gcalSkipLog.push({summary:ev.summary||'(sin título)',colorId:ev.colorId||null,reason:'title',date:gcalEventToDate(ev)});console.log('[GCAL skip:title]',JSON.stringify(ev.summary),'colorId=',ev.colorId);return}
+if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;gcalSkipLog.push({summary:ev.summary||'(sin título)',colorId:ev.colorId||null,reason:'color',date:gcalEventToDate(ev)});console.log('[GCAL skip:color]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'(undefined = no explicit color, using calendar default — will be filtered)');return}
 console.log('[GCAL process]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'date=',ev.start&&(ev.start.date||ev.start.dateTime));
 let title=(ev.summary||'').trim();
-let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));if(!newDD){console.log('[GCAL skip:noDate]',JSON.stringify(ev.summary),'start=',ev.start);return;}
+let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));if(!newDD){gcalSkipLog.push({summary:ev.summary||'(sin título)',colorId:ev.colorId||null,reason:'noDate',date:null});console.log('[GCAL skip:noDate]',JSON.stringify(ev.summary),'start=',ev.start);return;}
 
 // SUNDAY BLOCK — Aspen does not deliver on Sundays. Block creation AND updates for Sunday events.
-{let dPart=newDD.split(' ')[0];if(/^\d{4}-\d{2}-\d{2}$/.test(dPart)){let p=dPart.split('-').map(Number);let dow=new Date(p[0],p[1]-1,p[2]).getDay();if(dow===0){gcalStats.sundayBlocked=(gcalStats.sundayBlocked||0)+1;console.log('[GCAL skip:sunday]',JSON.stringify(ev.summary),'date=',dPart,'(Aspen does not deliver Sundays)');return}}}
+{let dPart=newDD.split(' ')[0];if(/^\d{4}-\d{2}-\d{2}$/.test(dPart)){let p=dPart.split('-').map(Number);let dow=new Date(p[0],p[1]-1,p[2]).getDay();if(dow===0){gcalStats.sundayBlocked=(gcalStats.sundayBlocked||0)+1;gcalSkipLog.push({summary:ev.summary||'(sin título)',colorId:ev.colorId||null,reason:'sunday',date:gcalEventToDate(ev)});console.log('[GCAL skip:sunday]',JSON.stringify(ev.summary),'date=',dPart,'(Aspen does not deliver Sundays)');return}}}
 
 // SAFETY: never sync while the edit modal for THIS event is open (unsaved changes in fields).
 let ovOpen=document.getElementById('ov');
