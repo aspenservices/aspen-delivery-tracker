@@ -6687,27 +6687,22 @@ renderAll()}
 // Read-only: given a calendar event, return the local ticket it belongs to, or null. Uses the
 // same matching ladder as the live importer (map → gcalId field → any SN candidate → name+date).
 function gcalMatchEventToTicket(ev){
+// ============================================================================================
+// TICKET PROTECTION (Alberto, May 2026)
+// Each ticket is a UNIQUE, PROTECTED entity. A brand-new Google Calendar event NEVER attaches
+// itself to an existing ticket by guessing — not by serial number, not by name, not by date.
+// The ONLY way an event maps to an existing ticket is the event's own id (gcalMap or
+// ticket.gcalId), because that id is the persistent identity of the event itself.
+//
+// Why: serial numbers get reused across customers (e.g. SN 29604 used by both the closed
+// Hunziker ticket AND the new Rose event) and names collide. Any "smart" match by SN/name
+// silently overwrites the wrong customer's ticket. Returning null when there's no id-based
+// link forces processGcalEvent to CREATE A NEW TICKET, leaving every existing ticket
+// untouched. Duplicates can be merged manually if they ever happen; cross-links can't.
+// ============================================================================================
 let mid=gcalMap[ev.id];
 if(mid!=null){let r=findRecById(mid);if(r)return r}
 let r2=AD().find(r=>r.gcalId&&sameId(r.gcalId,ev.id));if(r2)return r2;
-let parsed=parseGcalTitle(ev.summary);
-let snCands=(parsed.sns&&parsed.sns.length)?parsed.sns:(parsed.sn?[parsed.sn]:[]);
-if(snCands.length){let r3=AD().find(r=>{if(!r.n)return false;let rsn=String(r.sn||'').replace(/\.0$/,'');return rsn&&snCands.includes(rsn)});if(r3)return r3}
-let newDD=gcalDeliveryDD(ev,parsed);
-if(parsed.name){
-let nameKey=parsed.name.toLowerCase().split(/[\s,]+/)[0];
-if(nameKey&&nameKey.length>=3){
-let newDate=null,nm=String(newDD||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-if(nm)newDate=new Date(+nm[1],+nm[2]-1,+nm[3]);
-let MAX_GAP=60*86400000;
-let r4=AD().find(r=>{
-if(!r.n||r.co||r.dl)return false;
-if(r.gcalId&&!sameId(r.gcalId,ev.id))return false;
-if(r.n.toLowerCase().indexOf(nameKey)<0)return false;
-if(!newDate)return true;
-let rd=parseDate(r.dd);if(!rd||isNaN(rd))return true;
-return Math.abs(newDate.getTime()-rd.getTime())<=MAX_GAP});
-if(r4)return r4}}
 return null}
 
 // Re-create an Upcoming ticket from an orphaned calendar event (mirrors the create-new path in
