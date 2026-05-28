@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Aspen Spas">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a1410">
+<link rel="manifest" href="manifest.json">
 <!-- Aspen Spas Delivery icon: two movers carrying a spa (matches the team's actual work) -->
 <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
 <link rel="apple-touch-icon" sizes="152x152" href="data:image/png;base64,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">
@@ -761,7 +762,88 @@ th,td{padding:7px 6px}
 .user-row .u-btn:hover{background:var(--bg-cream)}
 .user-row .u-btn.danger:hover{background:#fef2f2;color:#dc2626;border-color:#dc2626}
 
+
+/* ============================================================================
+   ASPEN VISUAL REFRESH  (appended override — layout/typography/spacing only)
+   NO status colors, NO tina colorId, NO calendar/payment colors, NO JS changed.
+   ============================================================================ */
+/* 1) Wider, readable cards: ~4 columns instead of 7 cramped */
+.board{grid-template-columns:repeat(auto-fill,minmax(312px,1fr)) !important;gap:13px !important;padding:18px 34px 50px !important}
+/* 2) Card polish: softer radius, warmer shadow, lift on hover */
+.card{border-radius:13px !important;padding:14px 15px !important;box-shadow:0 1px 2px rgba(94,67,41,.05),0 3px 10px -4px rgba(94,67,41,.10) !important;transition:transform .15s,box-shadow .15s,border-color .15s !important}
+.card:hover{transform:translateY(-2px) !important;box-shadow:0 10px 26px -10px rgba(94,67,41,.28) !important}
+/* 3) Customer name a touch larger/tighter */
+.c-name{font-size:13.5px !important;letter-spacing:-.005em !important}
+/* 4) Truncate notes to 2 lines — kills the repeated "Auto-created…" text wall */
+.c-note{display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;line-height:1.45 !important;margin-top:8px !important}
+/* 5) Progress bars slightly taller for legibility */
+.ptrk{height:5px !important}
+/* 6) Badge: cleaner radius + spacing */
+.badge{border-radius:6px !important;letter-spacing:.05em !important;padding:3px 8px !important}
+/* 7) Header: tighter vertical rhythm */
+.aspen-hdr{padding-top:calc(env(safe-area-inset-top,0px) + 16px) !important;padding-bottom:18px !important}
+.aspen-subtitle{margin-top:10px !important}
+/* 8) Tabs bar: a little more breathing room on the active underline */
+.aspen-tab{transition:color .15s,border-color .15s !important}
+/* 9) Context header card: softer, warmer */
+.ctx-hdr{border-radius:13px !important;box-shadow:0 2px 8px -4px rgba(94,67,41,.12) !important}
+/* 10) Search field: rounder, calmer */
+.search{border-radius:10px !important}
+.search:focus{border-color:var(--aspen-orange) !important;box-shadow:0 0 0 3px rgba(230,126,46,.14) !important}
+/* 11) MODAL polish — brand focus ring on every field, calmer section spacing.
+       (Only visual; the calendar-color/tina picker keeps its exact colors.) */
+#md input:focus,#md select:focus,#md textarea:focus{border-color:var(--aspen-orange) !important;box-shadow:0 0 0 3px rgba(230,126,46,.15) !important;outline:none !important}
+.mdl{border-radius:16px !important}
+/* 12) Primary action buttons: subtle depth */
+.aspen-action-btn{transition:transform .12s,box-shadow .12s !important}
+.aspen-action-btn:hover{transform:translateY(-1px) !important}
+/* 13) Charts cards: match card softness */
+.charts .cbox,.cbox{border-radius:13px !important}
+/* 14) Mobile: comfortable single column already handled by your media queries; keep gap tidy */
+@media(max-width:760px){.board{padding:14px 16px 30px !important;gap:10px !important}}
+
+
+/* ===== MODAL: sectioned-card look (matches approved mockup) — CSS only, scoped to #md ===== */
+#md .cs{background:#faf7f1 !important;border:1px solid var(--border-soft) !important;border-radius:12px !important;padding:15px 16px !important;margin-bottom:13px !important;box-shadow:0 1px 2px rgba(94,67,41,.04) !important}
+#md .ct{color:var(--aspen-orange-dark) !important;text-transform:uppercase !important;letter-spacing:.05em !important;font-size:11.5px !important;margin-bottom:12px !important}
+#md .nb{background:#fff !important;border:1px solid var(--border-soft) !important;border-left:3px solid var(--aspen-orange) !important}
+#md .mdl,.mdl{border-radius:16px !important}
+
+
+/* ===== MODAL TOP FIELDS — make the change unmistakable where you actually look ===== */
+#md .ib{border:1px solid var(--border-soft) !important;border-radius:10px !important;padding:11px 13px !important;box-shadow:0 1px 2px rgba(94,67,41,.05) !important}
+#md .ib label,#md .nb label{color:var(--aspen-orange-dark) !important;letter-spacing:.05em !important;font-size:10.5px !important}
+#md .ib input,#md .ib select,#md .ib textarea{border:1px solid var(--border-mid) !important;border-radius:8px !important}
+#md .ig{gap:12px !important;margin-bottom:12px !important}
+/* Modal hero name bigger */
+#md h2,#md .mtitle{font-size:22px !important;letter-spacing:-.01em !important}
+
+
+/* ===== v2 FRAME: command-bar KPIs + sticky search ===== */
+.aspen-hdr-inner{gap:18px !important}
+.aspen-kpis{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.aspen-kpis .akpi{display:flex;flex-direction:column;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);padding:6px 13px;border-radius:11px;min-width:76px;line-height:1.05}
+.aspen-kpis .akv{font-size:16px;font-weight:800;color:#fff}
+.aspen-kpis .akl{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#b6a890;margin-top:3px}
+.aspen-kpis .akpi.due .akv{color:#ffb4a3}
+.aspen-kpis .akpi.at{background:rgba(230,126,46,.16) !important;border-color:rgba(230,126,46,.42) !important}
+.aspen-kpis .akpi.at .akv{color:#f4a85a}
+.aspen-subtitle{margin-top:9px !important;opacity:.85}
+.filters{position:sticky !important;top:0 !important;z-index:25 !important;background:var(--bg-cream) !important;padding-top:12px !important;padding-bottom:12px !important;box-shadow:0 6px 12px -10px rgba(94,67,41,.4)}
+@media(max-width:820px){.aspen-kpis{width:100%;justify-content:space-between;gap:6px;order:3}.aspen-kpis .akpi{min-width:0;flex:1;padding:6px 7px}.aspen-kpis .akv{font-size:14px}}
+
 </style>
+<script>
+// === PWA SERVICE WORKER (network-first) ===
+// App loads instantly and even OFFLINE for techs, while always fetching the freshest index.html
+// when online (re-deployed often). If sw.js / manifest aren't present, this silently no-ops.
+if('serviceWorker' in navigator){
+window.addEventListener('load',()=>{
+navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW registered',reg.scope)})
+.catch(e=>console.log('[PWA] SW registration skipped:',e.message));
+});
+}
+</script>
 </head>
 <body>
 <div id="loading-ov"><div class="ld-spinner"></div><div class="ld-text">Connecting to database...</div></div>
@@ -823,6 +905,12 @@ th,td{padding:7px 6px}
 <div class="aspen-hdr-inner">
 <div class="aspen-logo">
 <svg class="aspen-logo-svg" viewBox="0 0 1350 468" xmlns="http://www.w3.org/2000/svg" aria-label="Aspen Spas"><path fill="#dd6b36" d="M 141.996094 148.632812 C 141.996094 148.632812 143.253906 169.210938 110.109375 178.976562 C 101.601562 181.488281 62.605469 192.769531 40.085938 216.71875 C 39.785156 217.03125 39.492188 217.335938 39.21875 217.660156 C 4.507812 255.785156 7.535156 297.976562 10.984375 319.652344 C 12.179688 301.53125 18.324219 286.335938 29.351562 275.246094 C 54.65625 249.824219 105.738281 252.390625 132.21875 214.210938 C 132.21875 214.210938 124.515625 246.179688 65.128906 266.753906 C 32.6875 278.015625 45.578125 295.777344 52.789062 298.90625 C 52.789062 298.90625 52.769531 298.933594 52.757812 298.949219 C 53.765625 299.449219 60.371094 303.179688 75.398438 305.519531 C 90.410156 307.863281 148.15625 304.46875 160.824219 246.550781 C 170.378906 202.863281 141.996094 148.632812 141.996094 148.632812"/><path fill="#f5f5f5" d="M 244.519531 201.441406 L 225.519531 250.050781 L 263.742188 250.050781 Z M 231.261719 155.917969 L 259.753906 155.917969 L 327.832031 312.363281 L 288.949219 312.363281 L 275.445312 279.226562 L 214.679688 279.226562 L 201.644531 312.363281 L 163.652344 312.363281 Z M 231.261719 155.917969"/><path fill="#f5f5f5" d="M 417.03125 194.148438 C 411.503906 187.074219 400.449219 183.761719 392.0625 183.761719 C 382.324219 183.761719 368.847656 188.179688 368.847656 199.894531 C 368.847656 228.398438 440.894531 210.050781 440.894531 264.863281 C 440.894531 299.769531 412.824219 316.351562 380.558594 316.351562 C 360.453125 316.351562 342.765625 310.382812 327.976562 296.6875 L 352.503906 269.714844 C 359.570312 278.996094 371.066406 284.523438 382.539062 284.523438 C 393.816406 284.523438 406.410156 279.226562 406.410156 268.171875 C 406.410156 239.433594 333.050781 254.910156 333.050781 202.753906 C 333.050781 169.394531 362.007812 151.929688 392.71875 151.929688 C 410.394531 151.929688 427.421875 156.578125 440.671875 168.28125 Z M 417.03125 194.148438"/><path fill="#f5f5f5" d="M 485.527344 222.21875 L 508.503906 222.21875 C 520.6875 222.21875 532.816406 218.011719 532.816406 203.421875 C 532.816406 187.292969 516.460938 185.082031 503.203125 185.082031 L 485.527344 185.082031 Z M 451.054688 155.917969 L 509.175781 155.917969 C 541.644531 155.917969 568.628906 166.304688 568.628906 203.421875 C 568.628906 240.105469 543.65625 251.371094 510.707031 251.371094 L 485.527344 251.371094 L 485.527344 312.367188 L 451.054688 312.367188 Z M 451.054688 155.917969"/><path fill="#f5f5f5" d="M 577.929688 155.917969 L 684.226562 155.917969 L 684.226562 187.734375 L 612.414062 187.734375 L 612.414062 216.902344 L 680.265625 216.902344 L 680.265625 248.71875 L 612.414062 248.71875 L 612.414062 280.535156 L 688.207031 280.535156 L 688.207031 312.367188 L 577.929688 312.367188 Z M 577.929688 155.917969"/><path fill="#f5f5f5" d="M 699.148438 155.917969 L 745.992188 155.917969 L 812.515625 264.644531 L 812.953125 264.644531 L 812.953125 155.917969 L 847.445312 155.917969 L 847.445312 312.367188 L 802.328125 312.367188 L 734.054688 200.988281 L 733.617188 200.988281 L 733.617188 312.367188 L 699.148438 312.367188 Z M 699.148438 155.917969"/><path fill="#f5f5f5" d="M 981.917969 183.542969 C 975.746094 173.589844 964.679688 169.175781 953.390625 169.175781 C 937.050781 169.175781 920.042969 176.90625 920.042969 195.464844 C 920.042969 209.839844 927.980469 216.25 952.96875 224.1875 C 977.261719 231.9375 999.808594 239.882812 999.808594 270.605469 C 999.808594 301.765625 973.085938 316.355469 944.792969 316.355469 C 926.675781 316.355469 907.214844 310.386719 896.605469 294.6875 L 912.523438 281.652344 C 919.164062 293.148438 932.40625 299.117188 945.902344 299.117188 C 961.820312 299.117188 979.933594 289.839844 979.933594 271.921875 C 979.933594 252.6875 966.894531 249.390625 939.042969 240.105469 C 916.953125 232.800781 900.148438 223.101562 900.148438 197.011719 C 900.148438 166.960938 926.03125 151.929688 953.390625 151.929688 C 970.859375 151.929688 985.6875 156.800781 997.175781 170.269531 Z M 981.917969 183.542969"/><path fill="#f5f5f5" d="M 1031.632812 224.847656 L 1063.003906 224.847656 C 1081.558594 224.847656 1094.402344 216.472656 1094.402344 199.007812 C 1094.402344 181.542969 1081.558594 173.152344 1063.003906 173.152344 L 1031.632812 173.152344 Z M 1013.0625 155.917969 L 1059.480469 155.917969 C 1088.21875 155.917969 1114.273438 166.066406 1114.273438 198.777344 C 1114.273438 233.039062 1085.097656 242.09375 1063.003906 242.09375 L 1031.632812 242.09375 L 1031.632812 312.367188 L 1013.0625 312.367188 Z M 1013.0625 155.917969"/><path fill="#f5f5f5" d="M 1159.265625 179.785156 L 1158.835938 179.785156 L 1126.335938 256.683594 L 1190.207031 256.683594 Z M 1150.867188 155.917969 L 1168.3125 155.917969 L 1234.828125 312.363281 L 1213.183594 312.363281 L 1197.289062 273.921875 L 1119.054688 273.921875 L 1102.925781 312.363281 L 1081.917969 312.363281 Z M 1150.867188 155.917969"/><path fill="#f5f5f5" d="M 1323.109375 183.542969 C 1316.910156 173.589844 1305.867188 169.175781 1294.59375 169.175781 C 1278.238281 169.175781 1261.238281 176.90625 1261.238281 195.464844 C 1261.238281 209.839844 1269.183594 216.25 1294.136719 224.1875 C 1318.4375 231.9375 1341 239.882812 1341 270.605469 C 1341 301.765625 1314.277344 316.355469 1285.960938 316.355469 C 1267.863281 316.355469 1248.382812 310.386719 1237.800781 294.6875 L 1253.726562 281.652344 C 1260.347656 293.148438 1273.621094 299.117188 1287.074219 299.117188 C 1303.003906 299.117188 1321.101562 289.839844 1321.101562 271.921875 C 1321.101562 252.6875 1308.082031 249.390625 1280.230469 240.105469 C 1258.144531 232.800781 1241.335938 223.101562 1241.335938 197.011719 C 1241.335938 166.960938 1267.199219 151.929688 1294.59375 151.929688 C 1312.046875 151.929688 1326.84375 156.800781 1338.363281 170.269531 Z M 1323.109375 183.542969"/></svg>
+</div>
+<div class="aspen-kpis" id="aspenKpis">
+<div class="akpi"><span class="akv" id="kpiTotal">—</span><span class="akl">Entregas</span></div>
+<div class="akpi due"><span class="akv" id="kpiBal">—</span><span class="akl">Por cobrar</span></div>
+<div class="akpi"><span class="akv" id="kpiUp">—</span><span class="akl">Upcoming</span></div>
+<div class="akpi at"><span class="akv" id="kpiAttn">—</span><span class="akl">Atención</span></div>
 </div>
 <div class="aspen-user" title="Database status"><span class="sync-dot off" id="syncDot"></span><span id="userInitials">—</span><span id="userRoleBadge" class="role-badge"></span><button class="logout-btn-hdr" onclick="doLogout()" title="Sign out">&#x21AA;</button></div>
 </div>
@@ -2355,9 +2443,29 @@ obj[id]=Object.assign({},obj[id]||{},local);
 });
 return obj}
 
+// === BACKUP QUOTA GUARD ===
+// localStorage caps near ~5MB. Customer intake photos (base64) can blow past that, and a silent
+// quota error would leave the offline safety net EMPTY. On failure we retry with a slimmed copy
+// (photos stripped — they already live in Firebase), then drop the other backup key to make room.
+let _quotaWarned=false;
+function _safeBackup(key,obj){
+try{localStorage.setItem(key,JSON.stringify(obj));return true}
+catch(e){
+try{
+let slim=JSON.parse(JSON.stringify(obj)),stripped=0;
+Object.values(slim||{}).forEach(r=>{if(r&&typeof r==='object'){['photos','tech_photos','info_photos','sig'].forEach(f=>{if(r[f]){delete r[f];stripped++}})}});
+localStorage.setItem(key,JSON.stringify(slim));
+if(!_quotaWarned){_quotaWarned=true;console.warn('[BACKUP] localStorage full — slim backup (photos stripped). Photos remain in Firebase.');try{showToast('&#9888; Local storage full — photos not backed up locally (still safe in cloud)','warn')}catch(_e){}}
+return true;
+}catch(e2){
+try{localStorage.removeItem(key==='aspen_backup_edits'?'aspen_backup_added':'aspen_backup_edits');localStorage.setItem(key,JSON.stringify(obj));return true}
+catch(e3){console.error('[BACKUP] Quota exhausted, backup not written:',e3);return false}
+}
+}
+}
 function saveE(){
 // Always backup to localStorage FIRST (so it survives even if app closes mid-sync)
-try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
+_safeBackup('aspen_backup_edits',EDITS);
 // Try Firebase with timeout protection — if it fails or hangs, queue for later sync
 let synced=false;
 _saveInFlight.edits++;_lastLocalSave.edits=Date.now();
@@ -2381,7 +2489,7 @@ queueOffline('edits',EDITS)
 },5000);
 }
 function saveA(){
-try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
+_safeBackup('aspen_backup_added',ADDED);
 let synced=false;
 _saveInFlight.added++;_lastLocalSave.added=Date.now();
 let p=dbAdded.set(ADDED);
@@ -2971,6 +3079,16 @@ el.innerHTML=h;
 // Inject the Hold toolbar OUTSIDE the inner-flex ctx-meta, into the host node, AFTER ctxHdr
 let host=document.getElementById('holdToolbarHost');
 if(host)host.innerHTML=holdExtras;
+// v2 Frame: populate header KPIs (guarded — never breaks render)
+try{
+var _all=AD().filter(function(r){return r.n||r.cal});
+var _bal=_all.reduce(function(s,r){return s+(r.bl||0)},0);
+var _up=_all.filter(function(r){return st(r)==='upcoming'}).length;
+var _kf=function(x){x=x||0;return x>=1000?'$'+(x/1000).toFixed(x>=100000?0:1).replace(/\.0$/,'')+'k':'$'+Math.round(x)};
+var _set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v};
+_set('kpiTotal',_all.length);_set('kpiBal',_kf(_bal));_set('kpiUp',_up);_set('kpiAttn',attnCount);
+var _ka=document.getElementById('kpiAttn');if(_ka&&_ka.parentNode)_ka.parentNode.style.display=attnCount>0?'':'none';
+}catch(_e){}
 }
 
 // Reason filter state for the Hold tab. Empty string means "all reasons".
@@ -3108,8 +3226,53 @@ else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEd
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 renderBoard();renderTable()}
 resetMd('wide');
-renderModal();openOv()}
-function closeOv(){document.getElementById("ov").classList.add("hidden");document.body.classList.remove('modal-open');resetMd()}
+renderModal();openOv();startModalAutosave()}
+function closeOv(){stopModalAutosave();document.getElementById("ov").classList.add("hidden");document.body.classList.remove('modal-open');resetMd()}
+
+// === MODAL AUTOSAVE ===
+// While a ticket detail is open in EDIT mode, silently persist the in-progress form every 5s so a
+// dropped connection, tab crash, or accidental close never loses work. Does NOT close, re-render,
+// toast, or push to Google Calendar — only flushes current form state into EDITS/ADDED (+ backup +
+// Firebase). A JSON diff skips the write when nothing changed. Full saveEdit() still runs on Save.
+let _autosaveTimer=null,_autosaveLastJSON=null;
+function autosaveModal(){
+try{
+if(!curRec)return;
+let ov=document.getElementById('ov');
+if(!ov||ov.classList.contains('hidden'))return;
+if(!document.getElementById('e_n'))return;
+let id=curRec.i,u=gatherEdits(),j=JSON.stringify(u);
+if(j===_autosaveLastJSON)return;
+_autosaveLastJSON=j;
+let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
+if(ai>=0){Object.assign(ADDED[ai],u);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],u);rememberEditsEdit(id,EDITS[id]);saveE()}
+console.log('[AUTOSAVE] draft persisted for ticket',id);
+}catch(e){console.warn('[AUTOSAVE] skipped:',e)}
+}
+function startModalAutosave(){stopModalAutosave();_autosaveLastJSON=null;_autosaveTimer=setInterval(autosaveModal,5000)}
+function stopModalAutosave(){if(_autosaveTimer){clearInterval(_autosaveTimer);_autosaveTimer=null}}
+
+// === RESUME RECOVERY ===
+// Background tabs throttle setInterval, so when a laptop wakes or the tab regains focus the token
+// refresh + 60s auto-sync may be stale and the OAuth token expired. On resume we (1) retry the
+// offline queue, (2) refresh the token, (3) run an immediate catch-up sync — so the calendar never
+// silently drifts out of date. Uses ONLY existing functions; does not alter sync behavior.
+let _lastResumeSync=0;
+async function _onResume(){
+if(document.visibilityState&&document.visibilityState!=='visible')return;
+if(Date.now()-_lastResumeSync<15000)return;
+_lastResumeSync=Date.now();
+if(navigator.onLine){try{flushOfflineQueue()}catch(e){}}
+if(typeof gcalToken==='undefined'||!gcalToken||typeof gcalCalendarId==='undefined'||!gcalCalendarId)return;
+console.log('[RESUME] Tab active again — refreshing token + catch-up sync');
+try{
+let ok=(typeof gcalRefreshTokenNow==='function')?await gcalRefreshTokenNow():true;
+if(ok&&typeof gcalSync==='function')gcalSync();
+}catch(e){console.warn('[RESUME] recovery failed',e)}
+}
+document.addEventListener('visibilitychange',_onResume);
+window.addEventListener('focus',_onResume);
 function toggleEdit(){renderModal()}
 
 // === INVOICE PDF AUTO-FILL ===
@@ -5960,7 +6123,7 @@ let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
 console.log('%c[GCAL] CROSS-LINK MID-SYNC','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
 'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
 let _u={gcalId:'',gcalColorId:'',cal:''};
 let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
@@ -5989,7 +6152,7 @@ return}
 if(mappedId&&!local){
 // Stale mapping — the linked ticket was deleted. Unlink and fall through to create a fresh one.
 console.log('[GCAL] Stale mapping: event '+ev.id+' \u2192 deleted ticket '+mappedId+'. Re-creating.');
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
 }
 }
 // BEFORE creating a brand-new ticket, try to find an existing ticket with the same SN. This
@@ -6200,7 +6363,7 @@ if(stub.dd)u.dd=stub.dd;
 let ai=ADDED.findIndex(x=>sameId(x.i,real.i));
 if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
 else{if(!EDITS[real.i])EDITS[real.i]={};Object.assign(EDITS[real.i],u);saveE()}
-db.ref('gcal_map/'+stub.gcalId).set(real.i);
+db.ref('gcal_map/'+stub.gcalId).set(real.i).catch(e=>console.warn('[FB] gcal_map set failed',e));
 trackGcalMapSet(stub.gcalId,real.i);gcalMap[stub.gcalId]=real.i;
 let si=ADDED.findIndex(x=>sameId(x.i,stub.i));
 if(si>=0){ADDED.splice(si,1);saveA();}
@@ -6279,7 +6442,7 @@ if(!local){
 // Stale mapping — the ticket was deleted. Don't leave it stuck waiting for a regular
 // sync that may never re-deliver this event (syncToken is incremental). Clear the
 // stale mapping here and fall through to create a fresh ticket below.
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
 mappedId=null;
 healed.staleFixed.push({summary:title,wasMapped:mappedId});
 console.log('[AUTO-AUDIT] Cleared stale mapping for event '+ev.id+' and recreating ticket.');
@@ -6298,7 +6461,7 @@ let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
 console.log('%c[AUTO-AUDIT] CROSS-LINK in heal-drift','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
 'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+' (event "'+title+'"). Breaking wrong link instead of overwriting customer data.');
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove();delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
 let _u={gcalId:'',gcalColorId:'',cal:''};
 let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
 if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
@@ -7616,7 +7779,7 @@ let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showT
 let token=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
 let node={token:token,created:Date.now(),expires:Date.now()+21*24*60*60*1000,submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested};
-db.ref('intake/'+id).update(node);INTAKE[id]=node;
+db.ref('intake/'+id).update(node).catch(e=>console.warn('[FB] intake link write failed',e));INTAKE[id]=node;
 return intakeUrl(id,token)}
 
 function _icopy(t){try{navigator.clipboard.writeText(t)}catch(e){let ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove()}}
