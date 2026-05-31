@@ -20,6 +20,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- Google Calendar API (Identity Services + GAPI) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -984,8 +985,47 @@ const PRE=[{k:"pf",l:"Pay Full"},{k:"iv",l:"Invoice"},{k:"el",l:"Electricity"},{
 const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"po",l:"Portal"},{k:"oo",l:"O.O."},{k:"il",l:"I.L."},{k:"cl",l:"Call"},{k:"pk",l:"Packets"},{k:"gb",l:"G.B."},{k:"ngb",l:"N.G.B."}];
 
 // === FIREBASE CONFIG ===
-const firebaseConfig={apiKey:"PASTE_YOUR_API_KEY",authDomain:"aspen-delivery-tracker.firebaseapp.com",databaseURL:"https://aspen-delivery-tracker-default-rtdb.firebaseio.com",projectId:"aspen-delivery-tracker",storageBucket:"aspen-delivery-tracker.appspot.com",messagingSenderId:"000000000000",appId:"PASTE_YOUR_APP_ID"};
+// Firebase config. apiKey/appId are READ FROM localStorage FIRST, so Alberto pastes them ONCE
+// in the setup box and they persist on this browser even when a new version of this file is
+// uploaded — a redeploy never wipes them. Falls back to the placeholders only if nothing saved.
+let _fbKey=null,_fbApp=null;
+try{_fbKey=localStorage.getItem('aspenDeliveryFbKey');_fbApp=localStorage.getItem('aspenDeliveryFbAppId')}catch(e){}
+const firebaseConfig={apiKey:_fbKey||"AIzaSyDo97EFo1B61WBlCE_DV73GOlvQfPSMuZg",authDomain:"aspen-delivery-tracker.firebaseapp.com",databaseURL:"https://aspen-delivery-tracker-default-rtdb.firebaseio.com",projectId:"aspen-delivery-tracker",storageBucket:"aspen-delivery-tracker.firebasestorage.app",messagingSenderId:"80987548985",appId:_fbApp||"1:80987548985:web:36dcdb7b3c05a093318ce8"};
+const _NEEDS_FB_KEY=(firebaseConfig.apiKey==='PASTE_YOUR_API_KEY'||firebaseConfig.appId==='PASTE_YOUR_APP_ID');
+if(_NEEDS_FB_KEY){
+console.error('%c[CONFIG] Firebase apiKey/appId not set — a setup box will ask for them. Anonymous auth/writes need a real key.','color:#fff;background:#dc2626;padding:2px 6px;font-weight:700');
+window.addEventListener('load',function(){try{showFbKeySetup()}catch(e){console.error('FB key setup modal error',e)}});
+}
 firebase.initializeApp(firebaseConfig);
+// Firebase Storage handle (used for new photo uploads). Safe if Storage isn't enabled — uploads
+// just fall back to inline base64 (see uploadPhotoToStorage).
+const fbStorage=(function(){try{return firebase.storage()}catch(e){console.warn('Storage SDK not ready',e);return null}})();
+// One-time setup box for the Firebase API key + App ID. Saves to localStorage and reloads.
+function showFbKeySetup(){
+if(document.getElementById('fb-key-setup'))return;
+let cur={k:'',a:''};try{cur.k=localStorage.getItem('aspenDeliveryFbKey')||'';cur.a=localStorage.getItem('aspenDeliveryFbAppId')||''}catch(e){}
+let ov=document.createElement('div');ov.id='fb-key-setup';
+ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,20,16,.96);display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,-apple-system,sans-serif';
+ov.innerHTML='<div style="background:#1c1714;border:1px solid #3a312b;border-radius:16px;max-width:440px;width:100%;padding:24px;color:#f5f1ec;box-shadow:0 20px 60px rgba(0,0,0,.5)">'+
+'<div style="font-size:18px;font-weight:800;margin-bottom:6px">&#128273; Connect this device to Firebase</div>'+
+'<div style="font-size:13px;color:#b8ada3;line-height:1.5;margin-bottom:16px">Paste the values from Firebase Console &rarr; Project settings &rarr; Your apps &rarr; SDK setup. They are saved on this device and you won\u2019t be asked again.</div>'+
+'<label style="font-size:12px;font-weight:700;color:#d4c9bf;display:block;margin-bottom:4px">API Key</label>'+
+'<input id="fbk_key" type="text" autocomplete="off" spellcheck="false" value="'+String(cur.k).replace(/"/g,'&quot;')+'" placeholder="AIza..." style="width:100%;box-sizing:border-box;background:#0f0c0a;border:1px solid #3a312b;border-radius:10px;color:#fff;padding:11px;font-size:14px;margin-bottom:12px;font-family:monospace">'+
+'<label style="font-size:12px;font-weight:700;color:#d4c9bf;display:block;margin-bottom:4px">App ID</label>'+
+'<input id="fbk_app" type="text" autocomplete="off" spellcheck="false" value="'+String(cur.a).replace(/"/g,'&quot;')+'" placeholder="1:000...:web:..." style="width:100%;box-sizing:border-box;background:#0f0c0a;border:1px solid #3a312b;border-radius:10px;color:#fff;padding:11px;font-size:14px;margin-bottom:18px;font-family:monospace">'+
+'<button id="fbk_save" style="width:100%;background:#c9842a;color:#fff;border:0;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer">Save & Reload</button>'+
+'<div id="fbk_err" style="color:#f87171;font-size:12px;margin-top:10px;min-height:14px"></div>'+
+'</div>';
+document.body.appendChild(ov);
+document.getElementById('fbk_save').onclick=function(){
+let k=document.getElementById('fbk_key').value.trim(),a=document.getElementById('fbk_app').value.trim();
+let err=document.getElementById('fbk_err');
+if(!k||!a){err.textContent='Both fields are required.';return}
+if(k.indexOf('PASTE_')===0||a.indexOf('PASTE_')===0){err.textContent='Please paste the real values, not the placeholders.';return}
+try{localStorage.setItem('aspenDeliveryFbKey',k);localStorage.setItem('aspenDeliveryFbAppId',a)}catch(e){err.textContent='Could not save to this browser (private mode?).';return}
+location.reload();
+};
+}
 const db=firebase.database();
 // === ANONYMOUS AUTH GATE ===
 // Sign the dashboard in anonymously so Firebase rules can require auth!=null (closes the
@@ -1795,9 +1835,10 @@ if(!files.length)return;
 let r=AD().find(x=>x.i===id);if(!r)return;
 let existing=r.tech_photos||[];
 // No quantity limit - tech can upload as many delivery photos as needed
-showToast('Compressing photos...');
-let added=[];
-for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
+showToast('Uploading photos...');
+let added=[],skipped=0;
+for(let f of files){try{let b64=await compressImage(f,1200,0.7);let stored=await uploadPhotoToStorage(id,b64);let isUrl=/^https?:/.test(stored);if(!isUrl&&stored.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');skipped++;continue}added.push(stored)}catch(err){console.error('compress err:',err);skipped++}}
+if(skipped){showToast('&#9888; '+skipped+' photo'+(skipped===1?'':'s')+" couldn't be read. iPhone HEIC: open in Photos → Share → Save as JPG, or set Camera → Formats → Most Compatible.",'warn')}
 if(!added.length)return;
 let newPhotos=existing.concat(added);
 let updates={tech_photos:newPhotos};
@@ -1809,6 +1850,23 @@ showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
 techOpenDetail(id)};
 inp.click()}
+
+// Upload a compressed JPEG (data-url) to Firebase Storage and return its public URL.
+// Falls back to the original base64 string if Storage is unavailable/not enabled or the upload
+// fails — so photo upload NEVER breaks; it just stays inline like before. A successful upload
+// stores a short URL instead of a multi-MB base64 blob inside the ticket, which is what keeps
+// the RTDB writes small and fast. Old base64 photos already saved keep working (an <img src>
+// renders both a data-url and an https URL), so nothing existing is touched or lost.
+async function uploadPhotoToStorage(ticketId,b64){
+if(!fbStorage||typeof b64!=='string'||b64.indexOf('data:')!==0)return b64;
+try{
+let path='delivery_photos/'+String(ticketId)+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.jpg';
+let ref=fbStorage.ref(path);
+await ref.putString(b64,'data_url');
+let url=await ref.getDownloadURL();
+return url||b64;
+}catch(e){console.warn('[STORAGE] upload failed — keeping inline base64:',e&&e.code,e&&e.message);return b64}
+}
 
 // Compress image to reasonable base64 size
 function compressImage(file,maxDim,quality){
@@ -1897,9 +1955,10 @@ if(!files.length)return;
 let r=AD().find(x=>x.i===id);if(!r)return;
 let existing=r.photos||[];
 // No quantity limit - admin can upload as many info photos as needed
-showToast('Compressing photos...');
-let added=[];
-for(let f of files){try{let b64=await compressImage(f,1200,0.7);if(b64.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');continue}added.push(b64)}catch(err){console.error('compress err:',err)}}
+showToast('Uploading photos...');
+let added=[],skipped=0;
+for(let f of files){try{let b64=await compressImage(f,1200,0.7);let stored=await uploadPhotoToStorage(id,b64);let isUrl=/^https?:/.test(stored);if(!isUrl&&stored.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');skipped++;continue}added.push(stored)}catch(err){console.error('compress err:',err);skipped++}}
+if(skipped){showToast('&#9888; '+skipped+' photo'+(skipped===1?'':'s')+" couldn't be read. iPhone HEIC: open in Photos → Share → Save as JPG, or set Camera → Formats → Most Compatible.",'warn')}
 if(!added.length)return;
 let newPhotos=existing.concat(added);
 let updates={photos:newPhotos};
@@ -2044,9 +2103,10 @@ let writes=[];
 let updates={};
 if(snap.edits&&typeof snap.edits==='object'){updates['/edits']=snap.edits}
 if(snap.added){
-// Normalize added: must be an array
+// Restore added as an OBJECT keyed by ticket id (matches the migrated node form). The page
+// reloads after restore, so the migration detector re-confirms object form on next load.
 let a=Array.isArray(snap.added)?snap.added:Object.values(snap.added||{});
-updates['/added']=a}
+updates['/added']=_addedToObj(a)}
 if(snap.users&&typeof snap.users==='object'){updates['/users']=snap.users}
 if(snap.custom_opts&&typeof snap.custom_opts==='object'){updates['/custom_opts']=snap.custom_opts}
 if(Object.keys(updates).length===0){alert('El backup no contiene datos para restaurar.');return}
@@ -2288,6 +2348,15 @@ opts+=techs.map(([id,u])=>'<option value="'+id+'"'+(id===cur?' selected':'')+'>'
 sel.innerHTML=opts}
 
 let EDITS={},ADDED=[];
+// Ids of EDITS records changed since the last Firebase flush. saveE() writes only these
+// children (per-child write) instead of re-uploading the whole EDITS node + every photo.
+let _dirtyEdits=new Set();
+// Same per-record write model for ADDED (new in-app tickets). _dirtyAdded = ids changed,
+// _removedAdded = ids deleted locally (so saveA removes just that child). The `added` node is
+// migrated ONCE from a legacy ARRAY to an OBJECT keyed by ticket id so per-child writes are safe;
+// _addedNodeMigrated flips true only after that completes (or if the node is already object/empty).
+let _dirtyAdded=new Set(),_removedAdded=new Set(),_addedNodeMigrated=false,_addedMigrating=false;
+function _addedToObj(arr){let o={};(arr||[]).forEach(r=>{if(r&&r.i!=null)o[String(r.i)]=r});return o}
 let fbReady=false;
 // =====================================================================================
 // FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips sequential arrays as objects
@@ -2393,10 +2462,12 @@ let _recentLocalEditsEdits={}; // {ticketId: {data, ts}}  — for EDITS overlays
 
 function rememberAddedEdit(ticket){
 if(!ticket||ticket.i==null)return;
+_dirtyAdded.add(String(ticket.i));
 _recentLocalEditsAdded[String(ticket.i)]={data:JSON.parse(JSON.stringify(ticket)),ts:Date.now()};
 pruneRecentEdits()}
 function rememberEditsEdit(ticketId,editObj){
 if(ticketId==null)return;
+_dirtyEdits.add(String(ticketId));
 _recentLocalEditsEdits[String(ticketId)]={data:JSON.parse(JSON.stringify(editObj||{})),ts:Date.now()};
 pruneRecentEdits()}
 function pruneRecentEdits(){
@@ -2453,7 +2524,19 @@ _safeBackup('aspen_backup_edits',EDITS);
 // Try Firebase with timeout protection — if it fails or hangs, queue for later sync
 let synced=false;
 _saveInFlight.edits++;_lastLocalSave.edits=Date.now();
-let p=dbEdits.set(EDITS);
+// PER-CHILD WRITE: push ONLY the ticket(s) that changed, not the whole EDITS object.
+// Why: the old dbEdits.set(EDITS) re-uploaded every ticket AND every base64 photo on every
+// keystroke-level save. On a weak signal that payload blew past the 5s timeout below and the
+// change silently fell into the offline queue ("I updated a ticket and it didn't save"). It also
+// let one device's full-object write clobber tickets another device had just edited.
+// update() with per-id keys writes only those children and never deletes siblings, so other
+// devices' tickets are preserved. Empty dirty set (an unmarked mutation path) falls back to a
+// safe merge of every known key — still never deletes siblings.
+let dirty=Array.from(_dirtyEdits);_dirtyEdits.clear();
+let payload={};
+if(dirty.length){dirty.forEach(k=>{payload[k]=(k in EDITS)?EDITS[k]:null})}
+else{payload=EDITS}
+let p=dbEdits.update(payload);
 p.then(()=>{
 synced=true;
 _saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
@@ -2476,7 +2559,22 @@ function saveA(){
 _safeBackup('aspen_backup_added',ADDED);
 let synced=false;
 _saveInFlight.added++;_lastLocalSave.added=Date.now();
-let p=dbAdded.set(ADDED);
+// PER-CHILD WRITE once the node is migrated to object form: push ONLY changed tickets and
+// explicitly remove deleted ones. This stops one device's save from deleting tickets another
+// device just created (the old set(ADDED) replaced the whole node). Before migration completes
+// we keep the legacy whole-array set, which is safe with the existing anti-wipe defenses.
+let dirty=Array.from(_dirtyAdded);_dirtyAdded.clear();
+let removed=Array.from(_removedAdded);_removedAdded.clear();
+let p;
+if(_addedNodeMigrated){
+let payload={};
+dirty.forEach(id=>{let r=ADDED.find(x=>String(x.i)===id);payload[id]=r?r:null});
+removed.forEach(id=>{payload[id]=null});
+if(!dirty.length&&!removed.length){payload=_addedToObj(ADDED)} // unmarked save → safe merge (never deletes siblings)
+p=dbAdded.update(payload);
+}else{
+p=dbAdded.set(ADDED);
+}
 p.then(()=>{
 synced=true;
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);
@@ -2536,8 +2634,8 @@ let kinds=Object.keys(q);
 if(!kinds.length){updateOfflineIndicator(false);return}
 showToast('&#128259; Reconnecting — syncing '+kinds.length+' pending change'+(kinds.length===1?'':'s')+'...');
 let promises=[];
-if(q.edits&&q.edits.data){promises.push(dbEdits.set(q.edits.data).then(()=>clearOfflineQueue('edits')))}
-if(q.added&&q.added.data){promises.push(dbAdded.set(q.added.data).then(()=>clearOfflineQueue('added')))}
+if(q.edits&&q.edits.data){promises.push(dbEdits.update(q.edits.data).then(()=>clearOfflineQueue('edits')))}
+if(q.added&&q.added.data){promises.push((_addedNodeMigrated?dbAdded.update(_addedToObj(q.added.data)):dbAdded.set(q.added.data)).then(()=>clearOfflineQueue('added')))}
 Promise.all(promises).then(()=>{showToast('&#10003; All changes synced','success');updateOfflineIndicator(false);syncPulse()}).catch(e=>{console.error('flushOfflineQueue err:',e);showToast('&#9888; Sync failed — will retry','warn')});
 }catch(e){console.error('flushOfflineQueue err:',e)}
 }
@@ -2660,6 +2758,26 @@ if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkR
 },err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
 dbAdded.on('value',snap=>{
 let v=snap.val()||[];
+// ONE-TIME (self-healing) MIGRATION: the `added` node was a JS array (keys 0,1,2…). Per-child
+// writes need it keyed by ticket id. We detect array-form on ANY clean cycle — so if a racing
+// legacy write ever reverts the node to array-form, the next cycle catches it and re-migrates,
+// and saveA falls back to the safe legacy set in the meantime (never per-child on an array node).
+// _addedToObj dedups by id, so even a transient mixed node is cleaned to one record per id.
+if(!_addedMigrating&&!_pendingFlush.added&&_saveInFlight.added===0){
+let isArr=Array.isArray(v);
+let keys=(v&&typeof v==='object')?(isArr?v.map((_,i)=>String(i)):Object.keys(v)):[];
+if(!keys.length){_addedNodeMigrated=true}
+else{
+let arrayForm=isArr||keys.some(k=>{let r=v[k];return r&&r.i!=null&&String(r.i)!==String(k)});
+if(arrayForm){
+_addedNodeMigrated=false;
+let obj=_addedToObj(isArr?v:Object.values(v));
+_addedMigrating=true;
+console.log('[MIGRATE] Converting added node array\u2192object ('+Object.keys(obj).length+' records).');
+dbAdded.set(obj).then(()=>{_addedNodeMigrated=true;_addedMigrating=false;console.log('[MIGRATE] added node migrated.')}).catch(e=>{_addedMigrating=false;console.error('[MIGRATE] failed, will retry next cycle:',e)});
+}else{_addedNodeMigrated=true}
+}
+}
 if(_pendingFlush.added)return;
 if(_saveInFlight.added>0)return;
 // 1.5s grace window for missing-id check.
@@ -4916,10 +5034,10 @@ if(!confirm('Email PW is marked as done. Reset it so you can send the email agai
 }
 let addIdx=ADDED.findIndex(r=>r.i===id||String(r.i)===String(id));
 if(addIdx>=0){ADDED[addIdx][key]=!ADDED[addIdx][key];
-if(key==='pf'&&ADDED[addIdx].pf){ADDED[addIdx].py=ADDED[addIdx].pr||0;ADDED[addIdx].bl=0}
+if(key==='pf'){if(ADDED[addIdx].pf){ADDED[addIdx]._pyPrev=(ADDED[addIdx].py!=null?ADDED[addIdx].py:0);ADDED[addIdx].py=ADDED[addIdx].pr||0;ADDED[addIdx].bl=0}else{let prev=(ADDED[addIdx]._pyPrev!=null?ADDED[addIdx]._pyPrev:0);ADDED[addIdx].py=prev;ADDED[addIdx].bl=Math.max(0,(ADDED[addIdx].pr||0)-prev);delete ADDED[addIdx]._pyPrev}}
 rememberAddedEdit(ADDED[addIdx]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};let cur=AD().find(r=>r.i===id||String(r.i)===String(id));EDITS[id][key]=!cur[key];
-if(key==='pf'&&EDITS[id].pf){EDITS[id].py=cur.pr||0;EDITS[id].bl=0}
+if(key==='pf'){if(EDITS[id].pf){EDITS[id]._pyPrev=(cur.py!=null?cur.py:0);EDITS[id].py=cur.pr||0;EDITS[id].bl=0}else{let prev=(EDITS[id]._pyPrev!=null?EDITS[id]._pyPrev:0);EDITS[id].py=prev;EDITS[id].bl=Math.max(0,(cur.pr||0)-prev);delete EDITS[id]._pyPrev}}
 rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(r=>r.i===id||String(r.i)===String(id));
 let dot=el.querySelector(".cd"),on=curRec[key];
@@ -5155,7 +5273,7 @@ let upd={};
 Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],id)){trackGcalMapRemoval(eid);upd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
 if(Object.keys(upd).length)db.ref().update(upd);
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
-if(ai>=0){ADDED.splice(ai,1);saveA()}
+if(ai>=0){_removedAdded.add(String(ADDED[ai].i));ADDED.splice(ai,1);saveA()}
 else{if(!EDITS[id])EDITS[id]={};EDITS[id]._deleted=true;rememberEditsEdit(id,EDITS[id]);saveE()}
 closeOv();renderAll();showToast('&#128465; Delivery deleted: '+(r.n||'(no name)'))}
 
@@ -6212,9 +6330,14 @@ tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
 dl:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,
 crane:false,extra_person:false,water_truck:false,
 gcalId:ev.id,gcalColorId:ev.colorId||null};
-ADDED.push(rec);saveA();
-let updates={};updates['gcal_map/'+ev.id]=newId;db.ref().update(updates);
+// CLAIM the event via a transaction so two devices syncing at the same time can't both create a
+// ticket for the same event. Winner (cur was null) creates the ticket; loser links to the winner.
+let _claim=await dbGcalMap.child(ev.id).transaction(cur=>(cur===null||cur===undefined)?newId:cur);
+if(_claim.committed&&String(_claim.snapshot.val())===String(newId)){
+ADDED.push(rec);rememberAddedEdit(rec);saveA();
+trackGcalMapSet(ev.id,newId);gcalMap[ev.id]=newId;
 gcalStats.created++}
+else{let _win=_claim.snapshot&&_claim.snapshot.val();if(_win){gcalMap[ev.id]=_win;trackGcalMapSet(ev.id,_win);console.log('[GCAL] Event '+ev.id+' already claimed by ticket '+_win+' (another device) — linking instead of duplicating.');gcalStats.updated++}else{console.warn('[GCAL] Claim not committed for event '+ev.id+' — will retry next sync.');gcalStats.errors=(gcalStats.errors||0)+1}}}
 catch(e){console.error('processGcalEvent err:',e);gcalStats.errors++}}
 
 // ===========================================================================================
@@ -6394,7 +6517,7 @@ else{if(!EDITS[real.i])EDITS[real.i]={};Object.assign(EDITS[real.i],u);saveE()}
 db.ref('gcal_map/'+stub.gcalId).set(real.i).catch(e=>console.warn('[FB] gcal_map set failed',e));
 trackGcalMapSet(stub.gcalId,real.i);gcalMap[stub.gcalId]=real.i;
 let si=ADDED.findIndex(x=>sameId(x.i,stub.i));
-if(si>=0){ADDED.splice(si,1);saveA();}
+if(si>=0){_removedAdded.add(String(ADDED[si].i));ADDED.splice(si,1);saveA();}
 merged.push({stub:stub.i,real:real.i,sn:parsed.serial,name:real.n});
 console.log('[DEDUP] Merged stub #'+stub.i+' ("'+stub.cal+'") into real ticket #'+real.i+' ("'+real.n+'", SN '+parsed.serial+'). gcal_map repointed.');
 }catch(perStubErr){
@@ -6421,6 +6544,11 @@ if(_gcalAuditInFlight)return;
 if(!gcalToken||!gcalCalendarId)return;
 // Don't run audit during local writes — they could create races.
 if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0)return;
+// Throttle: the audit is a SAFETY NET, not the primary path — the regular sync already processed
+// events. Running the full 127-day pull + dedup/repair scans after every 60s auto-sync wastes
+// Google Calendar API quota and multiplies across connected devices. _gcalLastAuditAt was already
+// tracked but never checked; skip if we audited in the last 4 minutes.
+if(Date.now()-_gcalLastAuditAt<4*60*1000)return;
 _gcalAuditInFlight=true;
 try{
 // Step 0: repair any cross-linked tickets (wrong gcalId → wrong event by SN mismatch).
@@ -6471,8 +6599,8 @@ if(!local){
 // sync that may never re-deliver this event (syncToken is incremental). Clear the
 // stale mapping here and fall through to create a fresh ticket below.
 trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
-mappedId=null;
 healed.staleFixed.push({summary:title,wasMapped:mappedId});
+mappedId=null;
 console.log('[AUTO-AUDIT] Cleared stale mapping for event '+ev.id+' and recreating ticket.');
 }else{
 // SN VALIDATION — same protection that processGcalEvent has. The audit was previously
@@ -6540,11 +6668,13 @@ dl:false,sl:false,po:false,oo:false,il:false,cl:false,fn:null,
 pk:false,gb:false,ngb:false,co:false,crane:false,extra_person:false,water_truck:false,
 gcalId:ev.id,gcalColorId:newColor,
 cn:'Auto-created via post-sync audit (incremental sync missed this event).'};
-ADDED.push(r);saveA();
-await db.ref().update({['gcal_map/'+ev.id]:newId});
+let _claim=await dbGcalMap.child(ev.id).transaction(cur=>(cur===null||cur===undefined)?newId:cur);
+if(_claim.committed&&String(_claim.snapshot.val())===String(newId)){
+ADDED.push(r);rememberAddedEdit(r);saveA();
 trackGcalMapSet(ev.id,newId);gcalMap[ev.id]=newId;
 healed.created.push({summary:title,dd:newDD,id:newId});
 console.log('[AUTO-AUDIT] Created ticket #'+newId+' for missed event: \"'+title+'\" on '+newDD);
+}else{let _win=_claim.snapshot&&_claim.snapshot.val();if(_win){gcalMap[ev.id]=_win;trackGcalMapSet(ev.id,_win);console.log('[AUTO-AUDIT] Event '+ev.id+' already claimed by ticket '+_win+' (another device) — linking, not duplicating.')}else{console.warn('[AUTO-AUDIT] Claim not committed for event '+ev.id+' — will retry.')}}
 }catch(perEventErr){
 perEventErrors++;
 console.error('[AUTO-AUDIT] Per-event error on \"'+(ev&&ev.summary)+'\":',perEventErr);
@@ -8002,7 +8132,7 @@ let files=Array.from(input.files||[]);if(!files.length)return;
 let btn=input.previousElementSibling;
 for(let f of files){
 if(_PORTAL[group].length>=10){showToast&&showToast('Max 10 photos per section','warn');break}
-try{let b64=await compressImage(f,1100,0.6);if(b64.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}_PORTAL[group].push(b64)}catch(e){console.error('compress',e)}
+try{let b64=await compressImage(f,1100,0.6);if(b64.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}_PORTAL[group].push(b64)}catch(e){console.error('compress',e);alert("We couldn't read one of your photos. If you're on an iPhone, open it in Photos, tap Share, choose \"Save as File\" (it saves as JPG), then upload that — or change Settings → Camera → Formats to \"Most Compatible\".")}
 }
 input.value='';_intakeThumbs(group)}
 
