@@ -2097,29 +2097,41 @@ reader.readAsText(f)}
 
 async function applyBackupRestore(snap){
 try{
-let writes=[];
-// We MUST set _pendingFlush flags so our own listener defenses don't reject these writes.
-// And we have to write everything atomically via a multi-path update to keep state consistent.
-let updates={};
-if(snap.edits&&typeof snap.edits==='object'){updates['/edits']=snap.edits}
-if(snap.added){
-// Restore added as an OBJECT keyed by ticket id (matches the migrated node form). The page
-// reloads after restore, so the migration detector re-confirms object form on next load.
-let a=Array.isArray(snap.added)?snap.added:Object.values(snap.added||{});
-updates['/added']=_addedToObj(a)}
-if(snap.users&&typeof snap.users==='object'){updates['/users']=snap.users}
-if(snap.custom_opts&&typeof snap.custom_opts==='object'){updates['/custom_opts']=snap.custom_opts}
-if(Object.keys(updates).length===0){alert('El backup no contiene datos para restaurar.');return}
-// Mark in-flight so our listener defenses don't kick back in
+// CHUNKED RESTORE — write each record as its OWN per-child update. A single multi-path update of
+// the whole backup (a full backup with photos is 17MB+) hits Firebase's "Write too large" limit
+// and fails; per-record writes of a few MB each always succeed. This is the same per-record model
+// the live save path now uses.
+let edits=(snap.edits&&typeof snap.edits==='object')?snap.edits:{};
+let addedArr=snap.added?(Array.isArray(snap.added)?snap.added:Object.values(snap.added||{})):[];
+let addedObj=_addedToObj(addedArr);
+let editKeys=Object.keys(edits),addedKeys=Object.keys(addedObj);
+if(!editKeys.length&&!addedKeys.length&&!snap.users&&!snap.custom_opts){alert('El backup no contiene datos para restaurar.');return}
+// Hold the listener defenses for the whole operation so incoming snapshots don't fight the writes.
 _saveInFlight.edits++;_saveInFlight.added++;_lastLocalSave.edits=Date.now();_lastLocalSave.added=Date.now();
-await db.ref().update(updates);
+let total=editKeys.length+addedKeys.length+2,done=0;
+let ov=document.createElement('div');
+ov.id='restore-ov';
+ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.92);color:#fff;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:16px;gap:14px;text-align:center;padding:24px';
+ov.innerHTML='<div>&#128260; Restaurando backup&hellip;</div><div id="restore-prog" style="font-size:13px;font-weight:600;opacity:.85">Preparando&hellip;</div><div style="font-size:11px;font-weight:600;opacity:.65;max-width:340px">No cierres la app. Cada registro se sube por separado para evitar el l&iacute;mite de Firebase.</div>';
+document.body.appendChild(ov);
+let prog=document.getElementById('restore-prog');
+let bump=(label)=>{done++;if(prog)prog.textContent=label+'\u2026 ('+done+'/'+total+')'};
+// 1) Small nodes first.
+if(snap.custom_opts&&typeof snap.custom_opts==='object'){try{await dbOpts.set(snap.custom_opts)}catch(e){console.error('restore custom_opts:',e)}}bump('Opciones');
+if(snap.users&&typeof snap.users==='object'){try{await dbUsers.set(snap.users)}catch(e){console.error('restore users:',e)}}bump('Usuarios');
+// 2) Edits, one record at a time.
+for(let k of editKeys){try{await dbEdits.update({[k]:edits[k]})}catch(e){console.error('restore edit '+k+':',e)}bump('Edits')}
+// 3) Added, one record at a time (object form keyed by ticket id).
+for(let id of addedKeys){try{await dbAdded.update({[id]:addedObj[id]})}catch(e){console.error('restore added '+id+':',e)}bump('Added')}
 _saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);
-alert('✅ Restauración exitosa.\n\nLa app va a recargarse para refrescar todos los datos.');
+if(prog)prog.textContent='Listo \u2014 recargando\u2026';
+alert('\u2705 Restauraci\u00f3n exitosa.\n\nEdits restaurados: '+editKeys.length+'\nAdded restaurados: '+addedKeys.length+'\n\nLa app va a recargarse para refrescar todos los datos.');
 location.reload()
 }catch(err){
 console.error('Restore failed:',err);
-alert('❌ Error al restaurar:\n\n'+(err.message||err)+'\n\nLos datos actuales NO se cambiaron.');
+let ov=document.getElementById('restore-ov');if(ov)ov.remove();
+alert('\u274c Error al restaurar:\n\n'+(err.message||err));
 _saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1)
 }}
