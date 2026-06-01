@@ -2503,178 +2503,111 @@ return obj}
 // quota error would leave the offline safety net EMPTY. On failure we retry with a slimmed copy
 // (photos stripped — they already live in Firebase), then drop the other backup key to make room.
 let _quotaWarned=false;
-function _safeBackup(key,obj){
-try{localStorage.setItem(key,JSON.stringify(obj));return true}
-catch(e){
-try{
-let slim=JSON.parse(JSON.stringify(obj)),stripped=0;
-Object.values(slim||{}).forEach(r=>{if(r&&typeof r==='object'){['photos','tech_photos','info_photos','sig'].forEach(f=>{if(r[f]){delete r[f];stripped++}})}});
-localStorage.setItem(key,JSON.stringify(slim));
-if(!_quotaWarned){_quotaWarned=true;console.warn('[BACKUP] localStorage full — slim backup (photos stripped). Photos remain in Firebase.');try{showToast('&#9888; Local storage full — photos not backed up locally (still safe in cloud)','warn')}catch(_e){}}
-return true;
-}catch(e2){
-try{localStorage.removeItem(key==='aspen_backup_edits'?'aspen_backup_added':'aspen_backup_edits');localStorage.setItem(key,JSON.stringify(obj));return true}
-catch(e3){console.error('[BACKUP] Quota exhausted, backup not written:',e3);return false}
-}
-}
-}
+let _fullSyncTimerE=null,_fullSyncTimerA=null;
 function saveE(){
-// Always backup to localStorage FIRST (so it survives even if app closes mid-sync)
-_safeBackup('aspen_backup_edits',EDITS);
-// Try Firebase with timeout protection — if it fails or hangs, queue for later sync
-let synced=false;
-_saveInFlight.edits++;_lastLocalSave.edits=Date.now();
-// PER-CHILD WRITE: push ONLY the ticket(s) that changed, not the whole EDITS object.
-// Why: the old dbEdits.set(EDITS) re-uploaded every ticket AND every base64 photo on every
-// keystroke-level save. On a weak signal that payload blew past the 5s timeout below and the
-// change silently fell into the offline queue ("I updated a ticket and it didn't save"). It also
-// let one device's full-object write clobber tickets another device had just edited.
-// update() with per-id keys writes only those children and never deletes siblings, so other
-// devices' tickets are preserved. Empty dirty set (an unmarked mutation path) falls back to a
-// safe merge of every known key — still never deletes siblings.
+// SINGLE SOURCE OF TRUTH = FIREBASE. No localStorage queue, no whole-object writes.
+// Per-record write of ONLY the ticket(s) flagged dirty since the last save. A single update()
+// with per-id keys writes just those children and never touches siblings — so a write can never
+// grow large enough to hit Firebase's "Write too large" limit (the bug that hid all data on
+// 2026-06-01: a queued whole-EDITS payload, photos included, was too big to ever flush and locked
+// the listener so the real server data couldn't render).
 let dirty=Array.from(_dirtyEdits);_dirtyEdits.clear();
-let payload={};
-if(dirty.length){dirty.forEach(k=>{payload[k]=(k in EDITS)?EDITS[k]:null})}
-else{payload=EDITS}
-let p=dbEdits.update(payload);
-p.then(()=>{
-synced=true;
-_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
-syncPulse();clearOfflineQueue('edits')
+if(dirty.length){
+_saveInFlight.edits++;_lastLocalSave.edits=Date.now();
+let payload={};dirty.forEach(k=>{payload[k]=(k in EDITS)?EDITS[k]:null});
+dbEdits.update(payload).then(()=>{
+_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);syncPulse();
 }).catch(e=>{
 _saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
-console.error('saveE:',e);queueOffline('edits',EDITS)
+console.error('saveE:',e);
+dirty.forEach(k=>_dirtyEdits.add(k)); // re-flag so the next change retries this record
+showToast('&#9888; Save failed — will retry on next change','warn');
 });
-// If Firebase doesn't confirm within 5s, the write may be silently stuck. Drop the in-flight
-// counter so it doesn't lock forever — but ALWAYS queue offline (regardless of navigator.onLine)
-// because _pendingFlush keeps the listener from overwriting our local state until we replay.
-setTimeout(()=>{
-if(!synced){
-_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);
-queueOffline('edits',EDITS)
+}else{
+// Unmarked mutation path: a few code paths mutate EDITS without flagging a record. Debounce a
+// SAFE chunked resync — every record written separately, never one giant blob.
+clearTimeout(_fullSyncTimerE);_fullSyncTimerE=setTimeout(_chunkedFullSyncEdits,800);
 }
-},5000);
+}
+function _chunkedFullSyncEdits(){
+let keys=Object.keys(EDITS||{});if(!keys.length)return;
+_saveInFlight.edits++;let i=0;
+(function step(){
+if(i>=keys.length){_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);syncPulse();return}
+let k=keys[i++];
+try{dbEdits.update({[k]:EDITS[k]}).catch(e=>console.error('fullSyncEdits '+k+':',e))}catch(e){console.error('fullSyncEdits '+k+':',e)}
+setTimeout(step,40);
+})();
 }
 function saveA(){
-_safeBackup('aspen_backup_added',ADDED);
-let synced=false;
-_saveInFlight.added++;_lastLocalSave.added=Date.now();
-// PER-CHILD WRITE once the node is migrated to object form: push ONLY changed tickets and
-// explicitly remove deleted ones. This stops one device's save from deleting tickets another
-// device just created (the old set(ADDED) replaced the whole node). Before migration completes
-// we keep the legacy whole-array set, which is safe with the existing anti-wipe defenses.
+// Same single-source-of-truth model as saveE: per-record writes only, no localStorage queue.
 let dirty=Array.from(_dirtyAdded);_dirtyAdded.clear();
 let removed=Array.from(_removedAdded);_removedAdded.clear();
-let p;
 if(_addedNodeMigrated){
+if(dirty.length||removed.length){
+_saveInFlight.added++;_lastLocalSave.added=Date.now();
 let payload={};
 dirty.forEach(id=>{let r=ADDED.find(x=>String(x.i)===id);payload[id]=r?r:null});
 removed.forEach(id=>{payload[id]=null});
-if(!dirty.length&&!removed.length){payload=_addedToObj(ADDED)} // unmarked save → safe merge (never deletes siblings)
-p=dbAdded.update(payload);
-}else{
-p=dbAdded.set(ADDED);
-}
-p.then(()=>{
-synced=true;
-_saveInFlight.added=Math.max(0,_saveInFlight.added-1);
-syncPulse();clearOfflineQueue('added')
+dbAdded.update(payload).then(()=>{
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();
 }).catch(e=>{
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);
-console.error('saveA:',e);queueOffline('added',ADDED)
+console.error('saveA:',e);
+dirty.forEach(id=>_dirtyAdded.add(id));removed.forEach(id=>_removedAdded.add(id));
+showToast('&#9888; Save failed — will retry on next change','warn');
 });
-setTimeout(()=>{
-if(!synced){
+}else{
+// Unmarked path — debounced chunked per-child resync (never one giant write).
+clearTimeout(_fullSyncTimerA);_fullSyncTimerA=setTimeout(_chunkedFullSyncAdded,800);
+}
+}else{
+// Node not yet migrated to object form (early boot). ADDED holds only in-app tickets and is
+// small, so a one-time whole-array set is safe and lets the migration detector convert it.
+_saveInFlight.added++;_lastLocalSave.added=Date.now();
+dbAdded.set(ADDED).then(()=>{
+_saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();
+}).catch(e=>{
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);
-queueOffline('added',ADDED)
+console.error('saveA:',e);showToast('&#9888; Save failed — will retry on next change','warn');
+});
 }
-},5000);
+}
+function _chunkedFullSyncAdded(){
+if(!_addedNodeMigrated){try{dbAdded.set(ADDED).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}return}
+let arr=Array.isArray(ADDED)?ADDED.slice():[];if(!arr.length)return;
+_saveInFlight.added++;let i=0;
+(function step(){
+if(i>=arr.length){_saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();return}
+let r=arr[i++];
+if(r&&r.i!=null){try{dbAdded.update({[String(r.i)]:r}).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}}
+setTimeout(step,40);
+})();
 }
 
-// === OFFLINE SUPPORT ===
-// Goal: tech can keep working without signal — toggle checkboxes, add notes, upload photos.
-// Strategy: every write also goes to localStorage as a backup. If the network call fails,
-// we mark the entry as pending. On reconnect (or app reload while online), we replay the queue.
-// This protects against: (1) network drop mid-write, (2) tech closes app before signal returns,
-// (3) Firebase RTDB's in-memory queue being lost on page close.
+// === CONNECTION STATUS (informational only) ===
+// Firebase Realtime Database is the SINGLE SOURCE OF TRUTH. There is NO localStorage write queue
+// and NO local data cache: every change is written straight to Firebase per-record. The Firebase
+// SDK holds writes made during a brief in-session disconnect in memory and flushes them when the
+// connection returns. (The old localStorage offline queue was removed — a queued whole-object
+// payload that exceeded Firebase's write-size limit could never flush and hid all data.)
 let isOnline=navigator.onLine;
-let pendingSyncTimer=null;
-// Flag set when local state has changes not yet pushed to Firebase.
-// While true, the listener won't overwrite EDITS/ADDED with server data.
-let _pendingFlush={edits:false,added:false};
-// Tracks which delivery the tech currently has open in the detail view.
-// Used so the listener can live-refresh the detail when the manager uploads
-// new photos / edits the record from another device.
+// Tracks which delivery the tech currently has open in the detail view, so the listener can
+// live-refresh it when another device edits the record.
 let _currentTechDetailId=null;
-
-function queueOffline(kind,data){
-try{
-let q=JSON.parse(localStorage.getItem('aspen_offline_queue')||'{}');
-q[kind]={data:data,ts:Date.now()};
-localStorage.setItem('aspen_offline_queue',JSON.stringify(q));
-_pendingFlush[kind]=true;
-updateOfflineIndicator(true);
-}catch(e){console.error('queueOffline err:',e)}
-}
-
-function clearOfflineQueue(kind){
-try{
-let q=JSON.parse(localStorage.getItem('aspen_offline_queue')||'{}');
-if(kind){delete q[kind];_pendingFlush[kind]=false}else{q={};_pendingFlush={edits:false,added:false}}
-localStorage.setItem('aspen_offline_queue',JSON.stringify(q));
-if(!Object.keys(q).length)updateOfflineIndicator(false);
-}catch(e){console.error('clearOfflineQueue err:',e)}
-}
-
-function flushOfflineQueue(){
-if(!navigator.onLine)return;
-try{
-let q=JSON.parse(localStorage.getItem('aspen_offline_queue')||'{}');
-let kinds=Object.keys(q);
-if(!kinds.length){updateOfflineIndicator(false);return}
-showToast('&#128259; Reconnecting — syncing '+kinds.length+' pending change'+(kinds.length===1?'':'s')+'...');
-let promises=[];
-if(q.edits&&q.edits.data){promises.push(dbEdits.update(q.edits.data).then(()=>clearOfflineQueue('edits')))}
-if(q.added&&q.added.data){promises.push((_addedNodeMigrated?dbAdded.update(_addedToObj(q.added.data)):dbAdded.set(q.added.data)).then(()=>clearOfflineQueue('added')))}
-Promise.all(promises).then(()=>{showToast('&#10003; All changes synced','success');updateOfflineIndicator(false);syncPulse()}).catch(e=>{console.error('flushOfflineQueue err:',e);showToast('&#9888; Sync failed — will retry','warn')});
-}catch(e){console.error('flushOfflineQueue err:',e)}
-}
-
-function updateOfflineIndicator(hasPending){
+function updateOfflineIndicator(){
 let el=document.getElementById('offline-banner');
 if(!el){
 el=document.createElement('div');el.id='offline-banner';
 el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:8px 16px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.02em;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none';
 document.body.appendChild(el);
 }
-if(!navigator.onLine){
-el.style.background='#dc2626';
-el.innerHTML='&#128268; Offline — your changes are saved locally and will sync when you reconnect';
-el.style.display='block';
-}else if(hasPending){
-el.style.background='#d97706';
-el.innerHTML='&#128259; Syncing pending changes...';
-el.style.display='block';
-}else{
-el.style.display='none';
+if(!navigator.onLine){el.innerHTML='&#128268; Sin conexi&oacute;n &mdash; rec&oacute;nectate para guardar cambios';el.style.display='block';}
+else{el.style.display='none';}
 }
-}
-
-// Listen for connection changes
-window.addEventListener('online',()=>{
-isOnline=true;
-updateOfflineIndicator(true);
-// Small delay so the network is actually usable (not just navigator.onLine flipping)
-clearTimeout(pendingSyncTimer);
-pendingSyncTimer=setTimeout(flushOfflineQueue,1500);
-});
-window.addEventListener('offline',()=>{
-isOnline=false;
-updateOfflineIndicator(false);
-showToast('&#128268; Offline — keep working, changes will sync when you reconnect','warn');
-});
-// On page load, if there's a pending queue and we're online, flush it immediately
-if(navigator.onLine){setTimeout(flushOfflineQueue,2500)}else{updateOfflineIndicator(false)}
+window.addEventListener('online',()=>{isOnline=true;updateOfflineIndicator();syncPulse()});
+window.addEventListener('offline',()=>{isOnline=false;updateOfflineIndicator();showToast('&#128268; Offline &mdash; reconnect to save changes','warn')});
+updateOfflineIndicator();
 function saveOpts(){dbOpts.update({tb:OPT_TB.slice(3),ss:OPT_SS.slice(8),lf:OPT_LF.slice(7),cv:OPT_CV.slice(4),su:OPT_SU.slice(4),__cats__:CUSTOM_CATS}).catch(e=>console.error('saveOpts:',e))}
 function syncPulse(){let d=document.getElementById('syncDot');d.className='sync-dot on';d.title='Synced';clearTimeout(d._t);d._t=setTimeout(()=>{d.title='Connected'},1500)}
 
@@ -2718,8 +2651,7 @@ let _ip=getIntakeParams();renderIntakePortal(_ip.id,_ip.token);
 }else{
 dbEdits.on('value',snap=>{
 let v=snap.val()||{};
-// Defense layer 1: explicit offline-queue lock — flushing pending changes, don't clobber.
-if(_pendingFlush.edits)return;
+// No offline queue — Firebase is the single source of truth; always reconcile with the server.
 // Defense layer 2: in-flight save protection — we've called set() but Firebase hasn't
 // confirmed. A snapshot arriving now could be the OLD server state from before our write.
 if(_saveInFlight.edits>0)return;
@@ -2753,9 +2685,8 @@ return;
 EDITS=overlayRecentEditsEdits(v);
 // Normalize Firebase array-as-object quirks in each EDIT overlay (photos / tech_photos).
 Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
-try{localStorage.setItem('aspen_backup_edits',JSON.stringify(EDITS))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
-},err=>{console.error('dbEdits error:',err);if(!fbReady)checkReady()});
+},err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
 dbAdded.on('value',snap=>{
 let v=snap.val()||[];
 // ONE-TIME (self-healing) MIGRATION: the `added` node was a JS array (keys 0,1,2…). Per-child
@@ -2763,7 +2694,7 @@ let v=snap.val()||[];
 // legacy write ever reverts the node to array-form, the next cycle catches it and re-migrates,
 // and saveA falls back to the safe legacy set in the meantime (never per-child on an array node).
 // _addedToObj dedups by id, so even a transient mixed node is cleaned to one record per id.
-if(!_addedMigrating&&!_pendingFlush.added&&_saveInFlight.added===0){
+if(!_addedMigrating&&_saveInFlight.added===0){
 let isArr=Array.isArray(v);
 let keys=(v&&typeof v==='object')?(isArr?v.map((_,i)=>String(i)):Object.keys(v)):[];
 if(!keys.length){_addedNodeMigrated=true}
@@ -2778,7 +2709,6 @@ dbAdded.set(obj).then(()=>{_addedNodeMigrated=true;_addedMigrating=false;console
 }else{_addedNodeMigrated=true}
 }
 }
-if(_pendingFlush.added)return;
 if(_saveInFlight.added>0)return;
 // 1.5s grace window for missing-id check.
 if(Date.now()-_lastLocalSave.added<1500&&Array.isArray(ADDED)&&ADDED.length){
@@ -2808,9 +2738,8 @@ return;
 }
 // Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
 ADDED=overlayRecentAddedEdits(nextArr);
-try{localStorage.setItem('aspen_backup_added',JSON.stringify(ADDED))}catch(e){}
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
-},err=>{console.error('dbAdded error:',err);if(!fbReady)checkReady()});
+},err=>{console.error('dbAdded error:',err);showReadErrorBanner('added',err);if(!fbReady)checkReady()});
 
 // Big yellow warning banner that appears at the top of the screen when the anti-wipe
 // defense kicks in. Alberto sees this immediately and knows something is wrong.
@@ -2822,6 +2751,21 @@ div.id='anti-wipe-banner';
 div.style.cssText='position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#dc2626,#ea580c);color:#fff;padding:14px 20px;text-align:center;font-weight:800;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);cursor:pointer;letter-spacing:.02em';
 div.innerHTML='&#9888;&#65039; PROTECCIÓN ANTI-WIPE ACTIVADA &mdash; Firebase devolvió '+serverCount+' '+kind+' pero localmente tienes '+localCount+'. <u>Click aquí para abrir Backup Center</u> e investigar antes de hacer cambios.';
 div.onclick=()=>{div.remove();if(currentUser&&currentUser.role==='admin')openBackupCenter()};
+document.body.appendChild(div);
+}
+
+// Big banner shown when Firebase REJECTS a read (permission-denied / unauthenticated). Without
+// this, a rules/auth problem looks like "all my data disappeared" — empty fields, no explanation.
+// Your data is safe on the server; this just means this device couldn't read it. (Fix: Firebase
+// Console → Authentication → enable Anonymous, and Realtime Database → Rules allow auth!=null.)
+function showReadErrorBanner(node,err){
+let code=(err&&(err.code||err.message)||'').toString().toLowerCase();
+if(code.indexOf('permission')<0&&code.indexOf('denied')<0&&code.indexOf('unauth')<0)return;
+let existing=document.getElementById('read-error-banner');if(existing)existing.remove();
+let div=document.createElement('div');
+div.id='read-error-banner';
+div.style.cssText='position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#b45309,#dc2626);color:#fff;padding:14px 20px;text-align:center;font-weight:800;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);letter-spacing:.02em';
+div.innerHTML='&#9888;&#65039; NO SE PUDO LEER LA BASE DE DATOS ('+escHtml(node)+') &mdash; problema de permisos/auth. <u>Tus datos est&aacute;n a salvo en el servidor.</u> Revisa: Firebase &rarr; Authentication &rarr; Anonymous habilitado, y Realtime Database &rarr; Rules (auth != null).';
 document.body.appendChild(div);
 }
 
@@ -2839,24 +2783,11 @@ techOpenDetail(_currentTechDetailId)}
 
 // Offline-first fallback: if we have local backups and Firebase isn't responding fast,
 // load the cached state immediately so the tech can keep working without signal.
-(function restoreOfflineCache(){
-try{
-let be=localStorage.getItem('aspen_backup_edits');
-let ba=localStorage.getItem('aspen_backup_added');
-let bq=localStorage.getItem('aspen_offline_queue');
-if(bq){
-// Pending queue exists — we made changes offline that haven't synced yet.
-// Mark these as pending so the listener can't clobber them, and use queue data.
-let q=JSON.parse(bq);
-if(q.edits&&q.edits.data){EDITS=q.edits.data;_pendingFlush.edits=true}
-if(q.added&&q.added.data&&Array.isArray(q.added.data)){ADDED=q.added.data;_pendingFlush.added=true}
-}else{
-// No queue: use the last server snapshot we cached so the app shows recent state immediately
-if(be&&Object.keys(EDITS).length===0){let e=JSON.parse(be);if(e&&typeof e==='object')EDITS=e}
-if(ba&&ADDED.length===0){let a=JSON.parse(ba);if(Array.isArray(a))ADDED=a}
-}
-}catch(e){console.error('restoreOfflineCache:',e)}
-})();
+// One-time self-healing cleanup: purge the legacy localStorage data cache and offline write
+// queue. Firebase is now the single source of truth; these keys are what caused the 2026-06-01
+// "Write too large" lockout (a queued whole-EDITS payload too big to ever flush). Removing them
+// here means every device auto-recovers on first load of this version — no manual console step.
+try{localStorage.removeItem('aspen_offline_queue');localStorage.removeItem('aspen_backup_edits');localStorage.removeItem('aspen_backup_added');}catch(e){}
 dbOpts.on('value',snap=>{let c=snap.val()||{};
 if(c.tb)c.tb.forEach(v=>{if(!OPT_TB.includes(v))OPT_TB.push(v)});
 if(c.ss)c.ss.forEach(v=>{if(!OPT_SS.includes(v))OPT_SS.push(v)});
@@ -3355,7 +3286,6 @@ async function _onResume(){
 if(document.visibilityState&&document.visibilityState!=='visible')return;
 if(Date.now()-_lastResumeSync<15000)return;
 _lastResumeSync=Date.now();
-if(navigator.onLine){try{flushOfflineQueue()}catch(e){}}
 if(typeof gcalToken==='undefined'||!gcalToken||typeof gcalCalendarId==='undefined'||!gcalCalendarId)return;
 console.log('[RESUME] Tab active again — refreshing token + catch-up sync');
 try{
