@@ -2266,6 +2266,12 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<button onclick="pickBackupFileToRestore()" style="background:#fff;color:#dc2626;border:1.5px solid #dc2626;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128194; Seleccionar archivo de backup...</button>'+
 '</div>'+
 
+'<div style="background:#fff;border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#129529; Quitar duplicados</div>'+
+'<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:10px">Si un restore dej&oacute; entregas duplicadas (el mismo evento de calendario con dos registros), esto conserva el registro con m&aacute;s datos y quita el duplicado vac&iacute;o. Te muestra qu&eacute; va a quitar antes de hacerlo.</div>'+
+'<button onclick="runDedupDuplicates()" style="background:#fff;color:#b45309;border:1.5px solid #b45309;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#129529; Buscar y quitar duplicados</button>'+
+'</div>'+
+
 '<div style="font-size:10.5px;color:var(--text-tertiary);margin-top:14px;line-height:1.5">'+
 '<strong>Tip:</strong> Descarga un backup manual al menos una vez por semana y guárdalo en Drive/iCloud. El auto-backup a Drive corre solo si abriste Google Calendar — si lo deshabilitas, no hay auto-backup.'+
 '</div>';
@@ -6469,6 +6475,62 @@ unmerged.push({stub:stub.i,reason:'error: '+perStubErr.message});
 }
 return {merged,unmerged};
 }
+
+// =====================================================================================
+// DEDUP BY CALENDAR EVENT (gcalId) — recovery tool. After a backup restore a delivery can end
+// up represented twice: the restored "real" record AND a stub the calendar auto-created while
+// the data was missing — both pointing at the SAME calendar event (same gcalId). This groups
+// every record by gcalId, keeps the richest one per event, and removes the duplicate(s). SAFE:
+// within each group it always keeps the record with the most data (completed/delivered >
+// enriched > has a name > most filled fields), never the empty stub. Shows a preview first.
+// =====================================================================================
+function _dedupFieldScore(r){
+let n=0;['n','ph','em','pr','py','bl','di','st','sm','sn','dn','dnotes','fn','en','assigned_to','tb','ss','lf','cv','su'].forEach(f=>{let v=r[f];if(v!==undefined&&v!==null&&String(v).trim()!==''&&String(v)!=='0'&&String(v)!=='False')n++});return n}
+function _dedupScore(r){
+let sc=0;
+if(r.co||r.dl)sc+=5000;
+if(typeof gcalRecordIsEnriched==='function'&&gcalRecordIsEnriched(r))sc+=1000;
+if(r.n&&String(r.n).trim())sc+=100;
+sc+=_dedupFieldScore(r);
+return sc}
+function planDedupByGcalId(){
+let all=AD(),groups={};
+all.forEach(r=>{if(r&&r.gcalId){(groups[r.gcalId]=groups[r.gcalId]||[]).push(r)}});
+let plan=[];
+Object.keys(groups).forEach(gid=>{
+let recs=groups[gid];if(recs.length<2)return;
+recs.sort((a,b)=>{let sa=_dedupScore(a),sb=_dedupScore(b);if(sb!==sa)return sb-sa;return Number(a.i)-Number(b.i)});
+plan.push({gcalId:gid,keep:recs[0],remove:recs.slice(1)});
+});
+return plan}
+async function runDedupDuplicates(){
+let plan=planDedupByGcalId();
+if(!plan.length){showToast('No se encontraron duplicados por evento de calendario','warn');return}
+let totalRemove=plan.reduce((a,g)=>a+g.remove.length,0);
+let lines=plan.slice(0,15).map(g=>{
+let kn=g.keep.n||g.keep.cal||'(sin nombre)';
+return '   \u2713 CONSERVA: '+kn+(g.keep.sn?' \u00b7 SN '+g.keep.sn:'')+'  (quita '+g.remove.length+')';
+}).join('\n');
+let msg='QUITAR DUPLICADOS POR EVENTO DE CALENDARIO\n\n'+
+'Eventos con m\u00e1s de un registro: '+plan.length+'\n'+
+'Registros duplicados a quitar: '+totalRemove+'\n\n'+
+'Por cada evento se CONSERVA el registro con m\u00e1s datos y se quita el/los duplicado(s) vac\u00edo(s):\n\n'+lines+(plan.length>15?'\n   \u2026y '+(plan.length-15)+' m\u00e1s':'')+
+'\n\n\u00bfContinuar? Lo que conservas NO se toca.';
+if(!confirm(msg))return;
+let removedAddedIds=new Set(),updates={};
+plan.forEach(g=>{
+gcalMap[g.gcalId]=g.keep.i;updates['gcal_map/'+g.gcalId]=String(g.keep.i);
+if(typeof trackGcalMapSet==='function'){try{trackGcalMapSet(g.gcalId,g.keep.i)}catch(e){}}
+g.remove.forEach(r=>{
+let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
+if(ai>=0){_removedAdded.add(String(ADDED[ai].i));removedAddedIds.add(String(ADDED[ai].i));ADDED.splice(ai,1)}
+else{if(!EDITS[r.i])EDITS[r.i]={};EDITS[r.i]._deleted=true;rememberEditsEdit(r.i,EDITS[r.i])}
+});
+});
+saveA();saveE();
+try{await db.ref().update(updates)}catch(e){console.error('dedup map update:',e)}
+showToast('&#10003; Quitados '+totalRemove+' duplicados \u2014 se conserv\u00f3 el registro con m\u00e1s datos por evento');
+renderAll()}
 
 // =====================================================================================
 // AUTO-HEALING AUDIT — runs silently at the end of every sync (manual or auto-sync).
