@@ -1618,6 +1618,41 @@ s.onerror=()=>rej(new Error('Could not load PDF library — check internet'));
 document.head.appendChild(s);
 })}
 
+// Lazy-load heic2any only when an iPhone HEIC/HEIF file actually shows up
+// (saves ~600KB on every normal load — most uploads are already JPEG).
+function ensureHeicLib(){
+return new Promise((res,rej)=>{
+if(window.heic2any){res();return}
+let s=document.createElement('script');
+s.src='https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js';
+s.onload=()=>res();
+s.onerror=()=>rej(new Error('Could not load HEIC converter — check internet'));
+document.head.appendChild(s);
+})}
+
+// True when the picked file is an iPhone HEIC/HEIF. Desktop Chrome usually
+// reports an empty MIME type for these, so we also sniff the filename extension.
+function isHeicFile(file){
+let t=((file&&file.type)||'').toLowerCase();
+let n=((file&&file.name)||'').toLowerCase();
+return t==='image/heic'||t==='image/heif'||/\.(heic|heif)$/.test(n);
+}
+
+// Convert an iPhone HEIC/HEIF File into a JPEG Blob so the rest of the upload
+// pipeline (which relies on the browser decoding the file via an <img>) works
+// even in browsers that can't decode HEIC natively — i.e. desktop Chrome.
+// Returns the original file untouched if it isn't HEIC, or if conversion fails,
+// so behavior degrades gracefully to exactly what it was before.
+async function heicToJpegIfNeeded(file){
+if(!isHeicFile(file))return file;
+try{
+await ensureHeicLib();
+let out=await window.heic2any({blob:file,toType:'image/jpeg',quality:0.9});
+let blob=Array.isArray(out)?out[0]:out;
+return blob||file;
+}catch(e){console.warn('[HEIC] convert failed — passing original through:',e);return file}
+}
+
 function techSignature(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
 let hasPdf=r.pdf_invoice&&r.pdf_invoice.data;
@@ -1868,8 +1903,11 @@ return url||b64;
 }catch(e){console.warn('[STORAGE] upload failed — keeping inline base64:',e&&e.code,e&&e.message);return b64}
 }
 
-// Compress image to reasonable base64 size
-function compressImage(file,maxDim,quality){
+// Compress image to reasonable base64 size.
+// iPhone HEIC/HEIF files are converted to JPEG first (so they decode in every
+// browser), then the existing resize-to-canvas path runs unchanged.
+async function compressImage(file,maxDim,quality){
+file=await heicToJpegIfNeeded(file);
 return new Promise((res,rej)=>{
 let img=new Image();let url=URL.createObjectURL(file);
 img.onload=function(){
