@@ -929,7 +929,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <button class="pbtn" id="gcalSyncBtn" onclick="gcalSync()">&#128260; Sync Now</button>
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
 <button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
-<label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 60s</label>
+<label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 10 min</label>
 <label style="font-size:12px;font-weight:700;color:#0b8043;display:flex;align-items:center;gap:6px;background:#dcfce7;padding:4px 9px;border-radius:6px;border:1px solid #bbf7d0" title="When ON, changes you make in this app (new deliveries, date changes, color changes, deletions) are pushed to Google Calendar."><input type="checkbox" id="gcalWrite" onchange="gcalToggleWrite()"> &#8644; Two-way sync</label>
 <button class="pbtn" onclick="gcalRequestWriteScope()" style="font-size:11px;padding:4px 10px;background:#fff;border:1px solid #d1d5db;color:#374151;font-weight:600" title="If your calendar isn't being updated when you save tickets, click this to grant write permission to Google Calendar.">&#128274; Grant Write Access</button>
 <button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
@@ -1027,6 +1027,19 @@ location.reload();
 };
 }
 const db=firebase.database();
+// =====================================================================================
+// APP VERSION / FORCED AUTO-UPDATE
+// ----------------------------------------------------------------------------------
+// APP_BUILD is a single increasing integer. ⬆️ BUMP IT ON EVERY DEPLOY (just make it
+// bigger — the date+counter format keeps it monotonic). When ANY device loads a build
+// higher than what's published in Firebase (app_meta/build), it publishes its build.
+// Every other open client is listening and, on seeing a higher build, force-reloads
+// itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
+// guarantees every user is on the newest version without anyone re-uploading anything.
+const APP_BUILD   = 2026060301;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.03 (build 1)'; // human-readable label (shown in console)
+console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
+const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
 // Sign the dashboard in anonymously so Firebase rules can require auth!=null (closes the
 // "public database" hole + warning). This is transparent — it does NOT change the PIN login.
@@ -2796,6 +2809,24 @@ return;
 ADDED=overlayRecentAddedEdits(nextArr);
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbAdded error:',err);showReadErrorBanner('added',err);if(!fbReady)checkReady()});
+
+// === FORCED AUTO-UPDATE LISTENER ===
+// As soon as a newer build is published (by any device that loaded a fresh deploy), every
+// other open client reloads itself with a cache-busting URL. A sessionStorage guard prevents
+// a reload loop if the new file isn't live on the CDN yet.
+dbAppMeta.on('value',s=>{
+let serverBuild=Number(s.val()||0);
+if(serverBuild>APP_BUILD){
+let tried=Number(sessionStorage.getItem('aspen_tried_build')||0);
+if(tried>=serverBuild){console.warn('[AUTO-UPDATE] Build '+serverBuild+' published but this file is still '+APP_BUILD+' — the deploy may not be live yet. Not reloading again (loop guard).');return}
+try{sessionStorage.setItem('aspen_tried_build',String(serverBuild))}catch(e){}
+console.warn('[AUTO-UPDATE] Newer build '+serverBuild+' detected (running '+APP_BUILD+'). Reloading to update…');
+try{showToast('&#128260; Nueva versi&oacute;n disponible &mdash; actualizando&hellip;')}catch(e){}
+setTimeout(()=>{location.replace(location.pathname+'?v='+serverBuild)},1200);
+return}
+// This client is the newest deploy → publish so everyone else updates.
+if(APP_BUILD>serverBuild){dbAppMeta.set(APP_BUILD).catch(e=>console.warn('[AUTO-UPDATE] publish build failed',e))}
+},err=>console.warn('[AUTO-UPDATE] meta read error',err));
 
 // Big yellow warning banner that appears at the top of the screen when the anti-wipe
 // defense kicks in. Alberto sees this immediately and knows something is wrong.
@@ -6155,6 +6186,10 @@ if(res.result.nextSyncToken)nextSync=res.result.nextSyncToken
 
 for(let ev of allEvents){await processGcalEvent(ev)}
 
+// Collapse any duplicate records that point at the same calendar event (idempotency safety net).
+let _deduped=await autoDedupByGcalId();
+if(_deduped)gcalStats.deduped=_deduped;
+
 if(nextSync){gcalSyncToken=nextSync;dbGcal.update({syncToken:nextSync,lastSync:Date.now()})}
 else{dbGcal.update({lastSync:Date.now()})}
 
@@ -6166,7 +6201,7 @@ let el=document.getElementById('gcal'+k);
 if(gcalStats[key]>0){el.style.display='inline-block';
 el.textContent=gcalStats[key]+' '+(key==='skipped'?'skipped (color/title filter)':key.toLowerCase())}
 else{el.style.display='none'}});
-showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.updated+' updated'+(gcalStats.skipped?', '+gcalStats.skipped+' filtered (non-delivery or wrong color)':'')+(gcalStats.sundayBlocked?', '+gcalStats.sundayBlocked+' blocked (Sunday)':'')+(gcalStats.errors?', '+gcalStats.errors+' errors':''));
+showToast('&#10003; Sync complete: '+gcalStats.created+' new, '+gcalStats.updated+' updated'+(gcalStats.deduped?', '+gcalStats.deduped+' duplicados quitados':'')+(gcalStats.skipped?', '+gcalStats.skipped+' filtered (non-delivery or wrong color)':'')+(gcalStats.sundayBlocked?', '+gcalStats.sundayBlocked+' blocked (Sunday)':'')+(gcalStats.errors?', '+gcalStats.errors+' errors':''));
 // AUTO-HEALING: run a wide-window audit after every successful sync to catch anything the
 // incremental syncToken-based pull missed. Silent, auto-creates missing tickets, fixes date drift.
 setTimeout(gcalAutoAudit,1500);
@@ -6240,6 +6275,16 @@ if(isEditingThisEvent){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 // This removes the old title-guessing logic that occasionally cross-linked unrelated customers.
 // =====================================================================================
 let mappedId=gcalMap[ev.id];
+// IDEMPOTENCY GUARD (dup-proofing): gcal_map can be cleared or stale (after Clean Imported,
+// a backup restore, or a syncToken reset). If ANY record already carries this event's id in
+// its OWN gcalId field, that record IS the link — adopt it and repair the map instead of
+// falling through to create a brand-new stub. This is the single defense that makes "create"
+// idempotent on gcalId and prevents one calendar event from ever spawning multiple tickets.
+if(!mappedId||!findRecById(mappedId)){
+let _own=AD().find(r=>r&&r.gcalId&&String(r.gcalId)===String(ev.id));
+if(_own){mappedId=_own.i;
+if(String(gcalMap[ev.id])!==String(_own.i)){gcalMap[ev.id]=_own.i;try{trackGcalMapSet(ev.id,_own.i)}catch(e){}db.ref('gcal_map/'+ev.id).set(String(_own.i)).catch(()=>{});console.log('[GCAL] Idempotency guard: event '+ev.id+' re-linked to existing ticket #'+_own.i+' (map was stale) — no duplicate created.')}}
+}
 if(mappedId){
 let local=findRecById(mappedId);
 if(local){
@@ -6570,6 +6615,28 @@ try{await db.ref().update(updates)}catch(e){console.error('dedup map update:',e)
 showToast('&#10003; Quitados '+totalRemove+' duplicados \u2014 se conserv\u00f3 el registro con m\u00e1s datos por evento');
 renderAll()}
 
+// SILENT auto-dedup — same logic as runDedupDuplicates but no modal/confirm. Runs at the end of
+// every sync so any duplicate that slipped through is collapsed immediately (keep the richest
+// record per calendar event, drop the empty stubs). Returns the number of records removed.
+async function autoDedupByGcalId(){
+try{
+let plan=planDedupByGcalId();
+if(!plan.length)return 0;
+let removed=0,updates={};
+plan.forEach(g=>{
+gcalMap[g.gcalId]=g.keep.i;updates['gcal_map/'+g.gcalId]=String(g.keep.i);
+if(typeof trackGcalMapSet==='function'){try{trackGcalMapSet(g.gcalId,g.keep.i)}catch(e){}}
+g.remove.forEach(r=>{
+let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
+if(ai>=0){_removedAdded.add(String(ADDED[ai].i));ADDED.splice(ai,1);removed++}
+else{if(!EDITS[r.i])EDITS[r.i]={};EDITS[r.i]._deleted=true;rememberEditsEdit(r.i,EDITS[r.i]);removed++}
+});
+});
+if(removed){saveA();saveE();try{await db.ref().update(updates)}catch(e){console.error('[AUTO-DEDUP] map update:',e)}
+console.log('%c[AUTO-DEDUP] Collapsed '+removed+' duplicate record(s) across '+plan.length+' calendar event(s).','color:#16a34a;font-weight:700');}
+return removed;
+}catch(e){console.error('[AUTO-DEDUP] error:',e);return 0}}
+
 // =====================================================================================
 // AUTO-HEALING AUDIT — runs silently at the end of every sync (manual or auto-sync).
 // Pulls a wide window of events (7 days back to 120 days forward) IGNORING syncToken so
@@ -6633,6 +6700,12 @@ if(new Date(p[0],p[1]-1,p[2]).getDay()===0){skipped.bySunday++;continue}}
 let title=(ev.summary||'').trim();
 let newColor=ev.colorId||null;
 let mappedId=gcalMap[ev.id];
+// IDEMPOTENCY GUARD (same as processGcalEvent): if a record already carries this event id in
+// its own gcalId field, adopt it — never create a second ticket for the same event.
+if(!mappedId||!findRecById(mappedId)){
+let _own=AD().find(r=>r&&r.gcalId&&String(r.gcalId)===String(ev.id));
+if(_own){mappedId=_own.i;if(String(gcalMap[ev.id])!==String(_own.i)){gcalMap[ev.id]=_own.i;try{trackGcalMapSet(ev.id,_own.i)}catch(e){}db.ref('gcal_map/'+ev.id).set(String(_own.i)).catch(()=>{})}}
+}
 
 if(mappedId){
 let local=findRecById(mappedId);
@@ -6746,6 +6819,8 @@ if(typeof showToast==='function')showToast(msg,'warn');
 if(typeof renderBoard==='function')renderBoard();
 if(typeof renderCalendar==='function')renderCalendar();}
 else{console.log('[AUTO-AUDIT] Clean \u2014 '+skipped.synced+' synced, '+(skipped.byTitle+skipped.byColor+skipped.bySunday+skipped.noDate+skipped.cancelled)+' filtered'+(perEventErrors?', '+perEventErrors+' per-event errors':'')+'.');}
+// Final idempotency safety net: collapse any record that ended up sharing a calendar event id.
+try{await autoDedupByGcalId()}catch(e){console.warn('[AUTO-AUDIT] dedup pass failed',e)}
 }catch(e){console.error('[AUTO-AUDIT] error',e);}
 finally{_gcalAuditInFlight=false;}
 }
@@ -6754,7 +6829,7 @@ finally{_gcalAuditInFlight=false;}
 function gcalToggleAuto(){
 let on=document.getElementById('gcalAuto').checked;
 localStorage.setItem('gcalAutoSync',on?'true':'false');
-if(on){gcalSync();gcalAutoTimer=setInterval(gcalSync,60000)}
+if(on){gcalSync();gcalAutoTimer=setInterval(gcalSync,600000)}
 else{clearInterval(gcalAutoTimer);gcalAutoTimer=null}}
 
 // Toggle two-way sync (app → Google Calendar). Persisted to localStorage so the choice
