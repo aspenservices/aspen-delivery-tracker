@@ -257,6 +257,28 @@ tbody tr{cursor:pointer}
 .cd{width:16px;height:16px;border-radius:50%;flex-shrink:0;transition:all .15s;cursor:pointer;min-width:16px;min-height:16px}
 .cd.on{background:#059669;border:2px solid #047857}.cd.off{background:#fff;border:2px solid #d1d5db}
 .nb{background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;padding:9px 12px;margin-bottom:8px;border-left:3px solid #2563eb}
+/* ===== COMPACT EDIT FORM (2026-06-12) =====
+   The ticket form felt oversized/cluttered. Tighter cards, labels, inputs, grids and the
+   post-delivery checklist — scoped to the edit modal (#md) so cards/boards stay untouched.
+   Input FONT sizes shrink only on desktop: mobile keeps 16px to avoid iOS focus auto-zoom. */
+#md .ig{gap:7px;margin-bottom:10px}
+#md .ag{gap:6px;margin-bottom:10px}
+#md .ib{padding:6px 9px;border-radius:7px}
+#md .ib label{font-size:9px;margin-bottom:1px;letter-spacing:.3px}
+#md .ib input,#md .ib select,#md .ib textarea{padding:5px 7px;border-width:1.5px}
+#md .nb{padding:7px 10px;margin-bottom:6px}
+#md .pdf-uploader{padding:8px 12px;gap:8px}
+#md .pdf-btn{padding:7px 12px;font-size:12px}
+#md .cg{gap:4px}
+#md [style*="margin-bottom:16px"]{margin-bottom:10px!important}
+#e_spd{min-height:180px}
+@media(min-width:701px){
+#md .ib input,#md .ib select,#md .ib textarea{font-size:13px}
+#md .ib span{font-size:13px}
+#md .ct{font-size:12px;margin-bottom:5px}
+#md .ci{font-size:12px;padding:3px 4px;gap:5px}
+#md .cd{width:14px;height:14px;min-width:14px;min-height:14px}
+}
 .nb label{font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px}
 .nb p{font-size:13px;color:#374151;line-height:1.5}
 .nb textarea{width:100%;padding:6px 8px;border:2px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1f2937;outline:none;resize:vertical;min-height:44px}
@@ -982,7 +1004,11 @@ let OPT_SU=["@ Ease [SPA]","Tru-Blu [SPA]","Tru-Blu [SWIM]","Bromine Tablets"];
 let CUSTOM_CATS=[];
 // Load custom options from Firebase (will be populated after init)
 const PRE=[{k:"pf",l:"Pay Full"},{k:"iv",l:"Invoice"},{k:"el",l:"Electricity"},{k:"wp",l:"WIP"},{k:"lv",l:"Level"},{k:"pt",l:"Photos"}];
-const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"po",l:"Portal"},{k:"oo",l:"O.O."},{k:"il",l:"I.L."},{k:"cl",l:"Call"},{k:"pk",l:"Packets"},{k:"gb",l:"G.B."},{k:"ngb",l:"N.G.B."}];
+// 2026-06-12: "O.O." and "I.L." removed from the post-delivery checklist per Alberto — no
+// longer part of the workflow. Their keys still exist on historical records; they are
+// intentionally KEPT inside gcalRecordIsEnriched (legacy-data protection) and re-added to
+// the reserved-key list below so nothing else can ever reuse those field names.
+const POST=[{k:"dl",l:"Del."},{k:"ep",l:"Email PW"},{k:"po",l:"Portal"},{k:"cl",l:"Call"},{k:"pk",l:"Packets"},{k:"gb",l:"G.B."},{k:"ngb",l:"N.G.B."}];
 
 // === FIREBASE CONFIG ===
 // Firebase config. apiKey/appId are READ FROM localStorage FIRST, so Alberto pastes them ONCE
@@ -1036,8 +1062,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026060301;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.03 (build 1)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061201;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.12 (build 1)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1399,8 +1425,8 @@ function markGcalSync(r,pending,reason){
 if(!r)return;
 let patch=pending?{gcalSyncPending:true,gcalSyncReason:(reason||'Calendar update failed')}:{gcalSyncPending:null,gcalSyncReason:null};
 let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){if(!pending&&!ADDED[ai].gcalSyncPending)return;Object.assign(ADDED[ai],patch);saveA()}
-else{if(!pending&&!(EDITS[r.i]&&EDITS[r.i].gcalSyncPending))return;if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);saveE()}}
+if(ai>=0){if(!pending&&!ADDED[ai].gcalSyncPending)return;Object.assign(ADDED[ai],patch);_dirtyAdded.add(String(ADDED[ai].i));saveA()}
+else{if(!pending&&!(EDITS[r.i]&&EDITS[r.i].gcalSyncPending))return;if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);_dirtyEdits.add(String(r.i));saveE()}}
 
 // For Hold cards, pull the most recent [HOLD] or [GCAL] audit line out of the
 // delivery notes so the card shows WHY it's parked without opening the modal.
@@ -1459,6 +1485,8 @@ h+='<div class="tech-action-grid">';
 if(r.ph)h+='<button class="tech-action-btn phone" onclick="techPhoneOptions('+r.i+')"><span class="ico">&#128222;</span><div>Call / Message</div></button>';
 h+='<button class="tech-action-btn note" onclick="techAddNote('+r.i+')"><span class="ico">&#128221;</span><div>Add Note</div></button>';
 h+='<button class="tech-action-btn photo" onclick="techPhotoUpload('+r.i+')"><span class="ico">&#128247;</span><div>Add Photos'+(r.tech_photos&&r.tech_photos.length?' ('+r.tech_photos.length+')':'')+'</div></button>';
+// Invoice PDF — visible to the technician too (legacy inline or side-node payload).
+if(r.pdf_invoice){h+='<button class="tech-action-btn" onclick="viewInvoicePDF('+r.i+')"><span class="ico">&#128196;</span><div>View Invoice</div></button>'}
 // Customer signature button — opens signature pad. If a PDF invoice is saved, the signature
 // will be embedded into the PDF below the Balance Due line, then auto-synced to Drive.
 let sigDone=r.signature&&r.signature.data;
@@ -1668,7 +1696,7 @@ return blob||file;
 
 function techSignature(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
-let hasPdf=r.pdf_invoice&&r.pdf_invoice.data;
+let hasPdf=!!r.pdf_invoice; // inline legacy or side-node slim format (stored:1)
 let hasExistingSig=r.signature&&r.signature.data;
 let modal=document.createElement('div');
 modal.className='tech-modal signature-modal';
@@ -1752,19 +1780,26 @@ let signedBy=(currentUser&&currentUser.name)||(r.assigned_to&&USERS[r.assigned_t
 let updates={
 signature:{data:signaturePng,signed_at:now,signed_by:signedBy,customer_name:r.n||null}
 };
-// If there's a saved invoice PDF, embed the signature into it
-if(r.pdf_invoice&&r.pdf_invoice.data){
+// If there's a saved invoice PDF (inline legacy or in the invoice_pdfs side node),
+// embed the signature into it. The signed payload also goes to the side node so the
+// record stays lightweight; the record only carries signed metadata ({stored:1}).
+if(r.pdf_invoice){
 if(saveBtn)saveBtn.innerHTML='&#9203; Embedding in PDF...';
 try{
-let signedPdfDataUri=await appendSignatureToPDF(r.pdf_invoice.data,signaturePng,r.n,r.dd);
+let srcData=r.pdf_invoice.data;
+if(!srcData){let _node=await fetchInvoicePdfNode(id);srcData=_node&&_node.data}
+if(!srcData)throw new Error('PDF payload not found');
+let signedPdfDataUri=await appendSignatureToPDF(srcData,signaturePng,r.n,r.dd);
 let signedName=(r.pdf_invoice.name||'invoice.pdf').replace(/\.pdf$/i,'')+'_signed.pdf';
-updates.pdf_invoice_signed={
-data:signedPdfDataUri,
-name:signedName,
-size:signedPdfDataUri.length,
-signed_at:now,
-signed_by:signedBy
-};
+let signedObj={data:signedPdfDataUri,name:signedName,size:signedPdfDataUri.length,signed_at:now,signed_by:signedBy};
+try{
+await db.ref('invoice_pdfs/'+String(id)+'/signed').set(signedObj);
+if(_pdfNodeCache[String(id)])_pdfNodeCache[String(id)].signed=signedObj;
+updates.pdf_invoice_signed={name:signedName,size:signedObj.size,signed_at:now,signed_by:signedBy,stored:1};
+}catch(nodeErr){
+console.error('[PDF] signed side-node write failed — falling back to inline:',nodeErr);
+updates.pdf_invoice_signed=signedObj;
+}
 }catch(pdfErr){
 console.error('PDF sign failed:',pdfErr);
 showToast('&#9888; Signature saved but could not embed in PDF: '+pdfErr.message,'warn');
@@ -2080,10 +2115,13 @@ return{
 version:'aspen_delivery_tracker_backup_v1',
 exportedAt:new Date().toISOString(),
 exportedBy:(currentUser&&currentUser.name)||'unknown',
-counts:{edits:Object.keys(EDITS).length,added:Array.isArray(ADDED)?ADDED.length:0,users:Object.keys(USERS).length},
+counts:{edits:Object.keys(EDITS).length,added:Array.isArray(ADDED)?ADDED.length:0,users:Object.keys(USERS).length,gcal_map:Object.keys(gcalMap||{}).length},
 edits:EDITS,
 added:ADDED,
 users:USERS,
+gcal_map:Object.assign({},gcalMap||{}),
+gcal_config:{calendarId:(typeof gcalCalendarId!=='undefined'?gcalCalendarId:null)},
+deleted_tickets:Object.assign({},typeof DELETED_TICKETS!=='undefined'?DELETED_TICKETS:{}),
 custom_opts:{tb:OPT_TB.slice(),ss:OPT_SS.slice(),lf:OPT_LF.slice(),cv:OPT_CV.slice(),su:OPT_SU.slice(),__cats__:CUSTOM_CATS}
 }}
 
@@ -2428,6 +2466,50 @@ let _dirtyAdded=new Set(),_removedAdded=new Set(),_addedNodeMigrated=false,_adde
 function _addedToObj(arr){let o={};(arr||[]).forEach(r=>{if(r&&r.i!=null)o[String(r.i)]=r});return o}
 let fbReady=false;
 // =====================================================================================
+// DELETED-TICKET LEDGER (cross-device tombstone authority).
+// Per-record last-writer-wins means a device holding a STALE copy of a ticket can re-upload
+// it whole and silently erase the _deleted flag another device just wrote — un-deleting it.
+// autoDedup can then mistake the resurrected ghost for a duplicate of its live replacement
+// and delete the LIVE one. The ledger is a tiny append-only node 'deleted_tickets/<id>=ts':
+//   • listeners re-apply _deleted to any incoming record whose id is ledgered, and
+//   • every outgoing whole-record write (saveE/saveA/chunked resync/legacy set) forces the
+//     flag back in, so even a stale device's write re-asserts the tombstone.
+// Union-merged locally so a glitched snapshot can never shrink it mid-session.
+// =====================================================================================
+let DELETED_TICKETS={};
+const dbDeletedLedger=db.ref('deleted_tickets');
+dbDeletedLedger.on('value',s=>{DELETED_TICKETS=Object.assign(DELETED_TICKETS,(s&&s.val&&s.val())||{})},err=>console.warn('[LEDGER] read error',err));
+function markTicketDeleted(id){if(id==null)return;let sid=String(id);DELETED_TICKETS[sid]=Date.now();dbDeletedLedger.child(sid).set(Date.now()).catch(e=>console.warn('[LEDGER] write failed',e))}
+function isTicketDeleted(id){return id!=null&&!!DELETED_TICKETS[String(id)]}
+function _ledgerFlag(r){if(!r||r.i==null)return r;let sid=String(r.i);if(DELETED_TICKETS[sid]&&!r._deleted)return Object.assign({},r,{_deleted:true,_deletedAt:DELETED_TICKETS[sid]});return r}
+function _ledgerFlagEdit(id,v){if(v&&DELETED_TICKETS[String(id)]&&!v._deleted)return Object.assign({},v,{_deleted:true,_deletedAt:DELETED_TICKETS[String(id)]});return v}
+function _ledgerFlagAll(arr){return (arr||[]).map(_ledgerFlag)}
+function _ledgerFlagObj(o){let out={};Object.keys(o||{}).forEach(k=>{out[k]=_ledgerFlagEdit(k,o[k])});return out}
+// Server-truth liveness check for a ticket id (added node + BASE/edits overlay). Used by the
+// stale-mapping healers so a few-seconds snapshot lag (ticket exists on the server but hasn't
+// reached THIS device yet) is never mistaken for "deleted" — that mistake removed a live
+// mapping and let a duplicate ticket be created for the same event.
+async function ticketAliveOnServer(id){
+if(id==null)return false;let sid=String(id);
+if(DELETED_TICKETS[sid])return false;
+try{
+let a=((await dbAdded.once('value')).val())||{};
+if(a[sid])return !a[sid]._deleted;
+if(BASE.some(b=>String(b.i)===sid)){let e=(((await dbEdits.once('value')).val())||{})[sid]||{};return !e._deleted}
+}catch(err){return true} // can't verify → assume alive (never destructive on doubt)
+return false}
+// CONDITIONAL MAP RELEASE: clearing a mapping must be compare-and-delete. A plain remove()
+// races against a concurrent re-link (another device may have just pointed the event at a
+// FRESH correct ticket) and would wipe that good mapping. Only delete if the server still
+// points at the offender we decided to release; otherwise keep the newer link untouched.
+function gcalMapConditionalRemove(evId,offenderId){
+return dbGcalMap.child(evId).transaction(cur=>{
+if(cur===null||cur===undefined)return; // nothing to clear (abort, no write)
+if(String(cur)===String(offenderId))return null; // still the offender → delete
+return cur; // someone re-linked meanwhile → keep their mapping
+}).catch(()=>{});
+}
+// =====================================================================================
 // FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips sequential arrays as objects
 // with numeric keys ({"0":"a","1":"b"} instead of ["a","b"]). This happens after partial
 // writes, sparse keys, or specific SDK quirks. Any consumer using `.length`, `.forEach`,
@@ -2528,9 +2610,18 @@ let _lastLocalSave={added:0,edits:0};
 const _RECENT_EDIT_TTL_MS=30000;
 let _recentLocalEditsAdded={}; // {ticketId: {data, ts}}
 let _recentLocalEditsEdits={}; // {ticketId: {data, ts}}  — for EDITS overlays on BASE rows
+// ANTI-RESURRECTION for deleted ADDED tickets (same pattern as the gcal_map trackers).
+// When the user deletes an ADDED ticket, splice() removes it locally and saveA() writes a
+// per-child null — but if the ticket was EDITED within the last 30s, _recentLocalEditsAdded
+// still holds a copy, and overlayRecentAddedEdits would re-insert the deleted ticket on every
+// incoming snapshot (it 'resurrects' on screen for up to 30s, then vanishes again — exactly
+// the disappearing/reappearing-record class of bug). We track recent deletions here and
+// suppress those ids in the overlay until any in-flight Firebase echo has settled.
+let _recentRemovedAdded={}; // {ticketId: timestampMs}
 
 function rememberAddedEdit(ticket){
 if(!ticket||ticket.i==null)return;
+delete _recentRemovedAdded[String(ticket.i)]; // a fresh edit/re-add supersedes any pending removal
 _dirtyAdded.add(String(ticket.i));
 _recentLocalEditsAdded[String(ticket.i)]={data:JSON.parse(JSON.stringify(ticket)),ts:Date.now()};
 pruneRecentEdits()}
@@ -2542,7 +2633,8 @@ pruneRecentEdits()}
 function pruneRecentEdits(){
 let cutoff=Date.now()-_RECENT_EDIT_TTL_MS;
 Object.keys(_recentLocalEditsAdded).forEach(k=>{if(_recentLocalEditsAdded[k].ts<cutoff)delete _recentLocalEditsAdded[k]});
-Object.keys(_recentLocalEditsEdits).forEach(k=>{if(_recentLocalEditsEdits[k].ts<cutoff)delete _recentLocalEditsEdits[k]})}
+Object.keys(_recentLocalEditsEdits).forEach(k=>{if(_recentLocalEditsEdits[k].ts<cutoff)delete _recentLocalEditsEdits[k]});
+Object.keys(_recentRemovedAdded).forEach(k=>{if(_recentRemovedAdded[k]<cutoff)delete _recentRemovedAdded[k]})}
 // Apply our recent local edits ON TOP of an incoming server snapshot. The snapshot is the
 // "base layer" — if the user just edited a ticket, our edit overrides whatever the server says
 // for that specific ticket. Returns the merged array/object.
@@ -2550,13 +2642,56 @@ function overlayRecentAddedEdits(serverArr){
 pruneRecentEdits();
 if(!Array.isArray(serverArr))return serverArr;
 let arr=serverArr.slice();
+// ANTI-RESURRECTION: drop any record the user deleted within the last 30s. A stale snapshot
+// (or the pre-delete echo of our own write) can still contain it; without this, the deleted
+// ticket flashes back onto every device until the snapshot stream catches up.
+Object.keys(_recentRemovedAdded).forEach(id=>{
+let idx=arr.findIndex(r=>r&&String(r.i)===String(id));
+if(idx>=0)arr.splice(idx,1);
+});
 Object.keys(_recentLocalEditsAdded).forEach(id=>{
+if(_recentRemovedAdded[id]!=null)return; // deleted after the edit — the delete wins
 let edit=_recentLocalEditsAdded[id].data;
 let idx=arr.findIndex(r=>r&&String(r.i)===String(id));
-if(idx>=0)arr[idx]=edit; // override
-else arr.push(edit); // server doesn't know about it yet — keep our local copy
+if(idx>=0){
+if(edit&&edit.__partial){let merged=Object.assign({},arr[idx],edit);delete merged.__partial;arr[idx]=merged} // partial: re-assert only OUR fields on top of the freshest server copy
+else{arr[idx]=edit} // full local edit: override (original behavior)
+}
+else if(!(edit&&edit.__partial)){arr.push(edit)} // partial with no server copy yet: nothing to merge onto — our per-path write is already in flight
 });
 return arr}
+// Call at EVERY hard-delete site for ADDED tickets (delDelivery, stub merge, dedup paths).
+// Clears any pending 30s edit-overlay for the id (the delete supersedes the edit) and arms
+// the suppression window so stale snapshots can't resurrect the deleted ticket.
+// =====================================================================================
+// FIELDS-ONLY REMEMBER (for saveTicketFields). rememberAddedEdit stores the WHOLE record
+// AND marks it dirty — so after a surgical calendar write, any later saveA() on this device
+// flushed its full (possibly stale) copy and clobbered fields other devices had just written
+// (the "hold disappears / phone disappears" class). These variants remember only the fields
+// we actually changed: the overlay re-asserts just those, nothing gets marked dirty, and the
+// chunked fallback pushes them per-path.
+// =====================================================================================
+function rememberAddedFields(id,fields){
+if(id==null||!fields)return;let sid=String(id);
+delete _recentRemovedAdded[sid];
+let prev=_recentLocalEditsAdded[sid]&&_recentLocalEditsAdded[sid].data;
+let data;
+if(prev&&!prev.__partial){data=Object.assign(JSON.parse(JSON.stringify(prev)),JSON.parse(JSON.stringify(fields)))}
+else{data=Object.assign({},prev?JSON.parse(JSON.stringify(prev)):{},JSON.parse(JSON.stringify(fields)));data.__partial=true;if(data.i==null)data.i=isNaN(Number(sid))?sid:Number(sid)}
+_recentLocalEditsAdded[sid]={data:data,ts:Date.now()};
+pruneRecentEdits()}
+function rememberEditsFields(id,fields){
+if(id==null||!fields)return;let sid=String(id);
+let prev=_recentLocalEditsEdits[sid]&&_recentLocalEditsEdits[sid].data;
+_recentLocalEditsEdits[sid]={data:Object.assign({},prev||{},JSON.parse(JSON.stringify(fields))),ts:Date.now()};
+pruneRecentEdits()}
+
+function trackAddedRemoval(id){
+if(id==null)return;
+id=String(id);
+delete _recentLocalEditsAdded[id];
+_recentRemovedAdded[id]=Date.now();
+}
 function overlayRecentEditsEdits(serverObj){
 pruneRecentEdits();
 let obj=Object.assign({},serverObj||{});
@@ -2583,7 +2718,7 @@ function saveE(){
 let dirty=Array.from(_dirtyEdits);_dirtyEdits.clear();
 if(dirty.length){
 _saveInFlight.edits++;_lastLocalSave.edits=Date.now();
-let payload={};dirty.forEach(k=>{payload[k]=(k in EDITS)?EDITS[k]:null});
+let payload={};dirty.forEach(k=>{payload[k]=_ledgerFlagEdit(k,(k in EDITS)?EDITS[k]:null)});
 dbEdits.update(payload).then(()=>{
 _saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);syncPulse();
 }).catch(e=>{
@@ -2599,12 +2734,16 @@ clearTimeout(_fullSyncTimerE);_fullSyncTimerE=setTimeout(_chunkedFullSyncEdits,8
 }
 }
 function _chunkedFullSyncEdits(){
-let keys=Object.keys(EDITS||{});if(!keys.length)return;
+let keys=Object.keys(EDITS||{}).filter(k=>_recentLocalEditsEdits[k]);if(!keys.length)return; // SAFETY: flush only recently-touched records (see _chunkedFullSyncAdded note)
 _saveInFlight.edits++;let i=0;
 (function step(){
 if(i>=keys.length){_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);syncPulse();return}
 let k=keys[i++];
-try{dbEdits.update({[k]:EDITS[k]}).catch(e=>console.error('fullSyncEdits '+k+':',e))}catch(e){console.error('fullSyncEdits '+k+':',e)}
+try{
+let _ent=_recentLocalEditsEdits[k]&&_recentLocalEditsEdits[k].data;
+if(_ent&&Object.keys(_ent).length&&Object.keys(_ent).length<Object.keys(EDITS[k]||{}).length){let _pp={};Object.keys(_ent).forEach(f=>{_pp[k+'/'+f]=(_ent[f]===undefined?null:_ent[f])});if(DELETED_TICKETS[k])_pp[k+'/_deleted']=true;dbEdits.update(_pp).catch(e=>console.error('fullSyncEdits '+k+':',e))}
+else dbEdits.update({[k]:_ledgerFlagEdit(k,EDITS[k])}).catch(e=>console.error('fullSyncEdits '+k+':',e))
+}catch(e){console.error('fullSyncEdits '+k+':',e)}
 setTimeout(step,40);
 })();
 }
@@ -2616,7 +2755,7 @@ if(_addedNodeMigrated){
 if(dirty.length||removed.length){
 _saveInFlight.added++;_lastLocalSave.added=Date.now();
 let payload={};
-dirty.forEach(id=>{let r=ADDED.find(x=>String(x.i)===id);payload[id]=r?r:null});
+dirty.forEach(id=>{let r=ADDED.find(x=>String(x.i)===id);payload[id]=r?_ledgerFlag(r):null});
 removed.forEach(id=>{payload[id]=null});
 dbAdded.update(payload).then(()=>{
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();
@@ -2634,7 +2773,7 @@ clearTimeout(_fullSyncTimerA);_fullSyncTimerA=setTimeout(_chunkedFullSyncAdded,8
 // Node not yet migrated to object form (early boot). ADDED holds only in-app tickets and is
 // small, so a one-time whole-array set is safe and lets the migration detector convert it.
 _saveInFlight.added++;_lastLocalSave.added=Date.now();
-dbAdded.set(ADDED).then(()=>{
+dbAdded.set(_ledgerFlagAll(ADDED)).then(()=>{
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();
 }).catch(e=>{
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);
@@ -2643,13 +2782,22 @@ console.error('saveA:',e);showToast('&#9888; Save failed — will retry on next 
 }
 }
 function _chunkedFullSyncAdded(){
-if(!_addedNodeMigrated){try{dbAdded.set(ADDED).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}return}
+if(!_addedNodeMigrated){try{dbAdded.set(_ledgerFlagAll(ADDED)).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}return}
 let arr=Array.isArray(ADDED)?ADDED.slice():[];if(!arr.length)return;
 _saveInFlight.added++;let i=0;
 (function step(){
 if(i>=arr.length){_saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();return}
 let r=arr[i++];
-if(r&&r.i!=null){try{dbAdded.update({[String(r.i)]:r}).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}}
+// SAFETY: only flush records THIS device recently touched (30s remember tracker). A full
+// rewrite of every record from a possibly-stale local copy was clobbering fields other
+// devices had just written (hold flags, customer data). Unflagged-but-remembered work
+// still flushes; everything else is already on the server.
+if(r&&r.i!=null&&!_recentRemovedAdded[String(r.i)]&&_recentLocalEditsAdded[String(r.i)]){
+let _ent=_recentLocalEditsAdded[String(r.i)].data;
+try{
+if(_ent&&_ent.__partial){let _pp={};Object.keys(_ent).forEach(f=>{if(f!=='__partial'&&f!=='i')_pp[String(r.i)+'/'+f]=(_ent[f]===undefined?null:_ent[f])});if(Object.keys(_pp).length)dbAdded.update(_pp).catch(e=>console.error('fullSyncAdded:',e))}
+else dbAdded.update({[String(r.i)]:_ledgerFlag(r)}).catch(e=>console.error('fullSyncAdded:',e))
+}catch(e){console.error('fullSyncAdded:',e)}}
 setTimeout(step,40);
 })();
 }
@@ -2754,6 +2902,9 @@ return;
 EDITS=overlayRecentEditsEdits(v);
 // Normalize Firebase array-as-object quirks in each EDIT overlay (photos / tech_photos).
 Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
+// LEDGER ENFORCEMENT: a stale device's whole-record write may have erased a _deleted flag —
+// re-apply it from the ledger so deleted BASE tickets stay deleted on every device.
+Object.keys(DELETED_TICKETS).forEach(id=>{if(EDITS[id]){if(!EDITS[id]._deleted)EDITS[id]._deleted=true}else if(BASE.some(b=>String(b.i)===id)){EDITS[id]={_deleted:true,_deletedAt:DELETED_TICKETS[id]}}});
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
 dbAdded.on('value',snap=>{
@@ -2774,7 +2925,7 @@ _addedNodeMigrated=false;
 let obj=_addedToObj(isArr?v:Object.values(v));
 _addedMigrating=true;
 console.log('[MIGRATE] Converting added node array\u2192object ('+Object.keys(obj).length+' records).');
-dbAdded.set(obj).then(()=>{_addedNodeMigrated=true;_addedMigrating=false;console.log('[MIGRATE] added node migrated.')}).catch(e=>{_addedMigrating=false;console.error('[MIGRATE] failed, will retry next cycle:',e)});
+dbAdded.set(_ledgerFlagObj(obj)).then(()=>{_addedNodeMigrated=true;_addedMigrating=false;console.log('[MIGRATE] added node migrated.')}).catch(e=>{_addedMigrating=false;console.error('[MIGRATE] failed, will retry next cycle:',e)});
 }else{_addedNodeMigrated=true}
 }
 }
@@ -2807,6 +2958,8 @@ return;
 }
 // Defense layer 4 (BULLETPROOF): overlay any recent local edits onto the server snapshot.
 ADDED=overlayRecentAddedEdits(nextArr);
+// LEDGER ENFORCEMENT: re-apply tombstones the server copy may have lost to a stale write.
+ADDED.forEach(r=>{if(r&&r.i!=null&&DELETED_TICKETS[String(r.i)]&&!r._deleted){r._deleted=true;r._deletedAt=r._deletedAt||DELETED_TICKETS[String(r.i)]}});
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbAdded error:',err);showReadErrorBanner('added',err);if(!fbReady)checkReady()});
 
@@ -2836,9 +2989,52 @@ let existing=document.getElementById('anti-wipe-banner');if(existing)existing.re
 let div=document.createElement('div');
 div.id='anti-wipe-banner';
 div.style.cssText='position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#dc2626,#ea580c);color:#fff;padding:14px 20px;text-align:center;font-weight:800;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);cursor:pointer;letter-spacing:.02em';
-div.innerHTML='&#9888;&#65039; PROTECCIÓN ANTI-WIPE ACTIVADA &mdash; Firebase devolvió '+serverCount+' '+kind+' pero localmente tienes '+localCount+'. <u>Click aquí para abrir Backup Center</u> e investigar antes de hacer cambios.';
+div.innerHTML='&#9888;&#65039; PROTECCIÓN ANTI-WIPE ACTIVADA &mdash; Firebase devolvió '+serverCount+' '+kind+' pero localmente tienes '+localCount+'. <u>Click aquí para abrir Backup Center</u> e investigar antes de hacer cambios.<br><span style="font-weight:600;font-size:12px;opacity:.95">Verificando dos veces con el servidor&hellip; si el servidor confirma el cambio, se aplicar&aacute; autom&aacute;ticamente.</span>';
 div.onclick=()=>{div.remove();if(currentUser&&currentUser.role==='admin')openBackupCenter()};
 document.body.appendChild(div);
+scheduleAntiWipeVerification(kind);
+}
+
+// === ANTI-WIPE SELF-HEALING VERIFICATION ===
+// The anti-wipe guard correctly refuses suspicious snapshots (the May 14 2026 incident class:
+// a transient empty/short read). But when the LOW count is real — e.g. auto-dedup or a manual
+// cleanup legitimately removed many records — every other open device refuses the legit
+// snapshot and is stuck showing phantom records until a manual reload. This verifier does
+// fresh once() reads 6s apart: if TWO consecutive reads agree the server really holds the low
+// count, that's the true server state (not a transient glitch) and we apply it through the
+// normal overlay. If the data 'comes back' on re-read, it WAS a transient — we keep local and
+// the live listener reconciles on the next snapshot. Either way the device self-heals.
+let _antiWipeVerifyTimer={added:null,edits:null};
+function scheduleAntiWipeVerification(kind){
+if(kind!=='added'&&kind!=='edits')return;
+if(_antiWipeVerifyTimer[kind])return; // one verification cycle at a time per node
+let ref=(kind==='added')?dbAdded:dbEdits;
+let attempt=0,lastCount=-1;
+function clearV(){_antiWipeVerifyTimer[kind]=null}
+function step(){
+ref.once('value').then(s=>{
+let raw=s.val();
+let serverArr=null,serverObj=null,serverCount;
+if(kind==='added'){serverArr=Array.isArray(raw)?raw:Object.values(raw||{});serverCount=serverArr.length}
+else{serverObj=(raw&&typeof raw==='object'&&!Array.isArray(raw))?raw:{};serverCount=Object.keys(serverObj).length}
+let localCount=(kind==='added')?ADDED.length:Object.keys(EDITS).length;
+let suspicious=(localCount>=5&&serverCount===0)||(localCount>=20&&serverCount<localCount*0.3);
+if(!suspicious){clearV();console.log('[ANTI-WIPE] Verification read: server has '+serverCount+' '+kind+' — data is back; the live listener will reconcile.');return}
+attempt++;
+if(attempt>=2&&serverCount===lastCount){
+console.warn('[ANTI-WIPE] '+attempt+' consistent verification reads confirm the server really holds '+serverCount+' '+kind+' (legitimate mass delete / cleanup). Applying server state.');
+if(kind==='added'){ADDED=overlayRecentAddedEdits(serverArr.map(_normalizeRecord))}
+else{EDITS=overlayRecentEditsEdits(serverObj);Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]))}
+let b=document.getElementById('anti-wipe-banner');if(b)b.remove();
+clearV();
+if(currentUser)renderAfterAuth();liveRefreshTechDetail();
+return}
+if(attempt>=4){clearV();console.warn('[ANTI-WIPE] Verification inconclusive after '+attempt+' reads — keeping local data. Use Backup Center to inspect.');return}
+lastCount=serverCount;
+_antiWipeVerifyTimer[kind]=setTimeout(step,6000);
+}).catch(e=>{clearV();console.warn('[ANTI-WIPE] verification read failed:',e)})
+}
+_antiWipeVerifyTimer[kind]=setTimeout(step,6000);
 }
 
 // Big banner shown when Firebase REJECTS a read (permission-denied / unauthenticated). Without
@@ -3412,6 +3608,7 @@ tc.items.forEach(it=>{let y=Math.round(it.transform[5]);if(!lines[y])lines[y]=[]
 let ys=Object.keys(lines).map(Number).sort((a,b)=>b-a);
 fullText+=ys.map(y=>lines[y].join(' ')).join('\n')+'\n'}
 let extracted=parseInvoiceText(fullText);
+extracted._fullText=fullText; // 2026-06-12: description now carries EVERYTHING the PDF says
 // Detect whether the PDF had any usable spa data at all (independent of whether the form already had values).
 // This is the real "is this a valid Aspen Spas invoice?" check.
 let extractedAny=!!(extracted._customerName||extracted._serial||extracted._spaDescription||extracted._cover||extracted._lift||extracted._model||extracted._price);
@@ -3422,26 +3619,40 @@ let filled=res.filled,upgraded=res.upgraded;
 // show a friendly message instead of an error.
 if(!extractedAny){
 setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
-// Save the PDF to the ticket so admin can preview/download it later.
+// Save the PDF so admin AND tech can preview/download it later.
 // Convert ArrayBuffer to base64 (chunked to avoid call-stack overflow on large files).
 try{
 let bytes=new Uint8Array(buf);
 let CHUNK=8192,binary='';
 for(let i=0;i<bytes.length;i+=CHUNK){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+CHUNK))}
 let b64='data:application/pdf;base64,'+btoa(binary);
-// Soft size warning — Firebase RTDB has ~10MB per node and tickets also hold photos
 let sizeKB=Math.round(b64.length/1024);
-if(sizeKB>3000){
-setStat('warn','&#9888; PDF saved but it is large ('+sizeKB+' KB). Consider compressing it next time.');
+if(sizeKB>4000){
+setStat('warn','&#9888; PDF is large ('+sizeKB+' KB) — saved, but consider compressing next time.');
 }
-let pdfMeta={data:b64,name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null};
+// ARCHITECTURE (2026-06-12): the base64 payload now lives in its own side node
+// (invoice_pdfs/<id>) instead of inside the ticket record. Records travel inside the
+// `added`/`edits` listeners, so embedding multi-MB PDFs there shipped EVERY PDF to EVERY
+// device on EVERY snapshot. The record keeps lightweight metadata only ({stored:1}); the
+// payload is fetched on demand when someone previews it. Legacy tickets that still carry
+// pdf_invoice.data inline remain fully readable (viewers check both places). Re-uploading
+// a PDF on an old ticket migrates it to the slim format automatically.
+let pdfMeta={name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null,stored:1};
 if(curRec){
 let id=curRec.i;
+try{
+await db.ref('invoice_pdfs/'+String(id)).set({data:b64,name:pdfMeta.name,size:pdfMeta.size,uploaded_at:pdfMeta.uploaded_at,uploaded_by:pdfMeta.uploaded_by});
+_pdfNodeCache[String(id)]={data:b64,name:pdfMeta.name,size:pdfMeta.size,uploaded_at:pdfMeta.uploaded_at,uploaded_by:pdfMeta.uploaded_by};
+}catch(nodeErr){
+console.error('[PDF] side-node write failed — falling back to inline storage:',nodeErr);
+pdfMeta={data:b64,name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null};
+}
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){ADDED[ai].pdf_invoice=pdfMeta;rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;rememberEditsEdit(id,EDITS[id]);saveE()}
-// Also update curRec so the modal re-renders with the View PDF button
-curRec.pdf_invoice=pdfMeta;
+if(ai>=0){ADDED[ai].pdf_invoice=pdfMeta;delete ADDED[ai].pdf_invoice_signed;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;EDITS[id].pdf_invoice_signed=null;rememberEditsEdit(id,EDITS[id]);saveE()}
+// Update curRec so the modal re-renders with the View button. A replaced invoice
+// invalidates any previous signed copy (the signature was on the OLD file).
+curRec.pdf_invoice=pdfMeta;delete curRec.pdf_invoice_signed;
 }
 }catch(saveErr){console.error('PDF save err:',saveErr)}
 // Build a contextual success message:
@@ -3478,49 +3689,67 @@ renderModal();
 }
 catch(e){console.error('PDF parse error:',e);setStat('err','\u2715 Could not read PDF: '+(e.message||'Unknown error'))}}
 
-// Open the saved invoice PDF in a new tab. Works from base64 data URI.
-function viewInvoicePDF(id){
-let r=AD().find(x=>String(x.i)===String(id));
-if(!r||!r.pdf_invoice||!r.pdf_invoice.data){alert('No PDF saved for this ticket.');return}
+// ===== On-demand PDF payload store (2026-06-12) =====
+// invoice_pdfs/<ticketId> = {data,name,size,uploaded_at,uploaded_by,signed:{data,name,signed_at,signed_by}}
+// Fetched only when someone actually previews a PDF; cached per session.
+let _pdfNodeCache={};
+async function fetchInvoicePdfNode(id){
+id=String(id);
+if(_pdfNodeCache[id])return _pdfNodeCache[id];
+try{let snap=await db.ref('invoice_pdfs/'+id).once('value');let v=snap&&snap.val?snap.val():null;if(v)_pdfNodeCache[id]=v;return v||null}
+catch(e){console.warn('[PDF] node fetch failed:',e);return null}}
+function openPdfDataUri(dataUri,label){
 // Convert data URI to a Blob URL — large data URIs are slow/blocked in some browsers.
 try{
-let m=r.pdf_invoice.data.match(/^data:application\/pdf;base64,(.+)$/);
-if(!m){window.open(r.pdf_invoice.data);return}
+let m=String(dataUri||'').match(/^data:application\/pdf;base64,(.+)$/);
+if(!m){window.open(dataUri);return}
 let bin=atob(m[1]);
 let bytes=new Uint8Array(bin.length);
 for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
 let blob=new Blob([bytes],{type:'application/pdf'});
 let url=URL.createObjectURL(blob);
 let w=window.open(url,'_blank');
-// Revoke after the tab has had time to load
 setTimeout(()=>URL.revokeObjectURL(url),60000);
 if(!w)alert('Pop-up blocked. Please allow pop-ups for this site to view PDFs.');
-}catch(e){console.error('viewInvoicePDF err:',e);alert('Could not open PDF: '+e.message)}}
+}catch(e){console.error('[PDF] open err:',e);alert('Could not open '+(label||'PDF')+': '+e.message)}}
+// Auto-grow the Spa Description textarea to fit its content (capped at 600px).
+function autoGrowSpd(el){
+if(!el)return;
+try{el.style.height='auto';el.style.height=Math.min(el.scrollHeight+4,600)+'px'}catch(e){}}
+// Open the saved invoice PDF in a new tab. Dual-source: legacy inline base64 on the
+// record (old tickets) or the invoice_pdfs/<id> side node (new slim format).
+async function viewInvoicePDF(id){
+let r=AD().find(x=>String(x.i)===String(id));
+if(!r||!r.pdf_invoice){alert('No PDF saved for this ticket.');return}
+let dataUri=r.pdf_invoice.data;
+if(!dataUri){
+let node=await fetchInvoicePdfNode(id);
+dataUri=node&&node.data;
+}
+if(!dataUri){alert('Could not load the PDF payload. Check your connection and try again.');return}
+openPdfDataUri(dataUri,'PDF')}
 
 // Open the signed invoice PDF (with embedded customer signature) in a new tab.
-function viewSignedPDF(id){
+async function viewSignedPDF(id){
 let r=AD().find(x=>String(x.i)===String(id));
-if(!r||!r.pdf_invoice_signed||!r.pdf_invoice_signed.data){alert('No signed PDF saved for this ticket.');return}
-try{
-let m=r.pdf_invoice_signed.data.match(/^data:application\/pdf;base64,(.+)$/);
-if(!m){window.open(r.pdf_invoice_signed.data);return}
-let bin=atob(m[1]);
-let bytes=new Uint8Array(bin.length);
-for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-let blob=new Blob([bytes],{type:'application/pdf'});
-let url=URL.createObjectURL(blob);
-let w=window.open(url,'_blank');
-setTimeout(()=>URL.revokeObjectURL(url),60000);
-if(!w)alert('Pop-up blocked. Please allow pop-ups for this site to view PDFs.');
-}catch(e){console.error('viewSignedPDF err:',e);alert('Could not open signed PDF: '+e.message)}}
+if(!r||!r.pdf_invoice_signed){alert('No signed PDF saved for this ticket.');return}
+let dataUri=r.pdf_invoice_signed.data;
+if(!dataUri){
+let node=await fetchInvoicePdfNode(id);
+dataUri=node&&node.signed&&node.signed.data;
+}
+if(!dataUri){alert('Could not load the signed PDF payload. Check your connection and try again.');return}
+openPdfDataUri(dataUri,'signed PDF')}
 
 // Remove the saved PDF from a ticket (admin only)
 function deleteInvoicePDF(id){
 if(!confirm('Remove the saved invoice PDF from this ticket?'))return;
 let ai=ADDED.findIndex(x=>String(x.i)===String(id));
-if(ai>=0){delete ADDED[ai].pdf_invoice;rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=null;rememberEditsEdit(id,EDITS[id]);saveE()}
-if(curRec&&String(curRec.i)===String(id)){delete curRec.pdf_invoice;renderModal()}
+if(ai>=0){delete ADDED[ai].pdf_invoice;delete ADDED[ai].pdf_invoice_signed;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=null;EDITS[id].pdf_invoice_signed=null;rememberEditsEdit(id,EDITS[id]);saveE()}
+try{db.ref('invoice_pdfs/'+String(id)).remove().catch(()=>{})}catch(e){}
+try{delete _pdfNodeCache[String(id)]}catch(e){}
+if(curRec&&String(curRec.i)===String(id)){delete curRec.pdf_invoice;delete curRec.pdf_invoice_signed;renderModal()}
 showToast('Invoice PDF removed')}
 
 // Parses the extracted text from a QuickBooks invoice and returns a structured object
@@ -3813,11 +4042,19 @@ if(d._serial)setIf('e_sn',d._serial);
 // Sales price (writes to e_pr)
 if(d._price)setIf('e_pr',d._price);
 
-// Spa Description — single big textarea. Prepend special notes (***PLUMB FOR HEAT PUMP***) if any.
+// Spa Description — single big textarea. Per request (2026-06-12) this now carries the
+// FULL text of the invoice PDF (everything it says), not just the filtered spec block.
+// The PDF is the source of truth and the file itself is saved alongside, so we always
+// overwrite this field on upload instead of only filling when empty.
 let spdParts=[];
 if(d._specialNotes)spdParts.push('** '+d._specialNotes+' **');
-if(d._spaDescription)spdParts.push(d._spaDescription);
-if(spdParts.length)setIf('e_spd',spdParts.join('\n\n'));
+let _fullClean=String(d._fullText||'').replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim();
+if(_fullClean)spdParts.push(_fullClean);
+else if(d._spaDescription)spdParts.push(d._spaDescription);
+if(spdParts.length){
+let _spdEl=document.getElementById('e_spd');
+if(_spdEl){_spdEl.value=spdParts.join('\n\n');count++;autoGrowSpd(_spdEl)}
+}
 
 // Cover and Lift dropdowns
 // Cover, Lift, Steps, Table, Start-up dropdowns — all auto-detected from PDF (built-in or custom options)
@@ -4032,10 +4269,10 @@ h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label
 h+='<details class="spa-specs" '+((r.spd||r.di||spaSpecsHasData(r))?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Description</span><span class="spec-hint">Upload PDF to auto-fill the full spa description</span></summary>';
 // PDF uploader + saved PDF preview
 let pdfBtnLabel=r.pdf_invoice?'&#128206; Replace Invoice PDF':'&#128206; Auto-fill from Invoice PDF';
-let pdfBtnHelp=r.pdf_invoice?'A PDF is already saved on this ticket — uploading a new one will replace it and re-parse spa specs.':'Upload your QuickBooks invoice and we&#39;ll copy the full spa description (excluding prices, taxes, and discounts)';
+let pdfBtnHelp=r.pdf_invoice?'A PDF is already saved on this ticket — uploading a new one will replace it and re-parse spa specs.':'Upload your QuickBooks invoice and we&#39;ll copy the FULL text of the invoice into the Spa Description';
 h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">'+pdfBtnLabel+'</button>';
 // If a PDF is already saved on this ticket, show a "View" button + metadata
-if(r.pdf_invoice&&r.pdf_invoice.data){
+if(r.pdf_invoice){
 let p=r.pdf_invoice;
 let kb=Math.round((p.size||0)/1024);
 let when=p.uploaded_at?new Date(p.uploaded_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';
@@ -4074,7 +4311,7 @@ if(r.dr)legacy.push('Doors: '+r.dr);
 if(r.cks)legacy.push('Chemical Start-up Kit: '+r.cks);
 if(r.xf)legacy.push(r.xf);
 spdInitial=legacy.join('\n')}
-h+='<div class="nb"><label>Spa Description (full description from PDF)</label><textarea id="e_spd" rows="14" placeholder="Will be filled automatically when you upload the invoice PDF. You can also paste or type here manually.&#10;&#10;Example:&#10;2025 Pinnacle ES - 4 Pump System&#10;SERIAL # 30717&#10;Total Jets - 70, Stainless and Graphite Halo&#10;Pump 1: Gecko 24 Hour Programmable Circulating Pump&#10;Pump 2: Gecko 12 amp, 2 Speed&#10;...">'+esc(spdInitial||"")+'</textarea></div>'+
+h+='<div class="nb"><label>Spa Description (full description from PDF)</label><textarea id="e_spd" rows="14" oninput="autoGrowSpd(this)" onfocus="autoGrowSpd(this)" placeholder="Will be filled automatically when you upload the invoice PDF. You can also paste or type here manually.&#10;&#10;Example:&#10;2025 Pinnacle ES - 4 Pump System&#10;SERIAL # 30717&#10;Total Jets - 70, Stainless and Graphite Halo&#10;Pump 1: Gecko 24 Hour Programmable Circulating Pump&#10;Pump 2: Gecko 12 amp, 2 Speed&#10;...">'+esc(spdInitial||"")+'</textarea></div>'+
 '<div class="nb"><label>Customer Delivery Instructions</label><textarea id="e_di" rows="3" placeholder="e.g. Pull controller out of old spa and leave with customer. Customer to reuse old cover, steps, and handrail. Haul away old spa.">'+esc(r.di||"")+'</textarea></div>';
 h+='</details>';
 // Notes (contact & extra)
@@ -4264,7 +4501,7 @@ let baseKey='c_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/
 if(!baseKey||baseKey==='c_'){alert('Invalid name. Use letters or numbers.');return}
 // Reserved/used keys
 let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst','signature','pdf_invoice_signed','crane','extra_person','water_truck'];
-PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));
+PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));reserved.push('oo','il'); // legacy checklist keys (removed from UI 2026-06-12) still live on old records
 let k=baseKey,n=2;
 while(reserved.includes(k)||CUSTOM_CATS.some(c=>c.k===k)){k=baseKey+'_'+n;n++}
 // Check for duplicate label
@@ -4537,9 +4774,9 @@ if(r.tech_photos&&r.tech_photos.length){
 r.tech_photos.forEach((dataUri,idx)=>{
 let ext=(dataUri.match(/^data:image\/(\w+);/)||[])[1]||'jpg';
 list.push({name:'delivery_photo_'+(idx+1)+'.'+ext,source:'photo',data:dataUri,mime:'image/'+ext})})}
-// 2. Signed invoice PDF (if present)
-if(r.pdf_invoice_signed&&r.pdf_invoice_signed.data){
-list.push({name:r.pdf_invoice_signed.name||'signed_invoice.pdf',source:'signed_pdf',data:r.pdf_invoice_signed.data,mime:'application/pdf'})}
+// 2. Signed invoice PDF (if present — inline legacy, or stored in the invoice_pdfs side node)
+if(r.pdf_invoice_signed){
+list.push({name:r.pdf_invoice_signed.name||'signed_invoice.pdf',source:'signed_pdf',data:r.pdf_invoice_signed.data||null,ticketId:r.i,mime:'application/pdf'})}
 // 3. Warranty (Spa OR Swim)
 list.push({name:isSwim?EMAIL_PW_ASSETS.warranty_swim:EMAIL_PW_ASSETS.warranty_spa,source:'asset',mime:'application/pdf'});
 // 4. Delivery packet (always)
@@ -4662,8 +4899,8 @@ showToast('&#10003; Email PW marked as sent')}
 // Persist ep=true through the same path the existing toggleCk uses.
 function emailPw_setEpTrue(id){
 let addIdx=ADDED.findIndex(r=>r.i===id);
-if(addIdx>=0){ADDED[addIdx].ep=true;saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].ep=true;saveE()}
+if(addIdx>=0){ADDED[addIdx].ep=true;_dirtyAdded.add(String(ADDED[addIdx].i));saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].ep=true;_dirtyEdits.add(String(id));saveE()}
 curRec=AD().find(r=>r.i===id);
 renderKPIs();renderCtxHdr();renderBoard()}
 
@@ -4771,7 +5008,12 @@ let a=attList[i];
 statusEl.innerHTML='&#8987; Loading attachment '+(i+1)+' of '+attList.length+': '+escHtml(a.name)+' ...';
 try{
 let b64;
-if(a.source==='photo'||a.source==='signed_pdf'){b64=emailPw_dataUriToBase64(a.data)}
+if(a.source==='photo'){b64=emailPw_dataUriToBase64(a.data)}
+else if(a.source==='signed_pdf'){
+let _d=a.data;
+if(!_d){let _n=await fetchInvoicePdfNode(a.ticketId);_d=_n&&_n.signed&&_n.signed.data}
+if(!_d)throw new Error('Signed PDF payload not found');
+b64=emailPw_dataUriToBase64(_d)}
 else{b64=await emailPw_fetchAssetBase64(a.name)}
 if(!b64)throw new Error('Empty file');
 resolved.push({name:a.name,mime:a.mime,base64:b64})}
@@ -5024,7 +5266,14 @@ let a=attList[i];
 statusEl.style.color='#6b7280';
 statusEl.innerHTML='&#8987; Building .eml — loading '+(i+1)+'/'+attList.length+'...';
 try{
-let b64=(a.source==='photo'||a.source==='signed_pdf')?emailPw_dataUriToBase64(a.data):await emailPw_fetchAssetBase64(a.name);
+let b64;
+if(a.source==='photo'){b64=emailPw_dataUriToBase64(a.data)}
+else if(a.source==='signed_pdf'){
+let _d=a.data;
+if(!_d){let _n=await fetchInvoicePdfNode(a.ticketId);_d=_n&&_n.signed&&_n.signed.data}
+if(!_d)throw new Error('Signed PDF payload not found');
+b64=emailPw_dataUriToBase64(_d)}
+else{b64=await emailPw_fetchAssetBase64(a.name)}
 resolved.push({name:a.name,mime:a.mime,base64:b64})}catch(e){console.error(e)}}
 let eml=emailPw_buildEml(to,subject,body,resolved);
 let safeName=String(r.n||'customer').replace(/[^a-z0-9]+/gi,'_').substring(0,40);
@@ -5287,10 +5536,24 @@ let label=(r.n||'(no name)')+(r.sn?'  \u00b7  SN '+r.sn:'')+(r.dd?'  \u00b7  '+r
 if(!confirm('Delete this delivery ticket?\n\n'+label+'\n\n\u2022 Removes the ticket from the app and unlinks it from Google Calendar.\n\u2022 Does NOT delete the Google Calendar event.\n\u2022 Permanent in-app (recover from a backup if needed).'))return;
 // Drop any calendar mapping that points at this ticket
 let upd={};
-Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],id)){trackGcalMapRemoval(eid);upd['gcal_map/'+eid]=null;delete gcalMap[eid]}});
+// COMPARE-AND-DELETE every map entry for this ticket — on the SERVER. Plain null-writes
+// here raced against concurrent re-links (the server may already point the event at a
+// NEWER ticket), and guessing from this device's local map fails in BOTH directions when
+// it lags. The conditional transaction only clears entries that still point at the ticket
+// being deleted, judged by the server's own value.
+Object.keys(gcalMap).forEach(eid=>{if(sameId(gcalMap[eid],id)){trackGcalMapRemoval(eid);gcalMapConditionalRemove(eid,id);delete gcalMap[eid]}});
+// The ticket also knows its own event (r.gcalId) — clean that one too even if the local
+// map copy doesn't reflect it. The transaction makes this safe unconditionally.
+if(r&&r.gcalId){let _eid=String(r.gcalId);
+gcalMapConditionalRemove(_eid,id);
+if(gcalMap[_eid]==null||sameId(gcalMap[_eid],id)){trackGcalMapRemoval(_eid);delete gcalMap[_eid]}}
+// Side-node cleanup: drop the stored invoice PDF payload (and its signed copy) for this ticket.
+try{db.ref('invoice_pdfs/'+String(id)).remove().catch(()=>{})}catch(e){}
+try{if(typeof _pdfNodeCache!=='undefined')delete _pdfNodeCache[String(id)]}catch(e){}
 if(Object.keys(upd).length)db.ref().update(upd);
+markTicketDeleted(id); // LEDGER: deletion becomes authoritative on every device
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
-if(ai>=0){_removedAdded.add(String(ADDED[ai].i));ADDED.splice(ai,1);saveA()}
+if(ai>=0){Object.assign(ADDED[ai],{_deleted:true,_deletedAt:Date.now()});rememberAddedEdit(ADDED[ai]);saveA()} // TOMBSTONE: stays in DB flagged, so a stale snapshot on another device can never resurrect it and dedup can never mistake a ghost copy for a live duplicate
 else{if(!EDITS[id])EDITS[id]={};EDITS[id]._deleted=true;rememberEditsEdit(id,EDITS[id]);saveE()}
 closeOv();renderAll();showToast('&#128465; Delivery deleted: '+(r.n||'(no name)'))}
 
@@ -6225,12 +6488,66 @@ if(/SLOT\s+NOT\s+AVAILABLE/i.test(n))return true;
 if(/STANDARD\s+DEL/i.test(n))return true;
 return false}
 
+// =====================================================================================
+// FIELD-LEVEL TICKET SAVE (cross-device-safe). Calendar-driven updates used to write the
+// WHOLE record from this device's local copy. If that copy was a few seconds stale, it
+// silently clobbered customer data (phone, notes, payment) someone else had just typed on
+// another device. Writing only the changed fields as per-path children ('added/<id>/dd')
+// makes calendar updates surgical: they can never erase a field they didn't change.
+// A null value deletes that child (used by hold-lift's hold:null). Falls back to the dirty
+// queue on failure so nothing is lost.
+// =====================================================================================
+function saveTicketFields(id,fields){
+if(!fields||!Object.keys(fields).length)return false;
+if(isTicketDeleted(id))return false; // never resurrect a deleted ticket via field writes
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
+if(ai>=0){
+Object.assign(ADDED[ai],fields);rememberAddedFields(ADDED[ai].i,fields);
+let sid=String(ADDED[ai].i),p={};for(let k in fields)p[sid+'/'+k]=(fields[k]===undefined?null:fields[k]);
+_saveInFlight.added++;_lastLocalSave.added=Date.now();
+dbAdded.update(p).then(()=>{_saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse()})
+.catch(e=>{_saveInFlight.added=Math.max(0,_saveInFlight.added-1);console.error('saveTicketFields(added):',e);_dirtyAdded.add(sid);saveA()});
+return true}
+if(findRecById(id)){
+if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],fields);rememberEditsFields(id,fields);
+let sid=String(id),p={};for(let k in fields)p[sid+'/'+k]=(fields[k]===undefined?null:fields[k]);
+_saveInFlight.edits++;_lastLocalSave.edits=Date.now();
+dbEdits.update(p).then(()=>{_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);syncPulse()})
+.catch(e=>{_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);console.error('saveTicketFields(edits):',e);_dirtyEdits.add(sid);saveE()});
+return true}
+return false}
+
 async function processGcalEvent(ev){
 try{
 // Deleted/cancelled event → move local delivery to HOLD instead of deleting it.
 // Hold preserves all customer info so the record can return to Upcoming later.
 if(ev.status==='cancelled'){
-let mappedId=gcalMap[ev.id];if(mappedId){
+let mappedId=gcalMap[ev.id];
+// IDEMPOTENCY FALLBACK (same as the confirmed path): the local gcal_map can be empty for up
+// to 30s after this device removed a mapping (anti-resurrection suppression window) even
+// though a NEW ticket for this event already exists. Resolve via the ticket's own gcalId so
+// a cancellation arriving inside that window still puts the ticket on Hold.
+if(!mappedId||!findRecById(mappedId)){
+let _own=AD().find(r=>r&&r.gcalId&&String(r.gcalId)===String(ev.id));
+if(_own)mappedId=_own.i;
+}
+// MAP HYGIENE (cancelled lane): a user can delete the ticket while the event is cancelled —
+// nothing else ever revisits cancelled events (audits exclude them), so a dead mapping here
+// would linger until an uncancel. Release it now (compare-and-delete) so the map never
+// points at a tombstone. Harmless if the event later returns: the confirmed lane recreates.
+if(mappedId&&!findRecById(mappedId)){
+if(isTicketDeleted(mappedId)||!(await ticketAliveOnServer(mappedId))){
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
+mappedId=null;
+}}
+if(!mappedId){
+// CANCEL-BEFORE-TICKET: a cancellation can arrive on this device before the freshly created
+// ticket itself does (create + cancel within the same second on different devices). Retry
+// once after the snapshot has had time to land so the Hold isn't silently lost forever —
+// audits never see cancelled events, so without this retry nothing else would re-apply it.
+if(!ev.__cancelRetry){ev.__cancelRetry=true;setTimeout(()=>{try{processGcalEvent(ev)}catch(e){}},2500);}
+return}
+if(mappedId){
 let local=findRecById(mappedId);
 if(local&&!local.co&&!local.hold){
 let prevDD=local.dd||null;
@@ -6243,13 +6560,20 @@ hold_at:stamp.getTime(),
 hold_prev_dd:prevDD,
 hold_reason:'calendar_removed',
 dn:((local.dn||'')+'\n'+holdNote).trim()};
-let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],updates);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
+saveTicketFields(mappedId,updates);
 console.log('[GCAL] Delivery',mappedId,'moved to Hold');
 gcalStats.updated++}}
 return}
 // Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) and disallowed colors.
+// MAP HYGIENE: before any title/color/date filter can skip this event, make sure gcal_map
+// isn't pointing at a deleted ticket. Without this, an event that turns filtered (e.g. its
+// color changes to a non-delivery color) right after its ticket was deleted keeps a dead
+// mapping forever — sync and audit both skip filtered events, so nothing else ever cleans
+// it, and any future re-link of the event stays blocked.
+{let _mid=gcalMap[ev.id];
+if(_mid!=null&&!findRecById(_mid)){
+if(isTicketDeleted(_mid)||!(await ticketAliveOnServer(_mid))){trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,_mid);delete gcalMap[ev.id];}
+}}
 if(isNonDeliveryTitle(ev.summary)){gcalStats.skipped=(gcalStats.skipped||0)+1;gcalSkipLog.push({summary:ev.summary||'(sin título)',colorId:ev.colorId||null,reason:'title',date:gcalEventToDate(ev)});console.log('[GCAL skip:title]',JSON.stringify(ev.summary),'colorId=',ev.colorId);return}
 if(!isAllowedColor(ev.colorId)){gcalStats.skipped=(gcalStats.skipped||0)+1;gcalSkipLog.push({summary:ev.summary||'(sin título)',colorId:ev.colorId||null,reason:'color',date:gcalEventToDate(ev)});console.log('[GCAL skip:color]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'(undefined = no explicit color, using calendar default — will be filtered)');return}
 console.log('[GCAL process]',JSON.stringify(ev.summary),'colorId=',ev.colorId,'date=',ev.start&&(ev.start.date||ev.start.dateTime));
@@ -6283,10 +6607,19 @@ let mappedId=gcalMap[ev.id];
 if(!mappedId||!findRecById(mappedId)){
 let _own=AD().find(r=>r&&r.gcalId&&String(r.gcalId)===String(ev.id));
 if(_own){mappedId=_own.i;
-if(String(gcalMap[ev.id])!==String(_own.i)){gcalMap[ev.id]=_own.i;try{trackGcalMapSet(ev.id,_own.i)}catch(e){}db.ref('gcal_map/'+ev.id).set(String(_own.i)).catch(()=>{});console.log('[GCAL] Idempotency guard: event '+ev.id+' re-linked to existing ticket #'+_own.i+' (map was stale) — no duplicate created.')}}
+if(String(gcalMap[ev.id])!==String(_own.i)){gcalMap[ev.id]=_own.i;try{trackGcalMapSet(ev.id,_own.i)}catch(e){}dbGcalMap.child(ev.id).transaction(cur=>{if(cur===null||cur===undefined)return String(_own.i);if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return String(_own.i);return cur;}).catch(()=>{});console.log('[GCAL] Idempotency guard: event '+ev.id+' re-linked to existing ticket #'+_own.i+' (map was stale) — no duplicate created.')}}
 }
 if(mappedId){
 let local=findRecById(mappedId);
+
+// IDENTITY GUARD: a ticket obeys ITS OWN event only. If this ticket's gcalId points at a
+// DIFFERENT live event, the map entry for ev.id is a cross-capture (two events fighting over
+// one ticket — SN validation can't catch it when the ticket is a stub with no serial). Break
+// THIS event's map entry, leave the ticket untouched, and fall through to SN-match/create.
+if(local&&local.gcalId&&String(local.gcalId)!==String(ev.id)){
+console.log('%c[GCAL] CROSS-CAPTURE','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px','event '+ev.id+' mapped to ticket #'+mappedId+' whose gcalId is '+local.gcalId+'. Releasing this event\'s mapping.');
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
+mappedId=null;local=null;}
 if(local){
 // SN VALIDATION: if both ticket and event title carry serial numbers and they disagree,
 // the mapping is a cross-link (e.g. Kerry ticket linked to Slaughter event). Updating the
@@ -6300,11 +6633,9 @@ let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
 console.log('%c[GCAL] CROSS-LINK MID-SYNC','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
 'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+'. Breaking wrong link, falling through to SN-match.');
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
 let _u={gcalId:'',gcalColorId:'',cal:''};
-let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
+saveTicketFields(mappedId,_u); // field-level: can never clobber customer data typed elsewhere
 mappedId=null;local=null;
 }}}}
 if(mappedId&&local){
@@ -6315,21 +6646,30 @@ let newColor=ev.colorId||null;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;  // calendar drives the color
 // HOLD-LIFT: event is back on the calendar → lift a previous calendar-removed hold.
 if(local.hold&&newDD){
+// LIFT GUARD: lifting a Hold is high-stakes — audits never see cancelled events, so a wrong
+// lift is permanent. Verify against the SERVER that this ticket really belongs to ev.id;
+// a stale local gcalId could let a cross-captured event lift a hold it doesn't own.
+let _srvRec=null;try{_srvRec=(((await dbAdded.once('value')).val())||{})[String(local.i)]}catch(e){}
+if(_srvRec&&_srvRec.gcalId&&String(_srvRec.gcalId)!==String(ev.id)){
+console.log('[GCAL] Hold-lift blocked: server says ticket #'+local.i+' belongs to event '+_srvRec.gcalId+', not '+ev.id+' — leaving Hold in place.');
+}else{
 let stamp=new Date();
 u.hold=null;
 u.hold_lifted_at=stamp.getTime();
 u.dn=((local.dn||'')+'\n'+'[GCAL] Returned to calendar on '+stamp.toLocaleDateString()+' \u2014 Hold lifted, delivery date '+newDD+'.').trim();
-console.log('[GCAL] Hold lifted for delivery',local.i);}
+console.log('[GCAL] Hold lifted for delivery',local.i);}}
 if(Object.keys(u).length){
-let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);saveE()}
+saveTicketFields(mappedId,u);
 gcalStats.updated++}
 return}
 if(mappedId&&!local){
+// SNAPSHOT-LAG GUARD: "not in my local data" is NOT the same as "deleted". If the ticket is
+// alive on the server, this device is just a snapshot behind — clearing the mapping here and
+// recreating would spawn a duplicate. Skip the event; the record arrives with the next snapshot.
+if(!isTicketDeleted(mappedId)&&(await ticketAliveOnServer(mappedId))){gcalStats.skipped=(gcalStats.skipped||0)+1;return}
 // Stale mapping — the linked ticket was deleted. Unlink and fall through to create a fresh one.
 console.log('[GCAL] Stale mapping: event '+ev.id+' \u2192 deleted ticket '+mappedId+'. Re-creating.');
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
 }
 }
 // BEFORE creating a brand-new ticket, try to find an existing ticket with the same SN. This
@@ -6342,11 +6682,19 @@ let _existing=findExistingTicketBySN(_parsed,ev.id);
 if(_existing){
 console.log('[GCAL] SN match: linking event '+ev.id+' to existing ticket #'+_existing.i+' ("'+_existing.n+'", SN '+_existing.sn+') instead of creating a duplicate.');
 let u={gcalId:ev.id,cal:title,dd:newDD,gcalColorId:ev.colorId||null};
-let ai=ADDED.findIndex(x=>sameId(x.i,_existing.i));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
-else{if(!EDITS[_existing.i])EDITS[_existing.i]={};Object.assign(EDITS[_existing.i],u);saveE()}
-await db.ref().update({['gcal_map/'+ev.id]:_existing.i});
-trackGcalMapSet(ev.id,_existing.i);gcalMap[ev.id]=_existing.i;
+saveTicketFields(_existing.i,u);
+{let _snc=await dbGcalMap.child(ev.id).transaction(cur=>{
+if(cur===null||cur===undefined)return String(_existing.i);
+if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return String(_existing.i);
+return cur;});
+let _w=_snc&&_snc.snapshot&&_snc.snapshot.val();
+if(_w!=null&&String(_w)!==String(_existing.i)){
+// Another LIVE ticket already owns this event — undo our gcalId stamp and adopt that link.
+saveTicketFields(_existing.i,{gcalId:''});
+gcalMap[ev.id]=_w;trackGcalMapSet(ev.id,_w);
+console.log('[GCAL] SN match deferred: event '+ev.id+' already claimed by live ticket '+_w+' — adopting that link.');
+}}
+if(gcalMap[ev.id]==null||String(gcalMap[ev.id])===String(_existing.i)){trackGcalMapSet(ev.id,_existing.i);gcalMap[ev.id]=_existing.i;}
 gcalStats.updated++;
 return;
 }
@@ -6363,12 +6711,12 @@ crane:false,extra_person:false,water_truck:false,
 gcalId:ev.id,gcalColorId:ev.colorId||null};
 // CLAIM the event via a transaction so two devices syncing at the same time can't both create a
 // ticket for the same event. Winner (cur was null) creates the ticket; loser links to the winner.
-let _claim=await dbGcalMap.child(ev.id).transaction(cur=>(cur===null||cur===undefined)?newId:cur);
+let _claim=await dbGcalMap.child(ev.id).transaction(cur=>{if(cur===null||cur===undefined)return newId;if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return newId; /* dead winner: take over the claim */ return cur;});
 if(_claim.committed&&String(_claim.snapshot.val())===String(newId)){
 ADDED.push(rec);rememberAddedEdit(rec);saveA();
 trackGcalMapSet(ev.id,newId);gcalMap[ev.id]=newId;
 gcalStats.created++}
-else{let _win=_claim.snapshot&&_claim.snapshot.val();if(_win){gcalMap[ev.id]=_win;trackGcalMapSet(ev.id,_win);console.log('[GCAL] Event '+ev.id+' already claimed by ticket '+_win+' (another device) — linking instead of duplicating.');gcalStats.updated++}else{console.warn('[GCAL] Claim not committed for event '+ev.id+' — will retry next sync.');gcalStats.errors=(gcalStats.errors||0)+1}}}
+else{let _win=_claim.snapshot&&_claim.snapshot.val();if(_win&&typeof isTicketDeleted==='function'&&isTicketDeleted(_win)){console.warn('[GCAL] Claim winner '+_win+' is a deleted ticket (ledger) — not linking; will recreate next pass.');gcalStats.errors=(gcalStats.errors||0)+1}else if(_win){gcalMap[ev.id]=_win;trackGcalMapSet(ev.id,_win);console.log('[GCAL] Event '+ev.id+' already claimed by ticket '+_win+' (another device) — linking instead of duplicating.');gcalStats.updated++}else{console.warn('[GCAL] Claim not committed for event '+ev.id+' — will retry next sync.');gcalStats.errors=(gcalStats.errors||0)+1}}}
 catch(e){console.error('processGcalEvent err:',e);gcalStats.errors++}}
 
 // ===========================================================================================
@@ -6486,19 +6834,8 @@ trackGcalMapRemoval(r.gcalId);db.ref('gcal_map/'+r.gcalId).remove();
 delete gcalMap[r.gcalId];
 // Use empty strings (NOT null) — Firebase strips null keys on .set().
 let _u={gcalId:'',gcalColorId:'',cal:''};
-let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){
-Object.assign(ADDED[ai],_u);
-rememberAddedEdit(ADDED[ai]); // CRITICAL: register in overlay tracker so listener can't revert
-saveA();
-console.log('[REPAIR] Cleared ADDED entry for ticket #'+r.i+' and registered in overlay tracker.');
-}else{
-if(!EDITS[r.i])EDITS[r.i]={};
-Object.assign(EDITS[r.i],_u);
-rememberEditsEdit(r.i,EDITS[r.i]); // CRITICAL: register in overlay tracker so listener can't revert
-saveE();
-console.log('[REPAIR] Set EDITS overlay for ticket #'+r.i+' and registered in overlay tracker.');
-}
+saveTicketFields(r.i,_u); // field-level + overlay-registered: listener can't revert, other-device data can't be clobbered
+console.log('[REPAIR] Cleared link fields for ticket #'+r.i+' (field-level write).');
 repaired.push({ticketId:r.i,name:r.n,sn:rsn,wasLinkedTo:r.cal,wasLinkedSN:parsed.serial});
 }catch(e){console.error('[REPAIR] error on ticket',r&&r.i,e);}
 }
@@ -6512,7 +6849,7 @@ return repaired;
 // in during the period when blank-name tickets were hidden by the calendar filter.
 // Returns {merged: [...], unmerged: [...]} so the audit can report what was reconciled.
 // =====================================================================================
-function gcalDedup(){
+async function gcalDedup(){
 let all=AD();
 let stubs=all.filter(r=>!r.n&&r.cal&&r.gcalId);
 let merged=[],unmerged=[];
@@ -6532,6 +6869,11 @@ return true;
 if(candidates.length===0){unmerged.push({stub:stub.i,reason:'no SN match'});continue}
 if(candidates.length>1){unmerged.push({stub:stub.i,reason:'multiple SN matches'});continue}
 let real=candidates[0];
+// LIVENESS GUARD: never merge INTO a dead ticket. The candidate list comes from this
+// device's local view, which can lag the ledger by a broadcast — and pointing the event
+// at a tombstoned "real" while killing the live stub is exactly the no-ticket-left bug.
+if(typeof isTicketDeleted==='function'&&isTicketDeleted(real.i)){unmerged.push({stub:stub.i,real:real.i,reason:'real is ledger-deleted'});continue}
+if(!(await ticketAliveOnServer(real.i))){unmerged.push({stub:stub.i,real:real.i,reason:'real not alive on server'});continue}
 // Safety: if the real ticket has a date and it differs from the stub's date by more than
 // the day component, these might be different deliveries for the same customer. Skip.
 if(real.dd&&stub.dd){
@@ -6542,13 +6884,11 @@ if(realDay!==stubDay){unmerged.push({stub:stub.i,real:real.i,reason:'date mismat
 // MERGE: move calendar metadata from stub to real, repoint gcal_map, delete stub.
 let u={gcalId:stub.gcalId,gcalColorId:stub.gcalColorId,cal:stub.cal};
 if(stub.dd)u.dd=stub.dd;
-let ai=ADDED.findIndex(x=>sameId(x.i,real.i));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
-else{if(!EDITS[real.i])EDITS[real.i]={};Object.assign(EDITS[real.i],u);saveE()}
-db.ref('gcal_map/'+stub.gcalId).set(real.i).catch(e=>console.warn('[FB] gcal_map set failed',e));
+saveTicketFields(real.i,u); // field-level: stub metadata lands without clobbering the real ticket's customer data
+dbGcalMap.child(stub.gcalId).transaction(cur=>{if(cur===null||cur===undefined)return String(real.i);if(String(cur)===String(stub.i))return String(real.i);if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return String(real.i);return cur;}).catch(e=>console.warn('[FB] gcal_map txn failed',e));
 trackGcalMapSet(stub.gcalId,real.i);gcalMap[stub.gcalId]=real.i;
 let si=ADDED.findIndex(x=>sameId(x.i,stub.i));
-if(si>=0){_removedAdded.add(String(ADDED[si].i));ADDED.splice(si,1);saveA();}
+if(si>=0){markTicketDeleted(ADDED[si].i);Object.assign(ADDED[si],{_deleted:true,_deletedAt:Date.now()});rememberAddedEdit(ADDED[si]);saveA();} // TOMBSTONE + LEDGER
 merged.push({stub:stub.i,real:real.i,sn:parsed.serial,name:real.n});
 console.log('[DEDUP] Merged stub #'+stub.i+' ("'+stub.cal+'") into real ticket #'+real.i+' ("'+real.n+'", SN '+parsed.serial+'). gcal_map repointed.');
 }catch(perStubErr){
@@ -6605,12 +6945,13 @@ plan.forEach(g=>{
 gcalMap[g.gcalId]=g.keep.i;updates['gcal_map/'+g.gcalId]=String(g.keep.i);
 if(typeof trackGcalMapSet==='function'){try{trackGcalMapSet(g.gcalId,g.keep.i)}catch(e){}}
 g.remove.forEach(r=>{
+markTicketDeleted(r.i); // LEDGER
 let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){_removedAdded.add(String(ADDED[ai].i));removedAddedIds.add(String(ADDED[ai].i));ADDED.splice(ai,1)}
+if(ai>=0){Object.assign(ADDED[ai],{_deleted:true,_deletedAt:Date.now()});rememberAddedEdit(ADDED[ai]);removedAddedIds.add(String(ADDED[ai].i))} // TOMBSTONE
 else{if(!EDITS[r.i])EDITS[r.i]={};EDITS[r.i]._deleted=true;rememberEditsEdit(r.i,EDITS[r.i])}
 });
 });
-saveA();saveE();
+if(_dirtyAdded.size||_removedAdded.size)saveA();if(_dirtyEdits.size)saveE();
 try{await db.ref().update(updates)}catch(e){console.error('dedup map update:',e)}
 showToast('&#10003; Quitados '+totalRemove+' duplicados \u2014 se conserv\u00f3 el registro con m\u00e1s datos por evento');
 renderAll()}
@@ -6622,17 +6963,53 @@ async function autoDedupByGcalId(){
 try{
 let plan=planDedupByGcalId();
 if(!plan.length)return 0;
+// =====================================================================================
+// SERVER VERIFY (anti-ghost). The plan above was built from LOCAL state, which can lag a
+// few seconds behind the server. The failure we're killing: device A deletes ticket X,
+// re-syncs, the calendar recreates a fresh ticket Y for the same event; device B still
+// holds a stale snapshot where X is alive, sees X+Y as "duplicates", keeps the richer-but-
+// DEAD X and deletes the LIVE Y — the event ends up with no ticket at all. So before any
+// destructive action we fetch a FRESH server read and rebuild every group from server
+// truth: only records that are alive on the server right now can be kept or removed.
+// If the fetch fails we skip dedup entirely this round (it reruns after every sync).
+// =====================================================================================
+let _srvA={},_srvE={};
+try{_srvA=((await dbAdded.once('value')).val())||{}}catch(e){console.warn('[AUTO-DEDUP] server verify failed — skipping this round:',e);return 0}
+try{_srvE=((await dbEdits.once('value')).val())||{}}catch(e){}
+let _liveSrv=id=>{let sid=String(id);
+if(DELETED_TICKETS[sid])return null; // ledgered = dead, no matter what the node says
+let a=_srvA[sid];if(a&&!a._deleted)return a;
+let b=BASE.find(x=>String(x.i)===sid);
+if(b){let e=_srvE[sid]||{};if(!e._deleted)return Object.assign({},b,e)}
+return null};
+plan=plan.map(g=>{
+let members=[g.keep].concat(g.remove).map(r=>_liveSrv(r.i)).filter(Boolean)
+// SERVER-SIDE IDENTITY: group membership must come from the SERVER's gcalId, not this
+// device's possibly-stale local copy. A local record still showing an old gcalId would
+// drag a ticket that now belongs to ANOTHER event into this group — and the "richer"
+// scorer would then tombstone the event's true ticket. Records whose server gcalId points
+// elsewhere simply aren't duplicates of this event.
+.filter(r=>{let gid=r.gcalId==null?'':String(r.gcalId);return gid===''||gid===String(g.gcalId)});
+if(members.length<2)return null; // ghosts/foreign removed — nothing truly duplicated on the server
+members.sort((a,b)=>{
+let ga=String(a.gcalId||'')===String(g.gcalId)?1:0,gb=String(b.gcalId||'')===String(g.gcalId)?1:0;
+if(gb!==ga)return gb-ga; // the event's TRUE owner (per server) always wins over an unstamped record
+let sa=_dedupScore(a),sb=_dedupScore(b);if(sb!==sa)return sb-sa;return Number(a.i)-Number(b.i)});
+return {gcalId:g.gcalId,keep:members[0],remove:members.slice(1)};
+}).filter(Boolean);
+if(!plan.length)return 0;
 let removed=0,updates={};
 plan.forEach(g=>{
 gcalMap[g.gcalId]=g.keep.i;updates['gcal_map/'+g.gcalId]=String(g.keep.i);
 if(typeof trackGcalMapSet==='function'){try{trackGcalMapSet(g.gcalId,g.keep.i)}catch(e){}}
 g.remove.forEach(r=>{
+markTicketDeleted(r.i); // LEDGER
 let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){_removedAdded.add(String(ADDED[ai].i));ADDED.splice(ai,1);removed++}
+if(ai>=0){Object.assign(ADDED[ai],{_deleted:true,_deletedAt:Date.now()});rememberAddedEdit(ADDED[ai]);removed++} // TOMBSTONE
 else{if(!EDITS[r.i])EDITS[r.i]={};EDITS[r.i]._deleted=true;rememberEditsEdit(r.i,EDITS[r.i]);removed++}
 });
 });
-if(removed){saveA();saveE();try{await db.ref().update(updates)}catch(e){console.error('[AUTO-DEDUP] map update:',e)}
+if(removed){if(_dirtyAdded.size||_removedAdded.size)saveA();if(_dirtyEdits.size)saveE();try{await db.ref().update(updates)}catch(e){console.error('[AUTO-DEDUP] map update:',e)}
 console.log('%c[AUTO-DEDUP] Collapsed '+removed+' duplicate record(s) across '+plan.length+' calendar event(s).','color:#16a34a;font-weight:700');}
 return removed;
 }catch(e){console.error('[AUTO-DEDUP] error:',e);return 0}}
@@ -6666,7 +7043,7 @@ if(repairResult.length){
 console.log('[AUTO-AUDIT] Repaired '+repairResult.length+' cross-linked ticket(s). Audit\'s SN-matching pass will now re-link them to the correct events.');
 }
 // Step 1: dedup any existing stub tickets into their real counterparts.
-let dedupResult=gcalDedup();
+let dedupResult=await gcalDedup();
 if(dedupResult.merged.length){
 console.log('[AUTO-AUDIT] Dedup merged '+dedupResult.merged.length+' duplicate stub ticket(s) into real tickets.');
 }
@@ -6688,6 +7065,15 @@ let perEventErrors=0;
 for(let ev of allEvents){
 try{
 if(ev.status==='cancelled'){skipped.cancelled++;continue}
+// MAP HYGIENE: before any title/color/date filter can skip this event, make sure gcal_map
+// isn't pointing at a deleted ticket. Without this, an event that turns filtered (e.g. its
+// color changes to a non-delivery color) right after its ticket was deleted keeps a dead
+// mapping forever — sync and audit both skip filtered events, so nothing else ever cleans
+// it, and any future re-link of the event stays blocked.
+{let _mid=gcalMap[ev.id];
+if(_mid!=null&&!findRecById(_mid)){
+if(isTicketDeleted(_mid)||!(await ticketAliveOnServer(_mid))){trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,_mid);delete gcalMap[ev.id];}
+}}
 if(isNonDeliveryTitle(ev.summary)){skipped.byTitle++;continue}
 if(!isAllowedColor(ev.colorId)){skipped.byColor++;continue}
 let newDD=gcalDeliveryDD(ev,parseGcalTitle(ev.summary));
@@ -6704,20 +7090,28 @@ let mappedId=gcalMap[ev.id];
 // its own gcalId field, adopt it — never create a second ticket for the same event.
 if(!mappedId||!findRecById(mappedId)){
 let _own=AD().find(r=>r&&r.gcalId&&String(r.gcalId)===String(ev.id));
-if(_own){mappedId=_own.i;if(String(gcalMap[ev.id])!==String(_own.i)){gcalMap[ev.id]=_own.i;try{trackGcalMapSet(ev.id,_own.i)}catch(e){}db.ref('gcal_map/'+ev.id).set(String(_own.i)).catch(()=>{})}}
+if(_own){mappedId=_own.i;if(String(gcalMap[ev.id])!==String(_own.i)){gcalMap[ev.id]=_own.i;try{trackGcalMapSet(ev.id,_own.i)}catch(e){}dbGcalMap.child(ev.id).transaction(cur=>{if(cur===null||cur===undefined)return String(_own.i);if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return String(_own.i);return cur;}).catch(()=>{})}}
 }
 
 if(mappedId){
 let local=findRecById(mappedId);
 if(!local){
+// SNAPSHOT-LAG GUARD (same as processGcalEvent): if the ticket is alive on the server, this
+// device is just behind — do NOT clear the mapping and recreate (that spawns a duplicate).
+if(!isTicketDeleted(mappedId)&&(await ticketAliveOnServer(mappedId))){skipped.synced++;continue}
 // Stale mapping — the ticket was deleted. Don't leave it stuck waiting for a regular
 // sync that may never re-deliver this event (syncToken is incremental). Clear the
 // stale mapping here and fall through to create a fresh ticket below.
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
 healed.staleFixed.push({summary:title,wasMapped:mappedId});
 mappedId=null;
 console.log('[AUTO-AUDIT] Cleared stale mapping for event '+ev.id+' and recreating ticket.');
 }else{
+// IDENTITY GUARD (same as processGcalEvent): the ticket's own gcalId is authoritative.
+if(local&&local.gcalId&&String(local.gcalId)!==String(ev.id)){
+console.log('%c[AUTO-AUDIT] CROSS-CAPTURE','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px','event '+ev.id+' mapped to ticket #'+mappedId+' whose gcalId is '+local.gcalId+'. Releasing this event\'s mapping.');
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
+mappedId=null;local=null;}
 // SN VALIDATION — same protection that processGcalEvent has. The audit was previously
 // blindly applying calendar event data to whatever ticket gcal_map pointed at. If gcal_map
 // is wrong (race condition with dbGcalMap listener, manual relink mistake, or stale state),
@@ -6725,30 +7119,34 @@ console.log('[AUTO-AUDIT] Cleared stale mapping for event '+ev.id+' and recreati
 // every cycle — that's the Kerry/Slaughter loop. We refuse to heal a mapping where the
 // ticket's SN doesn't match the SN parsed from the event title; instead we break the wrong
 // link and fall through to SN-match-or-create.
-if(local.sn){
+if(local&&local.sn){
 let _evParsed=parseGcalTitle(title);
 if(_evParsed&&_evParsed.serial){
 let _rsn=String(local.sn).replace(/\.0$/,'');
 if(_rsn!==_evParsed.serial){
 console.log('%c[AUTO-AUDIT] CROSS-LINK in heal-drift','background:#dc2626;color:#fff;padding:2px 6px;border-radius:3px',
 'ticket #'+mappedId+' SN '+_rsn+' \u2260 event SN '+_evParsed.serial+' (event "'+title+'"). Breaking wrong link instead of overwriting customer data.');
-trackGcalMapRemoval(ev.id);db.ref('gcal_map/'+ev.id).remove().catch(e=>console.warn('[FB] gcal_map remove failed',e));delete gcalMap[ev.id];
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
 let _u={gcalId:'',gcalColorId:'',cal:''};
-let _ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(_ai>=0){Object.assign(ADDED[_ai],_u);rememberAddedEdit(ADDED[_ai]);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],_u);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
+saveTicketFields(mappedId,_u); // field-level: can never clobber customer data typed elsewhere
 mappedId=null;local=null;
 }}}
 if(mappedId&&local){
 // Heal any drift between calendar and ticket: date, title, color.
 let u={};
+// HOLD-LIFT (same rule as processGcalEvent): the event is visibly back on the calendar,
+// so a 'calendar_removed' hold must lift here too — otherwise a ticket whose uncancel was
+// only ever seen by the audit window would stay stuck on Hold forever.
+if(local.hold&&newDD){
+let _srvRec=null;try{_srvRec=(((await dbAdded.once('value')).val())||{})[String(local.i)]}catch(e){}
+if(_srvRec&&_srvRec.gcalId&&String(_srvRec.gcalId)!==String(ev.id)){
+console.log('[AUTO-AUDIT] Hold-lift blocked: server says ticket #'+local.i+' belongs to event '+_srvRec.gcalId+', not '+ev.id+'.');
+}else{let _st=new Date();u.hold=null;u.hold_lifted_at=_st.getTime();u.dn=((local.dn||'')+'\n'+'[GCAL] Returned to calendar on '+_st.toLocaleDateString()+' \u2014 Hold lifted (audit), delivery date '+newDD+'.').trim();console.log('[AUTO-AUDIT] Hold lifted for delivery',local.i)}}
 if(local.dd!==newDD)u.dd=newDD;
 if((local.cal||'')!==title)u.cal=title;
 if(local.gcalColorId!==newColor)u.gcalColorId=newColor;
 if(Object.keys(u).length){
-let ai=ADDED.findIndex(x=>sameId(x.i,mappedId));
-if(ai>=0){Object.assign(ADDED[ai],u);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[mappedId])EDITS[mappedId]={};Object.assign(EDITS[mappedId],u);rememberEditsEdit(mappedId,EDITS[mappedId]);saveE()}
+saveTicketFields(mappedId,u);
 if(u.dd){healed.dateFixed.push({summary:title,from:local.dd,to:newDD});console.log('[AUTO-AUDIT] Fixed date for ticket #'+mappedId+': '+local.dd+' \u2192 '+newDD)}
 if(u.cal){healed.titleFixed.push({ticketId:mappedId,from:local.cal,to:title});console.log('[AUTO-AUDIT] Fixed title for ticket #'+mappedId+': '+JSON.stringify(local.cal)+' \u2192 '+JSON.stringify(title))}
 if('gcalColorId' in u){healed.colorFixed.push({ticketId:mappedId,from:local.gcalColorId,to:newColor});console.log('[AUTO-AUDIT] Fixed color for ticket #'+mappedId+': '+local.gcalColorId+' \u2192 '+newColor)}
@@ -6761,11 +7159,19 @@ let _parsed=parseGcalTitle(title);
 let _existing=findExistingTicketBySN(_parsed,ev.id);
 if(_existing){
 let u={gcalId:ev.id,cal:title,dd:newDD,gcalColorId:newColor};
-let ai=ADDED.findIndex(x=>sameId(x.i,_existing.i));
-if(ai>=0){Object.assign(ADDED[ai],u);saveA()}
-else{if(!EDITS[_existing.i])EDITS[_existing.i]={};Object.assign(EDITS[_existing.i],u);saveE()}
-await db.ref().update({['gcal_map/'+ev.id]:_existing.i});
-trackGcalMapSet(ev.id,_existing.i);gcalMap[ev.id]=_existing.i;
+saveTicketFields(_existing.i,u);
+{let _snc=await dbGcalMap.child(ev.id).transaction(cur=>{
+if(cur===null||cur===undefined)return String(_existing.i);
+if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return String(_existing.i);
+return cur;});
+let _w=_snc&&_snc.snapshot&&_snc.snapshot.val();
+if(_w!=null&&String(_w)!==String(_existing.i)){
+// Another LIVE ticket already owns this event — undo our gcalId stamp and adopt that link.
+saveTicketFields(_existing.i,{gcalId:''});
+gcalMap[ev.id]=_w;trackGcalMapSet(ev.id,_w);
+console.log('[GCAL] SN match deferred: event '+ev.id+' already claimed by live ticket '+_w+' — adopting that link.');
+}}
+if(gcalMap[ev.id]==null||String(gcalMap[ev.id])===String(_existing.i)){trackGcalMapSet(ev.id,_existing.i);gcalMap[ev.id]=_existing.i;}
 healed.linkedToExisting=(healed.linkedToExisting||[]);
 healed.linkedToExisting.push({summary:title,ticketId:_existing.i,name:_existing.n,sn:_existing.sn});
 console.log('[AUTO-AUDIT] SN match: linked event to existing ticket #'+_existing.i+' ("'+_existing.n+'", SN '+_existing.sn+') instead of creating duplicate.');
@@ -6783,13 +7189,13 @@ dl:false,sl:false,po:false,oo:false,il:false,cl:false,fn:null,
 pk:false,gb:false,ngb:false,co:false,crane:false,extra_person:false,water_truck:false,
 gcalId:ev.id,gcalColorId:newColor,
 cn:'Auto-created via post-sync audit (incremental sync missed this event).'};
-let _claim=await dbGcalMap.child(ev.id).transaction(cur=>(cur===null||cur===undefined)?newId:cur);
+let _claim=await dbGcalMap.child(ev.id).transaction(cur=>{if(cur===null||cur===undefined)return newId;if(typeof isTicketDeleted==='function'&&isTicketDeleted(cur))return newId; /* dead winner: take over the claim */ return cur;});
 if(_claim.committed&&String(_claim.snapshot.val())===String(newId)){
 ADDED.push(r);rememberAddedEdit(r);saveA();
 trackGcalMapSet(ev.id,newId);gcalMap[ev.id]=newId;
 healed.created.push({summary:title,dd:newDD,id:newId});
 console.log('[AUTO-AUDIT] Created ticket #'+newId+' for missed event: \"'+title+'\" on '+newDD);
-}else{let _win=_claim.snapshot&&_claim.snapshot.val();if(_win){gcalMap[ev.id]=_win;trackGcalMapSet(ev.id,_win);console.log('[AUTO-AUDIT] Event '+ev.id+' already claimed by ticket '+_win+' (another device) — linking, not duplicating.')}else{console.warn('[AUTO-AUDIT] Claim not committed for event '+ev.id+' — will retry.')}}
+}else{let _win=_claim.snapshot&&_claim.snapshot.val();if(_win&&typeof isTicketDeleted==='function'&&isTicketDeleted(_win)){console.warn('[AUTO-AUDIT] Claim winner '+_win+' is deleted (ledger) — skipping link; will recreate next pass.')}else if(_win){gcalMap[ev.id]=_win;trackGcalMapSet(ev.id,_win);console.log('[AUTO-AUDIT] Event '+ev.id+' already claimed by ticket '+_win+' (another device) — linking, not duplicating.')}else{console.warn('[AUTO-AUDIT] Claim not committed for event '+ev.id+' — will retry.')}}
 }catch(perEventErr){
 perEventErrors++;
 console.error('[AUTO-AUDIT] Per-event error on \"'+(ev&&ev.summary)+'\":',perEventErr);
@@ -6881,6 +7287,9 @@ if(r.ph||r.em)return true;
 if((+r.pr||0)||(+r.py||0)||(+r.bl||0)||(+r.di||0))return true;
 if(r.sp||r.spd||r.dn||r.dnotes||r.fn||r.en||r.assigned_to)return true;
 if(r.tb||r.ss||r.lf||r.cv||r.su)return true;
+// NOTE: 'oo' and 'il' were removed from the visible checklist (2026-06-12) but MUST stay in
+// this list — many historical tickets have only these flags set, and dropping them here
+// would make gcalCleanImported see those tickets as "untouched" and delete real data.
 let flags=['pf','iv','el','wp','lv','pt','ch','rc','sl','po','oo','il','cl','pk','gb','ngb','crane','extra_person','water_truck'];
 if(flags.some(f=>r[f]===true))return true;
 if(r.st&&/\s/.test(String(r.st))&&/\d/.test(String(r.st)))return true; // real street address
@@ -6966,8 +7375,9 @@ tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
 dl:false,sl:false,po:false,oo:false,il:false,cl:false,pk:false,gb:false,ngb:false,co:false,
 crane:false,extra_person:false,water_truck:false,
 gcalId:ev.id,gcalColorId:ev.colorId||null};
-ADDED.push(rec);saveA();
+ADDED.push(rec);rememberAddedEdit(rec);saveA();
 let u={};u['gcal_map/'+ev.id]=newId;db.ref().update(u);
+trackGcalMapSet(ev.id,newId);gcalMap[ev.id]=newId;
 return rec}
 
 // Return all calendar event ids currently linked to a ticket — both via the gcalMap table and
@@ -6991,9 +7401,7 @@ if(Object.keys(upd).length)db.ref().update(upd);
 // next listener fire. Empty strings persist and remain falsy for `if(r.gcalId)` checks.
 let patch={gcalId:'',cal:'',gcalColorId:''};
 if(restoreDate){let baseRec=BASE.find(b=>sameId(b.i,r.i));if(baseRec&&baseRec.dd&&baseRec.dd!==r.dd)patch.dd=baseRec.dd}
-let ai=ADDED.findIndex(x=>sameId(x.i,r.i));
-if(ai>=0){Object.assign(ADDED[ai],patch);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],patch);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+saveTicketFields(r.i,patch); // field-level
 return ids.length}
 
 
@@ -7175,6 +7583,12 @@ parts.push(block);
 if(after)parts.push(after);
 return parts.join('\n\n');
 }
+// Unbalanced/corrupted markers (a human deleted one of them in Google Calendar). Strip the
+// stray marker lines so they can't confuse future merges, keep all surrounding human text,
+// and append exactly ONE fresh block — prevents unbounded block duplication on every push.
+if(startIdx>=0||endIdx>=0){
+let cleaned=existing.split(APP_BLOCK_START).join('').split(APP_BLOCK_END).join('').replace(/\n{3,}/g,'\n\n').trim();
+return (cleaned?cleaned+'\n\n':'')+block}
 // First time: append our block to existing description (preserves any human-typed content)
 return existing.replace(/\s+$/,'')+'\n\n'+block}
 
