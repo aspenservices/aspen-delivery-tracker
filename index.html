@@ -261,23 +261,35 @@ tbody tr{cursor:pointer}
    The ticket form felt oversized/cluttered. Tighter cards, labels, inputs, grids and the
    post-delivery checklist — scoped to the edit modal (#md) so cards/boards stay untouched.
    Input FONT sizes shrink only on desktop: mobile keeps 16px to avoid iOS focus auto-zoom. */
-#md .ig{gap:7px;margin-bottom:10px}
-#md .ag{gap:6px;margin-bottom:10px}
-#md .ib{padding:6px 9px;border-radius:7px}
+#md .ig{gap:7px;margin-bottom:8px}
+#md .ag{gap:6px;margin-bottom:8px}
+#md .ib{padding:5px 9px;border-radius:7px}
 #md .ib label{font-size:9px;margin-bottom:1px;letter-spacing:.3px}
-#md .ib input,#md .ib select,#md .ib textarea{padding:5px 7px;border-width:1.5px}
-#md .nb{padding:7px 10px;margin-bottom:6px}
+/* Tighten input height everywhere via vertical padding + line-height — this does NOT
+   trigger iOS focus-zoom (only font-size below 16px does), so it is safe on mobile. */
+#md .ib input,#md .ib select,#md .ib textarea{padding:5px 8px;border-width:1.5px;line-height:1.25}
+/* The Phones textarea was the tallest offender; 2 rows is plenty. */
+#md .ib textarea{min-height:34px}
+#md #e_ph{min-height:38px}
+#md .nb{padding:6px 10px;margin-bottom:6px}
 #md .pdf-uploader{padding:8px 12px;gap:8px}
 #md .pdf-btn{padding:7px 12px;font-size:12px}
 #md .cg{gap:4px}
-#md [style*="margin-bottom:16px"]{margin-bottom:10px!important}
+#md .pst-row{gap:6px}
+#md .pst-pill{padding:6px 11px;font-size:12px}
+#md [style*="margin-bottom:16px"]{margin-bottom:8px!important}
 #e_spd{min-height:180px}
+/* Desktop can go further: smaller font + even tighter cards. */
 @media(min-width:701px){
-#md .ib input,#md .ib select,#md .ib textarea{font-size:13px}
+#md .ib{padding:4px 9px}
+#md .ib input,#md .ib select,#md .ib textarea{font-size:13px;padding:4px 8px}
 #md .ib span{font-size:13px}
+#md .ib textarea{min-height:30px}
+#md #e_ph{min-height:34px}
 #md .ct{font-size:12px;margin-bottom:5px}
 #md .ci{font-size:12px;padding:3px 4px;gap:5px}
 #md .cd{width:14px;height:14px;min-width:14px;min-height:14px}
+#md .pst-pill{padding:5px 10px;font-size:12px}
 }
 .nb label{font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px}
 .nb p{font-size:13px;color:#374151;line-height:1.5}
@@ -1062,8 +1074,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061201;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.12 (build 1)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061301;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.13 (build 1)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -6540,6 +6552,20 @@ if(isTicketDeleted(mappedId)||!(await ticketAliveOnServer(mappedId))){
 trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,mappedId);delete gcalMap[ev.id];
 mappedId=null;
 }}
+// SERVER-SIDE ORPHAN SWEEP (cancelled lane): if we still couldn't resolve a mappedId, the
+// SERVER map may yet point this cancelled event at a ticket that was deleted while THIS
+// device's local map was empty (delete landed before the cancellation, local copy stale).
+// Nothing revisits cancelled events, so that orphan would persist until an uncancel. Read
+// the server's value directly and compare-and-delete if it targets a dead ticket.
+if(!mappedId){
+try{
+let _snap=await dbGcalMap.child(ev.id).once('value');
+let _srvMap=_snap&&_snap.val&&_snap.val();
+if(_srvMap!=null&&(isTicketDeleted(_srvMap)||!(await ticketAliveOnServer(_srvMap)))){
+trackGcalMapRemoval(ev.id);gcalMapConditionalRemove(ev.id,_srvMap);delete gcalMap[ev.id];
+}
+}catch(_orphanErr){}
+}
 if(!mappedId){
 // CANCEL-BEFORE-TICKET: a cancellation can arrive on this device before the freshly created
 // ticket itself does (create + cancel within the same second on different devices). Retry

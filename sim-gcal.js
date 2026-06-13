@@ -143,7 +143,9 @@ const dbEdits={update:p=>__hooks.fbWrite('edits',p),set:v=>__hooks.fbSet('edits'
 const dbAdded={update:p=>__hooks.fbWrite('added',p),set:v=>__hooks.fbSet('added',v),on:(t,cb)=>__hooks.reg('added',cb),once:()=>__hooks.fbOnce('added')};
 const dbGcal={update:p=>__hooks.fbWrite('gcalCfg',p),on:(t,cb)=>__hooks.reg('gcalCfg',cb)};
 const dbGcalMap={on:(t,cb)=>__hooks.reg('map',cb),once:()=>__hooks.fbOnce('map'),
-  child:id=>({transaction:fn=>__hooks.mapTxn(id,fn)})};
+  child:id=>({transaction:fn=>__hooks.mapTxn(id,fn),
+    once:()=>__hooks.mapChildOnce(id),
+    remove:()=>__hooks.multi({['gcal_map/'+id]:null})})};
 function _nodeOf(p){p=String(p||'').split('/')[0];return p==='gcal_map'?'map':(p==='deleted_tickets'?'deleted':p)}
 const db={ref:path=>({
   update:o=>{ if(path){let m={};for(const k in o)m[path+'/'+k]=o[k];return __hooks.multi(m)} return __hooks.multi(o) },
@@ -322,6 +324,9 @@ class Sim{
       }),
       fbOnce:(node)=>new Promise(res=>{
         sim.push(sim.t+10+sim.R(40),()=>res({val:()=>JSON.parse(JSON.stringify(sim.server[node==='map'?'map':node]))}));
+      }),
+      mapChildOnce:(id)=>new Promise(res=>{
+        sim.push(sim.t+10+sim.R(40),()=>res({val:()=>{let mm=sim.server.map||{};return (id in mm)?mm[id]:null}}));
       }),
       mapTxn:(id,fn)=>new Promise(res=>{
         sim.stats.claims++; if(typeof TREV!=='undefined'&&id===TREV)TR(sim,'CLAIM',dev.id,'cur='+((id in sim.server.map)?sim.server.map[id]:null));
