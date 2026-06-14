@@ -42,6 +42,40 @@
 --border-mid:#dbd3c3;
 --shadow-card:0 1px 2px rgba(26,20,16,.04),0 1px 3px rgba(26,20,16,.06);
 --shadow-card-hover:0 4px 12px rgba(26,20,16,.08),0 2px 6px rgba(26,20,16,.05);
+/* Phase 5 (dark mode) neutral surface/ink tokens. LIGHT values match the colors they replace,
+   so light mode is visually unchanged; dark mode redefines them below. */
+--surface:#ffffff;        /* card / panel backgrounds that were #fff */
+--surf-soft:#f9fafb;      /* subtle gray surfaces (#f9fafb / #f3f4f6) */
+--ink-strong:#111827;     /* near-black headings (#111827 / #1f2937) */
+--ink:#374151;            /* primary body text */
+--ink-mid:#6b7280;        /* secondary text */
+--ink-soft:#9ca3af;       /* tertiary / muted text */
+--ink-slate:#475569;      /* slate captions */
+--hairline:#e5e7eb;       /* light borders */
+--hairline-2:#d1d5db;     /* slightly darker borders */
+}
+/* ===== DARK MODE (Phase 5, 2026-06-14) ===== */
+html[data-theme="dark"]{
+--aspen-black:#e8eaed;
+--bg-cream:#0f141b;
+--bg-card:#1a212b;
+--bg-card-soft:#222b37;
+--text-primary:#e8eaed;
+--text-secondary:#aab2bf;
+--text-tertiary:#7d8794;
+--border-soft:#2b3542;
+--border-mid:#3a4654;
+--shadow-card:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.5);
+--shadow-card-hover:0 4px 12px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.4);
+--surface:#1a212b;
+--surf-soft:#222b37;
+--ink-strong:#e8eaed;
+--ink:#d2d8e0;
+--ink-mid:#9aa3b2;
+--ink-soft:#7d8794;
+--ink-slate:#9aa6b6;
+--hairline:#2b3542;
+--hairline-2:#3a4654;
 }
 html,body{max-width:100vw;overflow-x:hidden}
 body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',sans-serif;background:var(--bg-cream);color:var(--text-primary);font-size:14px;-webkit-text-size-adjust:100%;-webkit-overflow-scrolling:touch}
@@ -63,7 +97,7 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .sync-dot.on{background:#10b981}.sync-dot.off{background:#ef4444}
 
 /* TABS BAR (sticky white bar with tabs and actions) */
-.aspen-tabs-bar{background:#fff;border-bottom:1px solid var(--border-soft);padding:0 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:10}
+.aspen-tabs-bar{background:var(--surface);border-bottom:1px solid var(--border-soft);padding:0 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:10}
 .aspen-tabs{display:flex;align-items:flex-end;overflow-x:auto;flex:1;min-width:0}
 .aspen-tabs::-webkit-scrollbar{height:4px}
 .aspen-tabs::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
@@ -79,7 +113,7 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .aspen-action-btn{padding:8px 16px;border-radius:8px;border:1.5px solid transparent;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:6px}
 .aspen-action-btn.primary{background:var(--aspen-orange);color:#fff}
 .aspen-action-btn.primary:hover{background:var(--aspen-orange-dark)}
-.aspen-action-btn.outline{background:#fff;color:var(--text-primary);border-color:var(--border-mid)}
+.aspen-action-btn.outline{background:var(--surface);color:var(--text-primary);border-color:var(--border-mid)}
 .aspen-action-btn.outline:hover{border-color:var(--aspen-orange);color:var(--aspen-orange)}
 .aspen-action-btn .gcal-dot{width:7px;height:7px;border-radius:50%;background:#dc2626;display:inline-block}
 .aspen-action-btn.connected .gcal-dot{background:#10b981}
@@ -98,10 +132,10 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .aspen-view-toggle{display:flex;background:var(--bg-cream);border:1px solid var(--border-soft);border-radius:8px;padding:2px;gap:2px}
 .vt-btn{padding:6px 12px;border:none;background:transparent;cursor:pointer;border-radius:6px;font-size:14px;color:var(--text-secondary);font-family:inherit;transition:all .12s}
 .vt-btn:hover{color:var(--text-primary)}
-.vt-btn.act{background:#fff;color:var(--aspen-orange);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.vt-btn.act{background:var(--surface);color:var(--aspen-orange);box-shadow:0 1px 2px rgba(0,0,0,.05)}
 
 /* CONTEXT HEADER (info banner under tabs) */
-.ctx-hdr{margin:18px 40px 14px;padding:14px 18px;border-radius:12px;background:#fff;border:1px solid var(--border-soft);border-left:4px solid var(--text-tertiary);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.ctx-hdr{margin:18px 40px 14px;padding:14px 18px;border-radius:12px;background:var(--surface);border:1px solid var(--border-soft);border-left:4px solid var(--text-tertiary);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .ctx-hdr h2{font-size:15px;font-weight:800;color:var(--text-primary);letter-spacing:.01em}
 .ctx-hdr .ctx-meta{font-size:12px;color:var(--text-secondary);font-weight:600}
 .ctx-hdr .ctx-meta .bal{color:#dc2626}
@@ -112,10 +146,10 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .empty-state .es-title{font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:6px}
 .empty-state .es-sub{font-size:13px;color:var(--text-tertiary)}
 .filters{padding:0 40px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.search{flex:1;min-width:200px;padding:11px 16px;border-radius:9px;border:1px solid var(--border-mid);background:#fff;color:var(--text-primary);font-size:14px;outline:none;width:100%}
+.search{flex:1;min-width:200px;padding:11px 16px;border-radius:9px;border:1px solid var(--border-mid);background:var(--surface);color:var(--text-primary);font-size:14px;outline:none;width:100%}
 .search:focus{border-color:var(--aspen-orange)}
 .board{padding:0 40px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:9px}
-.card{background:#fff;border:1px solid var(--border-soft);border-left:3px solid var(--text-tertiary);border-radius:9px;padding:12px 13px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-card)}
+.card{background:var(--surface);border:1px solid var(--border-soft);border-left:3px solid var(--text-tertiary);border-radius:9px;padding:12px 13px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-card)}
 .card:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
 .card.complete{border-left-color:#059669}
 .card.delivered{border-left-color:#2563eb}
@@ -136,9 +170,9 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 #holdToolbarHost{margin:0 40px 12px}
 #holdToolbarHost:empty{display:none}
 @media(max-width:700px){#holdToolbarHost{margin:0 12px 10px}}
-.hold-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 14px;box-shadow:0 1px 2px rgba(124,58,237,.06)}
+.hold-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid #e9d5ff;border-radius:10px;padding:10px 14px;box-shadow:0 1px 2px rgba(124,58,237,.06)}
 .hold-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.hold-chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #e9d5ff;color:#6b21a8;padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .12s}
+.hold-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1.5px solid #e9d5ff;color:#6b21a8;padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .12s}
 .hold-chip:hover{background:#faf5ff;border-color:#c084fc}
 .hold-chip.active{background:#7c3aed;border-color:#7c3aed;color:#fff;box-shadow:0 2px 6px rgba(124,58,237,.3)}
 .hold-chip .hold-chip-n{background:rgba(0,0,0,.08);padding:1px 7px;border-radius:999px;font-size:10.5px;min-width:18px;text-align:center}
@@ -175,45 +209,45 @@ body.modal-open{overflow:hidden;-webkit-overflow-scrolling:auto}
 .svc-tag.svc-done{background:#dcfce7;color:#166534;border:1px solid #22c55e}
 .twrap{padding:0 40px 40px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{padding:9px 10px;text-align:left;color:#6b7280;font-weight:800;font-size:10px;text-transform:uppercase;border-bottom:3px solid #e5e7eb;background:#f9fafb;cursor:pointer;user-select:none;white-space:nowrap}
+th{padding:9px 10px;text-align:left;color:var(--ink-mid);font-weight:800;font-size:10px;text-transform:uppercase;border-bottom:3px solid var(--hairline);background:var(--surf-soft);cursor:pointer;user-select:none;white-space:nowrap}
 th:hover{color:#2563eb;background:#eff6ff}
 th .srt{font-size:9px;margin-left:3px;opacity:.4}
 th.act-sort{color:#1d4ed8}
 th.act-sort .srt{opacity:1}
-td{padding:9px 10px;border-bottom:1px solid #e5e7eb}
+td{padding:9px 10px;border-bottom:1px solid var(--hairline)}
 tbody tr:hover td{background:#eff6ff}
 tbody tr{cursor:pointer}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 .charts{padding:0 40px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.cbox{background:#fff;border:2px solid #e5e7eb;border-radius:14px;padding:18px}
-.cbox h3{margin:0 0 12px;font-size:14px;font-weight:800;color:#374151}
+.cbox{background:var(--surface);border:2px solid var(--hairline);border-radius:14px;padding:18px}
+.cbox h3{margin:0 0 12px;font-size:14px;font-weight:800;color:var(--ink)}
 .br{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.bl-l{font-size:12px;color:#6b7280;min-width:58px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bt{flex:1;height:18px;background:#f3f4f6;border-radius:5px;overflow:hidden}
+.bl-l{font-size:12px;color:var(--ink-mid);min-width:58px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt{flex:1;height:18px;background:var(--surf-soft);border-radius:5px;overflow:hidden}
 .bf{height:100%;border-radius:5px}
-.bv{font-size:12px;color:#374151;min-width:22px;text-align:right;font-weight:800}
+.bv{font-size:12px;color:var(--ink);min-width:22px;text-align:right;font-weight:800}
 /* Overlay */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.mdl{background:#fff;border-radius:18px;width:100%;max-width:760px;max-height:90vh;overflow:auto;padding:28px;-webkit-overflow-scrolling:touch;box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.mdl{background:var(--surface);border-radius:18px;width:100%;max-width:760px;max-height:90vh;overflow:auto;padding:28px;-webkit-overflow-scrolling:touch;box-shadow:0 20px 50px rgba(0,0,0,.18)}
 .mdl.mdl-wide{max-width:920px}
 .mdl.mdl-xl{max-width:1100px}
 .mdl.mdl-narrow{max-width:520px}
-.mdl h2{font-size:20px;font-weight:800;color:#111827}
-.mdl .sub{font-size:13px;color:#6b7280;margin-top:3px}
-.xbtn{background:#f3f4f6;border:2px solid #e5e7eb;color:#6b7280;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.mdl h2{font-size:20px;font-weight:800;color:var(--ink-strong)}
+.mdl .sub{font-size:13px;color:var(--ink-mid);margin-top:3px}
+.xbtn{background:var(--surf-soft);border:2px solid var(--hairline);color:var(--ink-mid);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
 .xbtn:hover{background:#e5e7eb}
 .ig{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.ib{background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;padding:9px 12px}
-.ib label{font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;display:block;margin-bottom:2px}
-.ib span{font-size:14px;color:#1f2937;font-weight:600;word-break:break-all}
-.ib input,.ib select,.ib textarea{width:100%;padding:6px 8px;border:2px solid #e5e7eb;border-radius:6px;font-size:14px;font-family:inherit;color:#1f2937;background:#fff;outline:none}
+.ib{background:var(--surf-soft);border:1px solid var(--hairline);border-radius:9px;padding:9px 12px}
+.ib label{font-size:10px;color:var(--ink-mid);font-weight:700;text-transform:uppercase;display:block;margin-bottom:2px}
+.ib span{font-size:14px;color:var(--ink-strong);font-weight:600;word-break:break-all}
+.ib input,.ib select,.ib textarea{width:100%;padding:6px 8px;border:2px solid var(--hairline);border-radius:6px;font-size:14px;font-family:inherit;color:var(--ink-strong);background:var(--surface);outline:none}
 .ib input:focus,.ib select:focus,.ib textarea:focus{border-color:#2563eb}
 .ib textarea{resize:vertical;min-height:50px}
 .ag{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.ai{display:flex;justify-content:space-between;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:7px 10px}
-.ai label{font-size:11px;color:#6b7280;font-weight:700}
-.ai span{font-size:12px;color:#1f2937;font-weight:600}
-.ai select{padding:4px 6px;border:2px solid #e5e7eb;border-radius:5px;font-size:12px;background:#fff;color:#1f2937;outline:none;max-width:160px}
+.ai{display:flex;justify-content:space-between;align-items:center;background:var(--surf-soft);border:1px solid var(--hairline);border-radius:7px;padding:7px 10px}
+.ai label{font-size:11px;color:var(--ink-mid);font-weight:700}
+.ai span{font-size:12px;color:var(--ink-strong);font-weight:600}
+.ai select{padding:4px 6px;border:2px solid var(--hairline);border-radius:5px;font-size:12px;background:var(--surface);color:var(--ink-strong);outline:none;max-width:160px}
 .cs{margin-bottom:16px}
 .presms-btn{background:#059669;color:#fff;border:none;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit;transition:all .15s;white-space:nowrap;box-shadow:0 1px 3px rgba(5,150,105,.25)}
 .presms-btn:hover{background:#047857;transform:translateY(-1px);box-shadow:0 3px 8px rgba(5,150,105,.35)}
@@ -225,9 +259,9 @@ tbody tr{cursor:pointer}
 .presms-btn.limit-reached{background:#dc2626;box-shadow:0 1px 3px rgba(220,38,38,.3)}
 .presms-btn.limit-reached:hover{background:#b91c1c}
 .presms-btn.limit-reached .sms-count-badge{background:rgba(255,255,255,.3);animation:pulse 1.6s infinite}
-.ct{font-size:13px;font-weight:800;color:#374151;margin-bottom:8px}
+.ct{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px}
 .spa-specs{margin:18px 0;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-cream);overflow:hidden}
-.spa-specs summary{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border-bottom:1px solid var(--border-soft);list-style:none;flex-wrap:wrap}
+.spa-specs summary{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-bottom:1px solid var(--border-soft);list-style:none;flex-wrap:wrap}
 .spa-specs summary::-webkit-details-marker{display:none}
 .spa-specs summary::before{content:"▶";font-size:10px;color:var(--text-tertiary);transition:transform .15s;flex-shrink:0;order:-1}
 .spa-specs[open] summary::before{transform:rotate(90deg)}
@@ -239,7 +273,7 @@ tbody tr{cursor:pointer}
 .spa-specs .ct.sub-ct{padding:6px 18px 4px;margin:0;font-size:11px;color:var(--text-secondary);background:var(--bg-cream);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border-soft)}
 .spa-specs .nb{margin:6px 18px 12px}
 .pdf-uploader{padding:12px 18px;background:linear-gradient(135deg,#fff8eb 0%,#fef3c7 100%);border-bottom:1px solid var(--border-soft);display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-.pdf-btn{padding:9px 16px;border-radius:8px;border:1.5px solid var(--aspen-orange);background:#fff;color:var(--aspen-orange);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
+.pdf-btn{padding:9px 16px;border-radius:8px;border:1.5px solid var(--aspen-orange);background:var(--surface);color:var(--aspen-orange);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
 .pdf-btn:hover{background:var(--aspen-orange);color:#fff}
 .pdf-btn:disabled{opacity:.55;cursor:wait}
 .pdf-help{font-size:11.5px;color:var(--text-secondary);font-weight:500;flex:1;min-width:140px}
@@ -251,12 +285,107 @@ tbody tr{cursor:pointer}
 @media(max-width:700px){.spa-specs .spec-grid{grid-template-columns:1fr}.spa-specs summary{padding:12px 14px}.spa-specs .spec-grid{padding:12px 14px}.spa-specs .ct.sub-ct{padding:6px 14px 4px}.spa-specs .nb{margin:6px 14px 10px}}
 .cg{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .ci{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:5px 4px;border-radius:6px;cursor:pointer;user-select:none;transition:background .1s;-webkit-tap-highlight-color:transparent}
-.ci:hover{background:#f3f4f6}
+.ci:hover{background:var(--surf-soft)}
 .ci:active{background:#e5e7eb}
 .ci.on{color:#059669}.ci.off{color:#c9cdd4}
 .cd{width:16px;height:16px;border-radius:50%;flex-shrink:0;transition:all .15s;cursor:pointer;min-width:16px;min-height:16px}
-.cd.on{background:#059669;border:2px solid #047857}.cd.off{background:#fff;border:2px solid #d1d5db}
-.nb{background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;padding:9px 12px;margin-bottom:8px;border-left:3px solid #2563eb}
+.cd.on{background:#059669;border:2px solid #047857}.cd.off{background:var(--surface);border:2px solid var(--hairline-2)}
+.nb{background:var(--surf-soft);border:1px solid var(--hairline);border-radius:9px;padding:9px 12px;margin-bottom:8px;border-left:3px solid #2563eb}
+/* Phase 1 filter controls (2026-06-14) */
+.techfilter{padding:8px 11px;border:1.5px solid var(--border-mid);border-radius:9px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--surface);outline:none;cursor:pointer;font-weight:600;max-width:180px}
+.techfilter:focus{border-color:var(--aspen-orange)}
+.returns-btn{padding:8px 13px;border:1.5px solid var(--border-mid);border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;color:var(--text-secondary);background:var(--surface);cursor:pointer;white-space:nowrap;transition:all .15s}
+.returns-btn:hover{border-color:var(--aspen-orange);color:var(--aspen-orange)}
+.returns-btn.on{background:var(--aspen-orange);border-color:var(--aspen-orange);color:#fff}
+.c-chip.return-chip{background:var(--surface)7ed;color:#c2410c;border-color:#fdba74;font-weight:700}
+/* ===== NOTIFICATIONS (Phase 4) ===== */
+.aspen-tab.has-alert{position:relative}
+.tab-alert-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;margin-left:6px;vertical-align:middle;box-shadow:0 0 0 0 rgba(220,38,38,.6);animation:alertPulse 1.8s infinite}
+.dark-toggle{padding:7px 10px!important;font-size:15px!important;line-height:1!important}
+/* ===== ACTIVITY LOG (Phase 3) ===== */
+.act-wrap{margin:16px 0 4px;border:1px solid var(--border-soft);border-radius:10px;background:var(--bg-card-soft);overflow:hidden}
+.act-wrap summary{padding:11px 14px;cursor:pointer;font-size:13px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;justify-content:space-between;list-style:none}
+.act-wrap summary::-webkit-details-marker{display:none}
+.act-count{background:var(--aspen-orange);color:#fff;font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px}
+.act-list{padding:4px 14px 12px;display:flex;flex-direction:column;gap:0}
+.act-row{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--border-soft)}
+.act-row:first-child{border-top:none}
+.act-dot{width:8px;height:8px;border-radius:50%;background:var(--aspen-orange);margin-top:4px;flex-shrink:0}
+.act-action{font-size:12.5px;font-weight:600;color:var(--text-primary);line-height:1.3}
+.act-meta{font-size:10.5px;color:var(--text-tertiary);font-weight:600;margin-top:1px}
+@keyframes alertPulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.55)}70%{box-shadow:0 0 0 6px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}
+/* ===== DAY ROUTE PLAN (Phase 6) ===== */
+.route-wrap{padding:0 14px 28px;max-width:760px;margin:0 auto}
+.route-inner{display:flex;flex-direction:column;gap:14px}
+.route-head h2{font-size:20px;font-weight:800;color:var(--text-primary);margin:8px 0 0}
+.route-nav{display:flex;align-items:center;gap:8px}
+.rn-btn{width:38px;height:38px;border:1.5px solid var(--border-mid);background:var(--surface);border-radius:9px;font-size:17px;font-weight:800;color:var(--text-primary);cursor:pointer}
+.rn-btn:hover{border-color:var(--aspen-orange);color:var(--aspen-orange)}
+.rn-date{flex:1;padding:9px 11px;border:1.5px solid var(--border-mid);border-radius:9px;font-size:14px;font-family:inherit;font-weight:700;color:var(--text-primary);background:var(--surface)}
+.rn-today{padding:9px 13px;border:1.5px solid var(--aspen-orange);background:var(--aspen-orange);color:#fff;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.route-day{font-size:13px;color:var(--text-secondary);font-weight:600}
+.route-empty{font-size:13px;color:var(--text-tertiary);padding:26px 10px;text-align:center;font-style:italic;background:var(--surf-soft);border-radius:12px}
+.route-go{display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#134A63,#1C8FA8);color:#fff;text-decoration:none;padding:13px 16px;border-radius:11px;font-size:14px;font-weight:800;box-shadow:var(--shadow-card)}
+.route-go:hover{filter:brightness(1.06)}
+.route-warn{font-size:11.5px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 11px;font-weight:600}
+.route-stops{display:flex;flex-direction:column;gap:8px}
+.route-stop{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:12px 14px;text-decoration:none;box-shadow:var(--shadow-card);transition:transform .12s}
+.route-stop:hover{transform:translateX(2px);border-color:var(--aspen-orange)}
+.route-stop.depot{background:var(--surf-soft);border-style:dashed}
+.rs-num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--aspen-orange);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.route-stop.depot .rs-num{background:var(--aspen-black)}
+.rs-body{flex:1;min-width:0}
+.rs-name{font-size:14px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:7px}
+.rs-return{background:#fff7ed;color:#c2410c;border:1px solid #fdba74;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:800}
+.rs-addr{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.rs-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:10.5px;font-weight:700}
+.rs-slot{background:var(--aspen-aqua,#4FC3D9);color:#08323d;padding:1px 7px;border-radius:5px}
+.rs-spa{color:var(--text-tertiary)}
+.rs-tech{color:#2563eb}
+@media(max-width:700px){.route-wrap{padding:0 10px 24px}}
+/* ===== DASHBOARD (Phase 2) ===== */
+.dash-wrap{padding:0 14px 28px;max-width:1100px;margin:0 auto}
+.dash-inner{display:flex;flex-direction:column;gap:16px}
+.dash-head{margin:6px 0 2px}
+.dash-head h2{font-size:20px;font-weight:800;color:var(--text-primary);margin:0}
+.dash-sub{font-size:13px;color:var(--text-secondary);font-weight:600;margin-top:2px}
+.dash-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.dash-kpi{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--bg-card);border:1px solid var(--border-soft);border-radius:12px;padding:14px 8px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow-card);font-family:inherit}
+.dash-kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-card-hover)}
+.dk-ico{font-size:18px}
+.dk-val{font-size:26px;font-weight:800;line-height:1}
+.dk-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);text-align:center}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dash-card{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow-card)}
+.dash-card.dash-full{grid-column:1/-1}
+.dash-card h3{font-size:14px;font-weight:800;color:var(--text-primary);margin:0 0 14px}
+.dash-empty{font-size:12px;color:var(--text-tertiary);padding:18px 6px;text-align:center;font-style:italic}
+/* tech performance */
+.tech-perf{display:flex;flex-direction:column;gap:11px}
+.tp-row{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:10px}
+.tp-name{font-size:12px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-bar-wrap{height:8px;background:var(--bg-card-soft);border-radius:5px;overflow:hidden}
+.tp-bar{height:100%;background:linear-gradient(90deg,var(--aspen-orange),var(--aspen-orange-dark));border-radius:5px;transition:width .4s}
+.tp-stats{display:flex;gap:7px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.tp-d{color:#2563eb}.tp-r{color:#c2410c}.tp-c{color:#059669}
+/* svg line */
+.dash-svg{width:100%;height:auto;display:block}
+.dsv-val{font-size:10px;font-weight:700;fill:var(--text-primary)}
+.dsv-lbl{font-size:9px;font-weight:600;fill:var(--text-tertiary)}
+/* svg bars */
+.dash-bars{display:flex;flex-direction:column;gap:8px}
+.db-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:10px}
+.db-lbl{font-size:11px;font-weight:700;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-track{height:18px;background:var(--bg-card-soft);border-radius:6px;overflow:hidden}
+.db-fill{height:100%;background:linear-gradient(90deg,#1C8FA8,#4FC3D9);border-radius:6px;transition:width .4s}
+.db-val{font-size:12px;font-weight:800;color:var(--text-primary);text-align:right}
+@media(max-width:700px){
+.dash-kpis{grid-template-columns:repeat(3,1fr)}
+.dash-grid{grid-template-columns:1fr}
+.dash-wrap{padding:0 10px 24px}
+.tp-row{grid-template-columns:74px 1fr auto}
+.db-row{grid-template-columns:84px 1fr 30px}
+}
 /* ===== COMPACT EDIT FORM (2026-06-12) =====
    The ticket form felt oversized/cluttered. Tighter cards, labels, inputs, grids and the
    post-delivery checklist — scoped to the edit modal (#md) so cards/boards stay untouched.
@@ -291,17 +420,17 @@ tbody tr{cursor:pointer}
 #md .cd{width:14px;height:14px;min-width:14px;min-height:14px}
 #md .pst-pill{padding:5px 10px;font-size:12px}
 }
-.nb label{font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px}
-.nb p{font-size:13px;color:#374151;line-height:1.5}
-.nb textarea{width:100%;padding:6px 8px;border:2px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1f2937;outline:none;resize:vertical;min-height:44px}
-.mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:2px solid #e5e7eb}
+.nb label{font-size:10px;color:var(--ink-mid);font-weight:700;text-transform:uppercase;display:block;margin-bottom:3px}
+.nb p{font-size:13px;color:var(--ink);line-height:1.5}
+.nb textarea{width:100%;padding:6px 8px;border:2px solid var(--hairline);border-radius:6px;font-size:13px;font-family:inherit;color:var(--ink-strong);outline:none;resize:vertical;min-height:44px}
+.mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:2px solid var(--hairline)}
 .mbtn{padding:9px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none}
-.mbtn-c{background:#f3f4f6;color:#6b7280;border:2px solid #e5e7eb}
+.mbtn-c{background:var(--surf-soft);color:var(--ink-mid);border:2px solid var(--hairline)}
 .mbtn-s{background:#059669;color:#fff}.mbtn-s:hover{background:#047857}
 .mbtn-e{background:#2563eb;color:#fff}.mbtn-e:hover{background:#1d4ed8}
 .mbtn-complete{background:#059669;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;gap:6px}
 .mbtn-complete:hover{background:#047857}
-.mbtn-complete.disabled{background:#d1d5db;color:#9ca3af;cursor:not-allowed}
+.mbtn-complete.disabled{background:#d1d5db;color:var(--ink-soft);cursor:not-allowed}
 .mbtn-complete.disabled:hover{background:#d1d5db}
 .nbtn-save{background:#2563eb;color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}
 .nbtn-save:hover{background:#1d4ed8}
@@ -314,9 +443,9 @@ tbody tr{cursor:pointer}
 .tv-dl{background:var(--aspen-orange);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;font-family:inherit;transition:background .15s}
 .tv-dl:hover{background:var(--aspen-orange-dark)}
 .tv-dl.danger{background:#dc2626}.tv-dl.danger:hover{background:#b91c1c}
-.tv-dl.disabled{background:#d1d5db;color:#9ca3af;cursor:not-allowed}
+.tv-dl.disabled{background:#d1d5db;color:var(--ink-soft);cursor:not-allowed}
 .hidden{display:none!important}
-.empty{grid-column:1/-1;text-align:center;padding:50px;color:#6b7280;font-size:15px}
+.empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--ink-mid);font-size:15px}
 /* === MOBILE: 700px and below — fully reorganized for usability === */
 @media(max-width:700px){
 body{font-size:14px}
@@ -360,7 +489,7 @@ body{font-size:14px}
 .aspen-subtitle .delivery-icon{width:18px;height:15px}
 
 /* Tabs bar — sticky, two-row layout: tabs on top scrolling, actions below */
-.aspen-tabs-bar{padding:0;flex-direction:column;align-items:stretch;gap:0;background:#fff}
+.aspen-tabs-bar{padding:0;flex-direction:column;align-items:stretch;gap:0;background:var(--surface)}
 .aspen-tabs{padding:0 14px;border-bottom:1px solid var(--border-soft);overflow-x:auto;scrollbar-width:none}
 .aspen-tabs::-webkit-scrollbar{display:none}
 .aspen-tab{padding:11px 0 9px;font-size:10px;margin-right:16px;letter-spacing:.06em;gap:6px;flex-shrink:0}
@@ -372,8 +501,8 @@ body{font-size:14px}
 .aspen-action-btn.primary{flex:1 1 auto;font-weight:800;min-width:130px}
 
 /* View toggle stays inline with primary, never wraps as a separate row */
-.aspen-view-toggle{order:0;width:auto;flex:0 0 auto;justify-content:center;padding:2px;gap:0}
-.vt-btn{flex:0 0 36px;padding:8px 0;min-width:36px;font-size:13px}
+.aspen-view-toggle{order:0;flex:1 1 100%;width:100%;justify-content:stretch;padding:3px;gap:3px}
+.vt-btn{flex:1 1 0;min-width:0;min-height:44px;padding:0 4px;font-size:17px}
 
 /* Secondary actions (Users / Google Calendar) — smaller, clearly secondary */
 #usersBtn,#gcalBtn{flex:1 1 auto;font-size:11.5px;padding:7px 10px;min-height:34px;overflow:hidden;text-overflow:ellipsis}
@@ -480,7 +609,7 @@ th,td{padding:7px 6px}
 .aspen-action-btn{padding:8px 10px;font-size:11.5px}
 .aspen-action-btn.primary{min-width:110px}
 #usersBtn,#gcalBtn{font-size:11px;padding:6px 8px}
-.vt-btn{flex:0 0 32px;min-width:32px;padding:7px 0}
+.vt-btn{flex:1 1 0;min-width:0;min-height:44px;padding:0 2px;font-size:16px}
 
 .cg{grid-template-columns:repeat(2,1fr)}
 .board{padding:0 10px 20px}
@@ -520,31 +649,31 @@ th,td{padding:7px 6px}
 .mdl.mdl-wide{max-width:1000px}
 .mdl.mdl-xl{max-width:1180px}
 }
-#loading-ov{position:fixed;inset:0;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .3s}
+#loading-ov{position:fixed;inset:0;background:var(--surf-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .3s}
 #loading-ov.hide{opacity:0;pointer-events:none}
-.ld-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top:4px solid #2563eb;border-radius:50%;animation:spin .8s linear infinite}
+.ld-spinner{width:40px;height:40px;border:4px solid var(--hairline);border-top:4px solid #2563eb;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.ld-text{margin-top:14px;font-size:15px;font-weight:700;color:#6b7280;font-family:'Segoe UI',system-ui,sans-serif}
+.ld-text{margin-top:14px;font-size:15px;font-weight:700;color:var(--ink-mid);font-family:'Segoe UI',system-ui,sans-serif}
 .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:6px;vertical-align:middle}
 .sync-dot.on{background:#059669}.sync-dot.off{background:#dc2626}
 /* Google Calendar Sync */
 /* Google Calendar Sync Panel */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.gcal-panel{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:18px;margin:14px 40px 0;display:none;box-shadow:var(--shadow-card)}
+.gcal-panel{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:18px;margin:14px 40px 0;display:none;box-shadow:var(--shadow-card)}
 .gcal-panel.open{display:block}
-.gcal-panel h3{font-size:15px;font-weight:800;color:#111827;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.gcal-panel h3{font-size:15px;font-weight:800;color:var(--ink-strong);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .gcal-panel .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.gcal-panel .info{font-size:12px;color:#6b7280;line-height:1.5}
-.gcal-panel select,.gcal-panel input{padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px;color:#1f2937;outline:none;font-family:inherit}
+.gcal-panel .info{font-size:12px;color:var(--ink-mid);line-height:1.5}
+.gcal-panel select,.gcal-panel input{padding:7px 10px;border:2px solid var(--hairline);border-radius:7px;font-size:13px;color:var(--ink-strong);outline:none;font-family:inherit}
 .gcal-panel select:focus,.gcal-panel input:focus{border-color:#4285F4}
 .gcal-panel .pbtn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#4285F4;color:#fff}
 .gcal-panel .pbtn:hover{background:#3367d6}
 .gcal-panel .pbtn.danger{background:#dc2626}.gcal-panel .pbtn.danger:hover{background:#b91c1c}
 .gcal-panel .pbtn.gray{background:#6b7280}.gcal-panel .pbtn.gray:hover{background:#4b5563}
-.gcal-stat{display:inline-block;font-size:11px;font-weight:700;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:6px}
+.gcal-stat{display:inline-block;font-size:11px;font-weight:700;color:var(--ink-mid);background:var(--surf-soft);padding:4px 10px;border-radius:6px}
 .gcal-stat.ok{color:#059669;background:#dcfce7}
 .gcal-stat.err{color:#dc2626;background:#fef2f2}
-.gcal-cf{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#374151;cursor:pointer;padding:4px 9px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;user-select:none}
+.gcal-cf{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink);cursor:pointer;padding:4px 9px;background:var(--surface);border:1px solid var(--hairline);border-radius:6px;user-select:none}
 .gcal-cf:hover{border-color:#4285F4}
 .gcal-cf input{margin:0;cursor:pointer}
 .gcal-cf .cf-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,0.1)}
@@ -556,7 +685,7 @@ th,td{padding:7px 6px}
 .miss-btn{background:#fef2f2;color:#dc2626;border:2px solid #dc2626;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;letter-spacing:.02em;transition:all .15s}
 /* Payment Status pill buttons (Paid / Check / Financed / Cash) */
 .pst-row{display:flex;flex-wrap:wrap;gap:8px}
-.pst-pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:2px solid transparent;background:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.005em;white-space:nowrap}
+.pst-pill{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:2px solid transparent;background:var(--surface);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.005em;white-space:nowrap}
 .pst-pill:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
 .pst-pill.pst-active{box-shadow:0 4px 12px rgba(0,0,0,.12)}
 /* Cash gets an extra-attention pulse when active to make it impossible to miss */
@@ -569,7 +698,7 @@ th,td{padding:7px 6px}
 .pst-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent}
 .pst-badge.paid{background:#dcfce7;color:#059669;border-color:#a7f3d0}
 .pst-badge.check{background:#fef3c7;color:#b45309;border-color:#fde68a}
-.pst-badge.financed{background:#f3f4f6;color:#4b5563;border-color:#e5e7eb}
+.pst-badge.financed{background:var(--surf-soft);color:#4b5563;border-color:#e5e7eb}
 .pst-badge.cash{background:#dc2626;color:#fff;border-color:#991b1b;animation:pst-cash-pulse-mini 1.4s ease-in-out infinite}
 @keyframes pst-cash-pulse-mini{
 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}
@@ -578,27 +707,27 @@ th,td{padding:7px 6px}
 .miss-btn:hover{background:#dc2626;color:#fff}
 .miss-btn.on{background:#dc2626;color:#fff}
 /* Date sort button */
-.dsort{padding:7px 14px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.dsort{padding:7px 14px;border-radius:8px;border:2px solid var(--hairline);background:var(--surface);color:var(--ink-mid);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
 .dsort:hover{border-color:#93c5fd}
 .dsort.active{background:#eff6ff;color:#1d4ed8;border-color:#1d4ed8}
 /* Calendar */
 .cal-wrap{padding:0 40px 40px}
 .cal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .cal-nav{display:flex;align-items:center;gap:8px}
-.cal-nbtn{padding:6px 12px;border-radius:7px;border:2px solid #e5e7eb;background:#fff;color:#374151;font-weight:700;font-size:13px;cursor:pointer}
+.cal-nbtn{padding:6px 12px;border-radius:7px;border:2px solid var(--hairline);background:var(--surface);color:var(--ink);font-weight:700;font-size:13px;cursor:pointer}
 .cal-nbtn:hover{border-color:#93c5fd;background:#eff6ff}
-.cal-title{font-size:18px;font-weight:800;color:#111827;margin-left:8px}
+.cal-title{font-size:18px;font-weight:800;color:var(--ink-strong);margin-left:8px}
 .cal-views{display:flex;gap:4px}
-.cal-vbtn{padding:6px 14px;border-radius:7px;border:2px solid #e5e7eb;background:#fff;color:#6b7280;font-weight:700;font-size:12px;cursor:pointer;transition:all .15s}
+.cal-vbtn{padding:6px 14px;border-radius:7px;border:2px solid var(--hairline);background:var(--surface);color:var(--ink-mid);font-weight:700;font-size:12px;cursor:pointer;transition:all .15s}
 .cal-vbtn.act{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:2px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff}
-.cal-dh{background:#f9fafb;padding:8px 4px;text-align:center;font-size:11px;font-weight:800;color:#6b7280;text-transform:uppercase;border-bottom:2px solid #e5e7eb}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:2px solid var(--hairline);border-radius:12px;overflow:hidden;background:var(--surface)}
+.cal-dh{background:var(--surf-soft);padding:8px 4px;text-align:center;font-size:11px;font-weight:800;color:var(--ink-mid);text-transform:uppercase;border-bottom:2px solid var(--hairline)}
 .cal-cell{min-height:115px;border:1px solid #f3f4f6;padding:4px 6px;position:relative;cursor:pointer;transition:background .1s;vertical-align:top}
 .cal-cell:hover{background:#eff6ff}
 .cal-cell.today{background:#eff6ff;border-color:#93c5fd}
-.cal-cell.other{background:#f9fafb}
+.cal-cell.other{background:var(--surf-soft)}
 .cal-cell.other .cal-dn{color:#d1d5db}
-.cal-dn{font-size:12px;font-weight:700;color:#374151;margin-bottom:2px}
+.cal-dn{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:2px}
 .cal-ev{font-size:10px;padding:3px 6px;border-radius:5px;margin-bottom:3px;cursor:pointer;font-weight:600;display:block;line-height:1.25;border-left:3px solid transparent;overflow:hidden}
 .cal-ev .ce-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .cal-ev .ce-sub{font-size:9px;font-weight:500;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;margin-top:1px}
@@ -606,28 +735,28 @@ th,td{padding:7px 6px}
 .cal-ev.delivered{background:#dbeafe;color:#1d4ed8;border-left-color:#2563eb}
 .cal-ev.complete{background:#dcfce7;color:#059669;border-left-color:#059669}
 .cal-ev.overdue{background:#fef2f2;color:#dc2626;border-left-color:#dc2626}
-.cal-ev.action{background:#fff7ed;color:#c2410c;border-left-color:#ea580c}
+.cal-ev.action{background:var(--surface)7ed;color:#c2410c;border-left-color:#ea580c}
 .cal-ev:hover{opacity:.8}
 .cal-more{font-size:10px;color:#2563eb;font-weight:700;cursor:pointer;padding:1px 4px}
 /* Week/Day view */
-.cal-wk{border:2px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff}
+.cal-wk{border:2px solid var(--hairline);border-radius:12px;overflow:hidden;background:var(--surface)}
 .cal-wk-row{display:grid;grid-template-columns:80px 1fr;border-bottom:1px solid #f3f4f6;min-height:60px}
 .cal-wk-row:last-child{border-bottom:none}
-.cal-wk-label{padding:10px 8px;background:#f9fafb;font-size:12px;font-weight:700;color:#6b7280;border-right:2px solid #e5e7eb;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.cal-wk-label .cw-day{font-size:22px;font-weight:800;color:#111827;line-height:1}
+.cal-wk-label{padding:10px 8px;background:var(--surf-soft);font-size:12px;font-weight:700;color:var(--ink-mid);border-right:2px solid var(--hairline);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.cal-wk-label .cw-day{font-size:22px;font-weight:800;color:var(--ink-strong);line-height:1}
 .cal-wk-label.today{background:#eff6ff}
 .cal-wk-label.today .cw-day{color:#1d4ed8}
 .cal-wk-evs{padding:8px;display:flex;flex-direction:column;gap:4px}
 .cal-wk-ev{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;cursor:pointer;transition:background .1s}
-.cal-wk-ev:hover{background:#f3f4f6}
+.cal-wk-ev:hover{background:var(--surf-soft)}
 .cal-wk-ev .ev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.cal-wk-ev .ev-name{font-size:13px;font-weight:700;color:#111827;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cal-wk-ev .ev-time{font-size:11px;color:#6b7280;font-weight:600}
-.cal-wk-ev .ev-spa{font-size:11px;color:#6b7280;min-width:80px}
+.cal-wk-ev .ev-name{font-size:13px;font-weight:700;color:var(--ink-strong);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-wk-ev .ev-time{font-size:11px;color:var(--ink-mid);font-weight:600}
+.cal-wk-ev .ev-spa{font-size:11px;color:var(--ink-mid);min-width:80px}
 @media(max-width:768px){.cal-cell{min-height:60px;padding:2px 3px}.cal-dn{font-size:11px}.cal-ev{font-size:9px;padding:1px 3px}.cal-title{font-size:15px}.cal-wk-row{grid-template-columns:55px 1fr}.cal-wk-label .cw-day{font-size:18px}}
 /* === AUTH SCREEN === */
 .auth-screen{position:fixed;inset:0;background:var(--aspen-black);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px}
-.auth-card{background:#fff;border-radius:16px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.auth-card{background:var(--surface);border-radius:16px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 .auth-leaf{width:56px;height:56px;margin:0 auto 12px;display:block}
 .auth-card h1{font-size:24px;font-weight:800;letter-spacing:.04em;color:var(--text-primary);margin-bottom:4px}
 .auth-subtitle{color:var(--aspen-orange);font-size:11px;font-weight:700;letter-spacing:.3em;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:10px}
@@ -635,7 +764,7 @@ th,td{padding:7px 6px}
 .auth-form label{font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:.05em;text-transform:uppercase}
 .auth-form input{padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
 .auth-form input:focus{border-color:var(--aspen-orange)}
-.auth-form .auth-select{padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;width:100%;background:#fff;cursor:pointer;color:var(--text-primary);-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%236b6357' d='M6 8L0 0h12z'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.auth-form .auth-select{padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;width:100%;background:var(--surface);cursor:pointer;color:var(--text-primary);-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%236b6357' d='M6 8L0 0h12z'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .auth-form .auth-select:focus{border-color:var(--aspen-orange)}
 .auth-form button{padding:12px 20px;background:var(--aspen-orange);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.02em;transition:background .15s}
 .auth-form button:hover{background:var(--aspen-orange-dark)}
@@ -656,7 +785,7 @@ th,td{padding:7px 6px}
 .tech-hdr{background:var(--aspen-black);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) max(18px,env(safe-area-inset-right,0px)) 14px max(18px,env(safe-area-inset-left,0px));flex-shrink:0}
 .tech-hdr-inner{display:flex;justify-content:space-between;align-items:center;max-width:600px;margin:0 auto}
 .tech-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:600px;margin:0 auto;width:100%;padding:14px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 40px)}
-.tech-date-bar{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:10px;margin-bottom:14px;box-shadow:var(--shadow-card)}
+.tech-date-bar{display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:10px;margin-bottom:14px;box-shadow:var(--shadow-card)}
 .tech-nav{padding:8px 14px;background:var(--bg-cream);border:1px solid var(--border-soft);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-primary);font-family:inherit}
 .tech-nav:hover{background:var(--border-soft)}
 .tech-nav.today{background:var(--aspen-orange);color:#fff;border-color:var(--aspen-orange);font-size:12px;font-weight:700}
@@ -667,14 +796,14 @@ th,td{padding:7px 6px}
 .tech-empty .title{font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px}
 .tech-empty .sub{font-size:13px;color:var(--text-tertiary)}
 
-.tech-card{background:#fff;border:1px solid var(--border-soft);border-left:5px solid var(--aspen-orange);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow-card);transition:all .15s}
+.tech-card{background:var(--surface);border:1px solid var(--border-soft);border-left:5px solid var(--aspen-orange);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow-card);transition:all .15s}
 .tech-card:hover{box-shadow:var(--shadow-card-hover)}
 .tech-card.mine{border-left-color:#059669;background:linear-gradient(to right,#f0fdf4 0%,#fff 30%)}
 .tech-card.delivered{border-left-color:#059669;opacity:.85}
 .tech-card.delivered::after{content:"✓ DELIVERED";float:right;font-size:10px;font-weight:800;color:#059669;background:#dcfce7;padding:3px 8px;border-radius:5px}
 .assign-pill{display:inline-block;font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.04em;margin-left:8px;vertical-align:middle}
 .assign-pill.mine{background:#dcfce7;color:#059669;border:1px solid #22c55e}
-.assign-pill.other{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+.assign-pill.other{background:var(--surf-soft);color:var(--ink-mid);border:1px solid var(--hairline-2)}
 .tech-card .name{font-size:17px;font-weight:700;margin-bottom:6px}
 .tech-card .row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);margin-bottom:4px}
 .tech-card .icon{width:14px;display:inline-block;flex-shrink:0;opacity:.7}
@@ -686,11 +815,11 @@ th,td{padding:7px 6px}
 .tech-detail .back-bar{position:sticky;top:0;background:var(--aspen-black);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) max(18px,env(safe-area-inset-right,0px)) 14px max(18px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px;z-index:5}
 .tech-detail .back-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:600}
 .tech-detail .back-btn:hover{background:rgba(255,255,255,.2)}
-.tech-detail .tech-section{background:#fff;border-radius:12px;margin:14px;padding:16px 18px;border:1px solid var(--border-soft);box-shadow:var(--shadow-card)}
+.tech-detail .tech-section{background:var(--surface);border-radius:12px;margin:14px;padding:16px 18px;border:1px solid var(--border-soft);box-shadow:var(--shadow-card)}
 .tech-detail h2{font-size:20px;font-weight:800;margin-bottom:6px;line-height:1.2}
 .tech-detail .meta{font-size:13px;color:var(--text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:8px}
 .tech-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:14px;max-width:600px;margin:0 auto}
-.tech-action-btn{padding:18px 12px;background:#fff;border:1.5px solid var(--border-soft);border-radius:14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-primary);transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;box-shadow:var(--shadow-card)}
+.tech-action-btn{padding:18px 12px;background:var(--surface);border:1.5px solid var(--border-soft);border-radius:14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-primary);transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;box-shadow:var(--shadow-card)}
 .tech-action-btn:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-1px)}
 .tech-action-btn .ico{font-size:28px}
 .tech-action-btn.phone{border-color:#10b981;color:#047857}
@@ -704,6 +833,78 @@ th,td{padding:7px 6px}
 @keyframes bell-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18) rotate(-8deg)}}
 .tech-action-btn.deliver{border-color:#059669;color:#047857;background:#f0fdf4}
 .tech-action-btn.deliver.done{background:#dcfce7;cursor:default}
+/* ===== TECH DETAIL — Fusión A (Express): immersive header + fixed action dock + swipe ===== */
+.td2-inner{max-width:600px;margin:0 auto;padding:14px 0 calc(env(safe-area-inset-bottom,0px) + 150px)}
+.td2-imm{position:relative;background:linear-gradient(150deg,var(--aspen-orange),var(--aspen-orange-dark));color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) max(16px,env(safe-area-inset-right,0px)) 18px max(16px,env(safe-area-inset-left,0px));overflow:hidden}
+.td2-imm::after{content:"🛁";position:absolute;right:-12px;bottom:-22px;font-size:120px;opacity:.12;pointer-events:none}
+.td2-back{background:rgba(255,255,255,.2);border:none;color:#fff;width:36px;height:36px;border-radius:10px;font-size:17px;cursor:pointer;margin-bottom:10px;font-family:inherit;transition:transform .12s}
+.td2-back:active{transform:scale(.92)}
+.td2-ib{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;opacity:.92;position:relative}
+.td2-imm h2{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:7px 0 2px;position:relative;line-height:1.15}
+.td2-sp{font-size:13px;opacity:.92;font-weight:600;position:relative}
+.td2-chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;position:relative}
+.td2-chip{background:rgba(255,255,255,.22);color:#fff;font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;display:flex;align-items:center;gap:5px}
+.td2-chip.cash{background:#fff;color:#dc2626;animation:pulse-cash 1.5s ease-in-out infinite}
+.td2-chip.bal{background:#fff;color:#dc2626}
+@keyframes pulse-cash{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.55)}50%{box-shadow:0 0 0 6px rgba(255,255,255,0)}}
+.td2-dock{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;background:rgba(255,255,255,.9);backdrop-filter:saturate(180%) blur(18px);-webkit-backdrop-filter:saturate(180%) blur(18px);border-top:1px solid var(--border-soft);padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 11px);box-shadow:0 -4px 20px rgba(0,0,0,.08);z-index:56}
+.td2-mini-row{display:flex;gap:7px;margin-bottom:9px}
+.td2-mini{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:12px;border:1px solid var(--border-soft);background:var(--surface);font-family:inherit;font-size:10.5px;font-weight:700;color:var(--text-secondary);cursor:pointer;transition:transform .12s}
+.td2-mini:active{transform:scale(.93)}
+.td2-mini .ic{font-size:19px}
+.td2-mini.on{border-color:#0284c7;background:#e0f2fe;color:#0c4a6e}
+.td2-swipe-wrap{position:relative;border-radius:15px;overflow:hidden}
+.td2-swipe-bg{position:absolute;inset:0;background:linear-gradient(100deg,#059669,#047857);display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-weight:800;font-size:16px}
+.td2-swiper{position:relative;display:flex;align-items:center;gap:11px;background:#fff;border:1.5px solid #059669;border-radius:15px;padding:11px 15px;cursor:grab;will-change:transform;box-shadow:var(--shadow-card);touch-action:pan-y;user-select:none}
+.td2-swiper.drag{transition:none}
+.td2-swiper:not(.drag){transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.td2-knob{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#059669,#047857);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;flex-shrink:0}
+.td2-swtx{font-weight:800;font-size:14.5px;color:#047857}
+.td2-swar{margin-left:auto;color:#059669;font-size:17px;animation:sw-nudge 1.5s infinite}
+@keyframes sw-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+.td2-delivered{display:flex;align-items:center;justify-content:center;gap:9px;background:#dcfce7;color:#047857;font-weight:800;font-size:15px;border-radius:15px;padding:14px;border:1.5px solid #86efac}
+@media(prefers-reduced-motion:reduce){.td2-chip.cash,.td2-swar{animation:none}}
+/* ===== TECH LIST — native fused cards (B+C): rail + status band + inline actions + swipe ===== */
+.tlseg{display:flex;gap:2px;background:var(--bg-cream);border:1px solid var(--border-soft);border-radius:12px;padding:3px;margin-bottom:13px}
+.tlseg button{flex:1;border:none;background:transparent;color:var(--text-secondary);font-family:inherit;font-weight:700;font-size:12.5px;padding:9px 0;border-radius:9px;cursor:pointer;transition:background .2s,color .2s}
+.tlseg button.on{background:var(--surface);color:var(--aspen-black);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.tlseg button span{display:inline-block;margin-left:4px;font-size:10px;opacity:.6;font-weight:800}
+.tlswipe{position:relative;border-radius:16px;margin-bottom:11px;overflow:hidden;opacity:0;transform:translateY(12px);animation:tl-rise .45s cubic-bezier(.22,.61,.36,1) forwards}
+.tlswipe:nth-child(2){animation-delay:.04s}.tlswipe:nth-child(3){animation-delay:.09s}.tlswipe:nth-child(4){animation-delay:.14s}.tlswipe:nth-child(5){animation-delay:.19s}.tlswipe:nth-child(6){animation-delay:.24s}
+@keyframes tl-rise{to{opacity:1;transform:translateY(0)}}
+.tlswipe-bg{position:absolute;inset:0;background:linear-gradient(100deg,#059669,#047857);display:flex;align-items:center;padding-left:22px;color:#fff;font-weight:800;font-size:15px;gap:8px}
+.tlswipe-bg .chk{font-size:20px;transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.tlswipe.armed .tlswipe-bg .chk{transform:scale(1.35)}
+.tlcard{position:relative;display:flex;background:var(--surface);border:1px solid var(--border-soft);border-radius:16px;box-shadow:var(--shadow-card);overflow:hidden;cursor:pointer;will-change:transform}
+.tlcard.drag{transition:none}.tlcard:not(.drag){transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.tlrail{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#fff;position:relative}
+.tlrail.am{background:linear-gradient(165deg,#1C8FA8,#15768c)}
+.tlrail.pm{background:linear-gradient(165deg,var(--aspen-orange),var(--aspen-orange-dark))}
+.tlrail.allday{background:linear-gradient(165deg,#64748b,#475569)}
+.tlrail.done{background:linear-gradient(165deg,#059669,#047857)}
+.tlrail .slot{font-weight:800;font-size:16px;letter-spacing:-.02em;line-height:1}
+.tlrail .seq{font-size:8.5px;font-weight:700;opacity:.85;text-transform:uppercase;letter-spacing:.04em}
+.tlrail .dot{position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
+.tlbody{flex:1;min-width:0;padding:11px 12px 12px}
+.tlband{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.tlstatus{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:20px}
+.tlstatus.mine{background:#e7f8f0;color:#059669}.tlstatus.pend{background:#fdebd9;color:var(--aspen-orange-dark)}
+.tlstatus.done{background:#e7f8f0;color:#059669}.tlstatus.hold{background:#f3e8ff;color:#7c3aed}
+.tlassign{font-size:10.5px;font-weight:700;color:var(--ink-soft);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.tlcust{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.tlname{font-weight:700;font-size:16.5px;letter-spacing:-.01em;color:var(--text-primary);line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tlspa{font-size:12px;color:var(--text-secondary);font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tladdr{display:flex;gap:7px;align-items:flex-start;font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:9px;line-height:1.35}
+.tlact{display:flex;gap:8px}
+.tlbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;border-radius:11px;border:none;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;transition:transform .12s}
+.tlbtn:active{transform:scale(.96)}
+.tlbtn.map{background:#0e5f78;color:#fff}.tlbtn.call{background:var(--aspen-orange);color:#fff}
+.tlhint{display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;color:var(--ink-soft);font-weight:700;margin-top:8px;opacity:.65}
+.tlhint .ar{animation:sw-nudge 1.6s ease-in-out infinite}
+.tlcard.isdone .tlbody{opacity:.72}
+.tldone-stamp{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:11.5px;color:#059669;background:#e7f8f0;padding:6px 11px;border-radius:10px}
+.tlhold-row{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#7c3aed;background:#f6efff;border-radius:9px;padding:7px 10px;margin-top:7px}
+@media(prefers-reduced-motion:reduce){.tlswipe{animation:none;opacity:1;transform:none}.tlhint .ar{animation:none}}
 .tech-addr-card{display:block;text-decoration:none;color:inherit;border-color:#3b82f6 !important;background:#eff6ff;transition:all .15s;cursor:pointer}
 .tech-addr-card:hover{background:#dbeafe;box-shadow:var(--shadow-card-hover)}
 .tech-addr-card:active{transform:scale(.99)}
@@ -739,7 +940,7 @@ th,td{padding:7px 6px}
 }
 /* Signature Pad — full-screen modal where customer signs with finger or mouse */
 .signature-modal{background:rgba(15,23,42,.85);padding:0;display:flex;align-items:center;justify-content:center;z-index:200}
-.signature-modal .signature-box{background:#fff;border-radius:16px;width:96vw;max-width:720px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.4)}
+.signature-modal .signature-box{background:var(--surface);border-radius:16px;width:96vw;max-width:720px;max-height:96vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.4)}
 .sig-header{padding:18px 22px 14px;border-bottom:1px solid var(--border-soft);background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%)}
 .sig-header h3{margin:0 0 4px;font-size:18px;color:#0c4a6e;font-weight:800}
 .sig-header .sig-sub{font-size:13px;color:#0369a1;font-weight:600}
@@ -748,12 +949,12 @@ th,td{padding:7px 6px}
 .sig-header .sig-pdf-note.warn{color:#b45309;background:#fef3c7}
 .sig-header .sig-existing-note{font-size:11px;color:#dc2626;font-weight:700;margin-top:6px}
 .sig-canvas-wrap{padding:14px 22px;background:#f8fafc;position:relative}
-#signature-canvas{width:100%;height:240px;background:#fff;border:2px dashed #cbd5e1;border-radius:10px;cursor:crosshair;touch-action:none;display:block}
+#signature-canvas{width:100%;height:240px;background:var(--surface);border:2px dashed #cbd5e1;border-radius:10px;cursor:crosshair;touch-action:none;display:block}
 .sig-x-line{position:absolute;left:34px;bottom:30px;font-size:11px;color:#94a3b8;font-family:monospace;letter-spacing:1px;pointer-events:none;font-weight:700}
-.sig-actions{display:flex;gap:10px;padding:14px 22px 18px;flex-wrap:wrap;justify-content:flex-end;border-top:1px solid var(--border-soft);background:#fff}
+.sig-actions{display:flex;gap:10px;padding:14px 22px 18px;flex-wrap:wrap;justify-content:flex-end;border-top:1px solid var(--border-soft);background:var(--surface)}
 .sig-btn{padding:11px 18px;border-radius:9px;font-size:14px;font-weight:700;border:1.5px solid;cursor:pointer;transition:all .15s;font-family:inherit}
 .sig-btn.clear{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
-.sig-btn.cancel{background:#fff;border-color:var(--border-soft);color:var(--text-secondary)}
+.sig-btn.cancel{background:var(--surface);border-color:var(--border-soft);color:var(--text-secondary)}
 .sig-btn.save{background:#059669;border-color:#059669;color:#fff;flex:1;min-width:160px}
 .sig-btn.save:hover{background:#047857}
 .sig-btn.save:disabled{opacity:.6;cursor:wait}
@@ -767,7 +968,7 @@ th,td{padding:7px 6px}
 }
 
 .tech-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.tech-modal .box{background:#fff;border-radius:14px;max-width:380px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:calc(100vh - 36px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.tech-modal .box{background:var(--surface);border-radius:14px;max-width:380px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:calc(100vh - 36px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .tech-modal h3{font-size:17px;font-weight:800;margin-bottom:6px}
 .tech-modal .sub{font-size:13px;color:var(--text-secondary);margin-bottom:16px}
 .tech-modal .btns{display:flex;flex-direction:column;gap:8px}
@@ -783,7 +984,7 @@ th,td{padding:7px 6px}
 
 /* === USERS MODAL === */
 .users-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
-.user-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:#fff}
+.user-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--surface)}
 .user-row .u-avatar{width:36px;height:36px;border-radius:50%;background:var(--aspen-orange);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
 .user-row .u-info{flex:1;min-width:0}
 .user-row .u-name{font-size:14px;font-weight:700;color:var(--text-primary)}
@@ -841,7 +1042,7 @@ th,td{padding:7px 6px}
 /* ===== MODAL: sectioned-card look (matches approved mockup) — CSS only, scoped to #md ===== */
 #md .cs{background:#faf7f1 !important;border:1px solid var(--border-soft) !important;border-radius:12px !important;padding:15px 16px !important;margin-bottom:13px !important;box-shadow:0 1px 2px rgba(94,67,41,.04) !important}
 #md .ct{color:var(--aspen-orange-dark) !important;text-transform:uppercase !important;letter-spacing:.05em !important;font-size:11.5px !important;margin-bottom:12px !important}
-#md .nb{background:#fff !important;border:1px solid var(--border-soft) !important;border-left:3px solid var(--aspen-orange) !important}
+#md .nb{background:var(--surface) !important;border:1px solid var(--border-soft) !important;border-left:3px solid var(--aspen-orange) !important}
 #md .mdl,.mdl{border-radius:16px !important}
 
 
@@ -942,10 +1143,13 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <div class="aspen-tabs-actions">
 <button class="aspen-action-btn primary" onclick="openForm()">+ New Delivery</button>
 <div class="aspen-view-toggle">
+<button class="vt-btn" id="tbDash" onclick="setTab('dash')" title="Dashboard">&#128202;</button>
 <button class="vt-btn act" id="tbBoard" onclick="setTab('board')" title="Card view">&#9647;&#9647;</button>
 <button class="vt-btn" id="tbTable" onclick="setTab('table')" title="Table view">&#8801;</button>
 <button class="vt-btn" id="tbCal" onclick="setTab('cal')" title="Calendar view">&#128197;</button>
+<button class="vt-btn" id="tbRoute" onclick="setTab('route')" title="Day route plan">&#128506;&#65039;</button>
 </div>
+<button class="aspen-action-btn outline dark-toggle" id="darkToggle" onclick="toggleDarkMode()" title="Toggle dark mode">&#127769;</button>
 <button class="aspen-action-btn outline" id="usersBtn" onclick="openUsersPanel()" style="display:none" title="Manage Users">&#128100; Users</button>
 <button class="aspen-action-btn outline" id="backupBtn" onclick="openBackupCenter()" style="display:none" title="Backup &amp; Restore">&#128737;&#65039; Backup</button>
 <button class="aspen-action-btn outline" id="gcalBtn" onclick="toggleGcalPanel()" title="Google Calendar Sync"><span class="gcal-dot"></span><span id="gcalBtnLabel" class="gcal-btn-label">Google Calendar</span></button>
@@ -958,18 +1162,18 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <button class="pbtn" id="gcalConnectBtn" onclick="gcalConnect()">&#128274; Connect Google Account</button>
 </div>
 <div class="row" id="gcalRowControls" style="display:none">
-<label style="font-size:12px;font-weight:700;color:#374151">Calendar:</label>
+<label style="font-size:12px;font-weight:700;color:var(--ink)">Calendar:</label>
 <select id="gcalSelect" style="min-width:200px"></select>
 <button class="pbtn" id="gcalSyncBtn" onclick="gcalSync()">&#128260; Sync Now</button>
 <button class="pbtn gray" onclick="gcalCleanImported()" title="Remove all auto-imported records that haven't been edited">&#128465; Clean Imported</button>
 <button class="pbtn gray" onclick="driveDebugCheck()" title="Test the Google Drive connection and show the exact response from Google">&#128270; Test Drive</button>
-<label style="font-size:12px;font-weight:700;color:#374151;display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 10 min</label>
+<label style="font-size:12px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px"><input type="checkbox" id="gcalAuto" onchange="gcalToggleAuto()"> Auto-sync every 10 min</label>
 <label style="font-size:12px;font-weight:700;color:#0b8043;display:flex;align-items:center;gap:6px;background:#dcfce7;padding:4px 9px;border-radius:6px;border:1px solid #bbf7d0" title="When ON, changes you make in this app (new deliveries, date changes, color changes, deletions) are pushed to Google Calendar."><input type="checkbox" id="gcalWrite" onchange="gcalToggleWrite()"> &#8644; Two-way sync</label>
-<button class="pbtn" onclick="gcalRequestWriteScope()" style="font-size:11px;padding:4px 10px;background:#fff;border:1px solid #d1d5db;color:#374151;font-weight:600" title="If your calendar isn't being updated when you save tickets, click this to grant write permission to Google Calendar.">&#128274; Grant Write Access</button>
+<button class="pbtn" onclick="gcalRequestWriteScope()" style="font-size:11px;padding:4px 10px;background:var(--surface);border:1px solid var(--hairline-2);color:var(--ink);font-weight:600" title="If your calendar isn't being updated when you save tickets, click this to grant write permission to Google Calendar.">&#128274; Grant Write Access</button>
 <button class="pbtn gray" onclick="gcalDisconnect()">Disconnect</button>
 </div>
-<div class="row" id="gcalRowColors" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;background:#f9fafb;padding:10px 14px;border-radius:8px;border:1px solid #e5e7eb">
-<span style="font-size:12px;font-weight:800;color:#374151">Sync only events with these colors:</span>
+<div class="row" id="gcalRowColors" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surf-soft);padding:10px 14px;border-radius:8px;border:1px solid var(--hairline)">
+<span style="font-size:12px;font-weight:800;color:var(--ink)">Sync only events with these colors:</span>
 <label class="gcal-cf"><input type="checkbox" data-color="11" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#d50000"></span> Standard 8' (red)</label>
 <label class="gcal-cf"><input type="checkbox" data-color="10" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#0b8043"></span> 7' or Smaller (green)</label>
 <label class="gcal-cf"><input type="checkbox" data-color="6" onchange="gcalToggleColor(this)"> <span class="cf-dot" style="background:#f4511e"></span> Non-Standard (orange)</label>
@@ -984,9 +1188,11 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 </div>
 <div class="ctx-hdr" id="ctxHdr"></div>
 <div id="holdToolbarHost"></div>
-<div class="filters"><input class="search" id="searchBox" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;renderBoard();renderTable();if(tab==='cal')renderCalendar()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button></div>
+<div class="filters"><input class="search" id="searchBox" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;renderBoard();renderTable();if(tab==='cal')renderCalendar()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button><select id="techFilter" class="techfilter" onchange="techF=this.value;render()" title="Filter by assigned technician"><option value="">&#128100; All techs</option></select><button id="returnsBtn" class="returns-btn" onclick="returnsF=!returnsF;document.getElementById('returnsBtn').classList.toggle('on',returnsF);render()" title="Show only deliveries that need a second visit">&#128260; Returns</button></div>
 <div class="board" id="board"></div>
 <div class="twrap hidden" id="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+<div class="dash-wrap hidden" id="dashWrap"></div>
+<div class="route-wrap hidden" id="routeWrap"></div>
 <div class="cal-wrap hidden" id="calWrap">
 <div class="cal-hdr">
 <div class="cal-nav"><button class="cal-nbtn" onclick="calNav(-1)">&#9664;</button><button class="cal-nbtn" onclick="calNav(0)">Today</button><button class="cal-nbtn" onclick="calNav(1)">&#9654;</button><span class="cal-title" id="calTitle"></span></div>
@@ -1074,8 +1280,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061301;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.13 (build 1)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061408;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.14 (build 8)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1325,6 +1531,7 @@ renderAll()}}
 
 // === TECH VIEW LOGIC ===
 let techDate=new Date();techDate.setHours(0,0,0,0);
+let techSeg='pend'; // tech list segment filter: pend | all | done
 
 function techDateNav(dir){
 if(dir===0){techDate=new Date();techDate.setHours(0,0,0,0)}
@@ -1339,51 +1546,97 @@ let today=new Date();today.setHours(0,0,0,0);
 let label=techDate.toLocaleDateString(undefined,opts);
 if(techDate.getTime()===today.getTime())label+=' &middot; Today';
 lbl.innerHTML=label;
-// Filter deliveries on this date (excluding fully completed ones)
 let dateKey=techDate.getFullYear()+'-'+String(techDate.getMonth()+1).padStart(2,'0')+'-'+String(techDate.getDate()).padStart(2,'0');
-let mine=AD().filter(r=>{
+// Deliveries on this date. Now INCLUDES delivered tickets (so the segmented control can show
+// the day's progress); only fully 'complete' tickets are hidden.
+let dayItems=AD().filter(r=>{
 if(!r.n||!r.dd)return false;
-// Skip already-delivered or fully-completed tickets — tech is done with those.
-// They no longer show in the tech's daily calendar/list as pending work.
-if(r.dl)return false;
 if(st(r)==='complete')return false;
 let d=parseDate(r.dd);if(!d||isNaN(d))return false;
 let k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 return k===dateKey});
-// Sort: pending first (yours assigned > unassigned > others assigned), then by time slot
+let nPend=dayItems.filter(r=>!r.dl).length,nDone=dayItems.filter(r=>r.dl).length;
+let seg=techSeg||'pend';
+let mine=dayItems.filter(r=>{if(seg==='pend')return !r.dl;if(seg==='done')return r.dl;return true});
 mine.sort((a,b)=>{
-// Delivered to bottom
 if(a.dl!==b.dl)return a.dl?1:-1;
-// "Mine" (assigned to me) first, then unassigned, then others
 let priA=a.assigned_to===currentUser.id?0:(a.assigned_to?2:1);
 let priB=b.assigned_to===currentUser.id?0:(b.assigned_to?2:1);
 if(priA!==priB)return priA-priB;
-// Then by time slot
 let sa=(a.dd||'').match(/(am|pm|all\s*day)/i);let sb=(b.dd||'').match(/(am|pm|all\s*day)/i);
-let oa={am:0,'all day':1,pm:2,allday:1}[sa?sa[0].toLowerCase().replace(/\s+/,''):''+'']||0;
-let ob={am:0,'all day':1,pm:2,allday:1}[sb?sb[0].toLowerCase().replace(/\s+/,''):''+'']||0;
+let oa={am:0,'all day':1,pm:2,allday:1}[sa?sa[0].toLowerCase().replace(/\s+/,''):'']||0;
+let ob={am:0,'all day':1,pm:2,allday:1}[sb?sb[0].toLowerCase().replace(/\s+/,''):'']||0;
 return oa-ob});
 let listEl=document.getElementById('tech-list');
+let segHtml='<div class="tlseg">'+
+'<button class="'+(seg==='pend'?'on':'')+'" onclick="techSeg=&quot;pend&quot;;renderTechList()">Pendientes<span>'+nPend+'</span></button>'+
+'<button class="'+(seg==='all'?'on':'')+'" onclick="techSeg=&quot;all&quot;;renderTechList()">Todas<span>'+(nPend+nDone)+'</span></button>'+
+'<button class="'+(seg==='done'?'on':'')+'" onclick="techSeg=&quot;done&quot;;renderTechList()">Entregadas<span>'+nDone+'</span></button>'+
+'</div>';
 if(!mine.length){
-listEl.innerHTML='<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">No deliveries '+(techDate.getTime()===today.getTime()?'today':'on this day')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
-let html='';
+let msg=seg==='done'?'Sin entregas marcadas como listas':(seg==='pend'?'No pending deliveries':'No deliveries');
+listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">'+msg+(techDate.getTime()===today.getTime()?' today':'')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
+let html='';let seqN=0;
 mine.forEach(r=>{
 let slot=(r.dd||'').match(/(am|pm|all\s*day)/i);
-let timeLabel=slot?slot[0].toUpperCase().replace(/\s+/,' '):'';
-let addrShort=(r.st||'').split('\n')[0].substring(0,60);
-// Assignment badge logic
-let assignBadge='';
-let cardCls=r.dl?' delivered':'';
-if(r.assigned_to===currentUser.id){assignBadge='<span class="assign-pill mine" title="This delivery is assigned to you">&#9733; Assigned to you</span>';cardCls+=' mine'}
-else if(r.assigned_to&&USERS[r.assigned_to]){assignBadge='<span class="assign-pill other">&#9888; '+escHtml(USERS[r.assigned_to].name)+'</span>'}
-html+='<div class="tech-card'+cardCls+'" onclick="techOpenDetail('+r.i+')">'+
-'<div class="name">'+escHtml(dispName(r))+assignBadge+'</div>'+
-(timeLabel?'<div class="row"><span class="time-pill">'+timeLabel+'</span></div>':'')+
-(r.sp?'<div class="row">&#129716; '+escHtml(r.sp)+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>':'')+
-(addrShort?'<div class="row">&#128205; '+escHtml(addrShort)+'</div>':'')+
-(r.ph?'<div class="row" style="color:var(--aspen-orange);font-weight:600">&#128222; '+escHtml(r.ph)+'</div>':'')+
-'</div>'});
-listEl.innerHTML=html}
+let slotUp=slot?slot[0].toUpperCase().replace(/\s+/,' '):'';
+let railCls='allday',railTxt='&#8226;';
+if(r.dl){railCls='done';railTxt='&#10003;'}
+else if(/^AM/.test(slotUp)){railCls='am';railTxt='AM'}
+else if(/^PM/.test(slotUp)){railCls='pm';railTxt='PM'}
+else if(/ALL/.test(slotUp)){railCls='allday';railTxt='ALL'}
+if(!r.dl)seqN++;
+let seqLbl=r.dl?'listo':(seqN+'\u00aa');
+let stCls='pend',stTxt='Pendiente',assignee='';
+if(r.dl){stCls='done';stTxt='&#10003; Entregada'}
+else if(r.hold){stCls='hold';stTxt='En hold'}
+else if(r.assigned_to===currentUser.id){stCls='mine';stTxt='&#9733; Para ti'}
+if(!r.dl&&r.assigned_to&&r.assigned_to!==currentUser.id&&USERS[r.assigned_to]){assignee='<span class="tlassign">'+escHtml(USERS[r.assigned_to].name)+'</span>'}
+let addrShort=(r.st||'').split('\n')[0].substring(0,55);
+let dataState=r.dl?'done':(r.hold?'hold':'pend');
+html+='<div class="tlswipe" data-state="'+dataState+'" data-id="'+r.i+'">';
+if(dataState==='pend')html+='<div class="tlswipe-bg"><span class="chk">&#10003;</span> Entregar</div>';
+html+='<div class="tlcard'+(r.dl?' isdone':'')+'" data-id="'+r.i+'">';
+html+='<div class="tlrail '+railCls+'">'+(r.assigned_to===currentUser.id&&!r.dl?'<span class="dot"></span>':'')+'<span class="slot">'+railTxt+'</span><span class="seq">'+seqLbl+'</span></div>';
+html+='<div class="tlbody">';
+html+='<div class="tlband"><span class="tlstatus '+stCls+'">'+stTxt+'</span>'+assignee+'</div>';
+html+='<div class="tlcust">'+avatarFor(r)+'<div style="min-width:0"><div class="tlname">'+escHtml(dispName(r))+'</div>'+(r.sp?'<div class="tlspa">&#129716; '+escHtml(r.sp)+(r.sn?' &middot; '+escHtml(r.sn):'')+'</div>':'')+'</div></div>';
+if(addrShort)html+='<div class="tladdr">&#128205; '+escHtml(addrShort)+'</div>';
+if(r.hold){html+='<div class="tlhold-row">&#9203; '+(holdDaysAgo(r)?'En hold '+holdDaysAgo(r)+' d&iacute;as':'En hold')+'</div>'}
+else if(r.dl){html+='<div class="tldone-stamp">&#10003; Entregada</div>'}
+else{
+html+='<div class="tlact">';
+html+='<a class="tlbtn map" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();techOpenMaps('+r.i+')">&#128205; Mapa</a>';
+if(r.ph)html+='<button class="tlbtn call" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();techPhoneOptions('+r.i+')">&#128222; Llamar</button>';
+html+='</div>';
+html+='<div class="tlhint">Desliza <span class="ar">&#8594;</span> para entregar</div>';
+}
+html+='</div></div></div>';
+});
+listEl.innerHTML=segHtml+html;
+_initTechListSwipe();}
+
+// Swipe-to-deliver + tap-to-open for the native tech list cards. One pointer handler distinguishes
+// a tap (opens detail) from a rightward swipe past 42% (opens the delivery-notes modal). The inline
+// Map/Call buttons stop propagation so they never start a swipe. on* handlers rebind cleanly on
+// every live re-render. Done/hold cards just tap-to-open.
+function _initTechListSwipe(){
+document.querySelectorAll('#tech-list .tlswipe[data-state="pend"]').forEach(function(wrap){
+let card=wrap.querySelector('.tlcard');if(!card)return;
+let id=parseInt(wrap.getAttribute('data-id'),10);
+let startX=0,dx=0,w=0,drag=false,moved=false;
+card.onpointerdown=function(e){startX=e.clientX;w=card.offsetWidth;drag=true;dx=0;moved=false;card.classList.add('drag');try{card.setPointerCapture(e.pointerId)}catch(_){}};
+card.onpointermove=function(e){if(!drag)return;dx=Math.max(0,e.clientX-startX);if(dx>6)moved=true;card.style.transform='translateX('+Math.min(dx,w)+'px)';if(dx>w*0.42)wrap.classList.add('armed');else wrap.classList.remove('armed')};
+card.onpointerup=function(e){if(!drag)return;drag=false;card.classList.remove('drag');
+if(dx>w*0.42){card.style.transform='translateX('+w+'px)';card.style.opacity='0';setTimeout(function(){card.style.transform='';card.style.opacity='';wrap.classList.remove('armed');techMarkDelivered(id)},230)}
+else{card.style.transform='';wrap.classList.remove('armed');if(!moved)techOpenDetail(id)}
+dx=0};
+card.onpointercancel=function(){if(!drag)return;drag=false;card.classList.remove('drag');card.style.transform='';wrap.classList.remove('armed');dx=0};
+});
+document.querySelectorAll('#tech-list .tlswipe:not([data-state="pend"]) .tlcard').forEach(function(card){
+let id=parseInt(card.getAttribute('data-id'),10);
+card.onclick=function(){techOpenDetail(id)};
+});}
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 // Generate a small colored circle with the customer's initials. Color is derived
@@ -1455,57 +1708,35 @@ return '<div class="hold-activity"><span style="font-weight:800;color:#7c3aed">&
 
 function techOpenDetail(id){
 let r=AD().find(x=>x.i===id);if(!r)return;
-// Detect re-render (e.g. live refresh from Firebase listener) so we can preserve scroll position
 let isReRender=(_currentTechDetailId===id);
 _currentTechDetailId=id;
 let det=document.getElementById('tech-detail');
 let savedScroll=isReRender?det.scrollTop:0;
 det.classList.remove('hidden');
-let h='<div class="back-bar"><button class="back-btn" onclick="techCloseDetail()">&#9664; Back</button><div style="font-size:13px;font-weight:600;flex:1;text-align:center">'+escHtml(r.n)+'</div></div>';
-h+='<div class="tech-detail-inner">';
-// Customer info
-h+='<div class="tech-section"><h2>'+escHtml(r.n)+'</h2>';
-if(r.dd)h+='<div class="meta">&#128197; '+escHtml(fmtDate(r.dd))+escHtml(dateNote(r.dd))+'</div>';
-if(r.sp||r.sn)h+='<div class="meta">&#129716; '+escHtml(r.sp||'—')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>';
-if(r.bl>0)h+='<div class="meta" style="color:#dc2626;font-weight:700">&#9888; Balance Due: '+fmt(r.bl)+'</div>';
-// Payment status indicator — tech needs to know up front if they have to collect cash/check
+// ===== IMMERSIVE HEADER (Fusion A / Express) =====
+let _slot=(r.dd||'').match(/(am|pm|all\s*day)/i);
+let _slotTxt=_slot?' &middot; '+_slot[0].toUpperCase().replace(/\s+/,' '):'';
+let h='<div class="td2-imm">';
+h+='<button class="td2-back" onclick="techCloseDetail()" aria-label="Back">&#9664;</button>';
+h+='<div class="td2-ib">&#128197; '+escHtml(fmtDate(r.dd))+escHtml(dateNote(r.dd))+_slotTxt+'</div>';
+h+='<h2>'+escHtml(r.n)+'</h2>';
+if(r.sp||r.sn)h+='<div class="td2-sp">&#129716; '+escHtml(r.sp||'\u2014')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>';
+// chips: payment status + balance + special requirements
+let _chips='';
 if(r.pst){
-let pstStyles={
-paid:{bg:'#dcfce7',color:'#059669',icon:'&#128181;',label:'PAID — no collection needed'},
-check:{bg:'#fef3c7',color:'#b45309',icon:'&#128221;',label:'COLLECT CHECK from customer'},
-financed:{bg:'#f3f4f6',color:'#4b5563',icon:'&#128179;',label:'Financed — no collection'},
-cash:{bg:'#dc2626',color:'#fff',icon:'&#128176;',label:'COLLECT CASH from customer'}
-};
-let s=pstStyles[r.pst];
-if(s){h+='<div style="margin-top:12px;padding:11px 14px;background:'+s.bg+';color:'+s.color+';border-radius:10px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px'+(r.pst==='cash'?';animation:pst-cash-pulse 1.4s ease-in-out infinite':'')+'"><span style="font-size:18px">'+s.icon+'</span> '+s.label+'</div>'}
+let _pc={paid:['','&#128181; Pagado'],check:['','&#128221; Cobrar cheque'],financed:['','&#128179; Financiado'],cash:['cash','&#128176; Cobrar efectivo']}[r.pst];
+if(_pc)_chips+='<div class="td2-chip '+_pc[0]+'">'+_pc[1]+'</div>';
 }
-// Special delivery requirements — flagged by the manager from the admin view. Each banner is bold,
-// high-contrast, and uses gear-related language so the tech remembers BEFORE leaving the shop.
-let reqBanners=[
-{k:'crane',bg:'#7c3aed',icon:'&#128679;',label:'CRANE JOB — coordinate the crane / boom truck'},
-{k:'extra_person',bg:'#0369a1',icon:'&#128101;',label:'EXTRA PERSON REQUIRED — bring an extra crew member'},
-{k:'water_truck',bg:'#0891b2',icon:'&#128666;',label:'WATER TRUCK NEEDED — bring water for the spa fill'}
-];
-reqBanners.forEach(rb=>{
-if(r[rb.k]){
-h+='<div style="margin-top:8px;padding:11px 14px;background:'+rb.bg+';color:#fff;border-radius:10px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px"><span style="font-size:18px">'+rb.icon+'</span> '+rb.label+'</div>'
-}
-});
+if(r.bl>0)_chips+='<div class="td2-chip bal">&#9888; '+fmt(r.bl)+'</div>';
+if(r.crane)_chips+='<div class="td2-chip">&#127959;&#65039; Gr&uacute;a</div>';
+if(r.extra_person)_chips+='<div class="td2-chip">&#128101; +1 persona</div>';
+if(r.water_truck)_chips+='<div class="td2-chip">&#128666; Agua</div>';
+if(_chips)h+='<div class="td2-chips">'+_chips+'</div>';
 h+='</div>';
-// ACTION BUTTONS
-h+='<div class="tech-action-grid">';
-if(r.ph)h+='<button class="tech-action-btn phone" onclick="techPhoneOptions('+r.i+')"><span class="ico">&#128222;</span><div>Call / Message</div></button>';
-h+='<button class="tech-action-btn note" onclick="techAddNote('+r.i+')"><span class="ico">&#128221;</span><div>Add Note</div></button>';
-h+='<button class="tech-action-btn photo" onclick="techPhotoUpload('+r.i+')"><span class="ico">&#128247;</span><div>Add Photos'+(r.tech_photos&&r.tech_photos.length?' ('+r.tech_photos.length+')':'')+'</div></button>';
-// Invoice PDF — visible to the technician too (legacy inline or side-node payload).
-if(r.pdf_invoice){h+='<button class="tech-action-btn" onclick="viewInvoicePDF('+r.i+')"><span class="ico">&#128196;</span><div>View Invoice</div></button>'}
-// Customer signature button — opens signature pad. If a PDF invoice is saved, the signature
-// will be embedded into the PDF below the Balance Due line, then auto-synced to Drive.
-let sigDone=r.signature&&r.signature.data;
-h+='<button class="tech-action-btn sign'+(sigDone?' done':'')+'" onclick="techSignature('+r.i+')"><span class="ico">&#9997;&#65039;</span><div>'+(sigDone?'Signed &#10003;':'Customer Signature')+'</div></button>';
-if(!r.dl){h+='<button class="tech-action-btn deliver" onclick="techMarkDelivered('+r.i+')"><span class="ico">&#9989;</span><div>Mark Delivered</div></button>'}
-else{h+='<button class="tech-action-btn deliver done"><span class="ico">&#9989;</span><div>Delivered</div></button>'}
-h+='</div>';
+// ===== SCROLL CONTENT =====
+h+='<div class="td2-inner">';
+// Invoice (if a PDF exists) — reference card, tap to open
+if(r.pdf_invoice){h+='<a class="tech-section tech-addr-card" style="border-color:#a78bfa !important;background:#f5f3ff" onclick="viewInvoicePDF('+r.i+');return false;" href="#"><div class="tech-spec-row" style="border:none"><span class="lbl" style="color:#6d28d9 !important">&#128196; Invoice (tap to view)</span><span class="val" style="color:#5b21b6">Open PDF &#8250;</span></div></a>'}
 // Address (CLICKABLE — opens map app on tap)
 if(r.st){
 let addrEnc=encodeURIComponent(r.st.replace(/\n/g,' '));
@@ -1592,10 +1823,41 @@ h+='</div>'}
 if(r.dl&&r.dn){
 h+='<div class="tech-section" style="background:#f0fdf4;border-color:#bbf7d0"><div style="font-size:11px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Delivered Notes</div>'+
 '<div style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap">'+escHtml(r.dn)+'</div></div>'}
+
 h+='</div>';
-det.innerHTML=h;det.scrollTop=savedScroll}
+// ===== FIXED ACTION DOCK =====
+h+='<div class="td2-dock"><div class="td2-mini-row">';
+if(r.ph)h+='<button class="td2-mini" onclick="techPhoneOptions('+r.i+')"><span class="ic">&#128222;</span>Llamar</button>';
+h+='<button class="td2-mini" onclick="techPhotoUpload('+r.i+')"><span class="ic">&#128247;</span>Fotos'+(r.tech_photos&&r.tech_photos.length?' ('+r.tech_photos.length+')':'')+'</button>';
+let _sigDone=r.signature&&r.signature.data;
+h+='<button class="td2-mini'+(_sigDone?' on':'')+'" onclick="techSignature('+r.i+')"><span class="ic">&#9997;&#65039;</span>'+(_sigDone?'Firmado &#10003;':'Firma')+'</button>';
+h+='<button class="td2-mini" onclick="techAddNote('+r.i+')"><span class="ic">&#128221;</span>Nota</button>';
+h+='</div>';
+if(!r.dl){
+h+='<div class="td2-swipe-wrap"><div class="td2-swipe-bg">&#10003; Entregado</div>';
+h+='<div class="td2-swiper" id="td2sw"><div class="td2-knob">&#10003;</div><div class="td2-swtx">Desliza para entregar</div><span class="td2-swar">&#8594;</span></div></div>';
+}else{
+h+='<div class="td2-delivered">&#10003; Entregado</div>';
+}
+h+='</div>';
+det.innerHTML=h;det.scrollTop=savedScroll;
+_initTechSwipe(id);}
 
 function techCloseDetail(){_currentTechDetailId=null;document.getElementById('tech-detail').classList.add('hidden')}
+// Swipe-to-deliver gesture for the tech detail dock (Fusion A). Pointer Events unify touch+mouse;
+// setPointerCapture keeps tracking if the finger leaves the bar. Crossing 55% opens the existing
+// delivery-notes modal (techMarkDelivered) so the notes flow is preserved. Uses on* handlers so a
+// re-render (live Firebase refresh) rebinds cleanly without stacking duplicate listeners.
+function _initTechSwipe(id){
+let sw=document.getElementById('td2sw');if(!sw)return;
+let startX=0,dx=0,w=0,drag=false;
+sw.onpointerdown=function(e){startX=e.clientX;w=sw.parentElement.offsetWidth;drag=true;dx=0;sw.classList.add('drag');try{sw.setPointerCapture(e.pointerId)}catch(_){}};
+sw.onpointermove=function(e){if(!drag)return;dx=Math.max(0,e.clientX-startX);sw.style.transform='translateX('+Math.min(dx,w)+'px)'};
+sw.onpointerup=function(e){if(!drag)return;drag=false;sw.classList.remove('drag');
+if(dx>w*0.55){sw.style.transform='translateX('+w+'px)';setTimeout(function(){sw.style.transform='';techMarkDelivered(id)},200)}
+else{sw.style.transform=''}dx=0};
+sw.onpointercancel=function(){drag=false;sw.classList.remove('drag');sw.style.transform='';dx=0};
+}
 
 function techOpenMaps(id){
 let r=AD().find(x=>x.i===id);if(!r||!r.st)return;
@@ -1650,6 +1912,7 @@ let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 document.getElementById('tech-deliver-modal').classList.add('hidden');
+pushActivity(id,'Marked Delivered');
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
 
@@ -1885,12 +2148,12 @@ let modal=document.createElement('div');
 modal.className='tech-modal';
 modal.style.zIndex=200;
 let techName=(currentUser&&currentUser.name)||(r.assigned_to&&USERS[r.assigned_to]?USERS[r.assigned_to].name:'Tech');
-modal.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;max-width:520px;width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
+modal.innerHTML='<div style="background:var(--surface);border-radius:14px;padding:20px;max-width:520px;width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
 '<div style="font-size:11px;font-weight:800;color:#b45309;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">&#128221; Add Note for Manager</div>'+
 '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">This note will be added to <strong>Delivered Notes</strong> with today\'s date, and the manager will get an alert that this delivery needs attention.</div>'+
 '<textarea id="tech_note_input" rows="5" placeholder="e.g. Customer wasn\'t home — rescheduled for tomorrow. Or: Spa installed but missing handrail, will return on Friday." style="width:100%;padding:12px;border:2px solid #fbbf24;border-radius:10px;font-size:14px;font-family:inherit;outline:none;resize:vertical;min-height:100px;box-sizing:border-box"></textarea>'+
 '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">'+
-'<button onclick="this.closest(\'.tech-modal\').remove()" style="padding:10px 18px;background:#f3f4f6;color:var(--text-primary);border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-weight:600;font-family:inherit;font-size:14px">Cancel</button>'+
+'<button onclick="this.closest(\'.tech-modal\').remove()" style="padding:10px 18px;background:var(--surf-soft);color:var(--text-primary);border:1.5px solid var(--hairline);border-radius:10px;cursor:pointer;font-weight:600;font-family:inherit;font-size:14px">Cancel</button>'+
 '<button onclick="techSaveNote('+id+')" style="padding:10px 22px;background:#f59e0b;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-family:inherit;font-size:14px;box-shadow:0 2px 8px rgba(245,158,11,.3)">&#128228; Send to Manager</button>'+
 '</div></div>';
 document.body.appendChild(modal);
@@ -2327,7 +2590,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '</div>'+
 
 // CURRENT STATE
-'<div style="background:#f9fafb;border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:14px">'+
+'<div style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:14px">'+
 '<div style="font-size:11px;font-weight:800;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Estado actual de la base</div>'+
 '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px">'+
 '<div><strong style="font-size:18px;color:var(--aspen-orange)">'+addedN+'</strong> &nbsp;<span style="color:var(--text-secondary)">added records</span></div>'+
@@ -2336,7 +2599,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '</div></div>'+
 
 // MANUAL BACKUP
-'<div style="background:#fff;border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
 '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">'+
 '<div><div style="font-weight:800;font-size:14px;margin-bottom:3px">&#128229; Descargar Backup Manual</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4">Descarga un archivo JSON con toda la data (edits, added, users, fotos). Cópialo a Drive o iCloud como respaldo permanente.</div></div>'+
@@ -2346,7 +2609,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '</div>'+
 
 // DRIVE AUTO-BACKUP
-'<div style="background:#fff;border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
 '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">'+
 '<div><div style="font-weight:800;font-size:14px;margin-bottom:3px">&#9729;&#65039; Auto-Backup a Google Drive</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4">Cada 6 horas la app sube automáticamente un backup a tu Drive → carpeta "Aspen Delivery Backups". Mantiene los últimos 14.</div></div>'+
@@ -2354,23 +2617,23 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '</div>'+
 '<div style="font-size:11px;margin-top:6px;color:'+driveStatusColor+'">Último auto: <strong>'+fmtAgo(lastDrive)+'</strong>'+(lastDriveName?' <br><span style="color:var(--text-tertiary);font-size:10.5px">('+escHtml(lastDriveName)+')</span>':'')+'</div>'+
 (driveReady?
-'<button onclick="manualTriggerDriveBackup()" style="background:#fff;color:#2563eb;border:1.5px solid #2563eb;padding:8px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;margin-top:10px;width:100%">&#128259; Subir a Drive Ahora</button>'
+'<button onclick="manualTriggerDriveBackup()" style="background:var(--surface);color:#2563eb;border:1.5px solid #2563eb;padding:8px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;margin-top:10px;width:100%">&#128259; Subir a Drive Ahora</button>'
 :'<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;font-style:italic">Conecta Google Calendar para habilitar auto-backup a Drive (el mismo OAuth da acceso a la carpeta de backups).</div>')+
 '</div>'+
 
 // RESTORE
-'<div style="background:#fff;border:2px solid #fee2e2;border-radius:10px;padding:14px">'+
+'<div style="background:var(--surface);border:2px solid #fee2e2;border-radius:10px;padding:14px">'+
 '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">'+
 '<div><div style="font-weight:800;font-size:14px;margin-bottom:3px;color:#dc2626">&#128260; Restaurar desde Backup</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4">Selecciona un archivo de backup (.json) para restaurar a Firebase. <strong style="color:#dc2626">Sobrescribe la data actual.</strong></div></div>'+
 '</div>'+
-'<button onclick="pickBackupFileToRestore()" style="background:#fff;color:#dc2626;border:1.5px solid #dc2626;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128194; Seleccionar archivo de backup...</button>'+
+'<button onclick="pickBackupFileToRestore()" style="background:var(--surface);color:#dc2626;border:1.5px solid #dc2626;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128194; Seleccionar archivo de backup...</button>'+
 '</div>'+
 
-'<div style="background:#fff;border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
 '<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#129529; Quitar duplicados</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:10px">Si un restore dej&oacute; entregas duplicadas (el mismo evento de calendario con dos registros), esto conserva el registro con m&aacute;s datos y quita el duplicado vac&iacute;o. Te muestra qu&eacute; va a quitar antes de hacerlo.</div>'+
-'<button onclick="runDedupDuplicates()" style="background:#fff;color:#b45309;border:1.5px solid #b45309;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#129529; Buscar y quitar duplicados</button>'+
+'<button onclick="runDedupDuplicates()" style="background:var(--surface);color:#b45309;border:1.5px solid #b45309;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#129529; Buscar y quitar duplicados</button>'+
 '</div>'+
 
 '<div style="font-size:10.5px;color:var(--text-tertiary);margin-top:14px;line-height:1.5">'+
@@ -2414,7 +2677,7 @@ let isEdit=!!id;
 let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:18px;font-weight:800">'+(isEdit?'Edit User':'Add User')+'</h2><button class="xbtn" onclick="renderUsersPanel()">&#10005;</button></div>';
 h+='<div class="auth-form" style="text-align:left">'+
 '<label>Name (used to log in)</label><input type="text" id="uf_name" value="'+escHtml(u.name||'')+'" placeholder="Jarred" autocapitalize="words">'+
-'<label>Role</label><select id="uf_role" style="padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;background:#fff">'+
+'<label>Role</label><select id="uf_role" style="padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;background:var(--surface)">'+
 ROLES.map(r=>'<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+r.charAt(0).toUpperCase()+r.slice(1)+'</option>').join('')+'</select>'+
 '<label>'+(isEdit?'New 4-digit PIN (leave blank to keep current)':'4-digit PIN')+'</label><input type="password" id="uf_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="new-password">'+
 '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="saveUser('+(isEdit?'\''+id+'\'':'null')+')">Save</button><button class="auth-link" onclick="renderUsersPanel()">Cancel</button></div>'+
@@ -3125,6 +3388,9 @@ setTimeout(()=>{if(typeof gcalSync==='function'&&gcalToken&&gcalCalendarId)gcalS
 }
 
 let search="",statusF="all",tab="board",sortCol="date",sortDir="desc";
+// Phase 1 (2026-06-14): combinable filters layered on top of search + status tab.
+let techF="";      // filter by assigned technician (user id); "" = all techs
+let returnsF=false;// when true, show only deliveries that still need a second visit (sl set, not complete)
 function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
 
 // Phone helpers — a ticket's r.ph may now contain MULTIPLE numbers, one per line.
@@ -3293,6 +3559,9 @@ function fil(){let list=AD().filter(r=>{
 // Allow tickets with blank `r.n` if they have a calendar-title fallback (`r.cal`).
 // Otherwise nothing — a truly empty record (no name, no calendar) is hidden.
 if(!r.n&&!r.cal)return 0;
+// Phase 1 filters — combinable with the status tab, search box and hold sub-filter.
+if(techF&&String(r.assigned_to||"")!==String(techF))return 0;
+if(returnsF&&!(r.sl&&!r.co))return 0; // Returns view: needs a second visit and not yet wrapped up
 let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;
 // Hold tab can further narrow by hold_reason chip
 if(statusF==="hold"&&typeof holdReasonF!=="undefined"&&holdReasonF&&(r.hold_reason||"manual")!==holdReasonF)return 0;
@@ -3352,11 +3621,18 @@ let order=['upcoming','overdue','action','delivered','hold','complete','all'];
 // Icons rendered before each tab label for fast visual scanning.
 // Mapping intentionally mirrors the empty-state icons used elsewhere.
 const TAB_ICONS={upcoming:'&#128197;',overdue:'&#9888;&#65039;',action:'&#128666;',delivered:'&#128221;',hold:'&#9209;&#65039;',complete:'&#9989;',all:'&#128194;'};
+// Phase 4: a delivery counts as "needs attention" when it's overdue OR a pending return.
+let returnsCount=a.filter(r=>r.sl&&!r.co).length;
+let attentionTotal=counts.overdue+returnsCount;
 let html=order.map(k=>{
 let m=STATUS_META[k],active=statusF===k;
-return '<button class="aspen-tab'+(active?' active':'')+'" onclick="setStatusFilter(\''+k+'\')"><span class="tab-icon">'+TAB_ICONS[k]+'</span>'+m.label.toUpperCase()+'<span class="tab-count">'+counts[k]+'</span></button>'
+// Pulsing alert dot on Needs Action whenever there is anything to act on.
+let alertDot=(k==='overdue'&&counts.overdue>0)?'<span class="tab-alert-dot" title="Deliveries need attention"></span>':'';
+return '<button class="aspen-tab'+(active?' active':'')+(alertDot?' has-alert':'')+'" onclick="setStatusFilter(\''+k+'\')"><span class="tab-icon">'+TAB_ICONS[k]+'</span>'+m.label.toUpperCase()+'<span class="tab-count">'+counts[k]+'</span>'+alertDot+'</button>'
 }).join('');
-document.getElementById('aspenTabs').innerHTML=html}
+document.getElementById('aspenTabs').innerHTML=html;
+// Reflect attention count in the browser tab title so it's visible even on another tab.
+try{document.title=(attentionTotal>0?'('+attentionTotal+') ':'')+'Aspen Delivery Tracker'}catch(e){}}
 
 function renderCtxHdr(){
 let m=STATUS_META[statusF]||STATUS_META.all;
@@ -3469,7 +3745,9 @@ if(r.vt)chips.push(r.vt);
 if(r.jt)chips.push(r.jt+' jets');
 if(r.lg&&r.lg.length<22)chips.push('&#128161; '+r.lg);
 if(r.oz==='yes')chips.push('Ozonator');
-let chipHtml=chips.length?'<div class="c-chips">'+chips.map(c=>'<span class="c-chip">'+c+'</span>').join('')+'</div>':'';
+// Second-visit flag — sl marks a delivery that still needs the crew to return.
+if(r.sl&&!r.co)chips.push('<span class="return-chip-inner">&#128260; Return</span>');
+let chipHtml=chips.length?'<div class="c-chips">'+chips.map(c=>{let isRet=/Return</.test(c);return '<span class="c-chip'+(isRet?' return-chip':'')+'">'+c+'</span>'}).join('')+'</div>':'';
 // Service request badge
 let svcBadge='';
 if(r.svc_status){
@@ -3508,8 +3786,197 @@ h='<div class="empty-state"><div class="es-icon">'+icon+'</div><div class="es-ti
 document.getElementById("board").innerHTML=h}
 function thH(label,col){let active=sortCol===col;let arrow=active?(sortDir==="desc"?"▼":"▲"):"⇅";return'<th class="'+(active?"act-sort":"")+'" onclick="toggleSort(\''+col+'\')">'+label+' <span class="srt">'+arrow+'</span></th>'}
 function renderTable(){document.getElementById("th").innerHTML="<tr>"+thH("Status","status")+thH("Customer","name")+thH("Spa","name")+thH("Date","date")+thH("Balance Due","balance")+"<th>Pre</th><th>Post</th><th>Cover</th><th>Lift</th></tr>";
-let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:#111827;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+dispName(r)+'</td><td style="color:#6b7280">'+(r.sp||"—")+'</td><td style="color:#6b7280;white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:#6b7280;font-size:12px">'+(r.cv||"—")+'</td><td style="color:#6b7280;font-size:12px">'+(r.lf||"—")+'</td></tr>'});
+let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:var(--ink-strong);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+dispName(r)+'</td><td style="color:var(--ink-mid)">'+(r.sp||"—")+'</td><td style="color:var(--ink-mid);white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:var(--ink-mid);font-size:12px">'+(r.cv||"—")+'</td><td style="color:var(--ink-mid);font-size:12px">'+(r.lf||"—")+'</td></tr>'});
 document.getElementById("tb").innerHTML=h}
+// ===================== DAY ROUTE PLAN (Phase 6, 2026-06-14) =====================
+// Groups deliveries by date and builds a multi-stop Google Maps route from the depot.
+// NO geocoding API needed: stops use the plain Google Maps directions URL (addresses as text),
+// which opens the native Maps app/site with the full route. Depot = Aspen Spas, 4609 McRee Ave.
+var ROUTE_DEPOT="4609 McRee Ave, St. Louis, MO 63110";
+var routeDate=null; // YYYY-MM-DD currently shown; null => today on first render
+function _routeKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function routeShift(days){
+var d=routeDate?new Date(routeDate+'T00:00:00'):new Date();
+d.setDate(d.getDate()+days);routeDate=_routeKey(d);renderRoutePlan();
+}
+function routeSetDate(v){if(v){routeDate=v;renderRoutePlan();}}
+function _routeStops(){
+// Deliveries for the selected day that have an address, ordered am -> pm -> all day.
+var key=routeDate||_routeKey(new Date());
+var list=AD().filter(function(r){
+if(!r.st||r.co)return false; // need an address; skip completed
+var d=parseDate(r.dd);if(!d||isNaN(d))return false;
+return _routeKey(d)===key;
+});
+function slotRank(r){var s=String(r.dd||'').toLowerCase();if(s.indexOf('am')>=0)return 0;if(s.indexOf('pm')>=0)return 1;return 2;}
+list.sort(function(a,b){return slotRank(a)-slotRank(b)});
+return {key:key,list:list};
+}
+function _gmapsRoute(stops){
+// origin=depot, destination=depot (round trip), waypoints=all stops (Google URL allows ~9).
+var addrs=stops.map(function(r){return encodeURIComponent(r.st.replace(/\n/g,', '))});
+var origin=encodeURIComponent(ROUTE_DEPOT);
+if(!addrs.length)return null;
+var wp=addrs.slice(0,9); // URL waypoint ceiling without API
+var url='https://www.google.com/maps/dir/?api=1&origin='+origin+'&destination='+origin+'&travelmode=driving';
+if(wp.length)url+='&waypoints='+wp.join('%7C');
+return url;
+}
+function renderRoutePlan(){
+var host=document.getElementById('routeWrap');if(!host)return;
+if(!routeDate)routeDate=_routeKey(new Date());
+var res=_routeStops();var stops=res.list;
+var dObj=new Date(res.key+'T00:00:00');
+var human=dObj.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+var todayKey=_routeKey(new Date());
+var h='<div class="route-inner">';
+h+='<div class="route-head"><h2>🗺️ Day Route Plan</h2></div>';
+// date navigator
+h+='<div class="route-nav">';
+h+='<button class="rn-btn" onclick="routeShift(-1)" title="Previous day">&#8592;</button>';
+h+='<input type="date" class="rn-date" id="routeDateInput" value="'+res.key+'" onchange="routeSetDate(this.value)">';
+h+='<button class="rn-btn" onclick="routeShift(1)" title="Next day">&#8594;</button>';
+if(res.key!==todayKey)h+='<button class="rn-today" onclick="routeDate=null;renderRoutePlan()">Today</button>';
+h+='</div>';
+h+='<div class="route-day">'+human+' \u00b7 <b>'+stops.length+'</b> stop'+(stops.length===1?'':'s')+'</div>';
+if(!stops.length){
+h+='<div class="route-empty">🚚 No deliveries with an address scheduled for this day.</div>';
+}else{
+// Open-full-route button
+var url=_gmapsRoute(stops);
+if(url)h+='<a class="route-go" href="'+url+'" target="_blank" rel="noopener">🗺️ Open full route in Google Maps (from depot)</a>';
+if(stops.length>9)h+='<div class="route-warn">\u26A0\uFE0F Showing first 9 stops in the route link (Google Maps URL limit). All stops are listed below individually.</div>';
+// Stop list
+h+='<div class="route-stops">';
+h+='<div class="route-stop depot"><span class="rs-num">📍</span><div class="rs-body"><div class="rs-name">Aspen Spas (Depot)</div><div class="rs-addr">'+ROUTE_DEPOT+'</div></div></div>';
+stops.forEach(function(r,i){
+var tech=r.assigned_to&&USERS[r.assigned_to]?USERS[r.assigned_to].name:'Unassigned';
+var slot=String(r.dd||'').toLowerCase();var slotLbl=slot.indexOf('am')>=0?'AM':(slot.indexOf('pm')>=0?'PM':'All day');
+var addr1=encodeURIComponent(r.st.replace(/\n/g,' '));
+var stopUrl='https://www.google.com/maps/search/?api=1&query='+addr1;
+var ret=(r.sl&&!r.co)?'<span class="rs-return">'+'\u{1F504} Return</span>':'';
+h+='<a class="route-stop" href="'+stopUrl+'" target="_blank" rel="noopener">'+
+'<span class="rs-num">'+(i+1)+'</span>'+
+'<div class="rs-body"><div class="rs-name">'+escHtml(r.n)+ret+'</div>'+
+'<div class="rs-addr">📍 '+escHtml(r.st.replace(/\n/g,', '))+'</div>'+
+'<div class="rs-meta"><span class="rs-slot">'+slotLbl+'</span><span class="rs-spa">'+escHtml(r.sp||'')+'</span><span class="rs-tech">👤 '+escHtml(tech)+'</span></div>'+
+'</div></a>';
+});
+h+='</div>';
+}
+h+='</div>';
+host.innerHTML=h;
+}
+// ===================== DASHBOARD (Phase 2, 2026-06-14) =====================
+// A home overview with operational KPIs, native SVG charts and per-tech performance.
+// NO financial figures anywhere by design — operations only.
+function _dashDayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function renderDashboard(){
+var host=document.getElementById('dashWrap');if(!host)return;
+var all=AD().filter(function(r){return r.n||r.cal});
+var today=new Date();today.setHours(0,0,0,0);
+var weekEnd=new Date(today);weekEnd.setDate(weekEnd.getDate()+7);
+function inDay(r,day){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHours(0,0,0,0);return d.getTime()===day.getTime()}
+// --- KPI counts (operational only) ---
+var todayCount=all.filter(function(r){return inDay(r,today)&&!r.co}).length;
+var weekCount=all.filter(function(r){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHours(0,0,0,0);return d.getTime()>=today.getTime()&&d.getTime()<weekEnd.getTime()&&!r.co}).length;
+var needsAction=all.filter(function(r){return st(r)==='overdue'}).length;
+var returns=all.filter(function(r){return r.sl&&!r.co}).length;
+var holdCount=all.filter(function(r){return st(r)==='hold'}).length;
+var upcoming=all.filter(function(r){return st(r)==='upcoming'}).length;
+var kpis=[
+ {label:'Today',value:todayCount,ico:'\u{1F4C5}',color:'#d97706',tab:'board',sf:'upcoming'},
+ {label:'This Week',value:weekCount,ico:'\u{1F5D3}\uFE0F',color:'#2563eb',tab:'board',sf:'upcoming'},
+ {label:'Needs Action',value:needsAction,ico:'\u26A0\uFE0F',color:'#dc2626',tab:'board',sf:'overdue'},
+ {label:'Returns',value:returns,ico:'\u{1F504}',color:'#c2410c',tab:'board',sf:'returns'},
+ {label:'On Hold',value:holdCount,ico:'\u23F8\uFE0F',color:'#7c3aed',tab:'board',sf:'hold'},
+ {label:'Upcoming',value:upcoming,ico:'\u{1F4CB}',color:'#0891b2',tab:'board',sf:'upcoming'}
+];
+var h='<div class="dash-inner">';
+h+='<div class="dash-head"><h2>\u{1F4CA} Operations Dashboard</h2><div class="dash-sub">'+today.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})+'</div></div>';
+// KPI grid
+h+='<div class="dash-kpis">';
+kpis.forEach(function(k){
+h+='<button class="dash-kpi" style="border-top:3px solid '+k.color+'" onclick="dashGoto(\''+k.tab+'\',\''+k.sf+'\')">'+
+'<span class="dk-ico">'+k.ico+'</span><span class="dk-val" style="color:'+k.color+'">'+k.value+'</span>'+
+'<span class="dk-lbl">'+k.label+'</span></button>';
+});
+h+='</div>';
+// --- Per-technician performance ---
+var techRows={};
+Object.keys(USERS||{}).forEach(function(id){if(USERS[id]&&USERS[id].role==='tech')techRows[id]={name:USERS[id].name||id,assigned:0,delivered:0,returns:0,completed:0}});
+all.forEach(function(r){
+var t=r.assigned_to&&techRows[r.assigned_to];if(!t)return;
+t.assigned++;
+if(r.dl)t.delivered++;
+if(r.sl&&!r.co)t.returns++;
+if(r.co)t.completed++;
+});
+var techArr=Object.keys(techRows).map(function(id){return techRows[id]}).filter(function(t){return t.assigned>0}).sort(function(a,b){return b.delivered-a.delivered});
+h+='<div class="dash-grid">';
+h+='<div class="dash-card"><h3>\u{1F468}\u200D\u{1F527} Technician Performance</h3>';
+if(techArr.length){
+var maxD=Math.max.apply(null,techArr.map(function(t){return t.delivered}).concat([1]));
+h+='<div class="tech-perf">';
+techArr.forEach(function(t){
+var pct=Math.round(t.delivered/maxD*100);
+h+='<div class="tp-row"><div class="tp-name">'+escHtml(t.name)+'</div>'+
+'<div class="tp-bar-wrap"><div class="tp-bar" style="width:'+pct+'%"></div></div>'+
+'<div class="tp-stats"><span class="tp-d" title="Delivered">'+t.delivered+' del</span>'+
+(t.returns?'<span class="tp-r" title="Pending returns">'+t.returns+' \u{1F504}</span>':'')+
+'<span class="tp-c" title="Completed">'+t.completed+' \u2713</span></div></div>';
+});
+h+='</div>';
+}else{h+='<div class="dash-empty">No technician assignments yet. Assign deliveries to techs to see performance here.</div>'}
+h+='</div>';
+// --- Deliveries per month (SVG line) ---
+var mo={};
+all.forEach(function(r){if(!r.dd)return;var d=parseDate(r.dd);if(!d||isNaN(d))return;var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mo[k]=(mo[k]||0)+1});
+var moKeys=Object.keys(mo).sort();
+h+='<div class="dash-card"><h3>\u{1F4C8} Deliveries per Month</h3>'+_svgLineChart(moKeys.map(function(k){return{label:k.slice(2),value:mo[k]}}))+'</div>';
+h+='</div>'; // end dash-grid
+// --- Spa model distribution (full-width bars) ---
+var md={};
+all.forEach(function(r){if(!r.sp||!r.n)return;var b=r.sp.split(',')[0].trim();if(b)md[b]=(md[b]||0)+1});
+var mdArr=Object.keys(md).map(function(k){return{label:k,value:md[k]}}).sort(function(a,b){return b.value-a.value}).slice(0,10);
+h+='<div class="dash-card dash-full"><h3>\u{1F6C1} Top Spa Models</h3>'+_svgBarChart(mdArr)+'</div>';
+h+='</div>'; // end dash-inner
+host.innerHTML=h;
+}
+function dashGoto(tab,sf){
+if(sf==='returns'){returnsF=true;var rb=document.getElementById('returnsBtn');if(rb)rb.classList.add('on');statusF='all';}
+else{returnsF=false;var rb2=document.getElementById('returnsBtn');if(rb2)rb2.classList.remove('on');if(typeof setStatusFilter==='function')setStatusFilter(sf);else statusF=sf;}
+setTab('board');
+if(typeof renderKPIs==='function')renderKPIs();
+}
+// Native SVG line chart — no library, scales to container, dots + value labels.
+function _svgLineChart(data){
+if(!data.length)return '<div class="dash-empty">No dated deliveries yet.</div>';
+var W=520,H=170,pad=28,maxV=Math.max.apply(null,data.map(function(d){return d.value}).concat([1]));
+var n=data.length,stepX=n>1?(W-pad*2)/(n-1):0;
+var pts=data.map(function(d,i){var x=pad+i*stepX,y=H-pad-(d.value/maxV)*(H-pad*2);return{x:x,y:y,d:d}});
+var path=pts.map(function(p,i){return (i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)}).join(' ');
+var area=path+' L'+pts[pts.length-1].x.toFixed(1)+' '+(H-pad)+' L'+pts[0].x.toFixed(1)+' '+(H-pad)+' Z';
+var s='<svg class="dash-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+s+='<defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2563eb" stop-opacity="0.22"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></linearGradient></defs>';
+s+='<path d="'+area+'" fill="url(#lg1)"/>';
+s+='<path d="'+path+'" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round"/>';
+pts.forEach(function(p){s+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="#2563eb"/>';
+s+='<text class="dsv-val" x="'+p.x.toFixed(1)+'" y="'+(p.y-8).toFixed(1)+'" text-anchor="middle">'+p.d.value+'</text>';
+s+='<text class="dsv-lbl" x="'+p.x.toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle">'+p.d.label+'</text>';});
+s+='</svg>';return s;
+}
+// Native SVG horizontal bar chart.
+function _svgBarChart(data){
+if(!data.length)return '<div class="dash-empty">No data yet.</div>';
+var maxV=Math.max.apply(null,data.map(function(d){return d.value}).concat([1]));
+var s='<div class="dash-bars">';
+data.forEach(function(d){var pct=Math.round(d.value/maxV*100);
+s+='<div class="db-row"><div class="db-lbl">'+escHtml(d.label)+'</div>'+
+'<div class="db-track"><div class="db-fill" style="width:'+pct+'%"></div></div>'+
+'<div class="db-val">'+d.value+'</div></div>';});
+s+='</div>';return s;
+}
 function renderCharts(){let mo={},md={};AD().filter(r=>r.dd&&r.n).forEach(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return;let k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");mo[k]=(mo[k]||0)+1});
 AD().filter(r=>r.sp&&r.n).forEach(r=>{let b=r.sp.split(",")[0].trim();md[b]=(md[b]||0)+1});
 let ma=Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0])),mx=Math.max(...ma.map(m=>m[1]),1);
@@ -4170,6 +4637,36 @@ return{filled:count,upgraded:upgraded}}
 function spaSpecsHasData(r){
 return!!(r.spd||r.di||r.yr||r.vt||r.jt||r.jm||r.p1||r.p2||r.pks||r.ts||r.tsn||r.lg||r.wf||r.oz||r.pl||r.ft||r.vl||r.sd||r.sb||r.cb||r.dr||r.cks||r.xf)}
 
+// ===================== ACTIVITY LOG / AUDIT TRAIL (Phase 3, 2026-06-14) =====================
+// Appends a timestamped, attributed entry to a ticket's activity history. Persisted through the
+// same EDITS/ADDED path as every other field (and added to `reserved` so sync never drops it).
+// Capped at the most recent 60 entries so a ticket record can't grow without bound.
+function pushActivity(id,action){
+try{
+let rec=AD().find(x=>x.i===id||String(x.i)===String(id));if(!rec)return;
+let who=(currentUser&&currentUser.name)||'system';
+let entry={ts:Date.now(),user:who,action:String(action||'').slice(0,140)};
+let list=Array.isArray(rec.activity)?rec.activity.slice():[];
+list.push(entry);
+if(list.length>60)list=list.slice(list.length-60);
+// Persist via field-level write (the SAME anti-clobber path calendar updates use) so logging
+// an activity can never overwrite a field (phone, notes, payment, hold) another device just
+// wrote. saveTicketFields handles ADDED vs EDITS routing and refuses to resurrect a deleted
+// ticket. Falls back to the dirty queue internally on failure, so nothing is lost.
+saveTicketFields(id,{activity:list});
+}catch(e){console.warn('pushActivity failed',e)}
+}
+function renderActivitySection(r){
+let list=Array.isArray(r.activity)?r.activity.slice():[];
+if(!list.length)return'';
+list.reverse();
+let rows=list.map(function(e){
+let d=new Date(e.ts);
+let when=isNaN(d)?'':d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+return '<div class="act-row"><span class="act-dot"></span><div class="act-body"><div class="act-action">'+escHtml(e.action)+'</div><div class="act-meta">'+escHtml(e.user||'')+' · '+when+'</div></div></div>';
+}).join('');
+return '<details class="act-wrap"><summary><span>🕑 Activity History</span><span class="act-count">'+list.length+'</span></summary><div class="act-list">'+rows+'</div></details>';
+}
 function renderModal(){let r=curRec,s=st(r);
 let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
 let h='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px"><div><h2>'+esc(r.n)+'</h2><p class="sub">'+esc(r.sp||"")+(r.sn?" &bull; SN: "+esc(r.sn):"")+'</p></div><button class="xbtn" onclick="closeOv()">&#10005;</button></div>';
@@ -4183,7 +4680,7 @@ h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-
 if(s!=='complete'&&!r.hold){let canCompl=r.cl&&(r.gb||r.ngb);
 h+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete Ticket':'&#9888; Complete (Call + G.B./N.G.B. Required)')+'</button>';
 // Manual Hold button — for when Alberto wants to pause a delivery without touching the calendar
-h+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved, can resume later" style="background:#fff;border:2px solid #c084fc;color:#7c3aed;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:11.5px">&#9208; Put on Hold</button>';}
+h+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved, can resume later" style="background:var(--surface);border:2px solid #c084fc;color:#7c3aed;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:11.5px">&#9208; Put on Hold</button>';}
 h+='</div>';
 // All fields always editable
 // CALENDAR EVENT — the verbatim Google Calendar title. The calendar OWNS this (it is copied
@@ -4202,7 +4699,7 @@ let _rsn=String(r.sn).replace(/\.0$/,'');
 if(_rsn!==_p.serial){
 xlinkWarn='<div style="margin-top:8px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px;font-size:13px;color:#991b1b"><div style="font-weight:700;margin-bottom:4px">\u26a0 Cross-link detected</div><div>This ticket has SN <b>'+escHtml(_rsn)+'</b> but is linked to a calendar event titled "<b>'+escHtml(r.cal)+'</b>" (SN <b>'+escHtml(_p.serial)+'</b>). Every sync overwrites this ticket\'s title and date with the wrong event\'s data. Click below to break the wrong link and let SN-match find the correct event.</div><button type="button" class="mbtn mbtn-s" style="margin-top:8px;background:#dc2626;color:#fff;border-color:#dc2626" onclick="repairThisTicketCrosslink('+r.i+')">&#128295; Fix cross-link now</button></div>';
 }}}
-h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:#475569;font-weight:600"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="openRelinkPicker('+r.i+')" title="If this shows the wrong event, pick the correct one">&#128279; Fix / change linked event</button><button type="button" class="mbtn" onclick="unlinkTicketFromCalendar('+r.i+')" title="Detach this ticket from the calendar event">&#10005; Unlink</button></div>'+xlinkWarn+'</div></div>';
+h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:var(--ink-slate);font-weight:600"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="openRelinkPicker('+r.i+')" title="If this shows the wrong event, pick the correct one">&#128279; Fix / change linked event</button><button type="button" class="mbtn" onclick="unlinkTicketFromCalendar('+r.i+')" title="Detach this ticket from the calendar event">&#10005; Unlink</button></div>'+xlinkWarn+'</div></div>';
 }
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
@@ -4268,7 +4765,7 @@ colorDefs.forEach(c=>{
 let active=String(r.gcalColorId||'')===c.id;
 let style=active
 ?'background:'+c.hex+';color:'+c.text+';border-color:'+c.hex
-:'background:#fff;color:'+c.hex+';border-color:'+c.hex+'66';
+:'background:var(--surface);color:'+c.hex+';border-color:'+c.hex+'66';
 h+='<button type="button" class="pst-pill'+(active?' pst-active':'')+'" onclick="toggleCalendarColor(\''+c.id+'\')" style="'+style+'"><span style="font-size:13px">&#9679;</span> '+c.l+'</button>';
 });
 h+='</div></div>'}
@@ -4276,7 +4773,7 @@ h+='</div></div>'}
 h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+(r.st||"")+'</textarea></div>';
 // Assigned tech dropdown (admin/organizer only)
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
-h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label><select id="e_assigned" style="padding:9px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;width:100%;background:#fff;outline:none"><option value="">— Unassigned —</option></select></div>'}
+h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label><select id="e_assigned" style="padding:9px 12px;border:2px solid var(--hairline);border-radius:8px;font-size:14px;font-family:inherit;width:100%;background:var(--surface);outline:none"><option value="">— Unassigned —</option></select></div>'}
 // SPA DESCRIPTION — single textarea, auto-filled from PDF
 h+='<details class="spa-specs" '+((r.spd||r.di||spaSpecsHasData(r))?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Description</span><span class="spec-hint">Upload PDF to auto-fill the full spa description</span></summary>';
 // PDF uploader + saved PDF preview
@@ -4374,7 +4871,7 @@ let by=sig.signed_by||'tech';
 h+='<div class="ct">&#9997;&#65039; Customer Signature <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— captured at delivery</span></div>';
 h+='<div style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:14px;margin-bottom:14px">';
 h+='<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">';
-h+='<img src="'+sig.data+'" alt="Customer signature" style="background:#fff;border:1px solid var(--border-soft);border-radius:8px;max-width:280px;max-height:120px;flex-shrink:0">';
+h+='<img src="'+sig.data+'" alt="Customer signature" style="background:var(--surface);border:1px solid var(--border-soft);border-radius:8px;max-width:280px;max-height:120px;flex-shrink:0">';
 h+='<div style="flex:1;min-width:200px;font-size:13px;color:#0c4a6e">';
 h+='<div style="font-weight:700;margin-bottom:4px">Signed by: '+escHtml(sig.customer_name||r.n||'Customer')+'</div>';
 if(when)h+='<div style="color:#0369a1">&#128197; '+escHtml(when)+'</div>';
@@ -4470,7 +4967,7 @@ let info=stMap[svcStat]||stMap.requested;
 h+='<div class="svc-status" style="background:'+info.bg+';color:'+info.color+'"><strong>'+info.label+'</strong>'+(r.svc_assigned_to?' &mdash; '+esc(r.svc_assigned_to):'')+(r.svc_sent_at?'<div class="svc-stamp">Sent '+new Date(r.svc_sent_at).toLocaleString()+'</div>':'')+'</div>'}
 h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div class="ib"><label>Requested Date</label><input type="date" id="tv_date" value="'+(r.tvd||'')+'"'+(svcStat==='completed'?' disabled':'')+'></div>';
 h+='<div class="ib"><label>Requested Time</label><input type="time" id="tv_time" value="'+(r.tvt||'09:00')+'"'+(svcStat==='completed'?' disabled':'')+'></div></div>';
-h+='<div class="ib" style="margin-bottom:10px"><label>Issue / Notes for Tech</label><textarea id="tv_notes" rows="3" style="width:100%;padding:6px 8px;border:2px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:inherit;color:#1f2937;outline:none;resize:vertical;min-height:70px" placeholder="Describe the issue, e.g. Customer reports water leak under cabinet. Check pump 1 seals, inspect filter housing." '+(svcStat==='completed'?'disabled':'')+'>'+esc(r.tvn||'')+'</textarea></div>';
+h+='<div class="ib" style="margin-bottom:10px"><label>Issue / Notes for Tech</label><textarea id="tv_notes" rows="3" style="width:100%;padding:6px 8px;border:2px solid var(--hairline);border-radius:6px;font-size:13px;font-family:inherit;color:var(--ink-strong);outline:none;resize:vertical;min-height:70px" placeholder="Describe the issue, e.g. Customer reports water leak under cabinet. Check pump 1 seals, inspect filter housing." '+(svcStat==='completed'?'disabled':'')+'>'+esc(r.tvn||'')+'</textarea></div>';
 h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
 if(!svcStat){
 h+='<button class="tv-dl" onclick="sendServiceRequest('+r.i+')">&#128228; Send to Service Log</button>'}
@@ -4480,6 +4977,8 @@ h+='<button class="tv-dl danger" onclick="cancelServiceRequest('+r.i+')">&#10005
 else if(svcStat==='completed'){
 h+='<button class="tv-dl" onclick="sendServiceRequest('+r.i+')">&#128228; Submit New Request</button>'}
 h+='</div></div>';
+// Activity history (audit trail) — read-only, most recent first.
+h+=renderActivitySection(r);
 // Save
 h+='<div class="mactions">';
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))h+='<button class="mbtn" onclick="deleteDelivery(curRec.i)" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;margin-right:auto">&#128465; Delete</button>';
@@ -4494,8 +4993,8 @@ let d=parseDate(dd);if(d&&!isNaN(d)){r.iso=d.getFullYear()+'-'+String(d.getMonth
 return r}
 function ddPicker(dd){let p=parseDDVal(dd);let slots=['am','pm','allday'];let labels={'am':'AM','pm':'PM','allday':'All Day'};
 let h='<div class="ib"><label>DELIVERY DATE</label><div style="display:flex;gap:6px;align-items:center">';
-h+='<input type="date" id="e_dd_date" value="'+p.iso+'" style="flex:1;padding:8px 10px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-weight:600;color:#1f2937;outline:none;font-family:inherit">';
-h+='<select id="e_dd_slot" style="padding:8px 10px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-weight:700;color:#1d4ed8;outline:none;background:#eff6ff;cursor:pointer">';
+h+='<input type="date" id="e_dd_date" value="'+p.iso+'" style="flex:1;padding:8px 10px;border:2px solid var(--hairline);border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-strong);outline:none;font-family:inherit">';
+h+='<select id="e_dd_slot" style="padding:8px 10px;border:2px solid var(--hairline);border-radius:8px;font-size:14px;font-weight:700;color:#1d4ed8;outline:none;background:#eff6ff;cursor:pointer">';
 slots.forEach(s=>{h+='<option value="'+s+'"'+(p.slot===s?' selected':'')+'>'+labels[s]+'</option>'});
 h+='</select></div></div>';return h}
 function ai(l,id,opts,val,optKey,isCustom){
@@ -4512,7 +5011,7 @@ if(name.length>30){alert('Name too long. Use 30 characters max.');return}
 let baseKey='c_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,20);
 if(!baseKey||baseKey==='c_'){alert('Invalid name. Use letters or numbers.');return}
 // Reserved/used keys
-let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst','signature','pdf_invoice_signed','crane','extra_person','water_truck'];
+let reserved=['tb','ss','lf','cv','su','i','n','sp','sn','dd','st','ph','em','cn','en','dn','fn','di','spd','dnotes','pr','py','bl','ck','co','dl','assigned_to','tech_photos','photos','svc_status','needs_attention','attention_at','tvd','tvt','tvn','pdf_invoice','drive_synced','drive_folder','pst','signature','pdf_invoice_signed','crane','extra_person','water_truck','activity'];
 PRE.forEach(p=>reserved.push(p.k));POST.forEach(p=>reserved.push(p.k));reserved.push('oo','il'); // legacy checklist keys (removed from UI 2026-06-12) still live on old records
 let k=baseKey,n=2;
 while(reserved.includes(k)||CUSTOM_CATS.some(c=>c.k===k)){k=baseKey+'_'+n;n++}
@@ -4851,49 +5350,49 @@ let san=emailPw_sanitizerSystem(r);
 let sysLabel=san==='ease'?'@ease':san==='blufusion'?'Blu Fusion':san==='pristine'?'Pristine':'(unknown — set Start Up)';
 let unitLabel=isSwim?'Swim Spa':'Hot Tub';
 let h='';
-h+='<div style="padding:24px 28px 8px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">';
-h+='<div><div style="font-size:18px;font-weight:800;color:#1f2937;margin-bottom:4px">&#9993; Email Post-Delivery Documents</div>';
-h+='<div style="font-size:13px;color:#6b7280">'+escHtml(r.n||'')+' &middot; '+escHtml(r.sp||'—')+(r.sn?' &middot; SN '+escHtml(String(r.sn)):'')+'</div></div>';
-h+='<button onclick="closeOv()" style="background:#f3f4f6;border:none;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;color:#6b7280">&times;</button>';
+h+='<div style="padding:24px 28px 8px;border-bottom:1px solid var(--hairline);display:flex;justify-content:space-between;align-items:flex-start;gap:12px">';
+h+='<div><div style="font-size:18px;font-weight:800;color:var(--ink-strong);margin-bottom:4px">&#9993; Email Post-Delivery Documents</div>';
+h+='<div style="font-size:13px;color:var(--ink-mid)">'+escHtml(r.n||'')+' &middot; '+escHtml(r.sp||'—')+(r.sn?' &middot; SN '+escHtml(String(r.sn)):'')+'</div></div>';
+h+='<button onclick="closeOv()" style="background:var(--surf-soft);border:none;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;color:var(--ink-mid)">&times;</button>';
 h+='</div>';
 h+='<div style="padding:20px 28px;max-height:75vh;overflow-y:auto">';
 // Type detected
 h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px">';
-h+='<div><span style="color:#6b7280">Unit type: </span><strong style="color:#1d4ed8">'+unitLabel+'</strong></div>';
-h+='<div><span style="color:#6b7280">Water care: </span><strong style="color:#1d4ed8">'+escHtml(sysLabel)+'</strong></div>';
+h+='<div><span style="color:var(--ink-mid)">Unit type: </span><strong style="color:#1d4ed8">'+unitLabel+'</strong></div>';
+h+='<div><span style="color:var(--ink-mid)">Water care: </span><strong style="color:#1d4ed8">'+escHtml(sysLabel)+'</strong></div>';
 h+='</div>';
 // Recipient
-h+='<div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">To (customer email)</label>';
-h+='<input type="email" id="emailpw_to" placeholder="customer@example.com" value="'+escHtml(r.em||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;font-family:inherit"></div>';
+h+='<div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">To (customer email)</label>';
+h+='<input type="email" id="emailpw_to" placeholder="customer@example.com" value="'+escHtml(r.em||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:10px 12px;border:2px solid var(--hairline);border-radius:8px;font-size:14px;outline:none;font-family:inherit"></div>';
 // Subject
-h+='<div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Subject</label>';
-h+='<input type="text" id="emailpw_subject" value="'+escHtml(emailPw_defaultSubject(r)).replace(/"/g,'&quot;')+'" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;font-family:inherit"></div>';
+h+='<div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Subject</label>';
+h+='<input type="text" id="emailpw_subject" value="'+escHtml(emailPw_defaultSubject(r)).replace(/"/g,'&quot;')+'" style="width:100%;padding:10px 12px;border:2px solid var(--hairline);border-radius:8px;font-size:14px;outline:none;font-family:inherit"></div>';
 // Body
-h+='<div style="margin-bottom:16px"><label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Message</label>';
-h+='<textarea id="emailpw_body" rows="12" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;resize:vertical;min-height:200px;line-height:1.5">'+escHtml(emailPw_defaultBody(r))+'</textarea></div>';
+h+='<div style="margin-bottom:16px"><label style="display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Message</label>';
+h+='<textarea id="emailpw_body" rows="12" style="width:100%;padding:12px;border:2px solid var(--hairline);border-radius:8px;font-size:13px;outline:none;font-family:inherit;resize:vertical;min-height:200px;line-height:1.5">'+escHtml(emailPw_defaultBody(r))+'</textarea></div>';
 // Attachments
-h+='<div style="margin-bottom:16px"><label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Attachments ('+attList.length+')</label>';
-h+='<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px">';
-if(!attList.length){h+='<div style="color:#9ca3af;font-style:italic">No attachments — please add tech photos and a signed PDF before sending.</div>'}
+h+='<div style="margin-bottom:16px"><label style="display:block;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Attachments ('+attList.length+')</label>';
+h+='<div style="background:var(--surf-soft);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;font-size:13px">';
+if(!attList.length){h+='<div style="color:var(--ink-soft);font-style:italic">No attachments — please add tech photos and a signed PDF before sending.</div>'}
 else{
 attList.forEach(a=>{
 let icon=a.source==='photo'?'&#128247;':'&#128196;';
-let tag=a.source==='photo'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px">TECH PHOTO</span>':a.source==='signed_pdf'?'<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px">SIGNED</span>':'<span style="background:#f3f4f6;color:#6b7280;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px">PDF</span>';
-h+='<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dashed #e5e7eb"><span style="margin-right:8px">'+icon+'</span><span style="flex:1;color:#1f2937;word-break:break-all">'+escHtml(a.name)+'</span>'+tag+'</div>'});
+let tag=a.source==='photo'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px">TECH PHOTO</span>':a.source==='signed_pdf'?'<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px">SIGNED</span>':'<span style="background:var(--surf-soft);color:var(--ink-mid);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px">PDF</span>';
+h+='<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px dashed #e5e7eb"><span style="margin-right:8px">'+icon+'</span><span style="flex:1;color:var(--ink-strong);word-break:break-all">'+escHtml(a.name)+'</span>'+tag+'</div>'});
 }
 h+='</div>';
 // Simple info bar — no Microsoft 365 / Azure setup options.
-h+='<div style="font-size:11px;color:#374151;margin-top:8px;line-height:1.5;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px"><span>&#9432; <strong>How it works:</strong> click "Open in Outlook" → these files download to your Downloads folder and Outlook opens with the email pre-filled. Drag the files onto the new email to attach them, then send.</span></div>';
+h+='<div style="font-size:11px;color:var(--ink);margin-top:8px;line-height:1.5;background:var(--surf-soft);border:1px solid var(--hairline);border-radius:6px;padding:8px 12px"><span>&#9432; <strong>How it works:</strong> click "Open in Outlook" → these files download to your Downloads folder and Outlook opens with the email pre-filled. Drag the files onto the new email to attach them, then send.</span></div>';
 h+='</div>';
 // Status / preview
-h+='<div id="emailpw_status" style="margin-bottom:8px;font-size:12px;color:#6b7280;min-height:18px"></div>';
+h+='<div id="emailpw_status" style="margin-bottom:8px;font-size:12px;color:var(--ink-mid);min-height:18px"></div>';
 h+='</div>';
 // Actions footer
-h+='<div style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#fafafa;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center">';
-h+='<button onclick="emailPwGenerateEml('+r.i+')" style="background:transparent;border:none;color:#6b7280;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline" title="Advanced: download a .eml file. Only opens as a draft in classic Outlook for Windows.">.eml (advanced)</button>';
+h+='<div style="padding:16px 28px;border-top:1px solid var(--hairline);background:var(--surf-soft);display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center">';
+h+='<button onclick="emailPwGenerateEml('+r.i+')" style="background:transparent;border:none;color:var(--ink-mid);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline" title="Advanced: download a .eml file. Only opens as a draft in classic Outlook for Windows.">.eml (advanced)</button>';
 h+='<div style="flex:1"></div>';
-h+='<button onclick="closeOv()" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
-h+='<button onclick="emailPwMarkSentOnly('+r.i+')" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" title="Mark Email PW as completed without generating the email">&#10003; Mark as Sent</button>';
+h+='<button onclick="closeOv()" style="background:var(--surface);border:1.5px solid var(--hairline-2);color:var(--ink);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
+h+='<button onclick="emailPwMarkSentOnly('+r.i+')" style="background:var(--surface);border:1.5px solid var(--hairline-2);color:var(--ink);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" title="Mark Email PW as completed without generating the email">&#10003; Mark as Sent</button>';
 h+='<button onclick="emailPwSendViaOutlook('+r.i+')" style="background:#0078d4;border:1.5px solid #0078d4;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#128231; Open in Outlook</button>';
 h+='</div>';
 let md=resetMd('wide');
@@ -5097,10 +5596,10 @@ function emailPw_showSetupWizard(onComplete){
 let redirectUri=window.location.origin+window.location.pathname;
 let currentId=emailPw_getClientId();
 let h='';
-h+='<div style="padding:24px 28px 8px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">';
-h+='<div><div style="font-size:18px;font-weight:800;color:#1f2937;margin-bottom:4px">&#128272; Microsoft 365 Setup</div>';
-h+='<div style="font-size:12px;color:#6b7280">One-time setup so the app can create Outlook drafts with attachments. Takes about 5 minutes.</div></div>';
-h+='<button onclick="closeOv()" style="background:#f3f4f6;border:none;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;color:#6b7280">&times;</button>';
+h+='<div style="padding:24px 28px 8px;border-bottom:1px solid var(--hairline);display:flex;justify-content:space-between;align-items:flex-start;gap:12px">';
+h+='<div><div style="font-size:18px;font-weight:800;color:var(--ink-strong);margin-bottom:4px">&#128272; Microsoft 365 Setup</div>';
+h+='<div style="font-size:12px;color:var(--ink-mid)">One-time setup so the app can create Outlook drafts with attachments. Takes about 5 minutes.</div></div>';
+h+='<button onclick="closeOv()" style="background:var(--surf-soft);border:none;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;color:var(--ink-mid)">&times;</button>';
 h+='</div>';
 h+='<div style="padding:20px 28px;max-height:78vh;overflow-y:auto">';
 // Why
@@ -5110,33 +5609,33 @@ h+='</div>';
 // Step 1: Open Azure
 h+=emailPw_wizardStep(1,'Open the Azure portal and sign in',
 '<button onclick="window.open(\'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade\',\'_blank\')" style="background:#0078d4;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#128279; Open Azure → App registrations</button>'+
-'<div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.5">Sign in with your <strong>service1@aspenspas.com</strong> account (or whichever Microsoft 365 account you use for work). If it\'s the first time, the page may take a few seconds to load.</div>');
+'<div style="font-size:12px;color:var(--ink-mid);margin-top:8px;line-height:1.5">Sign in with your <strong>service1@aspenspas.com</strong> account (or whichever Microsoft 365 account you use for work). If it\'s the first time, the page may take a few seconds to load.</div>');
 // Step 2: Click New Registration
 h+=emailPw_wizardStep(2,'Click "+ New registration"',
-'<div style="font-size:12px;color:#6b7280;line-height:1.5">It\'s a button near the top of the page. This opens a form.</div>');
+'<div style="font-size:12px;color:var(--ink-mid);line-height:1.5">It\'s a button near the top of the page. This opens a form.</div>');
 // Step 3: Fill the form
 h+=emailPw_wizardStep(3,'Fill out the registration form',
-'<div style="font-size:12px;color:#374151;line-height:1.7">'+
-'<div><strong>Name:</strong> <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px">Aspen Spas Delivery Tracker</code></div>'+
-'<div style="margin-top:8px"><strong>Supported account types:</strong><br>Choose <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px">Accounts in any organizational directory ... and personal Microsoft accounts</code></div>'+
-'<div style="margin-top:8px"><strong>Redirect URI:</strong><br>Type: select <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px">Single-page application (SPA)</code><br>URL: paste this exact value &#x2193;</div>'+
+'<div style="font-size:12px;color:var(--ink);line-height:1.7">'+
+'<div><strong>Name:</strong> <code style="background:var(--surf-soft);padding:1px 6px;border-radius:4px">Aspen Spas Delivery Tracker</code></div>'+
+'<div style="margin-top:8px"><strong>Supported account types:</strong><br>Choose <code style="background:var(--surf-soft);padding:1px 6px;border-radius:4px">Accounts in any organizational directory ... and personal Microsoft accounts</code></div>'+
+'<div style="margin-top:8px"><strong>Redirect URI:</strong><br>Type: select <code style="background:var(--surf-soft);padding:1px 6px;border-radius:4px">Single-page application (SPA)</code><br>URL: paste this exact value &#x2193;</div>'+
 '<div style="margin-top:6px;display:flex;gap:6px;align-items:center">'+
 '<input id="emailpw_wiz_redirect" readonly value="'+escHtml(redirectUri).replace(/"/g,'&quot;')+'" style="flex:1;padding:8px 10px;border:2px solid #0078d4;border-radius:6px;font-family:ui-monospace,monospace;font-size:12px;background:#f0f9ff;color:#0c4a6e">'+
 '<button onclick="emailPw_wizCopy(\'emailpw_wiz_redirect\',this)" style="background:#0078d4;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Copy</button>'+
 '</div>'+
-'<div style="font-size:11px;color:#9ca3af;margin-top:4px">&#9432; This must match EXACTLY — even one extra slash will break login.</div>'+
+'<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">&#9432; This must match EXACTLY — even one extra slash will break login.</div>'+
 '</div>');
 // Step 4: Register, then copy Client ID
 h+=emailPw_wizardStep(4,'Click <strong>Register</strong> at the bottom, then copy the Client ID',
-'<div style="font-size:12px;color:#6b7280;line-height:1.5">After you click Register, the page that loads (the Overview page) shows an <strong>"Application (client) ID"</strong>. It\'s a long string of letters/numbers like <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px;font-size:11px">a1b2c3d4-5678-90ab-cdef-1234567890ab</code>. Click the copy icon next to it.</div>');
+'<div style="font-size:12px;color:var(--ink-mid);line-height:1.5">After you click Register, the page that loads (the Overview page) shows an <strong>"Application (client) ID"</strong>. It\'s a long string of letters/numbers like <code style="background:var(--surf-soft);padding:1px 6px;border-radius:4px;font-size:11px">a1b2c3d4-5678-90ab-cdef-1234567890ab</code>. Click the copy icon next to it.</div>');
 // Step 5: Paste here
 h+=emailPw_wizardStep(5,'Paste the Client ID here',
 '<input id="emailpw_wiz_client_id" placeholder="a1b2c3d4-5678-90ab-cdef-1234567890ab" value="'+escHtml(currentId||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:10px 14px;border:2px solid #0078d4;border-radius:8px;font-family:ui-monospace,monospace;font-size:13px;outline:none">'+
 '<div id="emailpw_wiz_err" style="font-size:12px;color:#dc2626;margin-top:6px;min-height:16px"></div>');
 h+='</div>';
 // Footer
-h+='<div style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#fafafa;display:flex;gap:8px;justify-content:flex-end;align-items:center">';
-h+='<button onclick="closeOv()" style="background:#fff;border:1.5px solid #d1d5db;color:#374151;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
+h+='<div style="padding:16px 28px;border-top:1px solid var(--hairline);background:var(--surf-soft);display:flex;gap:8px;justify-content:flex-end;align-items:center">';
+h+='<button onclick="closeOv()" style="background:var(--surface);border:1.5px solid var(--hairline-2);color:var(--ink);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>';
 h+='<button onclick="emailPw_saveSetup()" style="background:#059669;border:1.5px solid #059669;color:#fff;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#10003; Save &amp; Continue</button>';
 h+='</div>';
 let md=resetMd('wide');
@@ -5149,7 +5648,7 @@ function emailPw_wizardStep(num,title,body){
 return '<div style="display:flex;gap:14px;margin-bottom:18px">'+
 '<div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#0078d4;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center">'+num+'</div>'+
 '<div style="flex:1;min-width:0">'+
-'<div style="font-size:14px;font-weight:700;color:#1f2937;margin-bottom:8px">'+title+'</div>'+
+'<div style="font-size:14px;font-weight:700;color:var(--ink-strong);margin-bottom:8px">'+title+'</div>'+
 '<div>'+body+'</div>'+
 '</div></div>'}
 
@@ -5201,10 +5700,10 @@ let h='';
 h+='<div style="padding:32px 28px;text-align:center">';
 h+='<div style="font-size:48px;line-height:1;margin-bottom:12px">&#127881;</div>';
 h+='<div style="font-size:22px;font-weight:800;color:#059669;margin-bottom:6px">Draft is ready in Outlook</div>';
-h+='<div style="font-size:13px;color:#6b7280;margin-bottom:24px;line-height:1.5">A new email to <strong>'+escHtml(r.em||'the customer')+'</strong> with all '+resolved.length+' attachment(s) was just created in '+(userEmail?'<strong>'+escHtml(userEmail)+'</strong>':'your mailbox')+'\'s <strong>Drafts</strong> folder.<br>Open Outlook, find it under Drafts, review, and click Send.</div>';
+h+='<div style="font-size:13px;color:var(--ink-mid);margin-bottom:24px;line-height:1.5">A new email to <strong>'+escHtml(r.em||'the customer')+'</strong> with all '+resolved.length+' attachment(s) was just created in '+(userEmail?'<strong>'+escHtml(userEmail)+'</strong>':'your mailbox')+'\'s <strong>Drafts</strong> folder.<br>Open Outlook, find it under Drafts, review, and click Send.</div>';
 if(webLink){
 h+='<a href="'+escHtml(webLink)+'" target="_blank" style="display:inline-block;background:#0078d4;border:none;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:14px">&#128231; Open the draft in Outlook on the web</a>';
-h+='<div style="font-size:12px;color:#9ca3af;margin-bottom:18px">…or just open Outlook on your computer — it\'s already there.</div>'}
+h+='<div style="font-size:12px;color:var(--ink-soft);margin-bottom:18px">…or just open Outlook on your computer — it\'s already there.</div>'}
 h+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;text-align:left;margin-bottom:18px">';
 h+='<div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Attached ('+resolved.length+')</div>';
 resolved.forEach(a=>{
@@ -5212,7 +5711,7 @@ let icon=a.mime&&a.mime.indexOf('image')===0?'&#128247;':'&#128206;';
 h+='<div style="font-size:12px;color:#15803d;padding:3px 0;display:flex;align-items:center"><span style="margin-right:8px">'+icon+'</span><span style="word-break:break-all">'+escHtml(a.name)+'</span></div>'});
 h+='</div>';
 h+='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
-h+='<button onclick="emailPw_msSignOut()" style="background:#fff;border:1.5px solid #d1d5db;color:#6b7280;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" title="Switch Microsoft account">Sign out of Microsoft</button>';
+h+='<button onclick="emailPw_msSignOut()" style="background:var(--surface);border:1.5px solid var(--hairline-2);color:var(--ink-mid);padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" title="Switch Microsoft account">Sign out of Microsoft</button>';
 h+='<button onclick="closeOv()" style="background:#0078d4;border:none;color:#fff;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
 h+='</div>';
 h+='</div>';
@@ -5232,12 +5731,12 @@ let h='';
 h+='<div style="padding:32px 28px;text-align:center">';
 h+='<div style="font-size:48px;line-height:1;margin-bottom:12px">&#9989;</div>';
 h+='<div style="font-size:20px;font-weight:800;color:#059669;margin-bottom:6px">Files downloaded — Outlook is opening</div>';
-h+='<div style="font-size:13px;color:#6b7280;margin-bottom:18px">'+resolved.length+' file(s) saved to your <strong>Downloads</strong> folder. The email to <strong>'+escHtml(to)+'</strong> should appear in Outlook with subject and message ready.</div>';
+h+='<div style="font-size:13px;color:var(--ink-mid);margin-bottom:18px">'+resolved.length+' file(s) saved to your <strong>Downloads</strong> folder. The email to <strong>'+escHtml(to)+'</strong> should appear in Outlook with subject and message ready.</div>';
 
 // Single primary button — re-launches Outlook robustly using the same multi-method
 // approach as the auto-launch (iframe + anchor + window.location).
 h+='<button onclick="emailPw_launchOutlook(\''+escHtml(appUrl).replace(/'/g,"\\'")+'\')" style="display:block;width:100%;background:#0078d4;border:none;color:#fff;padding:14px 20px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;text-decoration:none;margin-bottom:10px">&#128231; Open in Outlook</button>';
-h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:16px">If a browser dialog asks "Open Microsoft Outlook?" — click <strong>Open</strong>, and check "Always allow" so it stops asking next time.</div>';
+h+='<div style="font-size:11px;color:var(--ink-soft);margin-bottom:16px">If a browser dialog asks "Open Microsoft Outlook?" — click <strong>Open</strong>, and check "Always allow" so it stops asking next time.</div>';
 
 // Drag instructions
 h+='<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:14px">';
@@ -5246,13 +5745,13 @@ h+='<div style="font-size:12px;color:#78350f;line-height:1.5">Open the <strong>D
 h+='</div>';
 
 // File list
-h+='<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:18px;max-height:200px;overflow-y:auto">';
-h+='<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Files just downloaded ('+resolved.length+')</div>';
+h+='<div style="background:var(--surf-soft);border:1px solid var(--hairline);border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:18px;max-height:200px;overflow-y:auto">';
+h+='<div style="font-size:11px;font-weight:700;color:var(--ink-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Files just downloaded ('+resolved.length+')</div>';
 resolved.forEach(a=>{
 let icon=a.mime&&a.mime.indexOf('image')===0?'&#128247;':'&#128196;';
-h+='<div style="font-size:12px;color:#374151;padding:4px 0;display:flex;align-items:center"><span style="margin-right:8px">'+icon+'</span><span style="word-break:break-all">'+escHtml(a.name)+'</span></div>'});
+h+='<div style="font-size:12px;color:var(--ink);padding:4px 0;display:flex;align-items:center"><span style="margin-right:8px">'+icon+'</span><span style="word-break:break-all">'+escHtml(a.name)+'</span></div>'});
 h+='</div>';
-h+='<button onclick="closeOv()" style="background:#f3f4f6;border:none;color:#374151;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
+h+='<button onclick="closeOv()" style="background:var(--surf-soft);border:none;color:var(--ink);padding:11px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Done</button>';
 h+='</div>';
 let md=resetMd('narrow');
 md.innerHTML=h;
@@ -5523,6 +6022,8 @@ Object.assign(EDITS[id],u);
 rememberEditsEdit(id,EDITS[id]);
 saveE()
 }
+// Log meaningful manual changes to the activity trail (date is the operationally important one).
+try{if(prevSnapshot&&u&&typeof u.dd!=='undefined'&&u.dd!==prevSnapshot.dd){pushActivity(id,'Delivery date changed: '+(prevSnapshot.dd||'—')+' → '+(u.dd||'—'))}}catch(e){}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully');
 // PUSH to Google Calendar (async, fire-and-forget). If the ticket is linked to a calendar
 // event and any of {dd, gcalColorId} changed, propagate the change so the calendar matches
@@ -5624,9 +6125,25 @@ closeOv();renderAll();
 // Only runs when two-way sync is on AND the new delivery has a parseable date.
 if(newRec&&newRec.dd&&gcalWriteEnabled())gcalPushNewTicket(newRec)}
 
-function setTab(t){tab=t;document.getElementById("tbBoard").classList.toggle("act",t==="board");document.getElementById("tbTable").classList.toggle("act",t==="table");document.getElementById("tbCal").classList.toggle("act",t==="cal");
+// ===== DARK MODE (Phase 5) =====
+function applyDarkMode(on){
+try{document.documentElement.setAttribute('data-theme',on?'dark':'light');
+var b=document.getElementById('darkToggle');if(b)b.innerHTML=on?'\u2600\uFE0F':'\u{1F319}';
+localStorage.setItem('aspen_dt_theme',on?'dark':'light');}catch(e){}}
+function toggleDarkMode(){var on=document.documentElement.getAttribute('data-theme')!=='dark';applyDarkMode(on);}
+// Restore saved preference immediately on load.
+(function(){try{var t=localStorage.getItem('aspen_dt_theme');if(t==='dark')applyDarkMode(true);}catch(e){}})();
+function setTab(t){tab=t;
+var _db=document.getElementById("tbDash");if(_db)_db.classList.toggle("act",t==="dash");
+var _rb=document.getElementById("tbRoute");if(_rb)_rb.classList.toggle("act",t==="route");
+var _rw=document.getElementById("routeWrap");if(_rw)_rw.classList.toggle("hidden",t!=="route");
+document.getElementById("tbBoard").classList.toggle("act",t==="board");document.getElementById("tbTable").classList.toggle("act",t==="table");document.getElementById("tbCal").classList.toggle("act",t==="cal");
+var _dw=document.getElementById("dashWrap");if(_dw)_dw.classList.toggle("hidden",t!=="dash");
 document.getElementById("board").classList.toggle("hidden",t!=="board");document.getElementById("tw").classList.toggle("hidden",t!=="table");document.getElementById("calWrap").classList.toggle("hidden",t!=="cal");
-if(t==="cal")renderCalendar();else render()}
+// The filter bar (search/tech/returns) and status tabs are irrelevant on the dashboard.
+var _flt=document.querySelector(".filters");if(_flt)_flt.style.display=(t==="dash"||t==="route")?"none":"";
+var _tabs=document.querySelector(".aspen-tabs-bar");
+if(t==="dash")renderDashboard();else if(t==="route")renderRoutePlan();else if(t==="cal")renderCalendar();else render()}
 
 function completeTicket(id){
 let rec=AD().find(x=>x.i===id||String(x.i)===String(id));
@@ -5635,6 +6152,7 @@ if(!confirm('Mark "'+rec.n+'" as COMPLETE?'))return;
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){ADDED[ai].co=true;rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};EDITS[id].co=true;rememberEditsEdit(id,EDITS[id]);saveE()}
+pushActivity(id,'Marked Complete');
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll();
 fireConfetti()}
 
@@ -6284,21 +6802,21 @@ noDate:{l:'Sin FECHA reconocible',d:'El evento no tiene una fecha que el sistema
 let groups={};log.forEach(e=>{(groups[e.reason]=groups[e.reason]||[]).push(e)});
 let body='';
 if(!log.length){
-body='<div style="padding:30px;text-align:center;color:#6b7280;font-size:14px">No hay eventos saltados en la última sincronización.<br><span style="font-size:12px">Corre <b>Sync Now</b> y vuelve a abrir esta lista para ver el detalle.</span></div>';
+body='<div style="padding:30px;text-align:center;color:var(--ink-mid);font-size:14px">No hay eventos saltados en la última sincronización.<br><span style="font-size:12px">Corre <b>Sync Now</b> y vuelve a abrir esta lista para ver el detalle.</span></div>';
 }else{
 ['color','title','sunday','noDate'].forEach(rk=>{
 let items=groups[rk];if(!items||!items.length)return;
 let m=reasonMeta[rk];
 body+='<div style="margin-bottom:18px">';
-body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="background:'+m.c+';color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px">'+items.length+'</span><span style="font-size:13px;font-weight:800;color:#111827">'+m.l+'</span></div>';
-body+='<div style="font-size:11px;color:#6b7280;margin-bottom:8px;line-height:1.4">'+m.d+'</div>';
-body+='<div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">';
+body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="background:'+m.c+';color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px">'+items.length+'</span><span style="font-size:13px;font-weight:800;color:var(--ink-strong)">'+m.l+'</span></div>';
+body+='<div style="font-size:11px;color:var(--ink-mid);margin-bottom:8px;line-height:1.4">'+m.d+'</div>';
+body+='<div style="border:1px solid var(--hairline);border-radius:8px;overflow:hidden">';
 items.slice(0,200).forEach((e,idx)=>{
 let bg=idx%2?'#f9fafb':'#fff';
 let colorTag=(rk==='color')?'<span style="font-size:10px;font-weight:700;color:'+m.c+'"> — '+escHtml(gcalColorName(e.colorId))+'</span>':'';
-body+='<div style="padding:8px 11px;background:'+bg+';font-size:12px;color:#374151;display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:600">'+escHtml(e.summary)+colorTag+'</span><span style="font-size:11px;color:#9ca3af;white-space:nowrap">'+escHtml(e.date||'—')+'</span></div>';
+body+='<div style="padding:8px 11px;background:'+bg+';font-size:12px;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:600">'+escHtml(e.summary)+colorTag+'</span><span style="font-size:11px;color:var(--ink-soft);white-space:nowrap">'+escHtml(e.date||'—')+'</span></div>';
 });
-if(items.length>200)body+='<div style="padding:8px 11px;font-size:11px;color:#9ca3af;background:#fff">…y '+(items.length-200)+' más</div>';
+if(items.length>200)body+='<div style="padding:8px 11px;font-size:11px;color:var(--ink-soft);background:var(--surface)">…y '+(items.length-200)+' más</div>';
 body+='</div></div>';
 });
 }
@@ -6306,9 +6824,9 @@ let ov=document.createElement('div');
 ov.id='skipLogOv';
 ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch';
 ov.onclick=function(ev){if(ev.target===ov)ov.remove()};
-ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
-'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="font-size:18px;font-weight:800;color:#111827;margin:0">Eventos saltados en el último sync</h2><button onclick="document.getElementById(\'skipLogOv\').remove()" style="background:#f3f4f6;border:2px solid #e5e7eb;color:#6b7280;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px">&#10005;</button></div>'+
-'<div style="font-size:12px;color:#6b7280;margin-bottom:16px">Total filtrados: <b>'+log.length+'</b>. Si ves una <b>entrega real</b> aquí, el problema es su color (cámbialo en el calendario o agrega ese color al filtro) o su título.</div>'+
+ov.innerHTML='<div style="background:var(--surface);border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="font-size:18px;font-weight:800;color:var(--ink-strong);margin:0">Eventos saltados en el último sync</h2><button onclick="document.getElementById(\'skipLogOv\').remove()" style="background:var(--surf-soft);border:2px solid var(--hairline);color:var(--ink-mid);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px">&#10005;</button></div>'+
+'<div style="font-size:12px;color:var(--ink-mid);margin-bottom:16px">Total filtrados: <b>'+log.length+'</b>. Si ves una <b>entrega real</b> aquí, el problema es su color (cámbialo en el calendario o agrega ese color al filtro) o su título.</div>'+
 body+'</div>';
 document.body.appendChild(ov);
 }
@@ -6771,18 +7289,18 @@ _relinkTicketId=ticketId;_relinkEvents={};
 let ov=document.getElementById('relinkOv');if(ov)ov.remove();
 ov=document.createElement('div');ov.id='relinkOv';
 ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
-ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="padding:18px 18px 0"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Link this ticket to a calendar event</div><div style="font-size:12px;color:#6b7280;margin-bottom:12px">Pick the event that truly belongs to this ticket. This replaces any wrong link and copies that event\u2019s title, date and color.</div></div><div id="relinkList" style="padding:0 18px;overflow:auto;flex:1">Loading events\u2026</div><div style="padding:14px 18px;display:flex;justify-content:flex-end;border-top:1px solid #eee"><button type="button" class="mbtn" onclick="closeRelinkPicker()">Cancel</button></div></div>';
+ov.innerHTML='<div style="background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3)"><div style="padding:18px 18px 0"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Link this ticket to a calendar event</div><div style="font-size:12px;color:var(--ink-mid);margin-bottom:12px">Pick the event that truly belongs to this ticket. This replaces any wrong link and copies that event\u2019s title, date and color.</div></div><div id="relinkList" style="padding:0 18px;overflow:auto;flex:1">Loading events\u2026</div><div style="padding:14px 18px;display:flex;justify-content:flex-end;border-top:1px solid #eee"><button type="button" class="mbtn" onclick="closeRelinkPicker()">Cancel</button></div></div>';
 ov.addEventListener('click',e=>{if(e.target===ov)closeRelinkPicker()});
 document.body.appendChild(ov);
 let list=await gcalFetchUpcomingEvents();
 let el=document.getElementById('relinkList');if(!el)return;
 if(list===null){el.innerHTML='<div style="color:#b45309;font-size:13px;padding:8px 0">Could not load calendar events. Connect to Google Calendar (or click Sync Now) and try again.</div>';return}
-if(!list.length){el.innerHTML='<div style="color:#6b7280;font-size:13px;padding:8px 0">No upcoming events found.</div>';return}
+if(!list.length){el.innerHTML='<div style="color:var(--ink-mid);font-size:13px;padding:8px 0">No upcoming events found.</div>';return}
 list.forEach(ev=>_relinkEvents[ev.id]=ev);
 el.innerHTML=list.map(ev=>{
 let slot=/pm/i.test(ev.dd||'')?' PM':(/am/i.test(ev.dd||'')?' AM':'');
 let dl=ev.dd?(fmtDate(ev.dd)+slot):'(no date)';
-return '<div onclick="confirmRelink(\''+String(ev.id).replace(/'/g,"\\\\'")+'\')" style="padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;cursor:pointer" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'"><div style="font-weight:600;color:#111827">'+escHtml(ev.summary||'(no title)')+'</div><div style="font-size:12px;color:#6b7280">'+escHtml(dl)+'</div></div>'}).join('')}
+return '<div onclick="confirmRelink(\''+String(ev.id).replace(/'/g,"\\\\'")+'\')" style="padding:10px 12px;border:1px solid var(--hairline);border-radius:8px;margin-bottom:6px;cursor:pointer" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'"><div style="font-weight:600;color:var(--ink-strong)">'+escHtml(ev.summary||'(no title)')+'</div><div style="font-size:12px;color:var(--ink-mid)">'+escHtml(dl)+'</div></div>'}).join('')}
 async function confirmRelink(eventId){
 let ev=_relinkEvents[eventId];if(!ev||_relinkTicketId==null)return;
 let tid=_relinkTicketId;
@@ -8426,7 +8944,7 @@ let k=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(
 let isToday=k===todayK;
 let dayEvs=evs[k]||[];
 // The events list area is the drop zone for this day
-h+='<div class="cal-wk-row"><div class="cal-wk-label'+(isToday?' today':'')+'"><div style="font-size:11px;text-transform:uppercase">'+DAYNAMES[cur.getDay()]+'</div><div class="cw-day">'+cur.getDate()+'</div><div style="font-size:10px;color:#9ca3af">'+MNAMES[cur.getMonth()].substring(0,3)+'</div></div><div class="cal-wk-evs" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
+h+='<div class="cal-wk-row"><div class="cal-wk-label'+(isToday?' today':'')+'"><div style="font-size:11px;text-transform:uppercase">'+DAYNAMES[cur.getDay()]+'</div><div class="cw-day">'+cur.getDate()+'</div><div style="font-size:10px;color:var(--ink-soft)">'+MNAMES[cur.getMonth()].substring(0,3)+'</div></div><div class="cal-wk-evs" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
 if(!dayEvs.length)h+='<div style="font-size:12px;color:#d1d5db;padding:8px">No deliveries</div>';
 dayEvs.forEach(e=>{
 let r=e.r;
@@ -8444,14 +8962,14 @@ document.getElementById('calTitle').textContent=dayName+', '+MNAMES[m]+' '+dd+',
 let k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
 let evs=evsByDate(calEvents());let dayEvs=evs[k]||[];
 let h='<div class="cal-wk">';
-if(!dayEvs.length)h+='<div style="padding:40px;text-align:center;color:#9ca3af;font-size:15px">No deliveries on this day.</div>';
+if(!dayEvs.length)h+='<div style="padding:40px;text-align:center;color:var(--ink-soft);font-size:15px">No deliveries on this day.</div>';
 dayEvs.forEach(e=>{
 let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
 h+='<div class="cal-wk-row" style="grid-template-columns:1fr;cursor:pointer" onclick="openDet('+r.i+')">';
 h+='<div style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">';
 h+='<div class="ev-dot" style="background:'+dotColor+';width:10px;height:10px"></div>';
-h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:#111827">'+escHtml(dispName(r))+'</div><div style="font-size:12px;color:#6b7280;margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
+h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:var(--ink-strong)">'+escHtml(dispName(r))+'</div><div style="font-size:12px;color:var(--ink-mid);margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
 h+='<div style="font-size:13px;font-weight:700;color:#1e40af">'+dateNote(r.dd).trim().toUpperCase()+'</div>';
 if(r.pr>0)h+='<div style="font-size:13px;font-weight:700;color:#7c3aed">'+fmt(r.pr)+'</div>';
 if(r.bl>0)h+='<div style="font-size:13px;font-weight:700;color:#dc2626">Bal: '+fmt(r.bl)+'</div>';
@@ -8459,8 +8977,19 @@ h+='<span class="badge '+e.s+'" style="font-size:10px">'+sL(e.s)+'</span>';
 h+='</div></div>'});
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
-function render(){renderBoard();renderTable()}
-function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();render();renderCharts();if(tab==='cal')renderCalendar()}
+// Fill the technician dropdown from USERS (admins/organizers see it; techs use their own view).
+function populateTechFilter(){
+let sel=document.getElementById("techFilter");if(!sel)return;
+let prev=techF||"";
+let techs=Object.keys(USERS||{}).map(id=>({id,name:(USERS[id]&&USERS[id].name)||id,role:USERS[id]&&USERS[id].role}))
+.filter(u=>u.role==="tech").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+let html='<option value="">\u{1F464} All techs</option>';
+techs.forEach(u=>{html+='<option value="'+u.id+'"'+(String(prev)===String(u.id)?" selected":"")+">"+escHtml(u.name)+"</option>"});
+// If the previously-selected tech no longer exists, reset the filter so nothing hides silently.
+if(prev&&!techs.some(u=>String(u.id)===String(prev))){techF="";}
+sel.innerHTML=html}
+function render(){populateTechFilter();renderBoard();renderTable()}
+function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();render();renderCharts();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
 // Initial render is triggered by Firebase listeners via checkReady()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeOv()});
 
@@ -8534,7 +9063,7 @@ return h+'</div>'}
 function intakeBoxHtml(r){
 let it=INTAKE[r.i],inner;
 if(!it||!it.token){
-inner='<div style="font-size:13px;color:#6b7280;margin-bottom:8px">Generate a private link the customer opens on their phone to upload access photos and confirm details. It updates this ticket automatically and expires once they submit.</div>'+
+inner='<div style="font-size:13px;color:var(--ink-mid);margin-bottom:8px">Generate a private link the customer opens on their phone to upload access photos and confirm details. It updates this ticket automatically and expires once they submit.</div>'+
 '<button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128228; Create customer upload link</button>';
 }else if(it.submitted){
 inner='<div style="color:#059669;font-weight:700;margin-bottom:6px">&#10003; Customer submitted'+(it.submittedAt?(' \u00b7 '+new Date(it.submittedAt).toLocaleString()):'')+'</div>'+_irespSummary(it)+
@@ -8542,7 +9071,7 @@ inner='<div style="color:#059669;font-weight:700;margin-bottom:6px">&#10003; Cus
 '<button type="button" class="mbtn mbtn-s" style="background:#f59e0b;color:#fff" onclick="intakeReapply('+_ijsv(r.i)+')" title="Re-copy the customer\'s answers and photos into this ticket. Use this if a checkbox or photo didn\'t carry over.">&#128260; Re-apply submission</button></div>';
 }else{
 inner='<div style="color:#2563eb;font-weight:700;margin-bottom:4px">&#9679; Link active \u2014 waiting for customer</div>'+
-'<div style="font-size:12px;color:#6b7280;margin-bottom:8px">Requesting: '+_iesc(_ireqLabels(it.requested))+'</div>'+
+'<div style="font-size:12px;color:var(--ink-mid);margin-bottom:8px">Requesting: '+_iesc(_ireqLabels(it.requested))+'</div>'+
 '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128203; Copy link</button>'+
 '<button type="button" class="mbtn" onclick="intakeRegenerate('+_ijsv(r.i)+')">New link</button></div>';
 }
@@ -8638,14 +9167,14 @@ return '<div style="min-height:100%;background:#eef2f6;padding:0 0 40px">'+
 '<div style="max-width:560px;margin:0 auto;padding:16px">'+inner+'</div></div>'}
 
 function _portalMsg(title,sub){
-return _portalShell('<div style="background:#fff;border-radius:14px;padding:30px 22px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)"><div style="font-size:42px">&#128231;</div><div style="font-size:20px;font-weight:700;margin:10px 0 6px">'+_iesc(title)+'</div><div style="color:#6b7280;font-size:14px;line-height:1.5">'+_iesc(sub)+'</div></div>')}
+return _portalShell('<div style="background:var(--surface);border-radius:14px;padding:30px 22px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)"><div style="font-size:42px">&#128231;</div><div style="font-size:20px;font-weight:700;margin:10px 0 6px">'+_iesc(title)+'</div><div style="color:var(--ink-mid);font-size:14px;line-height:1.5">'+_iesc(sub)+'</div></div>')}
 
 function renderIntakePortal(id,token){
 document.title='Aspen Spas \u2014 Delivery Prep';
 let lo=document.getElementById('loading-ov');if(lo)lo.remove();
 let host=document.getElementById('intakePortalRoot');
 if(!host){host=document.createElement('div');host.id='intakePortalRoot';host.style.cssText='position:fixed;inset:0;z-index:100000;overflow:auto;-webkit-overflow-scrolling:touch;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif';document.body.appendChild(host)}
-host.innerHTML=_portalShell('<div style="text-align:center;color:#6b7280;padding:40px">Loading\u2026</div>');
+host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);padding:40px">Loading\u2026</div>');
 db.ref('intake/'+id).once('value').then(snap=>{
 let it=snap.val();
 if(!it||!it.token||String(it.token)!==String(token)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return}
@@ -8654,29 +9183,29 @@ _PORTAL={id:id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelO
 host.innerHTML=_portalShell(_portalFormHtml(it));
 }).catch(e=>{console.error('[INTAKE] load',e);host.innerHTML=_portalMsg('Something went wrong','Please reload the page or contact Aspen Spas.')})}
 
-function _card(title,body){return '<div style="background:#fff;border-radius:14px;padding:16px 16px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:8px">'+title+'</div>'+body+'</div>'}
+function _card(title,body){return '<div style="background:var(--surface);border-radius:14px;padding:16px 16px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-weight:700;font-size:15px;color:var(--ink-strong);margin-bottom:8px">'+title+'</div>'+body+'</div>'}
 function _photoField(group,hint){
-return '<div style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:10px">'+hint+'</div>'+
+return '<div style="font-size:13px;color:var(--ink-slate);line-height:1.5;margin-bottom:10px">'+hint+'</div>'+
 '<input id="file_'+group+'" type="file" accept="image/*" multiple capture="environment" style="display:none" onchange="intakeFiles(this,\''+group+'\')">'+
 '<button type="button" onclick="document.getElementById(\'file_'+group+'\').click()" style="background:#0f766e;color:#fff;border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:600;width:100%;cursor:pointer">&#128247; Add photos</button>'+
 '<div id="thumbs_'+group+'" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>'}
 
 function _portalFormHtml(it){
 let rq=it.requested||{},h='';
-h+='<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'+
+h+='<div style="background:var(--surface);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'+
 '<div style="font-size:15px">Hi'+(it.cust?' '+_iesc(String(it.cust).split(/[ ,]/)[0]):'')+',</div>'+
-'<div style="color:#475569;font-size:14px;line-height:1.5;margin-top:6px">We are getting ready for your '+_iesc(it.spa||'spa')+' delivery'+(it.date?' on '+_iesc(String(it.date).replace(/\s*(am|pm|all day)/i,'')):'')+'. Please complete the items below so the crew is fully prepared. It only takes a couple of minutes.</div></div>';
+'<div style="color:var(--ink-slate);font-size:14px;line-height:1.5;margin-top:6px">We are getting ready for your '+_iesc(it.spa||'spa')+' delivery'+(it.date?' on '+_iesc(String(it.date).replace(/\s*(am|pm|all day)/i,'')):'')+'. Please complete the items below so the crew is fully prepared. It only takes a couple of minutes.</div></div>';
 
-if(rq.access)h+=_card('&#128205; Access photos','<div style="font-size:13px;color:#475569;line-height:1.55;margin-bottom:10px">Please take photos showing the <b>full path</b> our crew will use to bring the spa in:<br>1) The <b>entrance / driveway</b> to your property<br>2) The <b>path or walkway</b> from the entrance to where the spa will go (gates, steps, slopes, tight spots)<br>3) The <b>patio / pad</b> where the spa will sit<br>4) The <b>surrounding area</b> &mdash; anything that affects access</div>'+_photoField('access','Add as many as needed so we can see the whole route from the street to the spot.'));
+if(rq.access)h+=_card('&#128205; Access photos','<div style="font-size:13px;color:var(--ink-slate);line-height:1.55;margin-bottom:10px">Please take photos showing the <b>full path</b> our crew will use to bring the spa in:<br>1) The <b>entrance / driveway</b> to your property<br>2) The <b>path or walkway</b> from the entrance to where the spa will go (gates, steps, slopes, tight spots)<br>3) The <b>patio / pad</b> where the spa will sit<br>4) The <b>surrounding area</b> &mdash; anything that affects access</div>'+_photoField('access','Add as many as needed so we can see the whole route from the street to the spot.'));
 
-if(rq.level)h+=_card('&#128208; Level surface','<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#0f172a;margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.levelOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>The pad / patio where the spa will sit is <b>solid and level</b>, with nothing in the way.</span></label>'+_photoField('levelPhotos','Add a photo of the pad / patio where the spa will be placed.'));
+if(rq.level)h+=_card('&#128208; Level surface','<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--ink-strong);margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.levelOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>The pad / patio where the spa will sit is <b>solid and level</b>, with nothing in the way.</span></label>'+_photoField('levelPhotos','Add a photo of the pad / patio where the spa will be placed.'));
 
-if(rq.wip)h+=_card('&#128268; Wiring (WIP)','<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;margin-bottom:10px">Please have ready before delivery: <b>15 ft of conduit / whip cable</b> and the <b>adapters</b> needed to connect the spa.</div><label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#0f172a;margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.wipOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>I have the <b>15 ft conduit + adapters</b> ready.</span></label>'+_photoField('wipPhotos','Optional: add a photo of the conduit / whip run if you have it.'));
+if(rq.wip)h+=_card('&#128268; Wiring (WIP)','<div style="background:var(--surface)beb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;margin-bottom:10px">Please have ready before delivery: <b>15 ft of conduit / whip cable</b> and the <b>adapters</b> needed to connect the spa.</div><label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--ink-strong);margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.wipOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>I have the <b>15 ft conduit + adapters</b> ready.</span></label>'+_photoField('wipPhotos','Optional: add a photo of the conduit / whip run if you have it.'));
 
-if(rq.electricity)h+=_card('&#9889; Electrical panel','<div style="font-size:13px;color:#475569;line-height:1.55;margin-bottom:10px">Please send a clear photo of your <b>breaker box / electrical panel</b> &mdash; with the cover open so the breakers are visible.</div>'+_photoField('electricity','Add a photo of the open breaker box.'));
+if(rq.electricity)h+=_card('&#9889; Electrical panel','<div style="font-size:13px;color:var(--ink-slate);line-height:1.55;margin-bottom:10px">Please send a clear photo of your <b>breaker box / electrical panel</b> &mdash; with the cover open so the breakers are visible.</div>'+_photoField('electricity','Add a photo of the open breaker box.'));
 
-if(rq.payment)h+=_card('&#128181; Remaining balance','<div style="font-size:13px;color:#475569;margin-bottom:10px">How would you like to pay the remaining balance?</div>'+
-['store|I will pay at the Aspen Spas store before delivery','card|Please call me to pay by credit card','check|I will pay by check at delivery'].map(o=>{let v=o.split('|')[0],l=o.split('|')[1];return '<label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#0f172a;padding:8px 0;cursor:pointer"><input type="radio" name="ipay" onchange="_PORTAL.payment=\''+v+'\'" style="width:20px;height:20px"><span>'+l+'</span></label>'}).join(''));
+if(rq.payment)h+=_card('&#128181; Remaining balance','<div style="font-size:13px;color:var(--ink-slate);margin-bottom:10px">How would you like to pay the remaining balance?</div>'+
+['store|I will pay at the Aspen Spas store before delivery','card|Please call me to pay by credit card','check|I will pay by check at delivery'].map(o=>{let v=o.split('|')[0],l=o.split('|')[1];return '<label style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-strong);padding:8px 0;cursor:pointer"><input type="radio" name="ipay" onchange="_PORTAL.payment=\''+v+'\'" style="width:20px;height:20px"><span>'+l+'</span></label>'}).join(''));
 
 h+=_card('&#128221; Anything else? (optional)','<textarea id="intakeNotes" oninput="_PORTAL.notes=this.value" placeholder="Gate codes, dogs, parking, best times, etc." style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-size:14px;min-height:70px;font-family:inherit"></textarea>');
 
@@ -8713,7 +9242,7 @@ if(rq.electricity)resp.electricity=_PORTAL.electricity;
 if(rq.payment)resp.payment=_PORTAL.payment;
 if(_PORTAL.notes)resp.notes=_PORTAL.notes;
 let host=document.getElementById('intakePortalRoot');
-if(host)host.innerHTML=_portalShell('<div style="text-align:center;color:#6b7280;padding:40px">Sending\u2026</div>');
+if(host)host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);padding:40px">Sending\u2026</div>');
 let id=_PORTAL.id;
 db.ref('intake/'+id).update({resp:resp,submitted:true,submittedAt:Date.now()}).then(()=>{
 if(host)host.innerHTML=_portalMsg('Thank you!','Your information was sent to Aspen Spas. This link is now closed. We will be in touch about your delivery.');
