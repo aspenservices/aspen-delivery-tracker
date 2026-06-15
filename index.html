@@ -259,6 +259,13 @@ tbody tr{cursor:pointer}
 .presms-btn.limit-reached{background:#dc2626;box-shadow:0 1px 3px rgba(220,38,38,.3)}
 .presms-btn.limit-reached:hover{background:#b91c1c}
 .presms-btn.limit-reached .sms-count-badge{background:rgba(255,255,255,.3);animation:pulse 1.6s infinite}
+.smslog{margin-top:10px;background:var(--surface,#fff);border:1px solid var(--border-soft,#e9e1d8);border-radius:9px;padding:9px 11px}
+.smslog-h{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary,#9a8f84);margin-bottom:5px}
+.smslog-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-top:1px solid var(--border-soft,#f1ebe3)}
+.smslog-row:first-of-type{border-top:none}
+.smslog-n{font-weight:800;color:#059669;min-width:24px}
+.smslog-d{flex:1;color:var(--text-primary,#241e18);font-weight:600}
+.smslog-p{color:var(--text-secondary,#9a8f84);font-variant-numeric:tabular-nums}
 .ct{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px}
 .spa-specs{margin:18px 0;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-cream);overflow:hidden}
 .spa-specs summary{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-bottom:1px solid var(--border-soft);list-style:none;flex-wrap:wrap}
@@ -1093,7 +1100,8 @@ th,td{padding:7px 6px}
 // App loads instantly and even OFFLINE for techs, while always fetching the freshest index.html
 // when online (re-deployed often). If sw.js / manifest aren't present, this silently no-ops.
 if('serviceWorker' in navigator){
-window.addEventListener('load',()=>{
+window.addEventListener('load',()=>{try{_i18nInit()}catch(e){console.warn('i18n init err',e)}
+
 navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW registered',reg.scope)})
 .catch(e=>console.log('[PWA] SW registration skipped:',e.message));
 });
@@ -1176,6 +1184,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <button class="vt-btn" id="tbCal" onclick="setTab('cal')" title="Calendar view">&#128197;</button>
 <button class="vt-btn" id="tbRoute" onclick="setTab('route')" title="Day route plan">&#128506;&#65039;</button>
 </div>
+<button class="aspen-action-btn outline" id="langToggle" onclick="toggleAppLang()" title="English / Espanol">&#127760; <span id="langLabel">EN</span></button>
 <button class="aspen-action-btn outline dark-toggle" id="darkToggle" onclick="toggleDarkMode()" title="Toggle dark mode">&#127769;</button>
 <button class="aspen-action-btn outline" id="usersBtn" onclick="openUsersPanel()" style="display:none" title="Manage Users">&#128100; Users</button>
 <button class="aspen-action-btn outline" id="backupBtn" onclick="openBackupCenter()" style="display:none" title="Backup &amp; Restore">&#128737;&#65039; Backup</button>
@@ -1307,8 +1316,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061410;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.14 (build 10)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061412;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.14 (build 12)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -3530,6 +3539,8 @@ if(btn){let badge=btn.querySelector('.sms-count-badge');
 if(badge)badge.textContent=(currentCount+1)+'/'+SMS_LIMIT_PER_CUSTOMER;
 if(currentCount+1>=SMS_LIMIT_PER_CUSTOMER)btn.classList.add('limit-reached');
 else if(currentCount+1>=SMS_LIMIT_PER_CUSTOMER-1)btn.classList.add('limit-near');}
+// Refresh the sent-log in the open modal without a full re-render (preserves unsaved typing).
+try{var _lb=document.querySelector('.smslog[data-rec-id="'+r.i+'"]');if(_lb&&typeof _smsLogHtml==='function'){var _lh=_smsLogHtml(curRec&&curRec.i===r.i?curRec:r);_lb.innerHTML=_lh;_lb.style.display=_lh?'':'none';}}catch(e){console.warn('smslog refresh',e);}
 
 // Use the same sms: URL format already used elsewhere in the app
 let href='sms:'+digits+'?&body='+encodeURIComponent(msg);
@@ -4696,6 +4707,19 @@ return '<details class="act-wrap"><summary><span>🕑 Activity History</span><sp
 }
 // Live read-only inspector for the ticket modal's right column (C). Everything is derived from
 // the record — it never edits, it reflects. Pre/post progress count the real checklist keys.
+// Pre-Delivery SMS sent-log — renders the date/time of every text sent to this customer.
+// Data already lives in r.sms_history (each entry: {ts, phone, n}); this just surfaces it.
+function _smsLogHtml(r){
+var hist=Array.isArray(r.sms_history)?r.sms_history.slice():[];
+if(!hist.length&&r.sms_last)hist=[{ts:r.sms_last,n:r.sms_count||1}];
+if(!hist.length)return '';
+var rows=hist.slice().reverse().map(function(e){
+var d=new Date(e.ts);
+var ds=d.toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+var ts=d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+return '<div class="smslog-row"><span class="smslog-n">#'+(e.n||'')+'</span><span class="smslog-d">'+ds+' &middot; '+ts+'</span>'+(e.phone?'<span class="smslog-p">&hellip;'+String(e.phone).slice(-4)+'</span>':'')+'</div>';
+}).join('');
+return '<div class="smslog-h">&#128241; Pre-Delivery SMS sent ('+hist.length+')</div>'+rows;}
 function _modalInspector(r){
 var fmtv=(typeof fmt==='function')?fmt:function(x){return '$'+(x||0)};
 var pre=['pf','iv','el','wp','lv','pt'],post=['dl','ep','po','cl','pk','gb','ngb'];
@@ -5015,6 +5039,7 @@ return '<button type="button" class="'+cls+'" data-rec-id="'+r.i+'" onclick="sen
 +'</div><div class="cg">';
 PRE.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
 h+='</div></div>';
+{var _slog=_smsLogHtml(r);h+='<div class="smslog" data-rec-id="'+r.i+'"'+(_slog?'':' style="display:none"')+'>'+_slog+'</div>';}
 // Customer Upload Link (intake portal)
 h+=intakeBoxHtml(r);
 // Delivered Notes (between checklists)
@@ -6198,6 +6223,90 @@ function applyDarkMode(on){
 try{document.documentElement.setAttribute('data-theme',on?'dark':'light');
 var b=document.getElementById('darkToggle');if(b)b.innerHTML=on?'\u2600\uFE0F':'\u{1F319}';
 localStorage.setItem('aspen_dt_theme',on?'dark':'light');}catch(e){}}
+/* ===================== i18n ENGINE (EN <-> ES) =====================
+   Approach: English is the source language. A dictionary + a DOM translator
+   swap UI text at render time via a MutationObserver, so NO render function
+   is touched (zero risk to saving / Google Calendar sync). Dictionary-driven:
+   any phrase that slips through is added in seconds. */
+var APP_LANG=(function(){try{return localStorage.getItem('aspenLang')||'en'}catch(e){return 'en'}})();
+
+/* English -> Spanish (applied when APP_LANG==='es'). Keys must match the on-screen text exactly. */
+var I18N_EN2ES={
+"Upcoming":"Próximas","Needs Action":"Requieren acción","Delivered":"Entregadas","Follow-Up":"Seguimiento","Hold":"En espera","Complete":"Completadas","All":"Todas",
+"Upcoming Deliveries":"Entregas próximas","Deliveries scheduled in the future":"Entregas programadas a futuro",
+"Needs Action Deliveries":"Entregas que requieren acción","Delivered Deliveries":"Entregas realizadas","Follow-Up Deliveries":"Entregas en seguimiento","Complete Deliveries":"Entregas completadas","All Deliveries":"Todas las entregas","On Hold":"En espera",
+"Paused — removed from calendar but info is preserved. Returns to Upcoming when re-added.":"En pausa — removida del calendario pero la información se conserva. Vuelve a Próximas al re-agregarla.",
+"+ New Delivery":"+ Nueva entrega","New Delivery":"Nueva entrega","Users":"Usuarios","Backup":"Respaldo","Calendar Synced":"Calendario sincronizado","Google Calendar":"Google Calendar","Returns":"Devoluciones",
+"All techs":"Todos los técnicos","Date":"Fecha","Oldest":"Más antiguas","Newest":"Más recientes","Balance Due":"Saldo pendiente",
+"Search by name, phone, address, ZIP, SN...":"Buscar por nombre, teléfono, dirección, ZIP, SN...",
+"PRE-DELIVERY":"PRE-ENTREGA","POST-DELIVERY":"POST-ENTREGA","Pre-Delivery":"Pre-entrega","Post-Delivery":"Post-entrega",
+"Auto-created from Google Calendar event":"Creado automáticamente desde Google Calendar",
+"PAID":"PAGADO","CHECK":"CHEQUE","CASH":"EFECTIVO","FINANCED":"FINANCIADO","Paid":"Pagado","Check":"Cheque","Cash":"Efectivo","Financed":"Financiado",
+"EXTRA PERSON":"PERSONA EXTRA","CRANE":"GRÚA","CRANE JOB":"TRABAJO CON GRÚA","WATER TRUCK":"CAMIÓN DE AGUA","Crane Job":"Trabajo con grúa","Extra Person":"Persona extra","Water Truck":"Camión de agua",
+"Delivery Tracker":"Rastreador de entregas","DELIVERY TRACKER":"RASTREADOR DE ENTREGAS","ADMIN":"ADMIN",
+"Full Name":"Nombre completo","Spa Model":"Modelo de spa","Series":"Serie","Phone":"Teléfono","Phones":"Teléfonos","Email":"Correo","Sales Price":"Precio de venta","Payment":"Pago","Balance":"Saldo",
+"Payment Status":"Estado de pago","Delivery Requirements":"Requisitos de entrega","Address":"Dirección","Assigned Technician":"Técnico asignado","Invoice PDF":"Factura PDF","Spa Description":"Descripción del spa",
+"Customer Instructions":"Instrucciones del cliente","Pre-Delivery Checklist":"Checklist pre-entrega","Delivered Notes":"Notas de entrega","Post-Delivery Checklist":"Checklist post-entrega","Customer Feedback":"Comentarios del cliente",
+"Info Photos":"Fotos de información","Tech Photos":"Fotos del técnico","Service Request":"Solicitud de servicio","Calendar Event":"Evento de calendario","Customer Upload Link":"Enlace de carga del cliente",
+"Complete Ticket":"Completar ticket","Put on Hold":"Poner en espera","Resume":"Reanudar","Save":"Guardar","Cancel":"Cancelar","Delete":"Eliminar","Close":"Cerrar","Edit":"Editar",
+"Pay Full":"Pago total","Invoice":"Factura","Electricity":"Electricidad","WIP":"WIP","Level":"Nivel","Photos":"Fotos","Call":"Llamada","Map":"Mapa","Notes":"Notas",
+"New link":"Nuevo enlace","Copy link":"Copiar enlace","Link active — waiting for customer":"Enlace activo — esperando al cliente","MISSING":"FALTANTE",
+"Connect your Google account to auto-sync deliveries from the Aspen Service calendar. New events become Upcoming deliveries; date changes update the existing record.":"Conecta tu cuenta de Google para sincronizar automáticamente las entregas del calendario Aspen Service. Los eventos nuevos se vuelven entregas Próximas; los cambios de fecha actualizan el registro existente."
+};
+
+/* Spanish "islands" already hard-coded in Spanish -> English (applied when APP_LANG==='en'),
+   so the technician view and the live inspector read in English when the app is in English. */
+var I18N_ES2EN={
+"Pendientes":"Pending","Todas":"All","Entregadas":"Delivered","Para ti":"For you","Pendiente":"Pending","En hold":"On hold","Entregada":"Delivered",
+"Progreso del delivery":"Delivery progress","Pre-entrega":"Pre-delivery","Post-entrega":"Post-delivery","Requisitos":"Requirements","Dirección":"Address",
+"Abrir en Maps":"Open in Maps","Actividad":"Activity","Creado":"Created","Técnico asignado":"Technician assigned","Llamada confirmada":"Call confirmed","Entregado":"Delivered","Pendiente entrega":"Pending delivery",
+"Factura PDF cargada":"Invoice PDF uploaded","Grúa":"Crane","+1 persona":"+1 person","Camión de Agua":"Water Truck","Mapa":"Map","Llamar":"Call"
+};
+
+/* Patterns for dynamic strings that carry numbers/amounts (EN->ES only). Anchored to stay safe. */
+var I18N_PAT_ES=[
+[/^(\d+) deliveries$/,"$1 entregas"],
+[/^(\d+) delivery$/,"$1 entrega"],
+[/^Balance Due (.+)$/,"Saldo pendiente $1"],
+[/^Balance (\$[\d.,]+)$/,"Saldo $1"],
+[/^Pre-Delivery SMS sent \((\d+)\)$/,"SMS pre-entrega enviados ($1)"]
+];
+
+function _i18nMapFor(lang){return lang==='es'?I18N_EN2ES:I18N_ES2EN;}
+function _i18nTranslateNode(root){
+var lang=APP_LANG,map=_i18nMapFor(lang),pats=(lang==='es')?I18N_PAT_ES:[];
+if(!root)return;
+if(root.nodeType===1){
+var tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null,false),nodes=[],n;
+while(n=tw.nextNode())nodes.push(n);
+nodes.forEach(function(tn){
+var pn=tn.parentNode;if(!pn)return;var tag=pn.nodeName;
+if(tag==='SCRIPT'||tag==='STYLE'||tag==='TEXTAREA'||tag==='OPTION'&&false)return;
+var t=tn.nodeValue,k=t.trim();if(!k)return;
+if(map[k]!=null){tn.nodeValue=t.replace(k,map[k]);return;}
+for(var i=0;i<pats.length;i++){if(pats[i][0].test(k)){tn.nodeValue=t.replace(k,k.replace(pats[i][0],pats[i][1]));return;}}
+});
+['placeholder','title','aria-label'].forEach(function(a){
+if(root.getAttribute){var rv=root.getAttribute(a);if(rv&&map[rv.trim()]!=null)root.setAttribute(a,map[rv.trim()]);}
+if(root.querySelectorAll)root.querySelectorAll('['+a+']').forEach(function(el){var v=el.getAttribute(a);if(v&&map[v.trim()]!=null)el.setAttribute(a,map[v.trim()]);});
+});
+}else if(root.nodeType===3){var k2=root.nodeValue.trim();if(k2&&map[k2]!=null)root.nodeValue=root.nodeValue.replace(k2,map[k2]);}
+}
+var _i18nObs=null;
+function _i18nStartObserver(){
+if(_i18nObs)return;
+_i18nObs=new MutationObserver(function(muts){
+for(var i=0;i<muts.length;i++){var an=muts[i].addedNodes;for(var j=0;j<an.length;j++)_i18nTranslateNode(an[j]);}
+});
+try{_i18nObs.observe(document.body,{childList:true,subtree:true})}catch(e){}
+}
+function toggleAppLang(){var nx=(APP_LANG==='es')?'en':'es';try{localStorage.setItem('aspenLang',nx)}catch(e){}location.reload();}
+function _i18nInit(){
+var lbl=document.getElementById('langLabel');if(lbl)lbl.textContent=(APP_LANG==='es')?'ES':'EN';
+var b=document.getElementById('langToggle');if(b)b.title=(APP_LANG==='es')?'Cambiar a English':'Switch to Español';
+try{_i18nTranslateNode(document.body)}catch(e){console.warn('i18n init',e)}
+_i18nStartObserver();
+}
 function toggleDarkMode(){var on=document.documentElement.getAttribute('data-theme')!=='dark';applyDarkMode(on);}
 // Restore saved preference immediately on load.
 (function(){try{var t=localStorage.getItem('aspen_dt_theme');if(t==='dark')applyDarkMode(true);}catch(e){}})();
