@@ -905,6 +905,33 @@ th,td{padding:7px 6px}
 .tldone-stamp{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:11.5px;color:#059669;background:#e7f8f0;padding:6px 11px;border-radius:10px}
 .tlhold-row{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#7c3aed;background:#f6efff;border-radius:9px;padding:7px 10px;margin-top:7px}
 @media(prefers-reduced-motion:reduce){.tlswipe{animation:none;opacity:1;transform:none}.tlhint .ar{animation:none}}
+/* ===== TICKET MODAL — desktop redesign (B+C): hero + 2-col + live inspector. Scoped to .mdl-ticket. ===== */
+.mdl-ticket{max-width:1140px !important;padding:0 !important;overflow:hidden !important}
+.tkt-hero{position:relative;background:linear-gradient(120deg,#15110d,#34291f);color:#fff;padding:20px 26px}
+.tkt-hero-top{display:flex;align-items:center;gap:14px}
+.tkt-av{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:19px;flex-shrink:0;color:#fff}
+.tkt-hero-id{flex:1;min-width:0}
+.tkt-hero-id h2{font-size:22px;font-weight:800;color:#fff;margin:0;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tkt-hero-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.2);vertical-align:middle;white-space:nowrap}
+.tkt-hero-sub{opacity:.7;font-size:12.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tkt-hero-acts{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.tkt-hero-acts .xbtn{background:rgba(255,255,255,.14);border:none;color:#fff;width:34px;height:34px;border-radius:10px;cursor:pointer;font-size:15px;flex-shrink:0}
+.tkt-hero-chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.tkt-chip{font-size:11px;font-weight:800;padding:5px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px}
+.tkt-chip.cash{background:#fff;color:#dc2626}.tkt-chip.paid{background:#fff;color:#059669}.tkt-chip.pay,.tkt-chip.req{background:rgba(255,255,255,.16);color:#fff}
+.tkt-grid{display:grid;grid-template-columns:1.62fr 1fr}
+.tkt-main{padding:20px 24px;overflow-y:auto;max-height:calc(92vh - 138px)}
+.tkt-insp{background:var(--bg-cream,#f4efe9);border-left:1px solid var(--border-soft,#e9e1d8);padding:18px;overflow-y:auto;max-height:calc(92vh - 138px)}
+.tkt-iw{background:var(--surface,#fff);border:1px solid var(--border-soft,#e9e1d8);border-radius:14px;padding:13px;margin-bottom:12px;box-shadow:0 1px 2px rgba(21,17,13,.05)}
+.tkt-iw .iwt{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary,#9a8f84);margin-bottom:9px}
+.tkt-iw .iwbig{font-family:'Poppins',sans-serif;font-size:24px;font-weight:800;line-height:1.1}
+.tkt-bar{height:7px;background:#f0e6dd;border-radius:5px;overflow:hidden;margin-top:6px}
+.tkt-bar i{display:block;height:100%;background:linear-gradient(90deg,#059669,#34d399)}
+.tkt-mini{margin-bottom:9px}.tkt-mini:last-child{margin-bottom:0}
+.tkt-mini .l{display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:3px;color:var(--text-primary,#241e18)}
+.tkt-ichip{font-size:11px;font-weight:800;padding:4px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;margin:0 4px 4px 0}
+@media(max-width:860px){.mdl-ticket{max-width:100% !important}.tkt-grid{display:flex;flex-direction:column}.tkt-insp{order:-1;border-left:none;border-bottom:1px solid var(--border-soft,#e9e1d8);max-height:none}.tkt-main{max-height:none}}
+@media(max-width:560px){.mdl-ticket{border-radius:16px 16px 0 0 !important}.tkt-hero{padding:15px 16px}.tkt-hero-id h2{font-size:18px}.tkt-hero-acts .mbtn-complete{font-size:11px;padding:8px 10px}.tkt-main,.tkt-insp{padding:14px}}
 .tech-addr-card{display:block;text-decoration:none;color:inherit;border-color:#3b82f6 !important;background:#eff6ff;transition:all .15s;cursor:pointer}
 .tech-addr-card:hover{background:#dbeafe;box-shadow:var(--shadow-card-hover)}
 .tech-addr-card:active{transform:scale(.99)}
@@ -1280,8 +1307,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061409;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.14 (build 9)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061410;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.14 (build 10)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -4667,21 +4694,62 @@ return '<div class="act-row"><span class="act-dot"></span><div class="act-body">
 }).join('');
 return '<details class="act-wrap"><summary><span>🕑 Activity History</span><span class="act-count">'+list.length+'</span></summary><div class="act-list">'+rows+'</div></details>';
 }
+// Live read-only inspector for the ticket modal's right column (C). Everything is derived from
+// the record — it never edits, it reflects. Pre/post progress count the real checklist keys.
+function _modalInspector(r){
+var fmtv=(typeof fmt==='function')?fmt:function(x){return '$'+(x||0)};
+var pre=['pf','iv','el','wp','lv','pt'],post=['dl','ep','po','cl','pk','gb','ngb'];
+var preN=pre.filter(function(k){return r[k]}).length,postN=post.filter(function(k){return r[k]}).length;
+var pct=(r.pr>0)?Math.min(100,Math.round((r.py||0)/r.pr*100)):0;
+var es=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')};
+var balColor=(r.bl>0)?'#dc2626':'#059669';
+var s='';
+s+='<div class="tkt-iw" style="border-top:3px solid '+balColor+'"><div class="iwt">&#128176; Balance'+(r.pst==='cash'?' &middot; cobrar efectivo':'')+'</div><div class="iwbig" style="color:'+balColor+'">'+fmtv(r.bl)+'</div><div style="font-size:11px;color:var(--text-secondary)">'+pct+'% pagado</div><div class="tkt-bar"><i style="width:'+pct+'%"></i></div></div>';
+s+='<div class="tkt-iw"><div class="iwt">&#128203; Progreso del delivery</div>';
+s+='<div class="tkt-mini"><div class="l"><span>Pre-entrega</span><span>'+preN+'/6</span></div><div class="tkt-bar"><i style="width:'+Math.round(preN/6*100)+'%"></i></div></div>';
+s+='<div class="tkt-mini"><div class="l"><span>Post-entrega</span><span>'+postN+'/7</span></div><div class="tkt-bar"><i style="width:'+Math.round(postN/7*100)+'%"></i></div></div></div>';
+var reqs='';
+if(r.crane)reqs+='<span class="tkt-ichip" style="background:#ede9fe;color:#7c3aed">&#128679; Gr&uacute;a</span>';
+if(r.extra_person)reqs+='<span class="tkt-ichip" style="background:#dbeafe;color:#0369a1">&#128101; +1 persona</span>';
+if(r.water_truck)reqs+='<span class="tkt-ichip" style="background:#cffafe;color:#0891b2">&#128666; Water Truck</span>';
+if(reqs)s+='<div class="tkt-iw"><div class="iwt">&#9888;&#65039; Requisitos</div><div>'+reqs+'</div></div>';
+if(r.st){var addr=String(r.st).split('\n')[0];
+s+='<div class="tkt-iw"><div class="iwt">&#128205; Direcci&oacute;n</div><div style="font-size:12.5px;font-weight:600;margin-bottom:8px">'+es(addr)+'</div><a class="tkt-ichip" style="background:#0e5f78;color:#fff;text-decoration:none" href="https://maps.google.com/?q='+encodeURIComponent(r.st)+'" target="_blank" rel="noopener">&#128205; Abrir en Maps</a></div>';}
+var ip=(r.photos||[]).length,tp=(r.tech_photos||[]).length;
+s+='<div class="tkt-iw"><div class="iwt">&#128247; Fotos</div><div style="font-size:12.5px;color:var(--text-secondary)"><b style="color:var(--text-primary)">'+ip+'</b> info (admin) &middot; <b style="color:var(--text-primary)">'+tp+'</b> del t&eacute;cnico</div></div>';
+var act='<div>&#10003; Creado</div>';
+if(r.pdf_invoice)act+='<div>&#10003; Factura PDF cargada</div>';
+if(r.assigned_to)act+='<div>&#10003; T&eacute;cnico asignado</div>';
+if(r.cl)act+='<div>&#10003; Llamada confirmada</div>';
+act+=(r.dl)?'<div>&#10003; Entregado</div>':'<div style="opacity:.5">&#9675; Pendiente entrega</div>';
+s+='<div class="tkt-iw"><div class="iwt">&#128203; Actividad</div><div style="font-size:11.5px;color:var(--text-secondary);line-height:1.8">'+act+'</div></div>';
+return s;}
 function renderModal(){let r=curRec,s=st(r);
 let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
-let h='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px"><div><h2>'+esc(r.n)+'</h2><p class="sub">'+esc(r.sp||"")+(r.sn?" &bull; SN: "+esc(r.sn):"")+'</p></div><button class="xbtn" onclick="closeOv()">&#10005;</button></div>';
+// === TICKET HERO (desktop B+C redesign) — replaces the old text header + badge row. ===
+// Complete/Hold logic is moved here verbatim (same onclick, same canCompl rule).
+let canCompl=r.cl&&(r.gb||r.ngb);let actBtns='';
+if(s!=='complete'&&!r.hold){
+actBtns+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete':'&#9888; Complete (Call + G.B./N.G.B.)')+'</button>';
+actBtns+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved" style="background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:12px;white-space:nowrap">&#9208; Hold</button>';}
+let _ini=(esc(r.n).split(/[ ,]+/).filter(Boolean).slice(0,2).map(function(w){return w.charAt(0)}).join('')||'?').toUpperCase();
+let _chips='';
+if(r.pst==='cash')_chips+='<span class="tkt-chip cash">&#128176; Cobrar '+fmt(r.bl)+' efectivo</span>';
+else if(r.pst==='check')_chips+='<span class="tkt-chip pay">&#128221; Cobrar cheque</span>';
+else if(r.pst==='paid')_chips+='<span class="tkt-chip paid">&#10003; Pagado</span>';
+else if(r.pst==='financed')_chips+='<span class="tkt-chip pay">&#128179; Financiado</span>';
+else if(r.bl>0)_chips+='<span class="tkt-chip cash">&#128176; Balance '+fmt(r.bl)+'</span>';
+if(r.crane)_chips+='<span class="tkt-chip req">&#128679; Gr&uacute;a</span>';
+if(r.extra_person)_chips+='<span class="tkt-chip req">&#128101; +1 persona</span>';
+if(r.water_truck)_chips+='<span class="tkt-chip req">&#128666; Water Truck</span>';
+let h='<div class="tkt-hero"><div class="tkt-hero-top"><div class="tkt-av">'+_ini+'</div><div class="tkt-hero-id"><h2>'+esc(r.n)+' <span class="tkt-hero-badge">'+sL(s)+'</span></h2><div class="tkt-hero-sub">'+esc(r.sp||'')+(r.sn?' &middot; SN '+esc(r.sn):'')+(r.dd?' &middot; '+fmtDate(r.dd):'')+'</div></div><div class="tkt-hero-acts">'+actBtns+'<button class="xbtn" onclick="closeOv()">&#10005;</button></div></div>'+(_chips?'<div class="tkt-hero-chips">'+_chips+'</div>':'')+'</div>';
 // HOLD banner — visible when the record is parked. Explains why and offers a one-click resume.
 if(r.hold){
 let prevDD=r.hold_prev_dd?fmtDate(r.hold_prev_dd):'unknown';
 let heldOn=r.hold_at?new Date(r.hold_at).toLocaleDateString():'';
 let reason=r.hold_reason==='calendar_removed'?'Removed from Google Calendar':(r.hold_reason||'Manually paused');
 h+='<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:2px solid #c084fc;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:#6b21a8;margin-bottom:2px">&#9209; ON HOLD'+(heldOn?' since '+heldOn:'')+'</div><div style="font-size:11.5px;color:#7c3aed;line-height:1.4">'+esc(reason)+(prevDD!=='unknown'?' &middot; was scheduled for '+prevDD:'')+'. Customer info is preserved.</div></div><button class="mbtn-complete" style="background:#7c3aed;border:none;color:#fff;font-weight:800;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap" onclick="resumeFromHold('+r.i+')">&#9654; Resume Delivery</button></div>';}
-h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap"><span class="badge '+s+'">'+sL(s)+'</span>';
-if(s!=='complete'&&!r.hold){let canCompl=r.cl&&(r.gb||r.ngb);
-h+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete Ticket':'&#9888; Complete (Call + G.B./N.G.B. Required)')+'</button>';
-// Manual Hold button — for when Alberto wants to pause a delivery without touching the calendar
-h+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved, can resume later" style="background:var(--surface);border:2px solid #c084fc;color:#7c3aed;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:11.5px">&#9208; Put on Hold</button>';}
-h+='</div>';
+h+='<div class="tkt-grid"><div class="tkt-main">';
 // All fields always editable
 // CALENDAR EVENT — the verbatim Google Calendar title. The calendar OWNS this (it is copied
 // exactly as-is on every sync). Shown read-only so it can never be accidentally changed; the
@@ -4983,7 +5051,7 @@ h+=renderActivitySection(r);
 h+='<div class="mactions">';
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))h+='<button class="mbtn" onclick="deleteDelivery(curRec.i)" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;margin-right:auto">&#128465; Delete</button>';
 h+='<button class="mbtn mbtn-c" onclick="closeOv()">Cancel</button><button class="mbtn mbtn-s" onclick="saveEdit()">Save Changes</button></div>';
-document.getElementById("md").innerHTML=h;populateTechDropdown()}
+h+='</div><div class="tkt-insp">'+_modalInspector(r)+'</div></div>';let _md=document.getElementById("md");_md.innerHTML=h;_md.className='mdl mdl-ticket';populateTechDropdown()}
 
 function ib(l,id,val){return'<div class="ib"><label>'+l+'</label><input id="'+id+'" value="'+String(val||"").replace(/"/g,'&quot;')+'"></div>'}
 function parseDDVal(dd){let r={iso:'',slot:'am'};if(!dd)return r;
