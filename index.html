@@ -1280,8 +1280,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061408;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.14 (build 8)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061409;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.14 (build 9)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -6733,20 +6733,41 @@ gcalToken=resp.access_token;
 _checkDriveScope(resp);
 resolve(true)};
 try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){resolve(false)}})}
-// Wait for scripts (loaded async) — poll until they appear
-let _gcalPoll=setInterval(()=>{
+// Wait for scripts (loaded async) — poll until they appear. Extracted into a function so the
+// Connect button can RESTART it if the user taps before the Google scripts finished loading (or
+// after this initial poll already gave up). Runs ~30s before backing off.
+let _gcalPoll=null,_gcalPendingMsg=false;
+function _startGcalLoadPoll(){
+if(_gcalPoll)return;
+let _t=0;
+_gcalPoll=setInterval(()=>{
+_t++;
 if(typeof gapi!=='undefined'&&!gcalGapiReady){gapiLoaded()}
 if(typeof google!=='undefined'&&google.accounts&&!gcalGisReady){gisLoaded()}
-if(gcalGapiReady&&gcalGisReady){clearInterval(_gcalPoll)}
+if((gcalGapiReady&&gcalGisReady)||_t>75){clearInterval(_gcalPoll);_gcalPoll=null;
+if(gcalTokenClient&&_gcalPendingMsg){_gcalPendingMsg=false;showToast('&#10003; Google listo \u2014 toca Conectar de nuevo')}}
 },400);
-setTimeout(()=>clearInterval(_gcalPoll),20000);
+}
+_startGcalLoadPoll();
 
 function toggleGcalPanel(){let p=document.getElementById('gcalPanel');p.classList.toggle('open')}
 
 function gcalConnect(){
 if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){
 showToast('&#9888; Google Calendar not configured. Edit GCAL_CLIENT_ID in the code.','err');return}
-if(!gcalTokenClient){showToast('&#9888; Google API not ready yet, try again in a moment','warn');return}
+if(!gcalTokenClient){
+// Google Identity loads async; it may not be ready on the first tap (or the load-poll expired).
+// Try to initialize RIGHT NOW — if the script has since loaded, this succeeds and we connect in
+// the same tap (keeping the popup inside the user gesture so the browser won't block it).
+if(typeof google!=='undefined'&&google.accounts){try{gisLoaded()}catch(_){}}
+if(typeof gapi!=='undefined'&&!gcalGapiReady){try{gapiLoaded()}catch(_){}}
+}
+if(!gcalTokenClient){
+// Still not ready: the Google script genuinely hasn't loaded (slow network, or Safari cross-site
+// tracking prevention blocking accounts.google.com). Keep polling so the next tap works, and explain.
+_gcalPendingMsg=true;_startGcalLoadPoll();
+showToast('&#9888; Cargando Google\u2026 vuelve a tocar Conectar en unos segundos. Si persiste: recarga la app, o en iPhone desactiva Ajustes \u203a Safari \u203a Evitar rastreo entre sitios','warn');
+return}
 gcalTokenClient.callback=async(resp)=>{
 if(resp.error){showToast('&#10005; Google sign-in failed: '+resp.error,'err');return}
 gcalToken=resp.access_token;
