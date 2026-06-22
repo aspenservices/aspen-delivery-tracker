@@ -1316,8 +1316,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061412;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.14 (build 12)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026061413;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.14 (build 13)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1791,6 +1791,25 @@ h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:v
 if(r.di)h+='<div style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:'+(dnotesShow?'10px':'0')+';white-space:pre-wrap;font-weight:600">'+escHtml(r.di)+'</div>';
 if(dnotesShow)h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;white-space:pre-wrap">'+escHtml(dnotesShow)+'</div>';
 h+='</div>'}
+// ===== CUSTOMER PREP SUBMISSION — read straight from INTAKE (source of truth) =====
+// Shows the photos + answers the customer sent via their upload link, so the tech is prepared
+// even if the reflection into Info Photos hasn't synced. Never depends on r.photos.
+(function(){
+var it=(typeof INTAKE!=='undefined'&&INTAKE)?INTAKE[r.i]:null;
+if(!it||!it.submitted||!it.resp)return;
+var rp=it.resp,ans='';
+if(rp.payment){var pm={store:'Pag\u00f3 en tienda',card:'Pagar\u00e1 con tarjeta',check:'Paga con cheque en entrega'}[rp.payment]||rp.payment;ans+='<div class="tech-spec-row"><span class="lbl">&#128181; Pago</span><span class="val">'+escHtml(pm)+'</span></div>';}
+if(typeof rp.levelOk!=='undefined')ans+='<div class="tech-spec-row"><span class="lbl">&#128208; Piso nivelado</span><span class="val">'+(rp.levelOk?'S\u00ed':'No')+'</span></div>';
+if(typeof rp.wipOk!=='undefined')ans+='<div class="tech-spec-row"><span class="lbl">&#128268; WIP listo</span><span class="val">'+(rp.wipOk?'S\u00ed':'No')+'</span></div>';
+if(rp.notes)ans+='<div class="tech-spec-row"><span class="lbl">&#128221; Nota del cliente</span><span class="val">'+escHtml(rp.notes)+'</span></div>';
+var groups=[['access','Acceso / camino'],['levelPhotos','Piso / nivel'],['electricity','Caja de breakers'],['wipPhotos','WIP / el\u00e9ctrico']],photoHtml='',total=0;
+groups.forEach(function(g){var arr=_intakeArr(rp[g[0]]);if(arr.length){total+=arr.length;photoHtml+='<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:8px 0 5px">'+g[1]+' ('+arr.length+')</div><div class="tech-photos">'+arr.map(function(b){return '<a class="tech-photo" href="'+b+'" target="_blank" rel="noopener" style="display:block"><img src="'+b+'" alt="customer photo"></a>'}).join('')+'</div>';}});
+if(!ans&&!total)return;
+h+='<div class="tech-section" style="border-color:#10b981 !important;background:#ecfdf5">';
+h+='<div style="font-size:11px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#10003; Fotos e info del cliente'+(it.submittedAt?(' &middot; '+new Date(it.submittedAt).toLocaleDateString()):'')+'</div>';
+if(ans)h+='<div style="margin-bottom:'+(total?'8px':'0')+'">'+ans+'</div>';
+h+=photoHtml+'</div>';
+})();
 // Photos from the manager (admin/Alberto) — read-only for the tech, no delete button
 if(r.photos&&r.photos.length){
 h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128231; Photos from Manager</div><div class="tech-photos">';
@@ -9197,7 +9216,7 @@ confirm delivery details. Data lives in RTDB at intake/<ticketId>. The link EXPI
 moment the customer taps "Send Information" (submitted=true). When submitted, the
 authenticated dashboard reflects it into the ticket (checklist + a note) and shows the
 photos inside the ticket's "Customer Upload Link" box. Customer-facing text is English. */
-let INTAKE={};
+let INTAKE={};let _intakeLoaded=false;
 let _intakeListenerOn=false;
 let _PORTAL=null;
 
@@ -9260,7 +9279,9 @@ return h+'</div>'}
 
 function intakeBoxHtml(r){
 let it=INTAKE[r.i],inner;
-if(!it||!it.token){
+if(!_intakeLoaded){
+inner='<div style="font-size:13px;color:var(--ink-mid);padding:6px 0">&#8987; Cargando datos del cliente\u2026</div>';
+}else if(!it||!it.token){
 inner='<div style="font-size:13px;color:var(--ink-mid);margin-bottom:8px">Generate a private link the customer opens on their phone to upload access photos and confirm details. It updates this ticket automatically and expires once they submit.</div>'+
 '<button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128228; Create customer upload link</button>';
 }else if(it.submitted){
@@ -9280,7 +9301,7 @@ function refreshIntakeBox(id){let el=document.getElementById('intakeBox_'+id);if
 // ---- Reflect a customer submission back into the ticket (dashboard side only) ----
 function startIntakeListener(){
 if(_intakeListenerOn)return;_intakeListenerOn=true;
-db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};reflectIntakeSubmissions();if(curRec)refreshIntakeBox(curRec.i)},err=>console.warn('[INTAKE] listener err',err))}
+db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};_intakeLoaded=true;reflectIntakeSubmissions();if(curRec)refreshIntakeBox(curRec.i);try{if(typeof _currentTechDetailId!=='undefined'&&_currentTechDetailId&&typeof techOpenDetail==='function'){var _d=document.getElementById('tech-detail');if(_d&&!_d.classList.contains('hidden'))techOpenDetail(_currentTechDetailId)}}catch(e){console.warn('[INTAKE] tech refresh',e)}},err=>console.warn('[INTAKE] listener err',err))}
 
 // =====================================================================================
 // FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips arrays as objects with numeric
@@ -9302,7 +9323,18 @@ Object.keys(INTAKE).forEach(id=>{
 let it=INTAKE[id];
 if(!it){skipped_unsubmitted++;return}
 if(!it.submitted){skipped_unsubmitted++;return}
-if(it.reflected){skipped_reflected++;return}
+if(it.reflected){skipped_reflected++;
+// SELF-HEAL: if a later data sync dropped the customer photos from Info Photos, re-merge them
+// (photos only \u2014 idempotent, no note re-append, no flag changes). Converges once present.
+try{var _hr=AD().find(x=>sameId(x.i,id));
+if(_hr){var _rp=it.resp||{};var _cust=_intakeArr(_rp.access).concat(_intakeArr(_rp.levelPhotos),_intakeArr(_rp.electricity),_intakeArr(_rp.wipPhotos));
+if(_cust.length){var _cur=_intakeArr(_hr.photos),_curSet=new Set(_cur);var _missing=_cust.filter(p=>!_curSet.has(p));
+if(_missing.length){var _merged=_cur.concat(_missing);var _ai=ADDED.findIndex(x=>sameId(x.i,id));
+if(_ai>=0){ADDED[_ai].photos=_merged;rememberAddedEdit(ADDED[_ai]);saveA();}else{if(!EDITS[id])EDITS[id]={};EDITS[id].photos=_merged;rememberEditsEdit(id,EDITS[id]);saveE();}
+console.log('[INTAKE] Self-heal: restored '+_missing.length+' customer photo(s) to ticket #'+id+' (sync had dropped them).');
+if(curRec&&sameId(curRec.i,id)&&typeof safeRefreshModalIfOpen==='function')safeRefreshModalIfOpen(id);}}}
+}catch(e){console.warn('[INTAKE] self-heal err',e)}
+return}
 let r=AD().find(x=>sameId(x.i,id));
 if(!r){skipped_noTicket++;console.warn('[INTAKE] Submission #'+id+' has no matching ticket in AD(). Skipping.');return}
 let rp=it.resp||{},upd={};
