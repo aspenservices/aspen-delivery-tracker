@@ -1316,8 +1316,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026062901;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.29 (build 14) — stale-link / blank-stub repair'; // human-readable label (shown in console)
+const APP_BUILD   = 2026062902;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.29 (build 15) — stale-link / blank-stub repair'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -7717,9 +7717,16 @@ return plan}
 async function repairBlankStubsBySN(){
 if(!gcalToken||!gcalCalendarId){alert('Primero con\u00e9ctate a Google Calendar y dale "Sync Now", luego vuelve a intentar la reparaci\u00f3n.');return}
 showToast('&#129657; Reparando \u2014 juntando entregas vac\u00edas con las llenas por SN\u2026');
-_gcalLastAuditAt=0; // bypass the 4-min audit throttle so the repair runs immediately
+_gcalLastAuditAt=0; // bypass the 4-min audit throttle
+// Step 1: a normal sync refreshes the LIVE event set (powers the stale-link detection).
 try{await gcalSync();}catch(e){console.error('[REPAIR] sync err',e)}
-setTimeout(()=>{try{renderAll()}catch(e){}showToast('&#10003; Reparaci\u00f3n lista \u2014 revisa tus entregas (las vac\u00edas duplicadas se juntaron con las llenas).');},2600);
+// Step 2: run the SN-merge directly — don't wait for the throttled background audit.
+let res={merged:[],unmerged:[]};
+try{res=await gcalDedup();}catch(e){console.error('[REPAIR] dedup err',e)}
+try{renderAll()}catch(e){}
+let nm=(res&&res.merged)?res.merged.length:0;
+if(nm>0)showToast('&#10003; Reparaci\u00f3n lista \u2014 '+nm+' entrega(s) vac\u00eda(s) se juntaron con su registro lleno (con sus fotos).');
+else showToast('La reparaci\u00f3n corri\u00f3 pero no junt\u00f3 ninguna. Dale "Sync Now" una vez y vuelve a intentar.','warn');
 }
 
 async function runDedupDuplicates(){
