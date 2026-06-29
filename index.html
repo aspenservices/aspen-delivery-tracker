@@ -1316,8 +1316,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026061413;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.14 (build 13)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026062901;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.06.29 (build 14) — stale-link / blank-stub repair'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2691,6 +2691,12 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<button onclick="runDedupDuplicates()" style="background:var(--surface);color:#b45309;border:1.5px solid #b45309;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#129529; Buscar y quitar duplicados</button>'+
 '</div>'+
 
+'<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#129657; Reparar entregas vac&iacute;as del calendario</div>'+
+'<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;margin-bottom:10px">Si el calendario cre&oacute; tarjetas <b>vac&iacute;as</b> (Upcoming sin datos) para clientes que ya ten&iacute;an su informaci&oacute;n y fotos, esto las <b>junta por n&uacute;mero de serie</b> con el registro lleno y quita la copia vac&iacute;a. Siempre conserva el registro con datos. Necesita Google Calendar conectado.</div>'+
+'<button onclick="repairBlankStubsBySN()" style="background:var(--surface);color:#0e7490;border:1.5px solid #0e7490;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#129657; Reparar y juntar por SN ahora</button>'+
+'</div>'+
+
 '<div style="font-size:10.5px;color:var(--text-tertiary);margin-top:14px;line-height:1.5">'+
 '<strong>Tip:</strong> Descarga un backup manual al menos una vez por semana y guárdalo en Drive/iCloud. El auto-backup a Drive corre solo si abriste Google Calendar — si lo deshabilitas, no hay auto-backup.'+
 '</div>';
@@ -2872,6 +2878,23 @@ function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e)
 function sameId(a,b){return a!=null&&b!=null&&String(a)===String(b)}
 function findRecById(id){if(id==null)return null;let s=String(id);return AD().find(r=>String(r.i)===s)||null}
 
+// === LIVE CALENDAR EVENT TRACKER (stale-link fix, Jun 2026) ===
+// When a Google Calendar event is deleted+recreated (or otherwise gets a NEW event id), the
+// filled ticket keeps its OLD gcalId. Both the SN-adoption (findExistingTicketBySN) and the
+// stub-merge (gcalDedup) used to SKIP a real ticket whose gcalId differed from the current
+// event — which orphaned the filled ticket and spawned an empty duplicate stub. We now skip
+// ONLY when that other event is still LIVE in the calendar. _gcalLiveEventIds is the set of
+// event ids seen in the most recent sync/audit pull; if we have no fresh set, we fall back to
+// the old (safe) behavior of treating the link as live so nothing is ever wrongly merged.
+let _gcalLiveEventIds=null,_gcalLiveEventIdsAt=0;
+function _setGcalLiveEventIds(events){try{_gcalLiveEventIds=new Set((events||[]).map(e=>String(e&&e.id)));_gcalLiveEventIdsAt=Date.now();}catch(e){}}
+function _gcalEventIsLive(gid){
+if(gid==null||gid==='')return false;
+// No fresh knowledge (older than 5 min or never built) → assume LIVE = keep old safe behavior.
+if(!_gcalLiveEventIds||(Date.now()-_gcalLiveEventIdsAt>5*60*1000))return true;
+return _gcalLiveEventIds.has(String(gid));
+}
+
 // SN-based match for un-linked tickets. Used by the sync to avoid creating a duplicate ticket
 // when an existing customer's ticket already has the same serial number. Returns a single
 // match only — ambiguous matches (zero or multiple) return null so we never auto-merge by SN
@@ -2880,7 +2903,7 @@ function findExistingTicketBySN(parsed,currentEventId){
 if(!parsed||!parsed.serial)return null;
 let candidates=AD().filter(r=>{
 if(!r.n)return false; // skip stubs / blank-name autocreates
-if(r.gcalId&&r.gcalId!==currentEventId)return false; // already linked to a different event
+if(r.gcalId&&r.gcalId!==currentEventId&&_gcalEventIsLive(r.gcalId))return false; // skip ONLY if linked to a still-LIVE different event; a stale link (old event recreated with a new id) must not block adoption
 let rsn=String(r.sn||'').replace(/\.0$/,'');
 return rsn===parsed.serial;
 });
@@ -7194,6 +7217,7 @@ pageToken=res.result.nextPageToken;
 if(res.result.nextSyncToken)nextSync=res.result.nextSyncToken
 }while(pageToken);
 
+_setGcalLiveEventIds(allEvents); // record which events are LIVE this sync (powers the stale-link fix)
 for(let ev of allEvents){await processGcalEvent(ev)}
 
 // Collapse any duplicate records that point at the same calendar event (idempotency safety net).
@@ -7624,7 +7648,7 @@ if(sameId(r.i,stub.i))return false;
 if(!r.n)return false;
 let rsn=String(r.sn||'').replace(/\.0$/,'');
 if(rsn!==parsed.serial)return false;
-if(r.gcalId&&r.gcalId!==stub.gcalId)return false;
+if(r.gcalId&&r.gcalId!==stub.gcalId&&_gcalEventIsLive(r.gcalId))return false; // allow merging into a real ticket whose gcalId is STALE (old event recreated with a new id); still skip if linked to a live different event
 return true;
 });
 if(candidates.length===0){unmerged.push({stub:stub.i,reason:'no SN match'});continue}
@@ -7687,6 +7711,17 @@ recs.sort((a,b)=>{let sa=_dedupScore(a),sb=_dedupScore(b);if(sb!==sa)return sb-s
 plan.push({gcalId:gid,keep:recs[0],remove:recs.slice(1)});
 });
 return plan}
+// MANUAL REPAIR (Jun 2026): force a sync + audit right now so gcalDedup merges any empty stub
+// whose calendar-title SN matches a filled record — INCLUDING the case where the filled record's
+// gcalId is stale (old event recreated with a new id). The stale-link fix is what unblocks this.
+async function repairBlankStubsBySN(){
+if(!gcalToken||!gcalCalendarId){alert('Primero con\u00e9ctate a Google Calendar y dale "Sync Now", luego vuelve a intentar la reparaci\u00f3n.');return}
+showToast('&#129657; Reparando \u2014 juntando entregas vac\u00edas con las llenas por SN\u2026');
+_gcalLastAuditAt=0; // bypass the 4-min audit throttle so the repair runs immediately
+try{await gcalSync();}catch(e){console.error('[REPAIR] sync err',e)}
+setTimeout(()=>{try{renderAll()}catch(e){}showToast('&#10003; Reparaci\u00f3n lista \u2014 revisa tus entregas (las vac\u00edas duplicadas se juntaron con las llenas).');},2600);
+}
+
 async function runDedupDuplicates(){
 let plan=planDedupByGcalId();
 if(!plan.length){showToast('No se encontraron duplicados por evento de calendario','warn');return}
@@ -7823,6 +7858,7 @@ let healed={created:[],dateFixed:[],titleFixed:[],colorFixed:[],staleFixed:[]};
 let skipped={byTitle:0,byColor:0,bySunday:0,noDate:0,cancelled:0,synced:0};
 let perEventErrors=0;
 
+_setGcalLiveEventIds(allEvents); // record LIVE events for the stale-link fix (audit path)
 for(let ev of allEvents){
 try{
 if(ev.status==='cancelled'){skipped.cancelled++;continue}
