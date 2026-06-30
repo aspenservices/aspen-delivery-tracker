@@ -1,29 +1,36 @@
 {
-  "name": "Aspen Delivery Tracker",
+  "name": "Aspen Spas \u2014 Delivery Tracker",
   "short_name": "Aspen Delivery",
-  "description": "Aspen Spas delivery dispatch, scheduling and field tracking.",
-  "start_url": "./index.html",
-  "scope": "./",
+  "description": "Aspen Spas delivery dispatch and tracking",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#faf7f1",
-  "theme_color": "#1a1410",
-  "categories": [
-    "business",
-    "productivity"
-  ],
+  "background_color": "#F4EDE1",
+  "theme_color": "#2C221C",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
