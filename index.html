@@ -1424,8 +1424,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026062907;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.06.29 (build 20) — calendar Warm/Bold toggle'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070101;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.01 (build 21) — frequent auto-backups + anti-wipe hardening'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2548,14 +2548,18 @@ document.body.classList.remove('modal-open')}
 // Build a backup object containing all the data the user could possibly want to recover.
 // Photos in EDITS are stored inline as base64 strings, so this snapshot is fully
 // self-contained — restoring it brings back EVERYTHING including images.
-function buildBackupSnapshot(){
+function _stripPhotosRec(r){if(!r||typeof r!=='object')return r;var o={};for(var _k in r){if(_k==='photos'||_k==='tech_photos'||_k==='info_photos')continue;o[_k]=r[_k]}return o}
+function buildBackupSnapshot(light){
+var _ed=EDITS,_ad=Array.isArray(ADDED)?ADDED:[];
+if(light){_ed={};Object.keys(EDITS).forEach(function(k){_ed[k]=_stripPhotosRec(EDITS[k])});_ad=_ad.map(_stripPhotosRec);}
 return{
 version:'aspen_delivery_tracker_backup_v1',
+light:!!light,
 exportedAt:new Date().toISOString(),
 exportedBy:(currentUser&&currentUser.name)||'unknown',
 counts:{edits:Object.keys(EDITS).length,added:Array.isArray(ADDED)?ADDED.length:0,users:Object.keys(USERS).length,gcal_map:Object.keys(gcalMap||{}).length},
-edits:EDITS,
-added:ADDED,
+edits:_ed,
+added:_ad,
 users:USERS,
 gcal_map:Object.assign({},gcalMap||{}),
 gcal_config:{calendarId:(typeof gcalCalendarId!=='undefined'?gcalCalendarId:null)},
@@ -2633,6 +2637,15 @@ let addedArr=snap.added?(Array.isArray(snap.added)?snap.added:Object.values(snap
 let addedObj=_addedToObj(addedArr);
 let editKeys=Object.keys(edits),addedKeys=Object.keys(addedObj);
 if(!editKeys.length&&!addedKeys.length&&!snap.users&&!snap.custom_opts){alert('El backup no contiene datos para restaurar.');return}
+// PHOTO-SAFE RESTORE: a light backup carries no base64 photos. Never let restoring one wipe photos
+// already on the server — pull current server photos once and re-attach them to any incoming record
+// that lacks them, so a light restore refreshes record data WITHOUT dropping photos.
+let _srvE={},_srvA={};
+try{_srvE=((await dbEdits.once('value')).val())||{}}catch(e){}
+try{_srvA=((await dbAdded.once('value')).val())||{}}catch(e){}
+let _keepPhotos=function(rec,srv){if(!rec||typeof rec!=='object'||!srv||typeof srv!=='object')return rec;['photos','tech_photos','info_photos'].forEach(function(f){var cur=rec[f];var has=cur!=null&&!(Array.isArray(cur)&&cur.length===0)&&!(typeof cur==='object'&&!Array.isArray(cur)&&Object.keys(cur).length===0);if(!has&&srv[f]!=null)rec[f]=srv[f]});return rec};
+editKeys.forEach(function(k){edits[k]=_keepPhotos(Object.assign({},edits[k]),_srvE[k])});
+addedKeys.forEach(function(id){addedObj[id]=_keepPhotos(Object.assign({},addedObj[id]),_srvA[id])});
 // Hold the listener defenses for the whole operation so incoming snapshots don't fight the writes.
 _saveInFlight.edits++;_saveInFlight.added++;_lastLocalSave.edits=Date.now();_lastLocalSave.added=Date.now();
 let total=editKeys.length+addedKeys.length+2,done=0;
@@ -2667,20 +2680,22 @@ _saveInFlight.added=Math.max(0,_saveInFlight.added-1)
 // Uses the existing gapi client already loaded for the Calendar feature.
 // Saves to a folder named "Aspen Delivery Backups" in the user's Drive root.
 let _driveBackupAttempted=false;
-async function autoBackupToDrive(){
-if(_driveBackupAttempted)return;_driveBackupAttempted=true;
+async function autoBackupToDrive(light){
+light=!!light;
 try{
 if(!gcalToken||!gdriveScopeOk||typeof gapi==='undefined'||!gapi.client){return}
-// Throttle: max once per 6 hours
-let last=parseInt(localStorage.getItem('aspen_drive_backup_last')||'0',10);
-if(last&&Date.now()-last<6*3600*1000){return}
+// Throttle per kind: light backups (no photos, tiny) run often; full backups (with photos) less often.
+let _thKey=light?'aspen_drive_lightbackup_last':'aspen_drive_backup_last';
+let _thMs=light?(18*60*1000):(3*3600*1000);
+let last=parseInt(localStorage.getItem(_thKey)||'0',10);
+if(last&&Date.now()-last<_thMs){return}
 // Skip if there's basically nothing to back up yet (avoid creating noise on fresh installs)
 let editsN=Object.keys(EDITS).length,addedN=Array.isArray(ADDED)?ADDED.length:0;
 if(editsN===0&&addedN<=1)return;
-let snap=buildBackupSnapshot();
+let snap=buildBackupSnapshot(light);
 let json=JSON.stringify(snap);
 let stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-let filename='AspenDelivery_AutoBackup_'+stamp+'.json';
+let filename=(light?'AspenDelivery_LightBackup_':'AspenDelivery_AutoBackup_')+stamp+'.json';
 // Find or create the "Aspen Delivery Backups" folder so backups stay organized
 let folderId=await driveFindOrCreateFolder('Aspen Delivery Backups');
 // Multipart upload of the JSON content with folder parent
@@ -2700,11 +2715,11 @@ body:body});
 if(!resp.ok){throw new Error('Drive upload failed: '+resp.status)}
 let res=await resp.json();
 console.log('[Backup] Auto-uploaded to Drive:',filename,'(',Math.round(json.length/1024),'KB)');
-try{localStorage.setItem('aspen_drive_backup_last',Date.now().toString())}catch(e){}
+try{localStorage.setItem(_thKey,Date.now().toString())}catch(e){}
 try{localStorage.setItem('aspen_drive_backup_last_name',filename)}catch(e){}
 try{localStorage.setItem('aspen_drive_backup_last_id',res.id||'')}catch(e){}
 // Best-effort rotation: keep only the last 14 auto-backups in the folder
-driveRotateOldBackups(folderId).catch(()=>{})
+driveRotateOldBackups(folderId,light?'AspenDelivery_LightBackup_':'AspenDelivery_AutoBackup_',light?48:10).catch(()=>{})
 }catch(err){console.warn('[Backup] Drive auto-backup failed (non-fatal):',err.message||err)}}
 
 async function driveFindOrCreateFolder(name){
@@ -2723,15 +2738,16 @@ let d2=await r2.json();
 return d2.id
 }catch(e){console.warn('driveFindOrCreateFolder:',e);return null}}
 
-async function driveRotateOldBackups(folderId){
+async function driveRotateOldBackups(folderId,prefix,keepN){
 if(!folderId)return;
-let q="'"+folderId+"' in parents and trashed=false and name contains 'AspenDelivery_AutoBackup_'";
+prefix=prefix||'AspenDelivery_AutoBackup_';keepN=keepN||10;
+let q="'"+folderId+"' in parents and trashed=false and name contains '"+prefix+"'";
 let r=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,name,createdTime)&orderBy=createdTime desc',{
 headers:{'Authorization':'Bearer '+gcalToken}});
 let d=await r.json();
 let files=d.files||[];
 // Keep the newest 14, delete the rest
-let toDelete=files.slice(14);
+let toDelete=files.slice(keepN);
 for(let f of toDelete){
 try{await fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:{'Authorization':'Bearer '+gcalToken}})}catch(e){}
 }}
@@ -3482,7 +3498,10 @@ let localCount=(kind==='added')?ADDED.length:Object.keys(EDITS).length;
 let suspicious=(localCount>=5&&serverCount===0)||(localCount>=20&&serverCount<localCount*0.3);
 if(!suspicious){clearV();console.log('[ANTI-WIPE] Verification read: server has '+serverCount+' '+kind+' — data is back; the live listener will reconcile.');return}
 attempt++;
-if(attempt>=2&&serverCount===lastCount){
+// SAFETY: a server count of 0 is NEVER treated as a legitimate delete — keep local data and the
+// banner up so the user can restore a backup instead of silently losing everything.
+if(serverCount===0){if(attempt>=6){clearV();console.warn('[ANTI-WIPE] Server still reports 0 '+kind+' after '+attempt+' reads. KEEPING local data — this looks like a wipe. Open Backup Center to restore.');}else{lastCount=serverCount;_antiWipeVerifyTimer[kind]=setTimeout(step,8000);}return}
+if(attempt>=3&&serverCount===lastCount){
 console.warn('[ANTI-WIPE] '+attempt+' consistent verification reads confirm the server really holds '+serverCount+' '+kind+' (legitimate mass delete / cleanup). Applying server state.');
 if(kind==='added'){ADDED=overlayRecentAddedEdits(serverArr.map(_normalizeRecord))}
 else{EDITS=overlayRecentEditsEdits(serverObj);Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]))}
@@ -3490,7 +3509,7 @@ let b=document.getElementById('anti-wipe-banner');if(b)b.remove();
 clearV();
 if(currentUser)renderAfterAuth();liveRefreshTechDetail();
 return}
-if(attempt>=4){clearV();console.warn('[ANTI-WIPE] Verification inconclusive after '+attempt+' reads — keeping local data. Use Backup Center to inspect.');return}
+if(attempt>=6){clearV();console.warn('[ANTI-WIPE] Verification inconclusive after '+attempt+' reads — keeping local data. Use Backup Center to inspect.');return}
 lastCount=serverCount;
 _antiWipeVerifyTimer[kind]=setTimeout(step,6000);
 }).catch(e=>{clearV();console.warn('[ANTI-WIPE] verification read failed:',e)})
@@ -6902,7 +6921,13 @@ console.log('OAuth scopes granted:',scopes,'| Drive ok?',gdriveScopeOk);
 // Once Drive scope is confirmed, schedule the auto-backup. We delay a few seconds so
 // the Firebase listeners finish loading and EDITS/ADDED reflect real data — otherwise
 // autoBackupToDrive() would skip the upload (it bails on near-empty installs).
-if(gdriveScopeOk&&typeof autoBackupToDrive==='function'){setTimeout(autoBackupToDrive,8000)}
+if(gdriveScopeOk&&typeof autoBackupToDrive==='function'){
+setTimeout(function(){autoBackupToDrive(false)},8000); // full backup shortly after load
+setTimeout(function(){autoBackupToDrive(true)},60000); // first light backup ~1 min in
+if(!window._aspenBackupTimers){window._aspenBackupTimers=true;
+setInterval(function(){autoBackupToDrive(true).catch(function(){})},18*60*1000); // light every ~18 min
+setInterval(function(){autoBackupToDrive(false).catch(function(){})},3*3600*1000); // full every ~3 h
+}}
 return gdriveScopeOk}
 let gcalCalendarId=null,gcalCalendars=[],gcalAutoTimer=null,gcalSyncToken=null;
 let gcalMap={}; // {gcalEventId: localDeliveryId}
