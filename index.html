@@ -1424,8 +1424,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070101;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.01 (build 21) — frequent auto-backups + anti-wipe hardening'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070102;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.01 (build 22) — delivered/complete immune to calendar-removed Hold'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -7465,7 +7465,7 @@ if(!ev.__cancelRetry){ev.__cancelRetry=true;setTimeout(()=>{try{processGcalEvent
 return}
 if(mappedId){
 let local=findRecById(mappedId);
-if(local&&!local.co&&!local.hold){
+if(local&&!local.co&&!local.dl&&!local.hold){
 let prevDD=local.dd||null;
 let stamp=new Date();
 let holdNote='[GCAL] Removed from calendar on '+stamp.toLocaleDateString()+
@@ -7478,7 +7478,8 @@ hold_reason:'calendar_removed',
 dn:((local.dn||'')+'\n'+holdNote).trim()};
 saveTicketFields(mappedId,updates);
 console.log('[GCAL] Delivery',mappedId,'moved to Hold');
-gcalStats.updated++}}
+gcalStats.updated++}
+else if(local&&(local.co||local.dl)){console.log('[GCAL] Event removed for delivery',mappedId,'\u2014 already',(local.co?'Complete':'Delivered'),'\u2014 leaving it untouched (no Hold, delivered state preserved).');}}
 return}
 // Skip non-delivery labels (COLOR, WEEK, MEMORIAL, etc.) and disallowed colors.
 // MAP HYGIENE: before any title/color/date filter can skip this event, make sure gcal_map
