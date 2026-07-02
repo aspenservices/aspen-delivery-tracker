@@ -1423,8 +1423,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070106;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.02 (build 26) — photos to Firebase Storage: portal upload, migration tool, Drive-sync URL support'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070109;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.02 (build 29) — individual accounts phase 1: email sign-in, user emails, presence + old-build detector'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1561,6 +1561,8 @@ function clearSession(){localStorage.removeItem('aspen_session')}
 
 function doLogout(){
 if(!confirm('Sign out?'))return;
+try{if(_presenceId)db.ref('presence/'+_presenceId).remove()}catch(e){}
+try{firebase.auth().signOut()}catch(e){}
 clearSession();currentUser=null;location.reload()}
 
 // Show the login or setup form depending on whether any users exist yet
@@ -1594,9 +1596,16 @@ area.innerHTML='<div class="auth-form">'+
 '<label>Name</label><select id="lo_name" class="auth-select">'+optsHtml+'</select>'+
 '<label>4-digit PIN</label><input type="password" id="lo_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="current-password">'+
 '<button onclick="doLogin()">Sign In</button>'+
+'<div style="text-align:center;margin:12px 0 4px;color:var(--text-tertiary);font-size:11px;font-weight:700;letter-spacing:.06em">\u2014 OR \u2014</div>'+
+'<div id="loEmailWrap" style="display:none">'+
+'<label>Email</label><input type="email" id="lo_email" placeholder="you@aspenspas.com" autocomplete="email">'+
+'<label>Password</label><input type="password" id="lo_pw" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" autocomplete="current-password">'+
+'<button id="loEmailBtn" onclick="doEmailLogin()" style="background:#1C8FA8">Sign In with Email</button>'+
+'</div>'+
+'<div style="text-align:center;margin-top:6px"><a href="#" class="auth-link" id="loEmailToggle" onclick="toggleEmailLogin(this);return false">\u{1F510} Sign in with email</a></div>'+
 '</div>'}
 // Submit on Enter
-area.querySelectorAll('input,select').forEach(inp=>{inp.addEventListener('keydown',e=>{if(e.key==='Enter'){let btn=area.querySelector('button');if(btn)btn.click()}})});
+area.querySelectorAll('input,select').forEach(inp=>{inp.addEventListener('keydown',e=>{if(e.key==='Enter'){let btn=(inp.id==='lo_email'||inp.id==='lo_pw')?area.querySelector('#loEmailBtn'):area.querySelector('button');if(btn)btn.click()}})});
 // Auto-focus PIN if a user is pre-selected (from last login), else focus the user selector
 let nameSel=document.getElementById('lo_name');
 let pinInp=document.getElementById('lo_pin');
@@ -1642,9 +1651,86 @@ try{localStorage.setItem('aspen_last_user',user.name||'')}catch(e){}
 setAuthMsg('&#10003; Welcome, '+user.name+'!','ok');
 setTimeout(()=>{document.getElementById('auth-screen').classList.add('hidden');applyRoleUI()},400)}
 
+// === EMAIL SIGN-IN (additive \u2014 PIN login keeps working exactly as before) ===
+// Requires: Firebase Console \u2192 Authentication \u2192 Sign-in method \u2192 enable Email/Password,
+// then create each person's email+password there. The email must ALSO be set on the Aspen user
+// (Users panel) so we know which profile/role the account maps to. Zero-lockout: if anything
+// about email auth fails, everyone still signs in with name + PIN.
+function toggleEmailLogin(a){
+var w=document.getElementById('loEmailWrap');if(!w)return;
+var on=w.style.display==='none';
+w.style.display=on?'block':'none';
+if(a)a.innerHTML=on?'Use name + PIN instead':'\u{1F510} Sign in with email';
+if(on){var e=document.getElementById('lo_email');if(e)setTimeout(function(){e.focus()},50)}}
+async function doEmailLogin(){
+var em=((document.getElementById('lo_email')||{}).value||'').trim().toLowerCase();
+var pw=(document.getElementById('lo_pw')||{}).value||'';
+if(!em||!pw){setAuthMsg('&#9888; Enter email and password','err');return}
+setAuthMsg('Signing in...','info');
+try{
+var cred=await firebase.auth().signInWithEmailAndPassword(em,pw);
+var uid=cred.user.uid;var match=null,mid=null;
+Object.keys(USERS||{}).forEach(function(k){var u=USERS[k];if(!u||match)return;
+if((u.fbUid&&u.fbUid===uid)||(u.email&&String(u.email).toLowerCase()===em)){match=u;mid=k}});
+if(!match){
+setAuthMsg('&#10005; No Aspen user is linked to '+em+'. An admin must add this email to your user in the Users panel.','err');
+try{await firebase.auth().signOut()}catch(e){}
+try{firebase.auth().signInAnonymously()}catch(e){}
+return}
+try{dbUsers.child(mid).update({fbUid:uid,email:em,lastLogin:{ts:Date.now(),via:'email'}})}catch(e){}
+currentUser=Object.assign({id:mid},match);
+saveSession(currentUser);
+try{localStorage.setItem('aspen_last_user',match.name||'')}catch(e){}
+console.log('[AUTH] Email sign-in as',match.name,'(verified Firebase account)');
+setAuthMsg('&#10003; Welcome, '+match.name+'! (verified)','ok');
+setTimeout(function(){document.getElementById('auth-screen').classList.add('hidden');applyRoleUI()},400);
+}catch(e){
+var m=(e&&e.code)||'';
+setAuthMsg('&#10005; '+(m==='auth/wrong-password'||m==='auth/invalid-credential'||m==='auth/invalid-login-credentials'?'Wrong email or password':
+m==='auth/user-not-found'?'No Firebase account with that email \u2014 an admin must create it in Firebase Console \u2192 Authentication':
+m==='auth/operation-not-allowed'?'Email sign-in is not enabled yet (Firebase Console \u2192 Authentication \u2192 Sign-in method)':
+'Sign-in failed: '+((e&&e.message)||e)),'err')}}
+
+// === PRESENCE ===
+// Every signed-in session heartbeats presence/{deviceId} once a minute. The Users panel shows
+// who is online, on which device, and \u2014 crucially for the sync investigations \u2014 on which BUILD:
+// a device running an old build is exactly the kind of stale writer that shrinks data.
+let _presenceId=null;
+function startPresence(){try{
+if(!currentUser||!db)return;
+if(!_presenceId){try{_presenceId=localStorage.getItem('aspen_device_id')}catch(e){}
+if(!_presenceId){_presenceId='dev_'+Math.random().toString(36).slice(2,10);try{localStorage.setItem('aspen_device_id',_presenceId)}catch(e){}}}
+var ref=db.ref('presence/'+_presenceId);
+var ua=navigator.userAgent||'';
+var dev=/iPhone|iPad/i.test(ua)?'iPhone/iPad':/Android/i.test(ua)?'Android':/Macintosh|Mac OS/i.test(ua)?'Mac':/Windows/i.test(ua)?'Windows':'Device';
+function beat(){ref.set({name:(currentUser&&currentUser.name)||'?',role:(currentUser&&currentUser.role)||'?',build:APP_BUILD,device:dev,ts:Date.now()}).catch(function(){})}
+beat();
+try{ref.onDisconnect().remove()}catch(e){}
+if(!window._aspenPresenceTimer){window._aspenPresenceTimer=setInterval(beat,60000)}
+}catch(e){}}
+function fillPresenceList(){
+var el=document.getElementById('presenceList');if(!el)return;
+db.ref('presence').once('value').then(function(sn){
+var v=sn.val()||{};var now=Date.now();var rows=[];
+Object.keys(v).forEach(function(k){var pr=v[k];if(!pr||!pr.ts)return;
+var age=now-pr.ts;if(age>24*3600*1000)return;
+var online=age<5*60*1000;
+var when=online?'online now':Math.round(age/60000)+' min ago';
+var old=pr.build&&pr.build<APP_BUILD;
+rows.push({online:online,html:'<div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap">'+
+'<span style="width:8px;height:8px;border-radius:50%;background:'+(online?'#22c55e':'#cbd5e1')+';flex-shrink:0"></span>'+
+'<span style="font-weight:700">'+escHtml(pr.name||'?')+'</span>'+
+'<span style="color:var(--text-tertiary)">'+escHtml(pr.role||'')+' \u00b7 '+escHtml(pr.device||'')+' \u00b7 '+when+'</span>'+
+(old?'<span style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:10px;padding:2px 7px;border-radius:10px">OLD BUILD \u2014 needs refresh!</span>':'')+
+'</div>'})});
+rows.sort(function(a,b){return (b.online?1:0)-(a.online?1:0)});
+el.innerHTML=rows.length?rows.map(function(r){return r.html}).join(''):'<span style="color:var(--text-tertiary)">No recent sessions.</span>';
+}).catch(function(){el.innerHTML='<span style="color:var(--text-tertiary)">Could not load sessions.</span>'})}
+
 // After login: configure UI based on role
 function applyRoleUI(){
 if(!currentUser)return;
+try{startPresence()}catch(e){}
 // Set initials in header
 let initials=(currentUser.name||'??').split(/[\s.]+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
 let initEl=document.getElementById('userInitials');if(initEl)initEl.textContent=initials;
@@ -2915,6 +3001,7 @@ renderBackupCenter()}
 function renderUsersPanel(){
 let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:18px;font-weight:800">&#128100; User Management</h2><button class="xbtn" onclick="closeUsersModal({target:{id:\'users-modal\'}})">&#10005;</button></div>';
 h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">Add team members and assign roles. Tech accounts only see their assigned deliveries.</div>';
+h+='<div style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);margin-bottom:6px">\u{1F7E2} Active sessions (last 24h)</div><div id="presenceList" style="font-size:12.5px">Loading\u2026</div></div>';
 h+='<button class="aspen-action-btn primary" onclick="openUserForm()" style="margin-bottom:10px">+ Add User</button>';
 h+='<div class="users-list">';
 let userArr=Object.entries(USERS).sort((a,b)=>{let order={admin:0,organizer:1,tech:2};return (order[a[1].role]||9)-(order[b[1].role]||9)});
@@ -2924,14 +3011,14 @@ let initials=(u.name||'??').split(/[\s.]+/).map(s=>s[0]).filter(Boolean).slice(0
 let isMe=id===currentUser.id;
 h+='<div class="user-row">'+
 '<div class="u-avatar">'+initials+'</div>'+
-'<div class="u-info"><div class="u-name">'+escHtml(u.name||'(no name)')+(isMe?' <span style="font-size:10px;color:var(--text-tertiary)">(you)</span>':'')+'</div><div class="u-email">PIN-protected</div></div>'+
+'<div class="u-info"><div class="u-name">'+escHtml(u.name||'(no name)')+(isMe?' <span style="font-size:10px;color:var(--text-tertiary)">(you)</span>':'')+'</div><div class="u-email">'+(u.email?escHtml(u.email)+' \u00b7 email + PIN':'PIN-protected')+'</div></div>'+
 '<span class="u-role '+u.role+'">'+u.role+'</span>'+
 '<div class="u-actions">'+
 '<button class="u-btn" onclick="openUserForm(\''+id+'\')" title="Edit">&#9998;</button>'+
 (isMe?'':'<button class="u-btn danger" onclick="deleteUser(\''+id+'\')" title="Delete">&#128465;</button>')+
 '</div></div>'});
 h+='</div>';
-document.getElementById('users-mdl').innerHTML=h}
+document.getElementById('users-mdl').innerHTML=h;fillPresenceList()}
 
 function openUserForm(id){
 let u=id?USERS[id]:{name:'',role:'tech'};
@@ -2941,6 +3028,7 @@ h+='<div class="auth-form" style="text-align:left">'+
 '<label>Name (used to log in)</label><input type="text" id="uf_name" value="'+escHtml(u.name||'')+'" placeholder="Jarred" autocapitalize="words">'+
 '<label>Role</label><select id="uf_role" style="padding:11px 14px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:15px;font-family:inherit;outline:none;background:var(--surface)">'+
 ROLES.map(r=>'<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+r.charAt(0).toUpperCase()+r.slice(1)+'</option>').join('')+'</select>'+
+'<label>Email (optional \u2014 enables email sign-in)</label><input type="email" id="uf_email" value="'+escHtml(u.email||'')+'" placeholder="name@aspenspas.com" autocomplete="off">'+
 '<label>'+(isEdit?'New 4-digit PIN (leave blank to keep current)':'4-digit PIN')+'</label><input type="password" id="uf_pin" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" autocomplete="new-password">'+
 '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="saveUser('+(isEdit?'\''+id+'\'':'null')+')">Save</button><button class="auth-link" onclick="renderUsersPanel()">Cancel</button></div>'+
 '<div id="uf_msg" style="font-size:12px;font-weight:600;min-height:18px"></div>'+
@@ -2962,7 +3050,10 @@ let nameLower=name.toLowerCase();
 for(let uid in USERS){
 if(uid===id)continue;
 if((USERS[uid].name||'').trim().toLowerCase()===nameLower){msg.textContent='This name is already used. Pick a different one.';msg.style.color='#dc2626';return}}
+let email=((document.getElementById('uf_email')||{value:''}).value||'').trim().toLowerCase();
+if(email&&!/^\S+@\S+\.\S+$/.test(email)){msg.textContent='Invalid email';msg.style.color='#dc2626';return}
 let payload={name,role};
+if(email)payload.email=email;else if(id&&USERS[id]&&USERS[id].email)payload.email=null;
 if(pin){payload.pinHash=await hashPin(pin)}
 if(id){await dbUsers.child(id).update(payload);showToast('&#10003; User updated')}
 else{let newId='user_'+Date.now();payload.created_at=Date.now();await dbUsers.child(newId).set(payload);showToast('&#10003; User '+name+' added')}
@@ -3662,7 +3753,7 @@ function renderAfterAuth(){
 if(!currentUser)return;
 if(typeof startIntakeListener==='function')startIntakeListener();
 if(currentUser.role==='tech'){renderTechList()}
-else{renderAll();setTab('route')}
+else{renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000)}
 // PAGE-LOAD AUTO-REPAIR: 3 seconds after the user lands, scan for cross-linked tickets and
 // break wrong links so the user never sees stale state for more than that delay. The 3-second
 // wait gives the gcalMap listener (which is not part of the _loadCount=3 gate) time to receive
@@ -4177,6 +4268,131 @@ host.innerHTML=h;
 // A home overview with operational KPIs, native SVG charts and per-tech performance.
 // NO financial figures anywhere by design — operations only.
 function _dashDayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// === DAILY DIGEST ===
+// One glance at the day: today's deliveries, balances to collect, tomorrow's incomplete
+// pre-checks, needs-action and holds. Opens automatically once per day for admins/organizers
+// (toggle in settings) and can email itself every morning via EmailJS. Config lives in the
+// shared Firebase node `digest_config`; the `digest_sent/<date>` flag guarantees only ONE
+// device sends the daily email even with several admins online.
+let DIGEST_CFG=null;
+function _dgDateKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function loadDigestConfig(cb){
+if(DIGEST_CFG){cb&&cb();return}
+db.ref('digest_config').once('value').then(function(sn){DIGEST_CFG=sn.val()||{};cb&&cb()}).catch(function(){DIGEST_CFG={};cb&&cb()})}
+function buildDigestData(){
+var all=AD().filter(function(r){return r.n||r.cal});
+var today=new Date();today.setHours(0,0,0,0);
+var tom=new Date(today);tom.setDate(tom.getDate()+1);
+function onDay(r,day){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHours(0,0,0,0);return d.getTime()===day.getTime()}
+var todays=all.filter(function(r){return onDay(r,today)&&!r.co&&!r.hold});
+var tomorrows=all.filter(function(r){return onDay(r,tom)&&!r.co&&!r.hold});
+var tomIncomplete=tomorrows.map(function(r){var done=PRE.filter(function(pp){return r[pp.k]}).length;return{r:r,done:done}}).filter(function(x){return x.done<PRE.length});
+var collectToday=todays.filter(function(r){return (+r.bl||0)>0});
+var collectTotal=collectToday.reduce(function(sm,r){return sm+(+r.bl||0)},0);
+var needsAction=all.filter(function(r){return st(r)==='overdue'});
+var holds=all.filter(function(r){return r.hold});
+return {todays:todays,tomIncomplete:tomIncomplete,collectToday:collectToday,collectTotal:collectTotal,needsAction:needsAction,holds:holds}}
+function _dgLine(r,extra){
+return '<div onclick="openDet('+r.i+')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--border-soft);cursor:pointer">'+
+'<div style="min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(dispName(r))+'</div>'+
+(r.sp?'<div style="font-size:11px;color:var(--text-secondary)">'+escHtml(r.sp)+(r.sn?' \u00b7 '+escHtml(r.sn):'')+'</div>':'')+'</div>'+
+'<div style="flex-shrink:0;font-size:12px;font-weight:800">'+(extra||'')+'</div></div>'}
+function digestHtml(d){
+var c=DIGEST_CFG||{};
+var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
+'<h2 style="font-size:18px;font-weight:800">\u{1F4EC} Daily Digest \u2014 '+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</h2>'+
+'<button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+function box(title,inner){return '<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:10px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:6px">'+title+'</div>'+inner+'</div>'}
+h+=box('\u{1F69A} Today \u00b7 '+d.todays.length+' deliver'+(d.todays.length===1?'y':'ies'),
+d.todays.length?d.todays.map(function(r){return _dgLine(r,(+r.bl||0)>0?'<span style="color:#BE4A2F">'+fmt(r.bl)+'</span>':'<span style="color:#2F7D52">\u2713 paid</span>')}).join(''):'<div style="font-size:13px;color:var(--text-secondary)">No deliveries scheduled today.</div>');
+h+=box('\u{1F4B0} Collect today \u00b7 <span style="color:#BE4A2F">'+fmt(d.collectTotal)+'</span>',
+d.collectToday.length?d.collectToday.map(function(r){return _dgLine(r,'<span style="color:#BE4A2F">'+fmt(r.bl)+'</span>')}).join(''):'<div style="font-size:13px;color:#2F7D52;font-weight:700">\u2713 Nothing to collect today.</div>');
+h+=box('\u26a0\ufe0f Tomorrow \u2014 pre-delivery incomplete \u00b7 '+d.tomIncomplete.length,
+d.tomIncomplete.length?d.tomIncomplete.map(function(x){return _dgLine(x.r,'<span style="color:#d97706">'+x.done+'/'+PRE.length+'</span>')}).join(''):'<div style="font-size:13px;color:#2F7D52;font-weight:700">\u2713 Tomorrow\u2019s deliveries are fully prepped.</div>');
+h+='<div style="display:flex;gap:10px;margin-bottom:10px">'+
+'<div style="flex:1;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(d.needsAction.length?'#E54B25':'#2F7D52')+'">'+d.needsAction.length+'</div><div style="font-size:11px;font-weight:700;color:var(--text-secondary)">Needs Action</div></div>'+
+'<div style="flex:1;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text-primary)">'+d.holds.length+'</div><div style="font-size:11px;font-weight:700;color:var(--text-secondary)">On Hold</div></div></div>';
+h+='<details style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:10px;padding:10px 14px;margin-bottom:10px"'+((c.svc||c.emailOn)?'':' open')+'>'+
+'<summary style="font-size:12.5px;font-weight:800;cursor:pointer">\u2699\ufe0f Morning email (optional \u2014 EmailJS)</summary>'+
+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px">'+
+'<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_on" '+(c.emailOn?'checked':'')+'> Send automatically every morning</label>'+
+'<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_show" '+(c.autoShow===false?'':'checked')+'> Show this digest once per day when I open the app</label>'+
+'<div style="grid-column:1/-1"><label style="font-weight:700">Recipients (comma-separated)</label><input id="dg_to" value="'+escHtml(c.to||'')+'" placeholder="service1@aspenspas.com, nela@..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
+'<div><label style="font-weight:700">Send at</label><input id="dg_hour" value="'+escHtml(c.hour||'06:30')+'" placeholder="06:30" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
+'<div><label style="font-weight:700">Service ID</label><input id="dg_svc" value="'+escHtml(c.svc||'')+'" placeholder="service_xxx" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
+'<div><label style="font-weight:700">Template ID</label><input id="dg_tpl" value="'+escHtml(c.tpl||'')+'" placeholder="template_xxx" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
+'<div><label style="font-weight:700">Public Key</label><input id="dg_pub" value="'+escHtml(c.pub||'')+'" placeholder="AbCdEf..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
+'<button onclick="saveDigestConfig()" style="grid-column:1/-1;background:#2F7D52;color:#fff;border:none;padding:9px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">Save settings</button>'+
+'</div></details>';
+h+='<div style="display:flex;gap:8px">'+
+'<button onclick="digestSendTest()" style="flex:1;background:var(--aspen-orange);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u2709\ufe0f Send test email</button>'+
+'<button onclick="digestMailto()" style="flex:1;background:var(--surface);border:1.5px solid var(--border-soft);padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u{1F4CB} Open in Mail</button></div>';
+return h}
+function openDigest(){
+loadDigestConfig(function(){
+var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
+md.innerHTML='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">'+digestHtml(buildDigestData())+'</div>';
+ov.classList.remove('hidden');document.body.classList.add('modal-open')})}
+function saveDigestConfig(){
+var g=function(id){var e=document.getElementById(id);return e?e.value.trim():''};
+var on=document.getElementById('dg_on'),sh=document.getElementById('dg_show');
+DIGEST_CFG={emailOn:!!(on&&on.checked),autoShow:!(sh&&!sh.checked),to:g('dg_to'),hour:g('dg_hour')||'06:30',svc:g('dg_svc'),tpl:g('dg_tpl'),pub:g('dg_pub')};
+db.ref('digest_config').set(DIGEST_CFG).then(function(){showToast('\u2713 Digest settings saved (shared across devices)')}).catch(function(e){showToast('\u26a0 Could not save: '+(e&&e.message||e),'warn')})}
+function digestText(d){
+var L=[];L.push('ASPEN DAILY DIGEST \u2014 '+new Date().toLocaleDateString());L.push('');
+L.push('TODAY ('+d.todays.length+'):');d.todays.forEach(function(r){L.push('  \u2022 '+dispName(r)+(r.sp?' \u2014 '+r.sp:'')+((+r.bl||0)>0?' \u2014 COLLECT '+fmt(r.bl):''))});
+L.push('');L.push('COLLECT TODAY: '+fmt(d.collectTotal)+' across '+d.collectToday.length+' ticket(s)');
+L.push('');L.push('TOMORROW INCOMPLETE PRE-CHECKS ('+d.tomIncomplete.length+'):');d.tomIncomplete.forEach(function(x){L.push('  \u2022 '+dispName(x.r)+' \u2014 '+x.done+'/'+PRE.length)});
+L.push('');L.push('Needs Action: '+d.needsAction.length+' \u00b7 On Hold: '+d.holds.length);
+return L.join('\n')}
+function digestEmailHtml(d){
+function row(l,v){return '<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;font-family:Arial,sans-serif;font-size:13px">'+l+'</td><td style="padding:6px 10px;border-bottom:1px solid #eee;font-family:Arial,sans-serif;font-size:13px;font-weight:bold;text-align:right">'+v+'</td></tr>'}
+var h='<div style="font-family:Arial,sans-serif;max-width:560px"><h2 style="color:#2C221C">\u{1F342} Aspen \u2014 Daily Digest \u00b7 '+new Date().toLocaleDateString()+'</h2><table style="width:100%;border-collapse:collapse">';
+h+=row('\u{1F69A} Deliveries today',d.todays.length?d.todays.map(function(r){return dispName(r)}).join(', '):'none');
+h+=row('\u{1F4B0} To collect today','<span style="color:#BE4A2F">'+fmt(d.collectTotal)+'</span> ('+d.collectToday.length+')');
+h+=row('\u26a0\ufe0f Tomorrow incomplete',d.tomIncomplete.length?d.tomIncomplete.map(function(x){return dispName(x.r)+' ('+x.done+'/'+PRE.length+')'}).join(', '):'all prepped \u2713');
+h+=row('\u{1F534} Needs Action',String(d.needsAction.length));
+h+=row('\u23f8 On Hold',String(d.holds.length));
+h+='</table><p style="font-family:Arial,sans-serif;font-size:11px;color:#888">Sent automatically by Aspen Delivery Tracker.</p></div>';
+return h}
+function ensureEmailJs(){
+return new Promise(function(res,rej){
+if(window.emailjs){res();return}
+var sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+sc.onload=function(){res()};sc.onerror=function(){rej(new Error('Could not load EmailJS \u2014 check internet'))};
+document.head.appendChild(sc)})}
+async function _digestSendEmail(){
+var c=DIGEST_CFG||{};if(!c.svc||!c.tpl||!c.pub||!(c.to||'').trim())throw new Error('EmailJS not configured');
+await ensureEmailJs();
+try{emailjs.init({publicKey:c.pub})}catch(e){}
+var d=buildDigestData();
+await emailjs.send(c.svc,c.tpl,{to_email:c.to,subject:'\u{1F342} Aspen Daily Digest \u2014 '+new Date().toLocaleDateString(),message:digestEmailHtml(d)});
+}
+function digestSendTest(){
+loadDigestConfig(function(){
+saveDigestConfig&&document.getElementById('dg_to')&&saveDigestConfig();
+_digestSendEmail().then(function(){showToast('\u2713 Test digest email sent!')}).catch(function(e){showToast('\u26a0 '+(e&&e.message||e),'warn')})})}
+function digestMailto(){
+var d=buildDigestData();var c=DIGEST_CFG||{};
+location.href='mailto:'+encodeURIComponent(c.to||'')+'?subject='+encodeURIComponent('Aspen Daily Digest \u2014 '+new Date().toLocaleDateString())+'&body='+encodeURIComponent(digestText(d))}
+async function _digestEmailTick(){try{
+var c=DIGEST_CFG;if(!c||!c.emailOn||!c.svc||!c.tpl||!c.pub||!(c.to||'').trim())return;
+var now=new Date();var hm=String(c.hour||'06:30').split(':');
+var target=new Date(now);target.setHours(parseInt(hm[0],10)||6,parseInt(hm[1],10)||30,0,0);
+if(now<target)return;
+var dk=_dgDateKey();var flagRef=db.ref('digest_sent/'+dk);
+var sn=await flagRef.once('value');if(sn.val())return;
+await flagRef.set({at:Date.now(),by:(currentUser&&currentUser.name)||'?'});
+await _digestSendEmail();console.log('[DIGEST] Daily email sent for',dk);showToast('\u2709\ufe0f Daily digest emailed');
+}catch(e){console.warn('[DIGEST] tick:',e)}}
+function scheduleDigest(){try{
+if(!currentUser||currentUser.role==='tech')return;
+loadDigestConfig(function(){
+var key='aspen_digest_seen_'+_dgDateKey();
+if((DIGEST_CFG.autoShow!==false)&&!localStorage.getItem(key)){setTimeout(function(){try{openDigest();localStorage.setItem(key,'1')}catch(e){}},3500)}
+setTimeout(_digestEmailTick,10000);
+if(!window._aspenDigestTimer){window._aspenDigestTimer=true;setInterval(_digestEmailTick,15*60*1000)}
+})}catch(e){}}
 function renderDashboard(){
 var host=document.getElementById('dashWrap');if(!host)return;
 var all=AD().filter(function(r){return r.n||r.cal});
@@ -4239,6 +4455,9 @@ h+='</div>';
 var mo={};
 all.forEach(function(r){if(!r.dd)return;var d=parseDate(r.dd);if(!d||isNaN(d))return;var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mo[k]=(mo[k]||0)+1});
 var moKeys=Object.keys(mo).sort();
+h+='<div class="dash-card"><h3>\u{1F4EC} Daily Digest</h3>'+
+'<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px">Today\u2019s deliveries, balances to collect and tomorrow\u2019s incomplete pre-checks \u2014 one view, with an optional automatic morning email.</div>'+
+'<button onclick="openDigest()" style="background:var(--aspen-orange);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">\u{1F4EC} Open today\u2019s digest</button></div>';
 // --- Collections (cobranza) — money view for Tom & Sam ---
 var _owing=all.filter(function(r){return !r.hold&&!r.co&&(+r.bl||0)>0});
 var _oweTotal=_owing.reduce(function(sm,r){return sm+(+r.bl||0)},0);
@@ -6399,6 +6618,7 @@ saveE()
 try{if(prevSnapshot&&u&&typeof u.dd!=='undefined'&&u.dd!==prevSnapshot.dd){pushActivity(id,'Delivery date changed: '+(prevSnapshot.dd||'—')+' → '+(u.dd||'—'))}}catch(e){}
 // Generic edit trail: log WHICH fields changed (skips noisy/derived ones). Capped at 60 by pushActivity.
 try{if(prevSnapshot&&u){let _skip={dd:1,activity:1,photos:1,tech_photos:1,info_photos:1,sms_history:1,dn:1};let _ch=Object.keys(u).filter(function(k){return !_skip[k]&&JSON.stringify(u[k])!==JSON.stringify(prevSnapshot[k])});if(_ch.length)pushActivity(id,'Edited: '+_ch.slice(0,6).join(', ')+(_ch.length>6?' +'+(_ch.length-6)+' more':''))}}catch(e){}
+try{if(typeof syncPortalInfo==='function'&&INTAKE&&INTAKE[id])setTimeout(function(){syncPortalInfo(id)},600)}catch(e){}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully');
 // PUSH to Google Calendar (async, fire-and-forget). If the ticket is linked to a calendar
 // event and any of {dd, gcalColorId} changed, propagate the change so the calendar matches
@@ -9559,11 +9779,37 @@ function intakeUrl(id,token){return location.origin+location.pathname.replace(/[
 
 function intakeDefaultRequested(r){return{access:!r.pt,level:!r.lv,wip:!r.wp,electricity:!r.el,payment:!r.pf}}
 
+// === PORTAL INFO SYNC ===
+// The customer portal must never read the delivery database, so every portal-facing fact
+// (date, crew, balance, requirements) is mirrored into intake/{id}/pinfo from the admin side.
+// Synced when a link is created, whenever the ticket is saved, and by a periodic sweep so any
+// admin having the app open keeps every active link fresh.
+function _slotOf(r){var c=String(r.cal||'');if(/^\s*AM\b/i.test(c))return 'AM';if(/^\s*PM\b/i.test(c))return 'PM';if(/ALL\s*DAY/i.test(c))return 'All day';return ''}
+function _buildPinfo(r){
+return {dd:r.dd||'',slot:_slotOf(r),spa:r.sp||'',
+tech:(r.assigned_to&&USERS[r.assigned_to]&&USERS[r.assigned_to].name)||'',
+bl:(+r.bl||0),pst:r.pst||'',crane:!!r.crane,extra:!!r.extra_person,water:!!r.water_truck,
+dl:!!r.dl,co:!!r.co,updated:Date.now()}}
+function syncPortalInfo(id){try{
+var it=INTAKE&&INTAKE[id];if(!it||!it.token)return;
+if(it.expires&&Date.now()>it.expires)return;
+var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
+var p=_buildPinfo(r);
+var old=it.pinfo||{};var same=['dd','slot','spa','tech','bl','pst','crane','extra','water','dl','co'].every(function(k){return old[k]===p[k]});
+if(same)return;
+it.pinfo=p;db.ref('intake/'+id+'/pinfo').set(p).catch(function(e){console.warn('[PORTAL] pinfo sync failed',e)});
+console.log('[PORTAL] pinfo refreshed for',id);
+}catch(e){console.warn('[PORTAL] sync',e)}}
+function syncAllPortalInfo(){try{
+if(!currentUser||currentUser.role==='tech')return;
+Object.keys(INTAKE||{}).forEach(function(k){syncPortalInfo(k)});
+if(!window._aspenPinfoTimer){window._aspenPinfoTimer=true;setInterval(function(){try{Object.keys(INTAKE||{}).forEach(function(k){syncPortalInfo(k)})}catch(e){}},30*60*1000)}
+}catch(e){}}
 function createIntakeLink(id,opts){
 let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showToast('Ticket not found','err');return null}
 let token=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
-let node={token:token,created:Date.now(),expires:Date.now()+21*24*60*60*1000,submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested};
+let node={token:token,created:Date.now(),expires:Date.now()+21*24*60*60*1000,submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested,pinfo:_buildPinfo(r)};
 db.ref('intake/'+id).update(node).catch(e=>console.warn('[FB] intake link write failed',e));INTAKE[id]=node;
 return intakeUrl(id,token)}
 
@@ -9738,7 +9984,7 @@ host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);
 db.ref('intake/'+id).once('value').then(snap=>{
 let it=snap.val();
 if(!it||!it.token||String(it.token)!==String(token)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return}
-if(it.submitted){host.innerHTML=_portalMsg('Thank you!','We have already received your information. This link is now closed. Aspen Spas will be in touch about your delivery.');return}
+if(it.submitted){document.title='Aspen Spas \u2014 Your Delivery';host.innerHTML=_portalShell(_portalSubmittedHtml(it));return}
 _PORTAL={id:id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelOk:false,wipOk:false,payment:'',notes:''};
 host.innerHTML=_portalShell(_portalFormHtml(it));
 }).catch(e=>{console.error('[INTAKE] load',e);host.innerHTML=_portalMsg('Something went wrong','Please reload the page or contact Aspen Spas.')})}
@@ -9750,11 +9996,49 @@ return '<div style="font-size:13px;color:var(--ink-slate);line-height:1.5;margin
 '<button type="button" onclick="document.getElementById(\'file_'+group+'\').click()" style="background:#0f766e;color:#fff;border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:600;width:100%;cursor:pointer">&#128247; Add photos</button>'+
 '<div id="thumbs_'+group+'" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>'}
 
+function _portalStatusHtml(it){
+var p=it.pinfo||{};var h='';
+var dd=p.dd||it.date||'';var dateStr=dd;
+try{if(dd&&typeof fmtDate==='function')dateStr=fmtDate(dd)}catch(e){}
+if(p.co||p.dl){
+h+='<div style="background:#e7f8f0;border:1px solid #a7e3c6;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center"><div style="font-size:26px">\u2705</div><div style="font-weight:800;font-size:16px;color:#166534">Your spa was delivered!</div><div style="font-size:13px;color:#166534;margin-top:4px">Thank you for choosing Aspen Spas. Enjoy!</div></div>';
+return h}
+if(dateStr){
+h+=_card('\u{1F4C5} Your delivery',
+'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div><div style="font-weight:800;font-size:17px">'+_iesc(dateStr)+'</div>'+
+(p.slot?'<div style="font-size:12.5px;color:var(--ink-mid)">'+(p.slot==='AM'?'Morning (AM) window':p.slot==='PM'?'Afternoon (PM) window':'All-day window')+'</div>':'')+'</div>'+
+(p.slot?'<span style="background:'+(p.slot==='PM'?'#E54B25':'#1C8FA8')+';color:#fff;font-weight:800;font-size:13px;padding:6px 12px;border-radius:20px">'+_iesc(p.slot)+'</span>':'')+'</div>');
+}
+var chips=[];if(p.extra)chips.push('\u{1F465} Extra crew member');if(p.water)chips.push('\u{1F69B} Water truck');if(p.crane)chips.push('\u{1F3D7}\uFE0F Crane');
+if(p.tech||chips.length){
+h+=_card('\u{1F477} Your crew',
+(p.tech?'<div style="font-size:14px;margin-bottom:'+(chips.length?'8px':'0')+'"><b>'+_iesc(p.tech)+'</b> will lead your delivery.</div>':'')+
+(chips.length?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+chips.map(function(c){return '<span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700">'+c+'</span>'}).join('')+'</div>':''));
+}
+if(typeof p.bl==='number'){
+if(p.bl>0){
+var how='';var pay=(it.resp&&it.resp.payment)||'';
+if(pay==='check')how='You chose to pay by check at delivery.';
+else if(pay==='card')how='We will call you to pay by credit card.';
+else if(pay==='store')how='You chose to pay at the Aspen Spas store before delivery.';
+h+=_card('\u{1F4B5} Balance at delivery','<div style="font-weight:800;font-size:17px;color:#BE4A2F">'+(typeof fmt==='function'?fmt(p.bl):('$'+p.bl))+'</div>'+(how?'<div style="font-size:12.5px;color:var(--ink-mid);margin-top:4px">'+how+'</div>':'<div style="font-size:12.5px;color:var(--ink-mid);margin-top:4px">Due at delivery.</div>'));
+}else{
+h+=_card('\u{1F4B5} Balance','<div style="font-weight:800;font-size:15px;color:#166534">\u2713 Paid in full \u2014 nothing due at delivery.</div>');
+}}
+return h}
+function _portalSubmittedHtml(it){
+var when=it.submittedAt?new Date(it.submittedAt).toLocaleDateString():'';
+var h='<div style="background:#e7f8f0;border:1px solid #a7e3c6;border-radius:14px;padding:18px;margin-bottom:14px;text-align:center"><div style="font-size:30px">\u2705</div><div style="font-weight:800;font-size:17px;color:#166534">We received your information'+(when?' \u00b7 '+_iesc(when):'')+'</div><div style="font-size:13px;color:#166534;margin-top:4px">Everything is on file \u2014 here is where your delivery stands:</div></div>';
+h+=_portalStatusHtml(it);
+try{if(it.resp)h+=_card('\u{1F4CB} What you sent us',_irespSummary(it))}catch(e){}
+h+=_card('\u{1F4DE} Need to change something?','<div style="font-size:13.5px;line-height:1.6;color:var(--ink-slate)">Call Aspen Spas at <b>314-776-5050</b> and ask for <b>Celia (ext. 2)</b> \u2014 we are happy to help.</div>');
+return h}
 function _portalFormHtml(it){
 let rq=it.requested||{},h='';
 h+='<div style="background:var(--surface);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'+
 '<div style="font-size:15px">Hi'+(it.cust?' '+_iesc(String(it.cust).split(/[ ,]/)[0]):'')+',</div>'+
 '<div style="color:var(--ink-slate);font-size:14px;line-height:1.5;margin-top:6px">We are getting ready for your '+_iesc(it.spa||'spa')+' delivery'+(it.date?' on '+_iesc(String(it.date).replace(/\s*(am|pm|all day)/i,'')):'')+'. Please complete the items below so the crew is fully prepared. It only takes a couple of minutes.</div></div>';
+h+=_portalStatusHtml(it);
 
 if(rq.access)h+=_card('&#128205; Access photos','<div style="font-size:13px;color:var(--ink-slate);line-height:1.55;margin-bottom:10px">Please take photos showing the <b>full path</b> our crew will use to bring the spa in:<br>1) The <b>entrance / driveway</b> to your property<br>2) The <b>path or walkway</b> from the entrance to where the spa will go (gates, steps, slopes, tight spots)<br>3) The <b>patio / pad</b> where the spa will sit<br>4) The <b>surrounding area</b> &mdash; anything that affects access</div>'+_photoField('access','Add as many as needed so we can see the whole route from the street to the spot.'));
 
@@ -9811,7 +10095,7 @@ let host=document.getElementById('intakePortalRoot');
 if(host)host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);padding:40px">Sending\u2026</div>');
 let id=_PORTAL.id;
 db.ref('intake/'+id).update({resp:resp,submitted:true,submittedAt:Date.now()}).then(()=>{
-if(host)host.innerHTML=_portalMsg('Thank you!','Your information was sent to Aspen Spas. This link is now closed. We will be in touch about your delivery.');
+_PORTAL.it.resp=resp;_PORTAL.it.submitted=true;_PORTAL.it.submittedAt=Date.now();if(host)host.innerHTML=_portalShell(_portalSubmittedHtml(_PORTAL.it));
 }).catch(e=>{console.error('[INTAKE] submit',e);if(host)host.innerHTML=_portalMsg('Could not send','Please check your connection and try again, or contact Aspen Spas.')})}
 
 </script>
