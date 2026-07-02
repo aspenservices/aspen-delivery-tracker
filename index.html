@@ -1423,8 +1423,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070104;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.02 (build 24) — removed duplicate stats (dashboard only)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070106;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.02 (build 26) — photos to Firebase Storage: portal upload, migration tool, Drive-sync URL support'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1742,7 +1742,7 @@ if(dataState==='pend')html+='<div class="tlswipe-bg"><span class="chk">&#10003;<
 html+='<div class="tlcard'+(r.dl?' isdone':'')+'" data-id="'+r.i+'">';
 html+='<div class="tlrail '+railCls+'">'+(r.assigned_to===currentUser.id&&!r.dl?'<span class="dot"></span>':'')+'<span class="slot">'+railTxt+'</span><span class="seq">'+seqLbl+'</span></div>';
 html+='<div class="tlbody">';
-html+='<div class="tlband"><span class="tlstatus '+stCls+'">'+stTxt+'</span>'+assignee+'</div>';
+html+='<div class="tlband"><span class="tlstatus '+stCls+'">'+stTxt+'</span>'+(!r.dl&&_pdlHas(r.i)?'<span class="tlstatus" style="background:#FDF0D5;color:#92400e">\u23f3 enviando\u2026</span>':'')+assignee+'</div>';
 html+='<div class="tlcust">'+avatarFor(r)+'<div style="min-width:0"><div class="tlname">'+escHtml(dispName(r))+'</div>'+(r.sp?'<div class="tlspa">&#129716; '+escHtml(r.sp)+(r.sn?' &middot; '+escHtml(r.sn):'')+'</div>':'')+'</div></div>';
 if(addrShort)html+='<div class="tladdr">&#128205; '+escHtml(addrShort)+'</div>';
 if(r.hold){html+='<div class="tlhold-row">&#9203; '+(holdDaysAgo(r)?'En hold '+holdDaysAgo(r)+' d&iacute;as':'En hold')+'</div>'}
@@ -2070,6 +2070,7 @@ modal.classList.remove('hidden');setTimeout(()=>{let t=document.getElementById('
 function techConfirmDelivered(id){
 let notes=document.getElementById('tdv_notes').value.trim()||null;
 let updates={dl:true,dn:notes};
+_pdlAdd(id,notes); // offline-safe: marker persists until the server copy confirms dl=true
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
@@ -2077,6 +2078,27 @@ document.getElementById('tech-deliver-modal').classList.add('hidden');
 pushActivity(id,'Marked Delivered');
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
+
+// === OFFLINE-SAFE DELIVERED MARKS ===
+// Field techs often confirm with poor signal. RTDB buffers writes in-memory only — if the tab
+// closes before reconnect, the write is lost ("the tech swears he marked it" case, e.g. Lisa Wolf).
+// Tiny localStorage queue: marker written when the tech confirms, cleared automatically once the
+// server copy shows dl=true (normal listeners), re-applied on load / reconnect / every 60s.
+const _PDL_KEY='aspen_pending_dl';
+function _pdlAll(){try{return JSON.parse(localStorage.getItem(_PDL_KEY)||'{}')||{}}catch(e){return{}}}
+function _pdlSet(o){try{localStorage.setItem(_PDL_KEY,JSON.stringify(o))}catch(e){}}
+function _pdlAdd(id,notes){var o=_pdlAll();o[String(id)]={ts:Date.now(),dn:(notes==null?null:notes)};_pdlSet(o)}
+function _pdlHas(id){return !!_pdlAll()[String(id)]}
+function _pdlSweep(verbose){var o=_pdlAll(),ids=Object.keys(o);if(!ids.length)return;var changed=false,retried=0;
+ids.forEach(function(id){var r=AD().find(function(x){return String(x.i)===String(id)});
+if(r&&r.dl){delete o[id];changed=true}
+else if(r){retried++;console.log('[PENDING-DL] Re-applying delivered mark for ticket',id);saveTicketFields(r.i,{dl:true,dn:(o[id].dn!=null?o[id].dn:(r.dn||null))})}
+else if(Date.now()-o[id].ts>7*24*3600*1000){delete o[id];changed=true}});
+if(changed)_pdlSet(o);
+if(verbose&&retried)showToast('\u23f3 '+retried+' delivered mark(s) pending \u2014 retrying automatically','info')}
+setTimeout(function(){_pdlSweep(true)},12000);
+setInterval(function(){_pdlSweep(false)},60000);
+window.addEventListener('online',function(){setTimeout(function(){_pdlSweep(false)},3000)});
 
 // === CUSTOMER SIGNATURE ===
 // Tech presents a signature pad to the customer. Customer signs with finger/mouse.
@@ -2388,6 +2410,51 @@ return url||b64;
 }catch(e){console.warn('[STORAGE] upload failed — keeping inline base64:',e&&e.code,e&&e.message);return b64}
 }
 
+// Best-effort: when a photo is removed from a ticket, remove its Storage file too (only files in
+// OUR bucket). Never blocks or throws — an orphaned file is harmless, a broken delete flow is not.
+function _storageDeleteIfOurs(p){try{if(fbStorage&&typeof p==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\//.test(p)){fbStorage.refFromURL(p).delete().catch(function(){})}}catch(e){}}
+
+// === ONE-TIME PHOTO MIGRATION: inline base64 → Firebase Storage ===
+// Moves every base64 photo (photos + tech_photos) out of RTDB into Storage, replacing each with
+// its download URL via per-record field writes (saveTicketFields — same anti-clobber path as
+// everything else). A photo is only swapped AFTER its upload succeeds; failures stay inline.
+// Live-tests Storage with a 1px image first so a misconfigured bucket aborts cleanly.
+async function migratePhotosToStorage(){
+if(!currentUser||currentUser.role==='tech'){alert('Admin/organizer only');return}
+if(!fbStorage){alert('Firebase Storage SDK is not available in this session.');return}
+if(!navigator.onLine){alert('No connection — try again with stable internet.');return}
+try{
+let tref=fbStorage.ref('delivery_photos/_test/'+Date.now()+'.gif');
+await tref.putString('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','data_url');
+await tref.delete().catch(function(){});
+}catch(e){
+alert('Storage is not active (or rules block writes).\n\nFirebase Console → Storage:\n1) Click "Get started" to enable the bucket\n2) Rules tab → paste the rules Alberto has\n\nDetail: '+((e&&e.code)||e));return}
+let work=[];
+AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
+let arr=Array.isArray(r[f])?r[f]:null;if(!arr)return;
+let n=arr.filter(function(ph){return typeof ph==='string'&&ph.indexOf('data:')===0}).length;
+if(n)work.push({id:r.i,f:f,n:n})})});
+let totPhotos=work.reduce(function(sm,w){return sm+w.n},0);
+if(!totPhotos){showToast('&#10003; No inline photos left — everything is already in Storage.');return}
+if(!confirm('Migrate '+totPhotos+' photo(s) to Firebase Storage?\n\nEach photo is uploaded first and only then swapped for its URL inside the ticket — nothing is removed until its upload succeeds. Runs in the background; you can keep working.'))return;
+let done=0,fail=0,freed=0;
+showToast('&#128230; Migrating photos\u2026 0/'+totPhotos);
+for(let w of work){
+let r=AD().find(function(x){return sameId(x.i,w.id)});if(!r)continue;
+let arr=(r[w.f]||[]).slice();let changed=false;
+for(let i=0;i<arr.length;i++){
+let ph=arr[i];if(typeof ph!=='string'||ph.indexOf('data:')!==0)continue;
+try{let url=await uploadPhotoToStorage(w.id,ph);
+if(/^https?:/.test(url)){freed+=ph.length*0.75;arr[i]=url;changed=true;done++}else{fail++}
+}catch(e){fail++;console.warn('[PHOTO-MIGRATE] one failed:',(e&&e.code)||e)}
+if((done+fail)%5===0)showToast('&#128230; Migrating photos\u2026 '+(done+fail)+'/'+totPhotos+' \u00b7 '+(freed/1048576).toFixed(1)+' MB freed');
+}
+if(changed){let u={};u[w.f]=arr;saveTicketFields(w.id,u)}
+}
+console.log('[PHOTO-MIGRATE] done:',done,'failed:',fail,'freed MB:',(freed/1048576).toFixed(1));
+showToast(done?('&#10003; '+done+' photo(s) migrated \u00b7 '+(freed/1048576).toFixed(1)+' MB freed from the database'+(fail?' \u00b7 '+fail+' kept inline (run again later)':'')):'\u26a0 Migration uploaded nothing ('+fail+' failures) — check Storage rules.',done?'info':'warn');
+}
+
 // Compress image to reasonable base64 size.
 // iPhone HEIC/HEIF files are converted to JPEG first (so they decode in every
 // browser), then the existing resize-to-canvas path runs unchanged.
@@ -2409,7 +2476,7 @@ img.src=url})}
 function techDeletePhoto(id,idx){
 if(!confirm('Delete this delivery photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
-let newPhotos=r.tech_photos.slice();newPhotos.splice(idx,1);
+let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm);
 let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
@@ -2498,7 +2565,7 @@ inp.click()}
 function adminDeletePhoto(id,idx){
 if(!confirm('Delete this info photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
-let newPhotos=r.photos.slice();newPhotos.splice(idx,1);
+let newPhotos=r.photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm);
 let updates={photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
@@ -2509,7 +2576,7 @@ safeRefreshModalIfOpen(id)}
 function adminDeleteTechPhoto(id,idx){
 if(!confirm('Delete this delivery photo from the ticket?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
-let newPhotos=r.tech_photos.slice();newPhotos.splice(idx,1);
+let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm);
 let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
@@ -2761,6 +2828,10 @@ let usersN=Object.keys(USERS).length;
 let fmtAgo=(ts)=>{if(!ts)return'<span style="color:#dc2626">nunca</span>';let diff=Date.now()-ts;let d=Math.floor(diff/86400000),h=Math.floor(diff/3600000),m=Math.floor(diff/60000);if(d>0)return d+'d ago';if(h>0)return h+'h ago';if(m>0)return m+'m ago';return'just now'};
 let driveStatusColor=lastDrive&&Date.now()-lastDrive<7*86400000?'#059669':(lastDrive?'#d97706':'#dc2626');
 let driveReady=gcalToken&&gdriveScopeOk;
+// Photo storage census — how much base64 photo weight still lives inside the database
+let _phB64=0,_phUrl=0,_phBytes=0;
+try{AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){(Array.isArray(r[f])?r[f]:[]).forEach(function(ph){if(typeof ph!=='string')return;if(ph.indexOf('data:')===0){_phB64++;_phBytes+=ph.length*0.75}else if(/^https?:/.test(ph))_phUrl++})})})}catch(e){}
+let _phMB=(_phBytes/1048576).toFixed(1);
 
 let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
 '<h2 style="font-size:18px;font-weight:800">&#128737;&#65039; Backup Center</h2>'+
@@ -2775,6 +2846,13 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<div><strong style="font-size:18px;color:#2563eb">'+editsN+'</strong> &nbsp;<span style="color:var(--text-secondary)">edits</span></div>'+
 '<div><strong style="font-size:18px;color:#059669">'+usersN+'</strong> &nbsp;<span style="color:var(--text-secondary)">users</span></div>'+
 '</div></div>'+
+
+// PHOTO STORAGE (migration)
+'<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
+'<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#128230; Photo Storage (Firebase)</div>'+
+'<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px">Estado SDK: '+(fbStorage?'<strong style="color:#059669">listo</strong>':'<strong style="color:#dc2626">no disponible</strong>')+' &middot; <strong>'+_phB64+'</strong> fotos inline (~'+_phMB+' MB dentro de la base) &middot; <strong>'+_phUrl+'</strong> ya en Storage.</div>'+
+(_phB64?('<button onclick="migratePhotosToStorage()" style="background:#7c3aed;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128230; Migrar '+_phB64+' fotos a Storage (libera ~'+_phMB+' MB)</button>'):'<div style="font-size:12px;color:#059669;font-weight:700">&#10003; Todas las fotos ya viven en Storage.</div>')+
+'</div>'+
 
 // MANUAL BACKUP
 '<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
@@ -3248,6 +3326,7 @@ clearTimeout(_fullSyncTimerA);_fullSyncTimerA=setTimeout(_chunkedFullSyncAdded,8
 }else{
 // Node not yet migrated to object form (early boot). ADDED holds only in-app tickets and is
 // small, so a one-time whole-array set is safe and lets the migration detector convert it.
+if(!_wholeNodeWriteSafe(Array.isArray(ADDED)?ADDED.length:0,'saveA-legacy'))return;
 _saveInFlight.added++;_lastLocalSave.added=Date.now();
 dbAdded.set(_ledgerFlagAll(ADDED)).then(()=>{
 _saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse();
@@ -3257,8 +3336,20 @@ console.error('saveA:',e);showToast('&#9888; Save failed — will retry on next 
 });
 }
 }
+// WRITE GUARD: whole-node writes replace EVERYTHING on the server. If this device holds fewer
+// records than the server (stale/partial copy after a sync hiccup), such a write would silently
+// wipe other devices' data — the root pattern behind the "deliveries are getting cleaned" bug.
+// Per-record updates are unaffected; only whole-node set() calls pass through this gate.
+function _wholeNodeWriteSafe(nextCount,label){
+var srv=window._srvAddedCount;
+if(typeof srv!=='number')return true;
+if(srv>=10&&nextCount<srv*0.5){
+console.error('[WRITE-GUARD] BLOCKED whole-node added write ('+label+'): would shrink server from '+srv+' to '+nextCount+' records. Refresh this device (Cmd+Shift+R) to pull fresh data first.');
+try{showToast('\u26d4 Write blocked: this device has partial data ('+nextCount+' vs '+srv+' on server). Refresh to sync.','error')}catch(e){}
+return false}
+return true}
 function _chunkedFullSyncAdded(){
-if(!_addedNodeMigrated){try{dbAdded.set(_ledgerFlagAll(ADDED)).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}return}
+if(!_addedNodeMigrated){if(!_wholeNodeWriteSafe(Array.isArray(ADDED)?ADDED.length:0,'fullSync-legacy'))return;try{dbAdded.set(_ledgerFlagAll(ADDED)).catch(e=>console.error('fullSyncAdded:',e))}catch(e){console.error('fullSyncAdded:',e)}return}
 let arr=Array.isArray(ADDED)?ADDED.slice():[];if(!arr.length)return;
 _saveInFlight.added++;let i=0;
 (function step(){
@@ -3385,6 +3476,7 @@ if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkR
 },err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
 dbAdded.on('value',snap=>{
 let v=snap.val()||[];
+try{window._srvAddedCount=Array.isArray(v)?v.filter(Boolean).length:Object.keys(v||{}).length}catch(e){}
 // ONE-TIME (self-healing) MIGRATION: the `added` node was a JS array (keys 0,1,2…). Per-child
 // writes need it keyed by ticket id. We detect array-form on ANY clean cycle — so if a racing
 // legacy write ever reverts the node to array-form, the next cycle catches it and re-migrates,
@@ -3401,6 +3493,7 @@ _addedNodeMigrated=false;
 let obj=_addedToObj(isArr?v:Object.values(v));
 _addedMigrating=true;
 console.log('[MIGRATE] Converting added node array\u2192object ('+Object.keys(obj).length+' records).');
+if(!_wholeNodeWriteSafe(Object.keys(obj).length,'migration')){_addedMigrating=false;return}
 dbAdded.set(_ledgerFlagObj(obj)).then(()=>{_addedNodeMigrated=true;_addedMigrating=false;console.log('[MIGRATE] added node migrated.')}).catch(e=>{_addedMigrating=false;console.error('[MIGRATE] failed, will retry next cycle:',e)});
 }else{_addedNodeMigrated=true}
 }
@@ -3595,6 +3688,15 @@ let search="",statusF="all",tab="board",sortCol="date",sortDir="desc";
 // Phase 1 (2026-06-14): combinable filters layered on top of search + status tab.
 let techF="";      // filter by assigned technician (user id); "" = all techs
 let returnsF=false;// when true, show only deliveries that still need a second visit (sl set, not complete)
+// Smart search: accent-insensitive ("Muñoz" matches "munoz") and digit-aware — a numeric query
+// like "3146401766" or "31266" matches phones/SNs regardless of dashes, spaces or parentheses.
+function _srchNorm(x){return String(x==null?'':x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+function _srchDigits(x){return String(x==null?'':x).replace(/\D+/g,'')}
+function _srchHit(rec,qraw){var q=_srchNorm(qraw),qd=_srchDigits(qraw);
+return [rec.n,rec.cal,rec.sp,rec.st,rec.ph,String(rec.sn||''),rec.em].some(function(v){v=v||'';
+if(q&&_srchNorm(v).indexOf(q)>=0)return true;
+if(qd.length>=3){var vd=_srchDigits(v);if(vd&&vd.indexOf(qd)>=0)return true}
+return false})}
 function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
 
 // Phone helpers — a ticket's r.ph may now contain MULTIPLE numbers, one per line.
@@ -3771,7 +3873,7 @@ if(returnsF&&!(r.sl&&!r.co))return 0; // Returns view: needs a second visit and 
 let s=st(r);if(statusF!=="all"&&s!==statusF)return 0;
 // Hold tab can further narrow by hold_reason chip
 if(statusF==="hold"&&typeof holdReasonF!=="undefined"&&holdReasonF&&(r.hold_reason||"manual")!==holdReasonF)return 0;
-if(search){let q=search.toLowerCase();return[r.n,r.cal,r.sp,r.st,r.ph,String(r.sn||""),r.em].some(v=>(v||"").toLowerCase().includes(q))}return 1});
+if(search){return _srchHit(r,search)}return 1});
 // Sort
 // useProximity: order by closeness to today (yesterday first, far future last).
 // Used for tabs where "what's most relevant right now" matters more than raw date order:
@@ -4137,6 +4239,18 @@ h+='</div>';
 var mo={};
 all.forEach(function(r){if(!r.dd)return;var d=parseDate(r.dd);if(!d||isNaN(d))return;var k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mo[k]=(mo[k]||0)+1});
 var moKeys=Object.keys(mo).sort();
+// --- Collections (cobranza) — money view for Tom & Sam ---
+var _owing=all.filter(function(r){return !r.hold&&!r.co&&(+r.bl||0)>0});
+var _oweTotal=_owing.reduce(function(sm,r){return sm+(+r.bl||0)},0);
+var _delOwing=_owing.filter(function(r){return r.dl});
+var _delOweTotal=_delOwing.reduce(function(sm,r){return sm+(+r.bl||0)},0);
+h+='<div class="dash-card"><h3>\u{1F4B0} Collections</h3>'+
+'<div style="display:flex;flex-direction:column;gap:12px">'+
+'<div><div style="font-size:26px;font-weight:800;color:#BE4A2F">'+fmt(_oweTotal)+'</div><div style="font-size:12px;color:var(--text-secondary);font-weight:600">Outstanding balance \u00b7 '+_owing.length+' ticket'+(_owing.length===1?'':'s')+'</div></div>'+
+'<div style="display:flex;gap:18px;flex-wrap:wrap">'+
+'<div><div style="font-size:17px;font-weight:800;color:#E54B25">'+fmt(_delOweTotal)+'</div><div style="font-size:11px;color:var(--text-secondary);font-weight:600">Delivered & unpaid ('+_delOwing.length+') \u2014 collect now</div></div>'+
+'<div><div style="font-size:17px;font-weight:800;color:var(--text-primary)">'+fmt(_owing.length?_oweTotal/_owing.length:0)+'</div><div style="font-size:11px;color:var(--text-secondary);font-weight:600">Avg per owing ticket</div></div>'+
+'</div></div></div>';
 h+='<div class="dash-card"><h3>\u{1F4C8} Deliveries per Month</h3>'+_svgLineChart(moKeys.map(function(k){return{label:k.slice(2),value:mo[k]}}))+'</div>';
 h+='</div>'; // end dash-grid
 // --- Spa model distribution (full-width bars) ---
@@ -6283,6 +6397,8 @@ saveE()
 }
 // Log meaningful manual changes to the activity trail (date is the operationally important one).
 try{if(prevSnapshot&&u&&typeof u.dd!=='undefined'&&u.dd!==prevSnapshot.dd){pushActivity(id,'Delivery date changed: '+(prevSnapshot.dd||'—')+' → '+(u.dd||'—'))}}catch(e){}
+// Generic edit trail: log WHICH fields changed (skips noisy/derived ones). Capped at 60 by pushActivity.
+try{if(prevSnapshot&&u){let _skip={dd:1,activity:1,photos:1,tech_photos:1,info_photos:1,sms_history:1,dn:1};let _ch=Object.keys(u).filter(function(k){return !_skip[k]&&JSON.stringify(u[k])!==JSON.stringify(prevSnapshot[k])});if(_ch.length)pushActivity(id,'Edited: '+_ch.slice(0,6).join(', ')+(_ch.length>6?' +'+(_ch.length-6)+' more':''))}}catch(e){}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));closeOv();renderAll();showToast('&#10003; Changes saved successfully');
 // PUSH to Google Calendar (async, fire-and-forget). If the ticket is linked to a calendar
 // event and any of {dd, gcalColorId} changed, propagate the change so the calendar matches
@@ -6555,6 +6671,7 @@ dn:((rec.dn||'')+'\n'+note).trim()};
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+pushActivity(id,'Moved to Hold'+(reason?' \u2014 '+String(reason).slice(0,80):''));
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 showToast('&#9209; '+(rec.n||'Delivery')+' moved to Hold');
 renderModal();renderAll()}
@@ -6577,6 +6694,7 @@ let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
+pushActivity(id,'Resumed from Hold'+(newDD?' \u2014 new date '+newDD:''));
 showToast('&#9654; '+(rec.n||'Delivery')+' resumed from Hold');
 renderModal();renderAll()}
 // === END HOLD / RESUME ===
@@ -8935,9 +9053,19 @@ return 'Customer (no name)';
 }
 
 
+// Storage-URL photos must become data-uris before the Drive multipart upload (and before
+// _dataUriToBlob). Fetching our own Firebase Storage download URL is CORS-enabled by default.
+async function _photoToDataUri(p){
+if(typeof p!=='string')throw new Error('bad photo');
+if(p.indexOf('data:')===0)return p;
+if(!/^https?:/.test(p))throw new Error('bad photo');
+let res=await fetch(p);if(!res.ok)throw new Error('photo fetch '+res.status);
+let blob=await res.blob();
+return await new Promise(function(ok,bad){let fr=new FileReader();fr.onload=function(){ok(fr.result)};fr.onerror=function(){bad(new Error('photo read'))};fr.readAsDataURL(blob)})}
 // Upload a single base64 photo to a Drive folder. Returns the new file id.
 async function driveUploadPhoto(folderId,base64DataUri,fileName){
 if(!gcalToken)throw new Error('Not connected to Google');
+base64DataUri=await _photoToDataUri(base64DataUri);
 let blob=_dataUriToBlob(base64DataUri);
 let metadata={name:fileName,parents:[folderId]};
 // Multipart upload: metadata + blob in one request
@@ -9195,8 +9323,7 @@ if(!r.n&&!r.cal)return false;
 // (the full month schedule), switch to the ALL tab. This keeps the calendar logical — a
 // delivered tub like Wolk should not appear under "Upcoming".
 if(statusF!=='all'&&st(r)!==statusF)return false;
-if(search){let q=search.toLowerCase();
-if(![r.n,r.cal,r.sp,r.st,r.ph,String(r.sn||''),r.em].some(v=>(v||'').toLowerCase().includes(q)))return false}
+if(search){if(!_srchHit(r,search))return false}
 return true
 }).map(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return null;return{r:r,d:d,s:st(r)}}).filter(Boolean)}
 function evsByDate(evs){let m={};evs.forEach(e=>{let k=e.d.getFullYear()+'-'+String(e.d.getMonth()+1).padStart(2,'0')+'-'+String(e.d.getDate()).padStart(2,'0');if(!m[k])m[k]=[];m[k].push(e)});return m}
@@ -9463,6 +9590,7 @@ function intakeReapply(id){
 if(!confirm('Re-apply this customer\'s submission to the ticket?\n\nThis will re-merge their photos into Info Photos and re-set checklist boxes (Pay Full, WIP, Electricity, Level, Photos) and payment status based on what they answered.\n\nAny info-photos you uploaded yourself will be kept; customer photos will be appended after them. Existing checkbox states are preserved unless the customer\'s answer overrides them.'))return;
 db.ref('intake/'+id+'/reflected').set(null).then(()=>{
 showToast('&#128260; Re-applying customer submission\u2026','info');
+try{pushActivity(id,'Customer submission re-applied')}catch(e){}
 console.log('[INTAKE] Re-apply triggered for ticket #'+id+' \u2014 reflected flag cleared, listener will re-run reflection.');
 }).catch(e=>{console.error('[INTAKE] Re-apply failed:',e);showToast('\u26a0\ufe0f Re-apply failed: '+(e&&e.message?e.message:'unknown'),'error');});}
 
@@ -9650,7 +9778,13 @@ let files=Array.from(input.files||[]);if(!files.length)return;
 let btn=input.previousElementSibling;
 for(let f of files){
 if(_PORTAL[group].length>=10){showToast&&showToast('Max 10 photos per section','warn');break}
-try{let b64=await compressImage(f,1100,0.6);if(b64.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}_PORTAL[group].push(b64)}catch(e){console.error('compress',e);alert("We couldn't read one of your photos. If you're on an iPhone, open it in Photos, tap Share, choose \"Save as File\" (it saves as JPG), then upload that — or change Settings → Camera → Formats to \"Most Compatible\".")}
+try{let b64=await compressImage(f,1100,0.6);
+// Try Firebase Storage first (tiny URL in the ticket instead of a multi-MB base64 blob).
+// Falls back to inline base64 if Storage is off/blocked — exactly the old behavior.
+let _tid=(_PORTAL.it&&(_PORTAL.it.i||_PORTAL.it.id))||'portal';
+let stored=await uploadPhotoToStorage('intake_'+_tid,b64);
+if(!/^https?:/.test(stored)&&stored.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}
+_PORTAL[group].push(stored)}catch(e){console.error('compress',e);alert("We couldn't read one of your photos. If you're on an iPhone, open it in Photos, tap Share, choose \"Save as File\" (it saves as JPG), then upload that — or change Settings → Camera → Formats to \"Most Compatible\".")}
 }
 input.value='';_intakeThumbs(group)}
 
