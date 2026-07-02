@@ -1344,7 +1344,6 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 </div>
 <div class="cal-split" id="calSplit"><div id="calBody"></div><aside class="cal-rail" id="calRail"></aside></div>
 </div>
-<div class="charts" id="charts"></div>
 <div class="ov hidden" id="ov" onclick="closeOv()"><div class="mdl" id="md" onclick="event.stopPropagation()"></div></div>
 <div id="toast" class="toast"></div>
 
@@ -1424,8 +1423,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070102;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.01 (build 22) — delivered/complete immune to calendar-removed Hold'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070104;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.02 (build 24) — removed duplicate stats (dashboard only)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -4182,7 +4181,7 @@ s+='<div class="db-row"><div class="db-lbl">'+escHtml(d.label)+'</div>'+
 '<div class="db-val">'+d.value+'</div></div>';});
 s+='</div>';return s;
 }
-function renderCharts(){let mo={},md={};AD().filter(r=>r.dd&&r.n).forEach(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return;let k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");mo[k]=(mo[k]||0)+1});
+function renderCharts(){var _c=document.getElementById("charts");if(!_c)return;/* legacy duplicate stats removed — dashboard tab is the single source of stats */let mo={},md={};AD().filter(r=>r.dd&&r.n).forEach(r=>{let d=parseDate(r.dd);if(!d||isNaN(d))return;let k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");mo[k]=(mo[k]||0)+1});
 AD().filter(r=>r.sp&&r.n).forEach(r=>{let b=r.sp.split(",")[0].trim();md[b]=(md[b]||0)+1});
 let ma=Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0])),mx=Math.max(...ma.map(m=>m[1]),1);
 let sa=Object.entries(md).sort((a,b)=>b[1]-a[1]).slice(0,10),sx=sa.length?sa[0][1]:1;
@@ -9285,7 +9284,7 @@ let evStyle=gStyle?' style="'+gStyle+'"':'';
 // Completed events are non-draggable too — moving a delivered event makes no sense.
 let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
-h+='<div class="'+evClass+'"'+evStyle+dragAttrs+' onclick="event.stopPropagation();calPick('+r.i+')" title="'+escHtml(titleAttr)+(canDrag?' (drag to move date)':'')+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
+h+='<div class="'+evClass+'"'+evStyle+dragAttrs+' onclick="event.stopPropagation();openDet('+r.i+')" title="'+escHtml(titleAttr)+(canDrag?' (drag to move date)':'')+'"><span class="ce-name">'+escHtml(nm)+'</span>'+(sub?'<span class="ce-sub">'+escHtml(sub)+'</span>':'')+'</div>'});
 if(dayEvs.length>3)h+='<div class="cal-more" onclick="calDate=new Date('+y+','+(m)+','+d+');setCalView(\'day\')">+' +(dayEvs.length-3)+' more</div>';
 h+='</div>'}
 // Trailing blanks
@@ -9371,7 +9370,7 @@ let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
 let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
-h+='<div class="cal-wk-ev'+(r.i===calSelId?' sel':'')+'"'+dragAttrs+' onclick="calPick('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+dispName(r)+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
+h+='<div class="cal-wk-ev'+(r.i===calSelId?' sel':'')+'"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+dispName(r)+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
@@ -9386,7 +9385,7 @@ if(!dayEvs.length)h+='<div style="padding:40px;text-align:center;color:var(--ink
 dayEvs.forEach(e=>{
 let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
-h+='<div class="cal-wk-row" style="grid-template-columns:1fr;cursor:pointer" onclick="calPick('+r.i+')">';
+h+='<div class="cal-wk-row" style="grid-template-columns:1fr;cursor:pointer" onclick="openDet('+r.i+')">';
 h+='<div style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">';
 h+='<div class="ev-dot" style="background:'+dotColor+';width:10px;height:10px"></div>';
 h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:var(--ink-strong)">'+escHtml(dispName(r))+'</div><div style="font-size:12px;color:var(--ink-mid);margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
@@ -9409,7 +9408,7 @@ techs.forEach(u=>{html+='<option value="'+u.id+'"'+(String(prev)===String(u.id)?
 if(prev&&!techs.some(u=>String(u.id)===String(prev))){techF="";}
 sel.innerHTML=html}
 function render(){populateTechFilter();renderBoard();renderTable()}
-function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();render();renderCharts();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
+function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();render();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
 // Initial render is triggered by Firebase listeners via checkReady()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeOv()});
 
