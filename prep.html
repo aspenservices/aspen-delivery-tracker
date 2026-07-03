@@ -1292,6 +1292,190 @@ html[data-theme="dark"] .kpi,html[data-theme="dark"] .kpi-card{
 }
 html[data-theme="dark"] .mdl{background:rgba(30,22,14,.78) !important;border:1px solid rgba(255,255,255,.1)}
 html[data-theme="dark"] .aspen-tabs-bar{background:rgba(26,18,9,.6) !important;border-bottom:1px solid rgba(255,255,255,.07) !important}
+
+/* --- ASPEN GLASS Stage 2: greeting header, floating dock, FAB --- */
+#glassGreet{margin:14px 16px 4px}
+#glassGreet .gg-hi{font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--text-primary)}
+#glassGreet .gg-sub{font-size:13px;font-weight:600;color:var(--text-secondary);margin-top:2px}
+#glassGreet .gg-stats{display:flex;margin-top:12px;background:rgba(255,255,255,.5);backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,255,255,.65);border-radius:20px;box-shadow:0 8px 28px rgba(120,80,40,.12);padding:12px 6px;max-width:460px}
+#glassGreet .gg-stats>div{flex:1;text-align:center}
+#glassGreet .gg-stats>div+div{border-left:1px solid rgba(44,34,28,.1)}
+#glassGreet .gg-stats b{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--text-primary)}
+#glassGreet .gg-stats span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary)}
+#glassDock{display:none}
+#glassFab{display:none}
+@media(max-width:820px){
+body.has-glass-dock{padding-bottom:92px}
+#glassDock{position:fixed;left:38px;right:38px;bottom:16px;z-index:900;display:flex;padding:8px 6px 7px;border-radius:26px;background:rgba(255,255,255,.55);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);border:1px solid rgba(255,255,255,.65);box-shadow:0 12px 34px rgba(60,40,20,.25)}
+#glassDock button{flex:1;background:none;border:none;font-family:inherit;font-size:9.5px;font-weight:700;color:rgba(44,34,28,.5);cursor:pointer;padding:0}
+#glassDock button .gi{display:block;font-size:20px;margin-bottom:1px}
+#glassDock button.on{color:var(--aspen-orange)}
+#glassDock button.on .gi{filter:drop-shadow(0 2px 6px rgba(229,75,37,.45))}
+#glassFab{position:fixed;right:20px;bottom:96px;z-index:901;display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;border:none;background:linear-gradient(135deg,#E54B25,#C73C18);color:#fff;font-size:26px;font-weight:600;box-shadow:0 10px 24px rgba(229,75,37,.45);cursor:pointer}
+html[data-theme="dark"] #glassDock{background:rgba(36,26,17,.65);border-color:rgba(255,255,255,.1)}
+html[data-theme="dark"] #glassDock button{color:rgba(246,239,227,.45)}
+html[data-theme="dark"] #glassGreet .gg-stats{background:rgba(36,26,17,.6);border-color:rgba(255,255,255,.08)}
+}
+
+/* --- ASPEN SYSTEM S1: macOS-style sidebar (desktop) + Settings hub --- */
+#glassSide{display:none}
+@media(min-width:1024px){
+body.has-glass-side{padding-left:224px}
+body.has-glass-side .aspen-tabs-bar{margin-left:0}
+#glassSide{position:fixed;left:14px;top:14px;bottom:14px;width:200px;z-index:850;display:flex;flex-direction:column;padding:16px 12px;border-radius:24px;background:rgba(255,255,255,.5);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);border:1px solid rgba(255,255,255,.65);box-shadow:0 14px 40px rgba(60,40,20,.18)}
+#glassSide .gs-brand{display:flex;align-items:center;gap:9px;padding:2px 8px 14px}
+#glassSide .gs-leaf{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#E54B25,#C73C18);display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 4px 10px rgba(229,75,37,.35)}
+#glassSide .gs-brand b{font-size:13.5px;font-weight:800;letter-spacing:-.01em;color:var(--text-primary)}
+#glassSide .gs-nav{flex:1}
+#glassSide .gs-nav button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:12px;font-size:13px;font-weight:600;color:var(--text-secondary);background:none;border:none;cursor:pointer;font-family:inherit;margin-bottom:2px;text-align:left}
+#glassSide .gs-nav button.on{background:rgba(229,75,37,.14);color:#C73C18;font-weight:700}
+#glassSide .gs-nav button:hover{background:rgba(255,255,255,.5)}
+#glassSide .gs-nav .gs-sep{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text-tertiary);margin:12px 10px 5px}
+#glassSide .gs-me{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.45);cursor:pointer}
+#glassSide .gs-av{width:30px;height:30px;border-radius:50%;background:#2C221C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+#glassSide .gs-me .n{font-size:12px;font-weight:700;color:var(--text-primary);line-height:1.2}
+#glassSide .gs-me .r{font-size:9.5px;color:var(--text-tertiary);font-weight:700}
+/* relocated into Ajustes on desktop */
+body.has-glass-side #tbDash,body.has-glass-side #tbCal,body.has-glass-side #tbRoute,
+body.has-glass-side #langToggle,body.has-glass-side #darkToggle,
+body.has-glass-side #usersBtn,body.has-glass-side #backupBtn,body.has-glass-side #gcalBtn{display:none !important}
+html[data-theme="dark"] #glassSide{background:rgba(36,26,17,.65);border-color:rgba(255,255,255,.1)}
+html[data-theme="dark"] #glassSide .gs-nav button:hover{background:rgba(255,255,255,.06)}
+html[data-theme="dark"] #glassSide .gs-me{background:rgba(255,255,255,.06)}
+}
+/* Settings hub rows */
+.set-grp{background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.7);border-radius:16px;overflow:hidden;margin-bottom:12px}
+.set-grp .set-h{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);padding:10px 15px 4px}
+.set-row{display:flex;align-items:center;gap:11px;padding:11px 15px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-primary)}
+.set-row+.set-row{border-top:.5px solid rgba(44,34,28,.1)}
+.set-row:hover{background:rgba(255,255,255,.5)}
+.set-row .ic{width:29px;height:29px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;flex-shrink:0}
+.set-row .sub{font-size:11px;color:var(--text-tertiary);font-weight:600}
+.set-row .chev{margin-left:auto;color:var(--text-tertiary);font-weight:700}
+html[data-theme="dark"] .set-grp{background:rgba(36,26,17,.55);border-color:rgba(255,255,255,.08)}
+html[data-theme="dark"] .set-row:hover{background:rgba(255,255,255,.05)}
+
+/* --- ASPEN SYSTEM S2: sectioned ticket (sticky pill nav inside the modal) --- */
+.tksecnav{position:sticky;top:0;z-index:30;display:flex;gap:6px;flex-wrap:wrap;padding:8px 8px;margin:-8px -6px 14px;border-radius:14px;background:rgba(255,255,255,.68);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);border:1px solid rgba(255,255,255,.72);box-shadow:0 4px 14px rgba(120,80,40,.1)}
+.tksecnav button{font-family:inherit;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:20px;border:1px solid rgba(44,34,28,.12);background:rgba(255,255,255,.55);color:var(--text-secondary);cursor:pointer;white-space:nowrap}
+.tksecnav button.on{background:var(--aspen-orange);border-color:var(--aspen-orange);color:#fff;box-shadow:0 4px 10px rgba(229,75,37,.35)}
+.tksec{display:block;scroll-margin-top:64px}
+html[data-theme="dark"] .tksecnav{background:rgba(36,26,17,.72);border-color:rgba(255,255,255,.1)}
+html[data-theme="dark"] .tksecnav button{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#cfc4b0}
+@media(max-width:760px){.tksecnav{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}}
+
+/* --- ASPEN SYSTEM S3: \u2318K command palette + notification center --- */
+#glassSide .gs-srch{display:flex;justify-content:space-between;align-items:center;width:100%;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.65);border-radius:11px;padding:7px 11px;font-size:11.5px;font-weight:600;color:var(--text-tertiary);font-family:inherit;cursor:pointer;margin-bottom:12px}
+#glassSide .gs-srch span{background:rgba(44,34,28,.08);border-radius:5px;padding:0 6px;font-size:10px;font-weight:800}
+#glassSide .gs-bell-n{margin-left:auto;font-size:10px;font-weight:800;background:rgba(229,75,37,.16);color:#C73C18;border-radius:10px;padding:1px 7px}
+#gkOv{position:fixed;inset:0;z-index:2000;background:rgba(28,21,17,.4);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px}
+#gkOv.hidden{display:none}
+#gkPanel{width:100%;max-width:560px;border-radius:22px;overflow:hidden;background:rgba(255,255,255,.8);backdrop-filter:blur(26px) saturate(1.6);-webkit-backdrop-filter:blur(26px) saturate(1.6);border:1px solid rgba(255,255,255,.75);box-shadow:0 30px 80px rgba(40,28,15,.4)}
+#gk_in{width:100%;border:none;outline:none;background:transparent;padding:17px 20px;font-size:17px;font-weight:600;font-family:inherit;color:var(--text-primary);border-bottom:1px solid rgba(44,34,28,.1)}
+#gk_res{max-height:52vh;overflow-y:auto;padding:8px}
+.gk-row{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:13px;cursor:pointer}
+.gk-row.sel,.gk-row:hover{background:rgba(229,75,37,.12)}
+.gk-row .rl{width:4px;height:34px;border-radius:3px;flex-shrink:0}
+.gk-row .n{font-size:14px;font-weight:700;color:var(--text-primary);letter-spacing:-.01em}
+.gk-row .s{font-size:11.5px;color:var(--text-secondary);font-weight:600}
+.gk-row .m{margin-left:auto;font-size:12.5px;font-weight:800}
+.gk-hint{padding:16px;text-align:center;font-size:12.5px;color:var(--text-tertiary);font-weight:600}
+.nf-row{display:flex;gap:10px;padding:10px 4px;border-bottom:1px dashed rgba(44,34,28,.12);font-size:13px;align-items:flex-start}
+.nf-row .tm{margin-left:auto;font-size:10.5px;color:var(--text-tertiary);font-weight:700;white-space:nowrap;padding-top:2px}
+html[data-theme="dark"] #gkPanel{background:rgba(30,22,14,.85);border-color:rgba(255,255,255,.1)}
+html[data-theme="dark"] #gk_in{color:#F6EFE3;border-bottom-color:rgba(255,255,255,.08)}
+html[data-theme="dark"] #glassSide .gs-srch{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
+
+/* ============================================================================
+   ASPEN LIQUID — L1 (build 39) · visionOS-grade finish over Aspen Glass
+   Approved fusion: Mission Control structure × Liquid finish × Aspen Glass base.
+   This layer upgrades every existing glass surface: gradient fill, specular top
+   edge (inner light), deeper blur, warmer richer atmosphere. Pure CSS override
+   (appended last, so it wins the cascade). No markup or logic changes.
+   ============================================================================ */
+body{
+ background:
+  radial-gradient(700px 380px at 86% -6%, rgba(255,122,80,.30), transparent 58%),
+  radial-gradient(760px 460px at -8% 106%, rgba(28,143,168,.20), transparent 58%),
+  radial-gradient(420px 340px at 55% 112%, rgba(181,115,58,.12), transparent 60%),
+  linear-gradient(158deg,#FAF2E4 0%,#F3E4CC 52%,#EBD8BC 100%);
+ background-attachment:fixed;
+}
+/* liquid surface recipe */
+.card,.dash-card,.insp-card,.rt2-stop,.cal-rail,#calWrap,.kpi,.kpi-card{
+ background:linear-gradient(165deg,rgba(255,255,255,.72),rgba(255,255,255,.42)) !important;
+ backdrop-filter:blur(22px) saturate(1.7);
+ -webkit-backdrop-filter:blur(22px) saturate(1.7);
+ border:1px solid rgba(255,255,255,.75) !important;
+ box-shadow:0 14px 40px rgba(110,70,30,.14),
+            inset 0 1px 0 rgba(255,255,255,.9),
+            inset 0 -1px 0 rgba(255,255,255,.15) !important;
+}
+.mdl{
+ background:linear-gradient(165deg,rgba(255,255,255,.85),rgba(255,255,255,.62)) !important;
+ backdrop-filter:blur(30px) saturate(1.7);
+ -webkit-backdrop-filter:blur(30px) saturate(1.7);
+ border:1px solid rgba(255,255,255,.85) !important;
+ box-shadow:0 34px 90px rgba(45,30,12,.38),
+            inset 0 1px 0 rgba(255,255,255,.95),
+            inset 0 -1px 0 rgba(255,255,255,.2) !important;
+}
+.aspen-tabs-bar{
+ background:linear-gradient(165deg,rgba(250,242,228,.75),rgba(246,238,224,.5)) !important;
+ border-bottom:1px solid rgba(255,255,255,.7) !important;
+ box-shadow:0 6px 22px rgba(110,70,30,.1),inset 0 1px 0 rgba(255,255,255,.85);
+}
+#glassSide,#glassDock,#gkPanel,.gg-stats,.tksecnav,.set-grp{
+ background:linear-gradient(165deg,rgba(255,255,255,.72),rgba(255,255,255,.42)) !important;
+ border:1px solid rgba(255,255,255,.75) !important;
+ box-shadow:0 14px 40px rgba(110,70,30,.16),
+            inset 0 1px 0 rgba(255,255,255,.9),
+            inset 0 -1px 0 rgba(255,255,255,.15) !important;
+}
+#glassSide .gs-nav button.on{
+ background:linear-gradient(135deg,rgba(229,75,37,.16),rgba(229,75,37,.08));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 8px rgba(229,75,37,.12);
+}
+/* primary actions: inner light + glow */
+.aspen-action-btn.primary,.mbtn-complete:not(.disabled),.mbig.green,#glassFab{
+ box-shadow:0 10px 26px rgba(229,75,37,.4),inset 0 1px 0 rgba(255,255,255,.32) !important;
+}
+.tksecnav button.on{box-shadow:0 4px 12px rgba(229,75,37,.38),inset 0 1px 0 rgba(255,255,255,.3)}
+/* dark mode: espresso liquid */
+html[data-theme="dark"] body{
+ background:
+  radial-gradient(700px 380px at 86% -6%, rgba(229,75,37,.22), transparent 58%),
+  radial-gradient(760px 460px at -8% 106%, rgba(28,143,168,.12), transparent 58%),
+  linear-gradient(158deg,#1C130A 0%,#271B0F 55%,#1E1508 100%);
+ background-attachment:fixed;
+}
+html[data-theme="dark"] .card,html[data-theme="dark"] .dash-card,html[data-theme="dark"] .insp-card,
+html[data-theme="dark"] .rt2-stop,html[data-theme="dark"] .cal-rail,html[data-theme="dark"] #calWrap,
+html[data-theme="dark"] .kpi,html[data-theme="dark"] .kpi-card,
+html[data-theme="dark"] #glassSide,html[data-theme="dark"] #glassDock,html[data-theme="dark"] #gkPanel,
+html[data-theme="dark"] .gg-stats,html[data-theme="dark"] .tksecnav,html[data-theme="dark"] .set-grp{
+ background:linear-gradient(165deg,rgba(46,33,22,.75),rgba(34,24,15,.55)) !important;
+ border:1px solid rgba(255,255,255,.1) !important;
+ box-shadow:0 14px 40px rgba(0,0,0,.45),
+            inset 0 1px 0 rgba(255,255,255,.12),
+            inset 0 -1px 0 rgba(255,255,255,.03) !important;
+}
+html[data-theme="dark"] .mdl{
+ background:linear-gradient(165deg,rgba(40,29,18,.88),rgba(30,21,12,.72)) !important;
+ border:1px solid rgba(255,255,255,.12) !important;
+ box-shadow:0 34px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.14) !important;
+}
+html[data-theme="dark"] .aspen-tabs-bar{
+ background:linear-gradient(165deg,rgba(30,21,11,.75),rgba(26,18,9,.55)) !important;
+ border-bottom:1px solid rgba(255,255,255,.08) !important;
+ box-shadow:0 6px 22px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08);
+}
+/* fallback stays solid where blur unsupported */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+ .card,.dash-card,.insp-card,.rt2-stop,.cal-rail,#calWrap,.kpi,.kpi-card,
+ #glassSide,#glassDock,#gkPanel,.gg-stats,.tksecnav,.set-grp{background:rgba(255,255,255,.94) !important}
+ .mdl{background:rgba(255,255,255,.98) !important}
+}
 </style>
 <script>
 // === PWA SERVICE WORKER (network-first) ===
@@ -1513,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070114;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.02 (build 34) — Aspen Glass stage 1: iOS frosted theme (CSS-only)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070119;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 39) — Aspen Liquid L1: visionOS finish (specular glass, richer atmosphere)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1822,6 +2006,7 @@ function applyRoleUI(){
 if(!currentUser)return;
 try{startPresence()}catch(e){}
 try{_wxInit()}catch(e){}
+try{_glassUiInit()}catch(e){}
 // Set initials in header
 let initials=(currentUser.name||'??').split(/[\s.]+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
 let initEl=document.getElementById('userInitials');if(initEl)initEl.textContent=initials;
@@ -4433,6 +4618,194 @@ try{_routeMapInit(stops,res.key)}catch(e){console.warn('[MAP]',e)}
 // A home overview with operational KPIs, native SVG charts and per-tech performance.
 // NO financial figures anywhere by design — operations only.
 function _dashDayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// === ASPEN GLASS Stage 2 UI (greeting + floating dock + FAB) ===
+// All DOM is created here at runtime (no static-HTML edits): a greeting header with a glass
+// stats strip above the filters, and \u2014 on phones/tablets \u2014 an iOS-style floating bottom dock
+// (Deliveries \u00b7 Route \u00b7 Calendar \u00b7 Dash) plus a floating "+" button. Admin/organizer only;
+// the tech view and the customer portal are untouched.
+function _glassUiInit(){try{
+if(!currentUser||currentUser.role==='tech')return;
+if(document.getElementById('glassGreet'))return;
+var flt=document.querySelector('.filters');
+var board=document.getElementById('board');
+var anchor=flt||board;if(!anchor||!anchor.parentNode)return;
+var g=document.createElement('div');g.id='glassGreet';
+anchor.parentNode.insertBefore(g,anchor);
+var dock=document.createElement('div');dock.id='glassDock';
+dock.innerHTML=[['gd_board','\u{1F69A}','Deliveries',"setTab('board')"],
+['gd_route','\u{1F5FA}\uFE0F','Route',"setTab('route')"],
+['gd_cal','\u{1F4C5}','Calendar',"setTab('cal')"],
+['gd_dash','\u{1F4CA}','Dash',"setTab('dash')"]].map(function(b){
+return '<button id="'+b[0]+'" onclick="'+b[3]+'"><span class="gi">'+b[1]+'</span>'+b[2]+'</button>'}).join('');
+document.body.appendChild(dock);
+var fab=document.createElement('button');fab.id='glassFab';fab.innerHTML='\uFF0B';fab.title='New Delivery';
+fab.onclick=function(){try{openForm()}catch(e){}};
+document.body.appendChild(fab);
+document.body.classList.add('has-glass-dock');
+// macOS-style sidebar (desktop) \u2014 system S1
+var side=document.createElement('div');side.id='glassSide';
+side.innerHTML='<div class="gs-brand"><div class="gs-leaf">\u{1F342}</div><b>Aspen Delivery</b></div>'+
+'<button class="gs-srch" onclick="openGK()">\u{1F50D} Buscar\u2026 <span>\u2318K</span></button>'+
+'<div class="gs-nav">'+
+'<button id="gs_route" onclick="setTab(\'route\')">\u{1F69A} Hoy</button>'+
+'<button id="gs_board" onclick="setTab(\'board\')">\u{1F4CB} Entregas</button>'+
+'<button id="gs_cal" onclick="setTab(\'cal\')">\u{1F4C5} Planificar</button>'+
+'<button id="gs_dash" onclick="setTab(\'dash\')">\u{1F4CA} Insights</button>'+
+'<div class="gs-sep">Sistema</div>'+
+'<button onclick="openDigest()">\u{1F4EC} Digest</button>'+
+'<button onclick="openGlassNotifs()">\u{1F514} Avisos <span class="gs-bell-n" id="gsBellN" style="display:none"></span></button>'+
+'<button onclick="openGlassSettings()">\u2699\uFE0F Ajustes</button>'+
+'</div>'+
+'<div class="gs-me" onclick="openGlassSettings()"><div class="gs-av">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div class="n">'+escHtml(String(currentUser.name||'').split(' ')[0])+'</div><div class="r">'+escHtml(currentUser.role||'')+'</div></div></div>';
+document.body.appendChild(side);
+document.body.classList.add('has-glass-side');
+try{_nfBadge()}catch(e){}
+_glassDockSync(typeof tab!=='undefined'?tab:'board');
+renderGlassGreet();
+}catch(e){console.warn('[GLASS]',e)}}
+function _glassDockSync(t){
+var map={board:'gd_board',table:'gd_board',route:'gd_route',cal:'gd_cal',dash:'gd_dash'};
+['gd_board','gd_route','gd_cal','gd_dash'].forEach(function(id){
+var el=document.getElementById(id);if(el)el.classList.toggle('on',map[t]===id)});
+var smap={board:'gs_board',table:'gs_board',route:'gs_route',cal:'gs_cal',dash:'gs_dash'};
+['gs_board','gs_route','gs_cal','gs_dash'].forEach(function(id){
+var el=document.getElementById(id);if(el)el.classList.toggle('on',smap[t]===id)})}
+function renderGlassGreet(){try{
+var g=document.getElementById('glassGreet');if(!g)return;
+if(!currentUser||currentUser.role==='tech'){g.innerHTML='';return}
+var hNow=new Date().getHours();
+var sal=hNow<12?'Good morning':hNow<18?'Good afternoon':'Good evening';
+var name=String(currentUser.name||'').split(' ')[0];
+var today=new Date();today.setHours(0,0,0,0);
+var tk=(typeof _dgDateKey==='function')?_dgDateKey():'';
+var todays=AD().filter(function(r){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHours(0,0,0,0);return d.getTime()===today.getTime()&&!r.co&&!r.hold});
+var collect=todays.reduce(function(sm,r){return sm+((+r.bl>0)?+r.bl:0)},0);
+var prepped=todays.filter(function(r){return PRE.every(function(pp){return r[pp.k]})}).length;
+var wx=(typeof _wxFor==='function')?_wxFor(tk):'';
+var dateStr=new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+g.innerHTML='<div class="gg-hi">'+sal+', '+escHtml(name)+'</div>'+
+'<div class="gg-sub">'+dateStr+' \u00b7 '+todays.length+' deliver'+(todays.length===1?'y':'ies')+(wx?' \u00b7 '+wx:'')+'</div>'+
+'<div class="gg-stats"><div><b>'+todays.length+'</b><span>Today</span></div>'+
+'<div><b style="color:#BE4A2F">'+(collect?fmt(collect):'$0')+'</b><span>Collect</span></div>'+
+'<div><b style="color:#2F7D52">'+prepped+'/'+todays.length+'</b><span>Prepped</span></div></div>';
+}catch(e){console.warn('[GLASS] greet',e)}}
+// === \u2318K COMMAND PALETTE (system S3) ===
+// Global search from anywhere: \u2318K / Ctrl+K (or the sidebar search button) opens a glass
+// palette; type a name, SN, phone or address (accent- and digit-tolerant via _srchHit) and
+// jump straight into the full ticket. \u2191\u2193 to move, Enter to open, Esc to close.
+let _gkSel=0;
+function openGK(){
+if(!currentUser||currentUser.role==='tech')return;
+var ov=document.getElementById('gkOv');
+if(!ov){
+ov=document.createElement('div');ov.id='gkOv';ov.className='hidden';
+ov.innerHTML='<div id="gkPanel" onclick="event.stopPropagation()"><input id="gk_in" placeholder="Buscar nombre, SN, tel\u00e9fono, direcci\u00f3n\u2026" autocomplete="off"><div id="gk_res"></div></div>';
+ov.onclick=closeGK;
+document.body.appendChild(ov);
+var inp=document.getElementById('gk_in');
+inp.addEventListener('input',function(){_gkSel=0;gkFilter()});
+inp.addEventListener('keydown',function(e){
+if(e.key==='Escape'){closeGK();return}
+var rows=document.querySelectorAll('#gk_res .gk-row');
+if(e.key==='ArrowDown'){e.preventDefault();_gkSel=Math.min(_gkSel+1,rows.length-1);gkPaint()}
+else if(e.key==='ArrowUp'){e.preventDefault();_gkSel=Math.max(_gkSel-1,0);gkPaint()}
+else if(e.key==='Enter'){e.preventDefault();var r=rows[_gkSel];if(r)r.click()}})}
+ov.classList.remove('hidden');
+var i=document.getElementById('gk_in');i.value='';_gkSel=0;gkFilter();
+setTimeout(function(){i.focus()},60)}
+function closeGK(){var ov=document.getElementById('gkOv');if(ov)ov.classList.add('hidden')}
+function gkPaint(){document.querySelectorAll('#gk_res .gk-row').forEach(function(r,i){r.classList.toggle('sel',i===_gkSel)})}
+function gkFilter(){
+var q=(document.getElementById('gk_in').value||'').trim();
+var res=document.getElementById('gk_res');
+if(!q){res.innerHTML='<div class="gk-hint">Escribe para buscar en todas las entregas \u00b7 \u2191\u2193 navegar \u00b7 Enter abrir</div>';return}
+var hits=AD().filter(function(r){return (r.n||r.cal)&&_srchHit(r,q)}).slice(0,8);
+if(!hits.length){res.innerHTML='<div class="gk-hint">Sin resultados para \u201c'+escHtml(q)+'\u201d</div>';return}
+var stc={upcoming:'#1C8FA8',overdue:'#E54B25',delivered:'#2F7D52',complete:'#2F7D52',action:'#E54B25',hold:'#9C8E79'};
+res.innerHTML=hits.map(function(r,i){
+var sc=stc[st(r)]||'#9C8E79';
+return '<div class="gk-row'+(i===_gkSel?' sel':'')+'" onclick="closeGK();setTimeout(function(){openDet('+(/^\d+$/.test(String(r.i))?r.i:'\''+r.i+'\'')+')},120)">'+
+'<div class="rl" style="background:'+sc+'"></div>'+
+'<div><div class="n">'+escHtml(dispName(r))+'</div><div class="s">'+escHtml(r.sp||'')+(r.sn?' \u00b7 SN '+escHtml(String(r.sn)):'')+(r.dd?' \u00b7 '+escHtml(r.dd):'')+'</div></div>'+
+((+r.bl||0)>0?'<div class="m" style="color:#BE4A2F">'+fmt(r.bl)+'</div>':'<div class="m" style="color:#2F7D52">\u2713</div>')+
+'</div>'}).join('');
+}
+if(!window._gkKeyBound){window._gkKeyBound=true;
+document.addEventListener('keydown',function(e){
+if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();var ov=document.getElementById('gkOv');if(ov&&!ov.classList.contains('hidden'))closeGK();else openGK()}})}
+
+// === \u{1F514} NOTIFICATION CENTER (system S3) ===
+// Toasts die after 2.5s \u2014 this gives them a permanent home. Every showToast is recorded into
+// a local ring buffer (last 40); the sidebar bell shows how many arrived since you last looked.
+const _NF_KEY='aspen_notif_feed';
+function _nfAll(){try{return JSON.parse(localStorage.getItem(_NF_KEY)||'[]')||[]}catch(e){return[]}}
+function _nfAdd(msg,type){
+var a=_nfAll();a.push({t:Date.now(),m:String(msg||''),k:type||''});
+if(a.length>40)a=a.slice(a.length-40);
+try{localStorage.setItem(_NF_KEY,JSON.stringify(a))}catch(e){}
+_nfBadge()}
+function _nfBadge(){
+var el=document.getElementById('gsBellN');if(!el)return;
+var last=parseInt(localStorage.getItem('aspen_notif_seen')||'0',10);
+var n=_nfAll().filter(function(x){return x.t>last}).length;
+el.textContent=n>0?String(n):'';el.style.display=n>0?'':'none'}
+function openGlassNotifs(){
+try{localStorage.setItem('aspen_notif_seen',String(Date.now()))}catch(e){}
+var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
+var a=_nfAll().slice().reverse();
+function ago(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return 'ahora';if(m<60)return m+' min';var hh=Math.round(m/60);if(hh<24)return hh+' h';return Math.round(hh/24)+' d'}
+var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u{1F514} Avisos</h2><div style="display:flex;gap:8px"><button onclick="localStorage.removeItem(\''+_NF_KEY+'\');openGlassNotifs()" style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Limpiar</button><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div></div>';
+h+=a.length?a.map(function(x){return '<div class="nf-row"><div>'+x.m+'</div><span class="tm">'+ago(x.t)+'</span></div>'}).join(''):'<div class="gk-hint">Sin avisos todav\u00eda \u2014 aqu\u00ed quedar\u00e1n los eventos de la app (reseñas, follow-ups, guardas de datos\u2026).</div>';
+h+='</div>';
+md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open');
+_nfBadge()}
+
+// === TICKET SECTION NAV (system S2) ===
+// Sticky pill bar inside the ticket: Overview \u00b7 Money \u00b7 Prep \u00b7 Photos \u00b7 Customer \u00b7 History.
+// Pure navigation \u2014 smooth-scrolls the .tkt-main column to invisible anchors injected between
+// the existing sections. No content moved, no logic touched.
+function tktJump(id,btn){try{
+var nav=btn&&btn.parentElement;
+if(nav)nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b===btn)});
+var main=btn?btn.closest('.tkt-main'):document.querySelector('.tkt-main');
+if(id==='tksec_over'){if(main)main.scrollTo({top:0,behavior:'smooth'});return}
+var el=document.getElementById(id);
+if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}catch(e){}}
+
+// === SETTINGS HUB (system S1) ===
+// One iOS-Settings-style home for everything that used to live scattered across the top bar:
+// team, backups, integrations, notifications, appearance. Each row simply opens the EXISTING
+// panel/function \u2014 nothing was rewritten, only re-homed.
+function _setRow(ic,color,title,sub,fn){
+return '<div class="set-row" onclick="closeOv();setTimeout(function(){'+fn+'},180)"><div class="ic" style="background:'+color+'">'+ic+'</div><div><div>'+title+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div><span class="chev">\u203A</span></div>'}
+function openGlassSettings(){
+var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
+var isAdmin=currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer');
+var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u2699\uFE0F Ajustes</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<div class="set-grp"><div class="set-h">Cuenta</div>'+
+'<div class="set-row" style="cursor:default"><div class="ic" style="background:#2C221C">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div>'+escHtml(currentUser.name||'')+'</div><div class="sub">'+escHtml(currentUser.role||'')+(currentUser.email?' \u00b7 '+escHtml(currentUser.email):'')+'</div></div></div>'+
+_setRow('\u23FB','#dc2626','Cerrar sesi\u00f3n','','doLogout()')+'</div>';
+if(isAdmin){
+h+='<div class="set-grp"><div class="set-h">Equipo</div>'+
+_setRow('\u{1F465}','#1C8FA8','Usuarios y roles','PINs, emails, sesiones activas','openUsersPanel()')+'</div>';
+h+='<div class="set-grp"><div class="set-h">Notificaciones</div>'+
+_setRow('\u{1F4EC}','#E54B25','Daily Digest','Resumen diario + email matutino + review link','openDigest()')+
+_setRow('\u{1F4CA}','#134A63','Weekly Report','Rollup de lunes para Tom & Sam','openWeekly()')+
+_setRow('\u{1F514}','#d97706','Centro de avisos','Historial de eventos de la app','openGlassNotifs()')+'</div>';
+h+='<div class="set-grp"><div class="set-h">Datos</div>'+
+_setRow('\u{1F6E1}\uFE0F','#2F7D52','Backup Center','Backups, restore, Photo Storage, duplicados','openBackupCenter()')+'</div>';
+h+='<div class="set-grp"><div class="set-h">Integraciones</div>'+
+_setRow('\u{1F4C5}','#B5733A','Google Calendar & Drive','Sync de eventos + auto-backup','toggleGcalPanel()')+'</div>';
+}
+h+='<div class="set-grp"><div class="set-h">Apariencia</div>'+
+_setRow('\u{1F319}','#57534e','Tema claro / oscuro','','toggleDarkMode()')+
+_setRow('\u{1F310}','#0891b2','Idioma EN / ES','','toggleAppLang()')+'</div>';
+h+='</div>';
+md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open')}
+
 // === WEATHER (Open-Meteo, free, no API key) ===
 // One forecast fetch per session for the St. Louis metro (all deliveries are local). Cached in
 // _WX by date key; calendar cells, the route header and the digest read it synchronously.
@@ -5737,6 +6110,10 @@ let heldOn=r.hold_at?new Date(r.hold_at).toLocaleDateString():'';
 let reason=r.hold_reason==='calendar_removed'?'Removed from Google Calendar':(r.hold_reason||'Manually paused');
 h+='<div style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border:2px solid #c084fc;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:#6b21a8;margin-bottom:2px">&#9209; ON HOLD'+(heldOn?' since '+heldOn:'')+'</div><div style="font-size:11.5px;color:#7c3aed;line-height:1.4">'+esc(reason)+(prevDD!=='unknown'?' &middot; was scheduled for '+prevDD:'')+'. Customer info is preserved.</div></div><button class="mbtn-complete" style="background:#7c3aed;border:none;color:#fff;font-weight:800;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap" onclick="resumeFromHold('+r.i+')">&#9654; Resume Delivery</button></div>';}
 h+='<div class="tkt-grid"><div class="tkt-main">';
+h+='<div class="tksecnav">'+
+[['tksec_over','Overview',1],['tksec_money','\u{1F4B5} Money',0],['tksec_photos','\u{1F4F8} Photos',0],['tksec_prep','\u{1F4CB} Prep',0],['tksec_cust','\u{1F464} Customer',0],['tksec_hist','\u{1F551} History',0]].map(function(t){
+return '<button type="button"'+(t[2]?' class="on"':'')+' onclick="tktJump(\''+t[0]+'\',this)">'+t[1]+'</button>'}).join('')+'</div>';
+h+='<span id="tksec_over" class="tksec"></span>';
 // All fields always editable
 // CALENDAR EVENT — the verbatim Google Calendar title. The calendar OWNS this (it is copied
 // exactly as-is on every sync). Shown read-only so it can never be accidentally changed; the
@@ -5764,6 +6141,7 @@ h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Pho
 h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="number" step="0.01" value="'+(r.pr||0)+'"></div></div><div class="ig">';
 h+='<div class="ib"><label>Payment</label><input id="e_py" type="number" step="0.01" value="'+(r.py||0)+'"></div>';
 h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'#dc2626':'#059669')+'">'+fmt(r.bl)+'</span></div></div>';
+h+='<span id="tksec_money" class="tksec"></span>';
 // Payment Status pills — one-click status indicator for the financial state of this delivery.
 // Values: paid (green) | check (orange) | financed (neutral) | cash (red, urgent)
 let pstCur=r.pst||null;
@@ -5892,6 +6270,7 @@ dnotesInitial=parts.join('\n\n')}
 h+='<div class="nb"><label>Notes for Delivery</label><textarea id="e_dnotes" rows="4" placeholder="Anything relevant for the delivery: customer requests, contact preferences, site notes, special instructions, etc.">'+esc(dnotesInitial||"")+'</textarea></div>';
 // Info Photos — what Alberto/admin uploads to inform the tech (site, electrical, access path)
 let infoCount=(r.photos||[]).length;
+h+='<span id="tksec_photos" class="tksec"></span>';
 h+='<div class="ct">&#128231; Info Photos for Tech <span style="font-weight:400;color:var(--text-secondary);font-size:12px">— upload site photos so the tech is prepared</span></div>';
 h+='<div style="background:var(--bg-card-soft);border:1.5px dashed var(--border-mid);border-radius:10px;padding:14px;margin-bottom:14px">';
 h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:'+(infoCount?'12px':'0')+'">';
@@ -5967,6 +6346,7 @@ h+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;line-he
 h+='</div>';
 }
 // Accessories — built-in + custom categories. Pairs by row of 2.
+h+='<span id="tksec_prep" class="tksec"></span>';
 h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div class="ct" style="margin-bottom:0">Accessories</div><button type="button" onclick="addCategory()" style="background:#059669;color:#fff;border:none;padding:6px 11px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Add a new accessory category"><span style="font-size:14px">+</span> Add Category</button></div>';
 // Build a list of all categories: 5 built-in + any custom
 let _cats=[
@@ -6004,9 +6384,11 @@ return '<button type="button" class="'+cls+'" data-rec-id="'+r.i+'" onclick="sen
 PRE.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
 h+='</div></div>';
 {var _slog=_smsLogHtml(r);h+='<div class="smslog" data-rec-id="'+r.i+'"'+(_slog?'':' style="display:none"')+'>'+_slog+'</div>';}
+h+='<span id="tksec_cust" class="tksec"></span>';
 // Customer Upload Link (intake portal)
 h+=intakeBoxHtml(r);
 // Delivered Notes (between checklists)
+h+='<span id="tksec_hist" class="tksec"></span>';
 h+='<div class="nb"><label>Delivered Notes</label><textarea id="e_dn">'+(r.dn||"")+'</textarea></div>';
 // Post-Delivery Checklist
 h+='<div class="cs"><div class="ct">Post-Delivery Checklist</div><div class="cg">';
@@ -6105,7 +6487,8 @@ saveOpts();
 let sel=document.getElementById(selectId);
 let o=document.createElement('option');o.value=v;o.textContent=v;o.selected=true;sel.appendChild(o)}
 
-function showToast(msg,type){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}
+function showToast(msg,type){try{_nfAdd(msg,type)}catch(e){}
+let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}
 t.innerHTML=msg;t.className='toast show'+(type?' '+type:'');clearTimeout(t._t);t._t=setTimeout(()=>{t.className='toast'+(type?' '+type:'')},2500)}
 
 function markMissing(selectId,label,btn){
@@ -7279,6 +7662,7 @@ function toggleDarkMode(){var on=document.documentElement.getAttribute('data-the
 // Restore saved preference immediately on load.
 (function(){try{var t=localStorage.getItem('aspen_dt_theme');if(t==='dark')applyDarkMode(true);}catch(e){}})();
 function setTab(t){tab=t;
+try{_glassDockSync(t)}catch(e){}
 var _db=document.getElementById("tbDash");if(_db)_db.classList.toggle("act",t==="dash");
 var _rb=document.getElementById("tbRoute");if(_rb)_rb.classList.toggle("act",t==="route");
 var _rw=document.getElementById("routeWrap");if(_rw)_rw.classList.toggle("hidden",t!=="route");
@@ -10226,7 +10610,8 @@ techs.forEach(u=>{html+='<option value="'+u.id+'"'+(String(prev)===String(u.id)?
 if(prev&&!techs.some(u=>String(u.id)===String(prev))){techF="";}
 sel.innerHTML=html}
 function render(){populateTechFilter();renderBoard();renderTable()}
-function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();render();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
+function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();try{renderGlassGreet()}catch(e){}
+render();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
 // Initial render is triggered by Firebase listeners via checkReady()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeOv()});
 
