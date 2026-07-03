@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070123;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 43) — PHOTO DOCTOR: probe + prune confirmed-dead (404) photo entries'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070124;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 44) — PHOTO DOCTOR v2: CORS-free Image() probing (fetch probes were blocked)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2862,9 +2862,8 @@ if(!url)return b64;
 // READBACK PROBE: uploading can succeed while DOWNLOADS are blocked (Storage billing/rules
 // outage). Verify the URL is actually readable before trusting it; if not, keep the photo
 // inline (base64) so it can never appear broken, and drop the unreadable orphan file.
-try{let _probe=await fetch(url,{headers:{Range:'bytes=0-0'}});
-if(!_probe.ok){console.warn('[STORAGE] uploaded but unreadable ('+_probe.status+') \u2014 keeping photo inline');try{ref.delete().catch(function(){})}catch(_e){}return b64}}
-catch(_e){console.warn('[STORAGE] readability probe failed \u2014 keeping photo inline');try{ref.delete().catch(function(){})}catch(_e2){}return b64}
+let _vis=await _probeImg(url);
+if(_vis==='dead'){console.warn('[STORAGE] uploaded but unreadable \u2014 keeping photo inline');try{ref.delete().catch(function(){})}catch(_e){}return b64}
 return url;
 }catch(e){console.warn('[STORAGE] upload failed — keeping inline base64:',e&&e.code,e&&e.message);return b64}
 }
@@ -2908,6 +2907,16 @@ if(dead.length){console.warn('[PHOTO-CHECK] \u26a0\ufe0f DEAD photo files:',dead
 else console.log('[PHOTO-CHECK] \u2713 all storage photos respond OK');
 return{urls:urls.length,dead:dead,weird:weird,b64:b64}}
 
+// CORS-free URL probe: loads the URL through an Image() \u2014 the exact same channel the real
+// photo tiles use \u2014 so results match what users see. fetch() probes were blocked by CORS
+// (Range header preflight) and mis-classified everything as transient failure.
+function _probeImg(u){return new Promise(function(done){
+var im=new Image();var fin=false;
+var t=setTimeout(function(){if(fin)return;fin=true;im.src='';done('unknown')},15000);
+im.onload=function(){if(fin)return;fin=true;clearTimeout(t);done('alive')};
+im.onerror=function(){if(fin)return;fin=true;clearTimeout(t);done('dead')};
+im.src=u+(u.indexOf('?')>-1?'&':'?')+'pd='+Date.now()})}
+
 // === PHOTO DOCTOR: analyze & clean dead photo entries ===
 // Probes every Storage URL across all tickets. Entries whose file is confirmed GONE (404)
 // are removed from the ticket arrays \u2014 those files were deleted by the pre-build-40 photo
@@ -2923,19 +2932,19 @@ AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
 if(typeof ph==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\//.test(ph))items.push({r:r,f:f,u:ph})})})});
 if(!items.length){alert('No hay URLs de Storage que analizar \u2014 todas las fotos son inline.');return}
 var status={};var uniq=Array.from(new Set(items.map(function(x){return x.u})));
-for(var i=0;i<uniq.length;i++){
-try{var res=await fetch(uniq[i],{headers:{Range:'bytes=0-0'}});status[uniq[i]]=res.status}
-catch(e){status[uniq[i]]='network'}
+for(var i=0;i<uniq.length;i++){status[uniq[i]]=await _probeImg(uniq[i]);
 if(i%10===9)console.log('[PHOTO-DOCTOR] probed',i+1,'/',uniq.length)}
-var dead=uniq.filter(function(u){return status[u]===404}),
-    sick=uniq.filter(function(u){return status[u]!==404&&status[u]!==200&&status[u]!==206}),
+// double-confirm every dead once more (dodges transient blips) \u2014 only twice-dead is pruned
+for(var j=0;j<uniq.length;j++){if(status[uniq[j]]==='dead'){status[uniq[j]]=(await _probeImg(uniq[j]))==='alive'?'alive':'dead'}}
+var dead=uniq.filter(function(u){return status[u]==='dead'}),
+    sick=uniq.filter(function(u){return status[u]==='unknown'}),
     ok=uniq.length-dead.length-sick.length;
-console.log('[PHOTO-DOCTOR] alive:',ok,'\u00b7 dead(404):',dead.length,'\u00b7 other-fail:',sick.length);
-if(dead.length)console.table(items.filter(function(x){return status[x.u]===404}).map(function(x){return{ticket:dispName(x.r),field:x.f,url:x.u.slice(0,90)}}));
+console.log('[PHOTO-DOCTOR] alive:',ok,'\u00b7 dead:',dead.length,'\u00b7 timeout:',sick.length);
+if(dead.length)console.table(items.filter(function(x){return status[x.u]==='dead'}).map(function(x){return{ticket:dispName(x.r),field:x.f,url:x.u.slice(0,90)}}));
 if(!dead.length){alert('\u2713 An\u00e1lisis completo:\n\n'+ok+' foto(s) en Storage vivas.\n'+(sick.length?sick.length+' con fallo temporal (se dejan \u2014 pueden recuperarse).':'Ninguna entrada muerta.'));return}
 var deadSet=new Set(dead);
 var byTicket={};items.forEach(function(x){if(deadSet.has(x.u)){var k=String(x.r.i);byTicket[k]=(byTicket[k]||0)+1}});
-if(!confirm('\ud83e\ude7a Doctor de Fotos \u2014 resultado:\n\n\u2713 vivas: '+ok+'\n\u2717 MUERTAS (archivo borrado, 404): '+dead.length+' en '+Object.keys(byTicket).length+' ticket(s)\n\u26a0 fallo temporal: '+sick.length+' (no se tocan)\n\n\u00bfEliminar las '+dead.length+' entradas muertas de los tickets?\n(Las fotos inline y las URLs vivas no se tocan. Antes de esto, corre el Rescate desde backup para recuperar lo recuperable.)'))return;
+if(!confirm('\ud83e\ude7a Doctor de Fotos \u2014 resultado:\n\n\u2713 vivas: '+ok+'\n\u2717 MUERTAS (archivo borrado): '+dead.length+' en '+Object.keys(byTicket).length+' ticket(s)\n\u26a0 fallo temporal: '+sick.length+' (no se tocan)\n\n\u00bfEliminar las '+dead.length+' entradas muertas de los tickets?\n(Las fotos inline y las URLs vivas no se tocan. Antes de esto, corre el Rescate desde backup para recuperar lo recuperable.)'))return;
 var ticketsFixed=0,removed=0;
 AD().forEach(function(r){var upd=null;
 ['photos','tech_photos'].forEach(function(f){
