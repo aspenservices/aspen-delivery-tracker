@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070122;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 42) — PHOTO RESCUE: restore from backup + upload readback probe + graceful tiles'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070123;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 43) — PHOTO DOCTOR: probe + prune confirmed-dead (404) photo entries'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2908,6 +2908,49 @@ if(dead.length){console.warn('[PHOTO-CHECK] \u26a0\ufe0f DEAD photo files:',dead
 else console.log('[PHOTO-CHECK] \u2713 all storage photos respond OK');
 return{urls:urls.length,dead:dead,weird:weird,b64:b64}}
 
+// === PHOTO DOCTOR: analyze & clean dead photo entries ===
+// Probes every Storage URL across all tickets. Entries whose file is confirmed GONE (404)
+// are removed from the ticket arrays \u2014 those files were deleted by the pre-build-40 photo
+// delete (no reference counting), so they can never load again. Entries failing with other
+// statuses (403/402/network) are LEFT ALONE: that's a service condition that can recover.
+// Base64 photos and healthy URLs are never touched. Idempotent; safe to re-run.
+async function photoDoctor(){
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert('Admin/organizer only');return}
+showToast&&showToast('\ud83e\ude7a Analizando fotos\u2026');
+var items=[];
+AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
+(Array.isArray(r[f])?r[f]:[]).forEach(function(ph){
+if(typeof ph==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\//.test(ph))items.push({r:r,f:f,u:ph})})})});
+if(!items.length){alert('No hay URLs de Storage que analizar \u2014 todas las fotos son inline.');return}
+var status={};var uniq=Array.from(new Set(items.map(function(x){return x.u})));
+for(var i=0;i<uniq.length;i++){
+try{var res=await fetch(uniq[i],{headers:{Range:'bytes=0-0'}});status[uniq[i]]=res.status}
+catch(e){status[uniq[i]]='network'}
+if(i%10===9)console.log('[PHOTO-DOCTOR] probed',i+1,'/',uniq.length)}
+var dead=uniq.filter(function(u){return status[u]===404}),
+    sick=uniq.filter(function(u){return status[u]!==404&&status[u]!==200&&status[u]!==206}),
+    ok=uniq.length-dead.length-sick.length;
+console.log('[PHOTO-DOCTOR] alive:',ok,'\u00b7 dead(404):',dead.length,'\u00b7 other-fail:',sick.length);
+if(dead.length)console.table(items.filter(function(x){return status[x.u]===404}).map(function(x){return{ticket:dispName(x.r),field:x.f,url:x.u.slice(0,90)}}));
+if(!dead.length){alert('\u2713 An\u00e1lisis completo:\n\n'+ok+' foto(s) en Storage vivas.\n'+(sick.length?sick.length+' con fallo temporal (se dejan \u2014 pueden recuperarse).':'Ninguna entrada muerta.'));return}
+var deadSet=new Set(dead);
+var byTicket={};items.forEach(function(x){if(deadSet.has(x.u)){var k=String(x.r.i);byTicket[k]=(byTicket[k]||0)+1}});
+if(!confirm('\ud83e\ude7a Doctor de Fotos \u2014 resultado:\n\n\u2713 vivas: '+ok+'\n\u2717 MUERTAS (archivo borrado, 404): '+dead.length+' en '+Object.keys(byTicket).length+' ticket(s)\n\u26a0 fallo temporal: '+sick.length+' (no se tocan)\n\n\u00bfEliminar las '+dead.length+' entradas muertas de los tickets?\n(Las fotos inline y las URLs vivas no se tocan. Antes de esto, corre el Rescate desde backup para recuperar lo recuperable.)'))return;
+var ticketsFixed=0,removed=0;
+AD().forEach(function(r){var upd=null;
+['photos','tech_photos'].forEach(function(f){
+var cur=Array.isArray(r[f])?r[f]:[];if(!cur.length)return;
+var kept=cur.filter(function(ph){return !(typeof ph==='string'&&deadSet.has(ph))});
+if(kept.length!==cur.length){upd=upd||{};upd[f]=kept.length?kept:null;removed+=cur.length-kept.length}});
+if(!upd)return;
+var ai=ADDED.findIndex(function(x){return sameId(x.i,r.i)});
+if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],upd);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+ticketsFixed++});
+try{renderAll()}catch(e){}
+try{if(typeof pushActivity==='function')pushActivity(null,'photo-doctor: removed '+removed+' dead entries / '+ticketsFixed+' tickets')}catch(e){}
+alert('\u2713 Limpieza completa:\n\n'+removed+' entrada(s) muerta(s) eliminadas en '+ticketsFixed+' ticket(s).\n'+ok+' foto(s) vivas conservadas.\n\nSi a\u00fan no lo hiciste, corre \ud83e\ude79 Rescatar fotos desde backup para reponer las fotos hist\u00f3ricas.')}
+
 // === GRACEFUL PHOTO TILES ===
 // One transient retry (cache-busted), then a clean bilingual placeholder instead of the
 // browser's broken-image icon. Data-URIs never retry (a corrupt data: URI can't heal).
@@ -3411,6 +3454,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">Último manual: <strong>'+fmtAgo(lastManual)+'</strong></div>'+
 '<button onclick="downloadManualBackup()" style="background:var(--aspen-orange);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128229; Descargar Backup Ahora</button>'+
 '<button onclick="repairPhotosFromBackup()" style="background:#2F7D52;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%;margin-top:8px">&#129657; Rescatar fotos desde backup</button>'+
+'<button onclick="photoDoctor()" style="background:#1C8FA8;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%;margin-top:8px">&#129658; Doctor de Fotos (limpiar muertas)</button>'+
 '</div>'+
 
 // DRIVE AUTO-BACKUP
