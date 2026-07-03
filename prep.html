@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070119;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 39) — Aspen Liquid L1: visionOS finish (specular glass, richer atmosphere)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070120;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 40) — photo safety: reference-counted Storage delete + checkPhotos() diagnostic'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2846,7 +2846,42 @@ return url||b64;
 
 // Best-effort: when a photo is removed from a ticket, remove its Storage file too (only files in
 // OUR bucket). Never blocks or throws — an orphaned file is harmless, a broken delete flow is not.
-function _storageDeleteIfOurs(p){try{if(fbStorage&&typeof p==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\//.test(p)){fbStorage.refFromURL(p).delete().catch(function(){})}}catch(e){}}
+function _storageDeleteIfOurs(p,exceptTicketId){try{
+if(!(fbStorage&&typeof p==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\//.test(p)))return;
+// REFERENCE GUARD: photo URLs can legitimately live on more than one ticket (customer intake
+// reflection, Compare & Merge unions). Only delete the underlying file when NO other live
+// ticket still points at it \u2014 otherwise removing a photo from ticket A would silently break
+// the same photo on ticket B (it would 404 forever).
+var stillUsed=AD().some(function(o){
+if(exceptTicketId!=null&&sameId(o.i,exceptTicketId))return false;
+return (Array.isArray(o.photos)&&o.photos.indexOf(p)!==-1)||(Array.isArray(o.tech_photos)&&o.tech_photos.indexOf(p)!==-1)});
+if(stillUsed){console.log('[STORAGE] keep file (still referenced by another ticket):',p.slice(0,90));return}
+fbStorage.refFromURL(p).delete().catch(function(){})
+}catch(e){}}
+
+// === PHOTO HEALTH CHECK (console diagnostic) ===
+// Run checkPhotos() in the console (admin). Scans every live ticket's photos + tech_photos:
+// classifies each entry (Storage URL / base64 / other junk) and probes every Storage URL to
+// find dead files (404/403). Prints a per-ticket report so we can see the blast radius.
+async function checkPhotos(){
+var urls=[],weird=[],b64=0;
+AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
+(Array.isArray(r[f])?r[f]:[]).forEach(function(p,ix){
+if(typeof p!=='string'){weird.push({t:dispName(r),f:f,ix:ix,v:Object.prototype.toString.call(p)});return}
+if(p.indexOf('data:')===0){b64++;return}
+if(/^https:\/\/firebasestorage\.googleapis\.com\//.test(p)){urls.push({t:dispName(r),id:r.i,f:f,ix:ix,u:p})}
+else weird.push({t:dispName(r),f:f,ix:ix,v:p.slice(0,90)})})})});
+console.log('[PHOTO-CHECK] base64 inline:',b64,'\u00b7 storage URLs:',urls.length,'\u00b7 weird entries:',weird.length);
+if(weird.length)console.table(weird);
+var dead=[];
+for(var i=0;i<urls.length;i++){
+try{var res=await fetch(urls[i].u,{method:'GET',headers:{Range:'bytes=0-0'}});
+if(!res.ok)dead.push(Object.assign({status:res.status},urls[i]))}
+catch(e){dead.push(Object.assign({status:'network'},urls[i]))}
+if(i%10===9)console.log('[PHOTO-CHECK] probed',i+1,'/',urls.length,'\u2014 dead so far:',dead.length)}
+if(dead.length){console.warn('[PHOTO-CHECK] \u26a0\ufe0f DEAD photo files:',dead.length);console.table(dead.map(function(d){return{ticket:d.t,field:d.f,idx:d.ix,status:d.status,url:d.u.slice(0,100)}}))}
+else console.log('[PHOTO-CHECK] \u2713 all storage photos respond OK');
+return{urls:urls.length,dead:dead,weird:weird,b64:b64}}
 
 // === ONE-TIME PHOTO MIGRATION: inline base64 → Firebase Storage ===
 // Moves every base64 photo (photos + tech_photos) out of RTDB into Storage, replacing each with
@@ -2910,7 +2945,7 @@ img.src=url})}
 function techDeletePhoto(id,idx){
 if(!confirm('Delete this delivery photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
-let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm);
+let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm,id);
 let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
@@ -2999,7 +3034,7 @@ inp.click()}
 function adminDeletePhoto(id,idx){
 if(!confirm('Delete this info photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
-let newPhotos=r.photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm);
+let newPhotos=r.photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm,id);
 let updates={photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
@@ -3010,7 +3045,7 @@ safeRefreshModalIfOpen(id)}
 function adminDeleteTechPhoto(id,idx){
 if(!confirm('Delete this delivery photo from the ticket?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
-let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm);
+let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm,id);
 let updates={tech_photos:newPhotos.length?newPhotos:null};
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
