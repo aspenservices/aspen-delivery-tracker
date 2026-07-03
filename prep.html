@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070125;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 45) — SYNC WATCHDOG: connecting state + wake reconnection (no more fake empty days)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070126;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 46) — RESILIENT LISTENERS: auth-gated attach + auto-reattach on cancel + live sync diagnostics'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1712,6 +1712,23 @@ const AUTH_READY=firebase.auth().signInAnonymously()
 .catch(e=>{console.error('[AUTH] anonymous sign-in failed — enable Authentication \u2192 Sign-in method \u2192 Anonymous in the Firebase console',e)});
 const dbEdits=db.ref('edits');
 const dbAdded=db.ref('added');
+// Resilient realtime listener: attaches only after the anonymous-auth attempt settles, and
+// AUTO-REATTACHES if Firebase cancels the read (permission_denied when auth lost the race on
+// a slow device, expired token, transient outage\u2026). A cancelled on() is DEAD FOREVER in the
+// SDK \u2014 without this helper the device silently shows an empty app until a manual reload.
+function _rtOn(ref,label,cb){
+var tries=0;
+function attach(){ref.on('value',cb,function(err){
+try{ref.off('value',cb)}catch(_e){}
+tries++;var wait=Math.min(30000,1500*tries);
+window._syncErr=label+': '+((err&&err.code)||err);
+console.warn('[RT] '+label+' listener cancelled ('+window._syncErr+') \u2014 retry in '+wait+'ms');
+setTimeout(function(){
+var u=null;try{u=firebase.auth().currentUser}catch(_e){}
+if(u){attach()}
+else{try{firebase.auth().signInAnonymously().then(attach,attach)}catch(_e){attach()}}
+},wait)})}
+AUTH_READY.then(attach,attach)}
 const dbOpts=db.ref('custom_opts');
 const dbGcal=db.ref('gcal_config');     // calendar id, last sync token
 const dbGcalMap=db.ref('gcal_map');     // maps {gcalEventId -> deliveryId}
@@ -1803,7 +1820,7 @@ const SETUP_CODE='ASPEN-SETUP-2026';
 const ROLES=['admin','organizer','tech'];
 
 // Listen for users (admin/organizer can see all; tech can only see themselves)
-dbUsers.on('value',snap=>{USERS=snap.val()||{};
+_rtOn(dbUsers,'users',snap=>{USERS=snap.val()||{};
 // Refresh assignment dropdown if modal is open
 if(curRec&&document.getElementById('e_assigned')){populateTechDropdown()}
 // Refresh users panel if open
@@ -2080,7 +2097,12 @@ let segHtml='<div class="tlseg">'+
 '</div>';
 if(!mine.length){
 let msg=seg==='done'?'Sin entregas marcadas como listas':(seg==='pend'?'No pending deliveries':'No deliveries');
-if(!_dataSynced()){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">Conectando con el servidor\u2026</div><div class="sub">Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; Reintentar</button></div></div>';return}
+if(!_dataSynced()){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">Conectando con el servidor\u2026</div><div class="sub">Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; Reintentar</button></div><div id="syncDiag" style="margin-top:14px;font-size:11px;color:#9c8e79;font-weight:600;line-height:1.5">diagn\u00f3stico\u2026</div></div>';
+if(!window._syncDiagT){window._syncDiagT=setInterval(function(){var el=document.getElementById('syncDiag');
+if(!el){clearInterval(window._syncDiagT);window._syncDiagT=null;return}
+var au='\u2014';try{var u=firebase.auth().currentUser;au=u?'\u2713':'\u2717 sin sesi\u00f3n'}catch(e){}
+el.textContent='red '+(navigator.onLine?'\u2713':'\u2717')+' \u00b7 firebase '+(_fbConn?'\u2713':'\u2717')+' \u00b7 sesi\u00f3n '+au+' \u00b7 edits '+(_syncE?'\u2713':'\u2026')+' \u00b7 added '+(_syncA?'\u2713':'\u2026')+(window._syncErr?' \u00b7 \u26a0 '+window._syncErr:'')},1500)}
+return}
 listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">'+msg+(techDate.getTime()===today.getTime()?' today':'')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
 let html='';let seqN=0;
 mine.forEach(r=>{
@@ -3645,7 +3667,7 @@ let fbReady=false;
 // =====================================================================================
 let DELETED_TICKETS={};
 const dbDeletedLedger=db.ref('deleted_tickets');
-dbDeletedLedger.on('value',s=>{DELETED_TICKETS=Object.assign(DELETED_TICKETS,(s&&s.val&&s.val())||{})},err=>console.warn('[LEDGER] read error',err));
+_rtOn(dbDeletedLedger,'ledger',s=>{DELETED_TICKETS=Object.assign(DELETED_TICKETS,(s&&s.val&&s.val())||{})},err=>console.warn('[LEDGER] read error',err));
 function markTicketDeleted(id){if(id==null)return;let sid=String(id);DELETED_TICKETS[sid]=Date.now();dbDeletedLedger.child(sid).set(Date.now()).catch(e=>console.warn('[LEDGER] write failed',e))}
 function isTicketDeleted(id){return id!=null&&!!DELETED_TICKETS[String(id)]}
 function _ledgerFlag(r){if(!r||r.i==null)return r;let sid=String(r.i);if(DELETED_TICKETS[sid]&&!r._deleted)return Object.assign({},r,{_deleted:true,_deletedAt:DELETED_TICKETS[sid]});return r}
@@ -4063,7 +4085,7 @@ fbReady=true;
 let _lo=document.getElementById('loading-ov');if(_lo)_lo.remove();
 let _ip=getIntakeParams();renderIntakePortal(_ip.id,_ip.token);
 }else{
-dbEdits.on('value',snap=>{_syncE=true;_lastSyncTs=Date.now();
+_rtOn(dbEdits,'edits',snap=>{_syncE=true;_lastSyncTs=Date.now();
 let v=snap.val()||{};
 // No offline queue — Firebase is the single source of truth; always reconcile with the server.
 // Defense layer 2: in-flight save protection — we've called set() but Firebase hasn't
@@ -4104,7 +4126,7 @@ Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
 Object.keys(DELETED_TICKETS).forEach(id=>{if(EDITS[id]){if(!EDITS[id]._deleted)EDITS[id]._deleted=true}else if(BASE.some(b=>String(b.i)===id)){EDITS[id]={_deleted:true,_deletedAt:DELETED_TICKETS[id]}}});
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
-dbAdded.on('value',snap=>{_syncA=true;_lastSyncTs=Date.now();
+_rtOn(dbAdded,'added',snap=>{_syncA=true;_lastSyncTs=Date.now();
 let v=snap.val()||[];
 try{window._srvAddedCount=Array.isArray(v)?v.filter(Boolean).length:Object.keys(v||{}).length}catch(e){}
 // ONE-TIME (self-healing) MIGRATION: the `added` node was a JS array (keys 0,1,2…). Per-child
@@ -4166,7 +4188,7 @@ if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkR
 // As soon as a newer build is published (by any device that loaded a fresh deploy), every
 // other open client reloads itself with a cache-busting URL. A sessionStorage guard prevents
 // a reload loop if the new file isn't live on the CDN yet.
-dbAppMeta.on('value',s=>{
+_rtOn(dbAppMeta,'meta',s=>{
 let serverBuild=Number(s.val()||0);
 if(serverBuild>APP_BUILD){
 let tried=Number(sessionStorage.getItem('aspen_tried_build')||0);
@@ -4273,7 +4295,7 @@ techOpenDetail(_currentTechDetailId)}
 // "Write too large" lockout (a queued whole-EDITS payload too big to ever flush). Removing them
 // here means every device auto-recovers on first load of this version — no manual console step.
 try{localStorage.removeItem('aspen_offline_queue');localStorage.removeItem('aspen_backup_edits');localStorage.removeItem('aspen_backup_added');}catch(e){}
-dbOpts.on('value',snap=>{let c=snap.val()||{};
+_rtOn(dbOpts,'opts',snap=>{let c=snap.val()||{};
 if(c.tb)c.tb.forEach(v=>{if(!OPT_TB.includes(v))OPT_TB.push(v)});
 if(c.ss)c.ss.forEach(v=>{if(!OPT_SS.includes(v))OPT_SS.push(v)});
 if(c.lf)c.lf.forEach(v=>{if(!OPT_LF.includes(v))OPT_LF.push(v)});
@@ -10924,7 +10946,7 @@ function refreshIntakeBox(id){let el=document.getElementById('intakeBox_'+id);if
 // ---- Reflect a customer submission back into the ticket (dashboard side only) ----
 function startIntakeListener(){
 if(_intakeListenerOn)return;_intakeListenerOn=true;
-db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};_intakeLoaded=true;reflectIntakeSubmissions();try{reflectReviews()}catch(e){}if(curRec)refreshIntakeBox(curRec.i);try{if(typeof _currentTechDetailId!=='undefined'&&_currentTechDetailId&&typeof techOpenDetail==='function'){var _d=document.getElementById('tech-detail');if(_d&&!_d.classList.contains('hidden'))techOpenDetail(_currentTechDetailId)}}catch(e){console.warn('[INTAKE] tech refresh',e)}},err=>console.warn('[INTAKE] listener err',err))}
+_rtOn(db.ref('intake'),'intake',snap=>{INTAKE=snap.val()||{};_intakeLoaded=true;reflectIntakeSubmissions();try{reflectReviews()}catch(e){}if(curRec)refreshIntakeBox(curRec.i);try{if(typeof _currentTechDetailId!=='undefined'&&_currentTechDetailId&&typeof techOpenDetail==='function'){var _d=document.getElementById('tech-detail');if(_d&&!_d.classList.contains('hidden'))techOpenDetail(_currentTechDetailId)}}catch(e){console.warn('[INTAKE] tech refresh',e)}},err=>console.warn('[INTAKE] listener err',err))}
 
 // =====================================================================================
 // FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips arrays as objects with numeric
