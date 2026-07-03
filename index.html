@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070120;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 40) — photo safety: reference-counted Storage delete + checkPhotos() diagnostic'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070122;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 42) — PHOTO RESCUE: restore from backup + upload readback probe + graceful tiles'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2272,7 +2272,7 @@ if(typeof rp.levelOk!=='undefined')ans+='<div class="tech-spec-row"><span class=
 if(typeof rp.wipOk!=='undefined')ans+='<div class="tech-spec-row"><span class="lbl">&#128268; WIP listo</span><span class="val">'+(rp.wipOk?'S\u00ed':'No')+'</span></div>';
 if(rp.notes)ans+='<div class="tech-spec-row"><span class="lbl">&#128221; Nota del cliente</span><span class="val">'+escHtml(rp.notes)+'</span></div>';
 var groups=[['access','Acceso / camino'],['levelPhotos','Piso / nivel'],['electricity','Caja de breakers'],['wipPhotos','WIP / el\u00e9ctrico']],photoHtml='',total=0;
-groups.forEach(function(g){var arr=_intakeArr(rp[g[0]]);if(arr.length){total+=arr.length;photoHtml+='<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:8px 0 5px">'+g[1]+' ('+arr.length+')</div><div class="tech-photos">'+arr.map(function(b){return '<a class="tech-photo" href="'+b+'" target="_blank" rel="noopener" style="display:block"><img src="'+b+'" alt="customer photo"></a>'}).join('')+'</div>';}});
+groups.forEach(function(g){var arr=_intakeArr(rp[g[0]]);if(arr.length){total+=arr.length;photoHtml+='<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:8px 0 5px">'+g[1]+' ('+arr.length+')</div><div class="tech-photos">'+arr.map(function(b){return '<a class="tech-photo" href="'+b+'" target="_blank" rel="noopener" style="display:block"><img src="'+b+'" alt="customer photo" onerror="_imgFail(this)"></a>'}).join('')+'</div>';}});
 if(!ans&&!total)return;
 h+='<div class="tech-section" style="border-color:#10b981 !important;background:#ecfdf5">';
 h+='<div style="font-size:11px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#10003; Fotos e info del cliente'+(it.submittedAt?(' &middot; '+new Date(it.submittedAt).toLocaleDateString()):'')+'</div>';
@@ -2282,12 +2282,12 @@ h+=photoHtml+'</div>';
 // Photos from the manager (admin/Alberto) — read-only for the tech, no delete button
 if(r.photos&&r.photos.length){
 h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128231; Photos from Manager</div><div class="tech-photos">';
-r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo"></div>'});
+r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo" onerror="_imgFail(this)"></div>'});
 h+='</div></div>'}
 // Tech's own delivery photos — tech can view, add, and delete these
 if(r.tech_photos&&r.tech_photos.length){
 h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128247; Your Delivery Photos</div><div class="tech-photos">';
-r.tech_photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
+r.tech_photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo" onerror="_imgFail(this)"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
 h+='</div></div>'}
 // Accessories (read-only) — what to bring/install
 let acc=[];
@@ -2472,6 +2472,24 @@ techCloseDetail();renderTechList()}
 // closes before reconnect, the write is lost ("the tech swears he marked it" case, e.g. Lisa Wolf).
 // Tiny localStorage queue: marker written when the tech confirms, cleared automatically once the
 // server copy shows dl=true (normal listeners), re-applied on load / reconnect / every 60s.
+// === DAY-ROLLOVER WATCHDOG ===
+// iOS freezes the PWA overnight: reopening it resumes YESTERDAY's state (tech list showed
+// "jueves 2 de julio" with 0 deliveries on Friday morning). This watchdog checks the calendar
+// day whenever the app regains focus/visibility (and every 5 min): if the day changed since
+// the last render, the tech view snaps back to Today and the admin view re-renders fresh.
+let _dayKey=(function(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()})();
+function _dayCheck(){try{
+var d=new Date();var k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+if(k===_dayKey)return;
+_dayKey=k;
+console.log('[DAY] rollover detected \u2014 snapping views to today');
+if(currentUser&&currentUser.role==='tech'){try{techDateNav(0)}catch(e){}}
+else if(currentUser){try{renderAll()}catch(e){}}
+}catch(e){}}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)_dayCheck()});
+window.addEventListener('focus',_dayCheck);
+setInterval(_dayCheck,5*60*1000);
+
 // === UNIVERSAL OFFLINE QUEUE (tech field writes) ===
 // Generalizes the delivered-mark queue to EVERY small field write a tech makes (notes, check-
 // lists, on-my-way, signature flags). Captured transparently inside saveTicketFields; photos,
@@ -2840,7 +2858,14 @@ let path='delivery_photos/'+String(ticketId)+'/'+Date.now()+'_'+Math.random().to
 let ref=fbStorage.ref(path);
 await ref.putString(b64,'data_url');
 let url=await ref.getDownloadURL();
-return url||b64;
+if(!url)return b64;
+// READBACK PROBE: uploading can succeed while DOWNLOADS are blocked (Storage billing/rules
+// outage). Verify the URL is actually readable before trusting it; if not, keep the photo
+// inline (base64) so it can never appear broken, and drop the unreadable orphan file.
+try{let _probe=await fetch(url,{headers:{Range:'bytes=0-0'}});
+if(!_probe.ok){console.warn('[STORAGE] uploaded but unreadable ('+_probe.status+') \u2014 keeping photo inline');try{ref.delete().catch(function(){})}catch(_e){}return b64}}
+catch(_e){console.warn('[STORAGE] readability probe failed \u2014 keeping photo inline');try{ref.delete().catch(function(){})}catch(_e2){}return b64}
+return url;
 }catch(e){console.warn('[STORAGE] upload failed — keeping inline base64:',e&&e.code,e&&e.message);return b64}
 }
 
@@ -2882,6 +2907,60 @@ if(i%10===9)console.log('[PHOTO-CHECK] probed',i+1,'/',urls.length,'\u2014 dead 
 if(dead.length){console.warn('[PHOTO-CHECK] \u26a0\ufe0f DEAD photo files:',dead.length);console.table(dead.map(function(d){return{ticket:d.t,field:d.f,idx:d.ix,status:d.status,url:d.u.slice(0,100)}}))}
 else console.log('[PHOTO-CHECK] \u2713 all storage photos respond OK');
 return{urls:urls.length,dead:dead,weird:weird,b64:b64}}
+
+// === GRACEFUL PHOTO TILES ===
+// One transient retry (cache-busted), then a clean bilingual placeholder instead of the
+// browser's broken-image icon. Data-URIs never retry (a corrupt data: URI can't heal).
+function _imgFail(img){try{
+if(!img)return;
+var u=img.src||'';
+if(!img.dataset.retry&&u.indexOf('http')===0){img.dataset.retry='1';setTimeout(function(){img.src=u+(u.indexOf('?')>-1?'&':'?')+'r='+Date.now()},700);return}
+var w=img.parentElement;if(!w)return;
+w.onclick=null;w.removeAttribute('href');
+w.style.cssText+=';display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.05);cursor:default';
+w.innerHTML='<div style="text-align:center;padding:8px;font-size:10px;line-height:1.4;color:#9c8e79;font-weight:700">&#128247;<br>Foto no disponible</div>';
+}catch(e){}}
+
+// === PHOTO RESCUE: restore inline photos from a FULL backup file ===
+// Reads a pre-migration (or any full) backup JSON and re-inserts its base64 photos into the
+// matching live tickets. Restored photos go FIRST in the array (instantly visible, storage-
+// independent); existing entries — including Storage URLs — are kept after them, so if/when
+// Storage service is restored those simply come back too. Nothing is deleted. Idempotent.
+function repairPhotosFromBackup(){
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert('Admin/organizer only');return}
+var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+inp.onchange=async function(){var f=inp.files&&inp.files[0];if(!f)return;
+var snap;try{snap=JSON.parse(await f.text())}catch(e){alert('Archivo de backup inv\u00e1lido (no es JSON).');return}
+_repairPhotosApply(snap)};
+inp.click()}
+function _repairPhotosApply(snap){
+if(snap&&snap.light){alert('Ese backup es LIGHT (sin fotos). Usa un backup COMPLETO \u2014 por ejemplo los AutoBackup del 29\u201330 de junio.');return}
+var map={};
+function take(rec,idKey){if(!rec||typeof rec!=='object')return;var e=null;
+['photos','tech_photos'].forEach(function(f){var arr=rec[f];
+if(arr&&typeof arr==='object'&&!Array.isArray(arr))arr=Object.values(arr);
+if(Array.isArray(arr)){var b=arr.filter(function(ph){return typeof ph==='string'&&ph.indexOf('data:')===0});
+if(b.length){e=e||{};e[f]=b}}});
+if(e)map[String(idKey)]=e}
+Object.keys((snap&&snap.edits)||{}).forEach(function(k){take(snap.edits[k],k)});
+(((snap&&snap.added)||[])).forEach(function(a){if(a&&a.i!=null)take(a,a.i)});
+if(!Object.keys(map).length){alert('El backup no contiene fotos base64.');return}
+var ticketsFixed=0,photosAdded=0;
+AD().forEach(function(r){var e=map[String(r.i)];if(!e)return;var upd=null;
+['photos','tech_photos'].forEach(function(f){if(!e[f])return;
+var cur=Array.isArray(r[f])?r[f].slice():[];
+var have=new Set(cur);
+var fresh=e[f].filter(function(ph){return !have.has(ph)});
+if(!fresh.length)return;
+upd=upd||{};upd[f]=fresh.concat(cur);photosAdded+=fresh.length});
+if(!upd)return;
+var ai=ADDED.findIndex(function(x){return sameId(x.i,r.i)});
+if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],upd);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+ticketsFixed++;console.log('[PHOTO-RESCUE] restored photos on #'+r.i+' '+dispName(r))});
+try{renderAll()}catch(e){}
+try{if(typeof pushActivity==='function'&&ticketsFixed)pushActivity(null,'photo-rescue: '+photosAdded+' photos / '+ticketsFixed+' tickets')}catch(e){}
+alert(photosAdded?('\u2713 Rescate completado:\n\n'+photosAdded+' foto(s) restauradas en '+ticketsFixed+' ticket(s).\n\nLas fotos rescatadas quedan INLINE (ya no dependen de Storage). Las URLs de Storage se conservan al final \u2014 volver\u00e1n solas cuando el servicio se restablezca.'):'Nada que restaurar: las fotos de ese backup ya est\u00e1n presentes en los tickets.')}
 
 // === ONE-TIME PHOTO MIGRATION: inline base64 → Firebase Storage ===
 // Moves every base64 photo (photos + tech_photos) out of RTDB into Storage, replacing each with
@@ -3331,6 +3410,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '</div>'+
 '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">Último manual: <strong>'+fmtAgo(lastManual)+'</strong></div>'+
 '<button onclick="downloadManualBackup()" style="background:var(--aspen-orange);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128229; Descargar Backup Ahora</button>'+
+'<button onclick="repairPhotosFromBackup()" style="background:#2F7D52;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%;margin-top:8px">&#129657; Rescatar fotos desde backup</button>'+
 '</div>'+
 
 // DRIVE AUTO-BACKUP
@@ -6314,7 +6394,7 @@ h+='<button type="button" class="pdf-btn" style="background:#7c3aed;border-color
 h+='</div>';
 if(infoCount){
 h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
-r.photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="info photo"><button type="button" onclick="event.stopPropagation();adminDeletePhoto('+r.i+','+idx+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
+r.photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="info photo" onerror="_imgFail(this)"><button type="button" onclick="event.stopPropagation();adminDeletePhoto('+r.i+','+idx+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
 h+='</div>'}
 h+='</div>';
 // Delivery Photos from Tech — always shown so admin can see status.
@@ -6325,7 +6405,7 @@ h+='<div style="background:#faf5ff;border:1.5px solid #ddd6fe;border-radius:10px
 if(techPhotoCount){
 h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px"><strong style="color:#6d28d9">'+techPhotoCount+' delivery photo'+(techPhotoCount===1?'':'s')+'</strong> received from tech.</div>';
 h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
-r.tech_photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="delivery photo"><button type="button" onclick="event.stopPropagation();adminDeleteTechPhoto('+r.i+','+idx+')" title="Remove from ticket" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
+r.tech_photos.forEach((p,idx)=>{h+='<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;cursor:pointer" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover" alt="delivery photo" onerror="_imgFail(this)"><button type="button" onclick="event.stopPropagation();adminDeleteTechPhoto('+r.i+','+idx+')" title="Remove from ticket" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">&#10005;</button></div>'});
 h+='</div>';
 }else{
 h+='<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;text-align:center;padding:14px 0">No delivery photos uploaded yet. Photos will appear here once the tech uploads them from their device during delivery.</div>';
@@ -10740,7 +10820,7 @@ let rp=it.resp||{},h='<div style="font-size:13px;line-height:1.6">';
 if(rp.payment)h+='<div>&#128181; Payment: <b>'+_iesc(_ipayLabel(rp.payment))+'</b></div>';
 if(typeof rp.levelOk!=='undefined')h+='<div>&#128208; Pad is level &amp; clear: <b>'+(rp.levelOk?'Yes':'No')+'</b></div>';
 if(typeof rp.wipOk!=='undefined')h+='<div>&#128268; WIP ready (15ft conduit + adapters): <b>'+(rp.wipOk?'Yes':'No')+'</b></div>';
-[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=_intakeArr(rp[g[0]]);if(arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>'<a href="'+b+'" target="_blank" rel="noopener"><img src="'+b+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd"></a>').join('')+'</div></div>'}});
+[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=_intakeArr(rp[g[0]]);if(arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>'<a href="'+b+'" target="_blank" rel="noopener"><img src="'+b+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd" onerror="_imgFail(this)"></a>').join('')+'</div></div>'}});
 if(rp.notes)h+='<div style="margin-top:6px">&#128221; Customer notes: '+_iesc(rp.notes)+'</div>';
 return h+'</div>'}
 
