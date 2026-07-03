@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070124;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 44) — PHOTO DOCTOR v2: CORS-free Image() probing (fetch probes were blocked)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070125;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.03 (build 45) — SYNC WATCHDOG: connecting state + wake reconnection (no more fake empty days)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2080,6 +2080,7 @@ let segHtml='<div class="tlseg">'+
 '</div>';
 if(!mine.length){
 let msg=seg==='done'?'Sin entregas marcadas como listas':(seg==='pend'?'No pending deliveries':'No deliveries');
+if(!_dataSynced()){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">Conectando con el servidor\u2026</div><div class="sub">Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; Reintentar</button></div></div>';return}
 listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">'+msg+(techDate.getTime()===today.getTime()?' today':'')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
 let html='';let seqN=0;
 mine.forEach(r=>{
@@ -2472,6 +2473,28 @@ techCloseDetail();renderTechList()}
 // closes before reconnect, the write is lost ("the tech swears he marked it" case, e.g. Lisa Wolf).
 // Tiny localStorage queue: marker written when the tech confirms, cleared automatically once the
 // server copy shows dl=true (normal listeners), re-applied on load / reconnect / every 60s.
+// === SYNC WATCHDOG ===
+// iOS resumes the PWA with a ZOMBIE Firebase socket: the UI renders but no data ever arrives,
+// so the tech sees "No pending deliveries" (0/0/0) on a day full of work \u2014 it looks like an
+// "old page". We track whether the EDITS/ADDED snapshots have actually arrived; until they
+// have, the tech list shows a Connecting state (never a fake empty day). On wake/focus/online
+// we force-rebuild the realtime connection (goOffline\u2192goOnline).
+let _syncE=false,_syncA=false,_lastSyncTs=0,_fbConn=true;
+function _dataSynced(){return _syncE&&_syncA}
+try{db.ref('.info/connected').on('value',function(sn){_fbConn=!!(sn&&sn.val());console.log('[SYNC] connected:',_fbConn)})}catch(e){}
+function _wakeNudge(){try{
+if(document.hidden)return;
+var stale=!_dataSynced()||(!_fbConn&&Date.now()-_lastSyncTs>3*60*1000);
+if(!stale)return;
+console.log('[SYNC] wake nudge \u2014 rebuilding realtime connection');
+try{firebase.database().goOffline()}catch(e){}
+setTimeout(function(){try{firebase.database().goOnline()}catch(e){}},350);
+setTimeout(function(){try{if(!_dataSynced()&&currentUser&&currentUser.role==='tech')renderTechList()}catch(e){}},6000);
+}catch(e){}}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)_wakeNudge()});
+window.addEventListener('focus',_wakeNudge);
+window.addEventListener('online',_wakeNudge);
+
 // === DAY-ROLLOVER WATCHDOG ===
 // iOS freezes the PWA overnight: reopening it resumes YESTERDAY's state (tech list showed
 // "jueves 2 de julio" with 0 deliveries on Friday morning). This watchdog checks the calendar
@@ -4040,7 +4063,7 @@ fbReady=true;
 let _lo=document.getElementById('loading-ov');if(_lo)_lo.remove();
 let _ip=getIntakeParams();renderIntakePortal(_ip.id,_ip.token);
 }else{
-dbEdits.on('value',snap=>{
+dbEdits.on('value',snap=>{_syncE=true;_lastSyncTs=Date.now();
 let v=snap.val()||{};
 // No offline queue — Firebase is the single source of truth; always reconcile with the server.
 // Defense layer 2: in-flight save protection — we've called set() but Firebase hasn't
@@ -4081,7 +4104,7 @@ Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
 Object.keys(DELETED_TICKETS).forEach(id=>{if(EDITS[id]){if(!EDITS[id]._deleted)EDITS[id]._deleted=true}else if(BASE.some(b=>String(b.i)===id)){EDITS[id]={_deleted:true,_deletedAt:DELETED_TICKETS[id]}}});
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
-dbAdded.on('value',snap=>{
+dbAdded.on('value',snap=>{_syncA=true;_lastSyncTs=Date.now();
 let v=snap.val()||[];
 try{window._srvAddedCount=Array.isArray(v)?v.filter(Boolean).length:Object.keys(v||{}).length}catch(e){}
 // ONE-TIME (self-healing) MIGRATION: the `added` node was a JS array (keys 0,1,2…). Per-child
