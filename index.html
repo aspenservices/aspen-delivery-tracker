@@ -1202,6 +1202,96 @@ th,td{padding:7px 6px}
 .cal-bold .crl-head .crl-sub{color:rgba(255,255,255,.85)}
 .cal-bold .crl-head .crl-x{border-color:rgba(255,255,255,.35);color:#fff}
 .cal-bold .crl-head .crl-pill{background:rgba(255,255,255,.22);color:#fff}
+
+/* ============================================================================
+   ASPEN GLASS — Stage 1 (build 34) · iOS-17 frosted-glass theme layer
+   CSS-only: no markup or logic changes. Aspen palette intact (orange #E54B25,
+   espresso, cream, teal/terracotta/green status). Apple system typography,
+   warm gradient canvas with orange/teal glow, translucent blurred surfaces,
+   continuous large radii. Dark mode gets an espresso-glass variant, and a
+   @supports fallback keeps everything solid where backdrop-filter is missing.
+   ============================================================================ */
+body{
+ font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+ background:
+  radial-gradient(640px circle at 88% -6%, rgba(229,75,37,.16), transparent 62%),
+  radial-gradient(720px circle at -12% 104%, rgba(28,143,168,.11), transparent 62%),
+  linear-gradient(160deg,#F8EFE0 0%,#F2E4CE 55%,#EAD9C2 100%);
+ background-attachment:fixed;
+}
+h1,h2,h3,h4{letter-spacing:-.02em}
+.aspen-logo-text,.c-name,.cal-title{font-family:inherit;font-weight:800;letter-spacing:-.02em}
+
+/* --- frosted surfaces --- */
+.card,.dash-card,.insp-card,.rt2-stop,.cal-rail,.toast,
+#calWrap,.kpi,.kpi-card{
+ background:rgba(255,255,255,.55) !important;
+ backdrop-filter:blur(14px) saturate(1.5);
+ -webkit-backdrop-filter:blur(14px) saturate(1.5);
+ border:1px solid rgba(255,255,255,.65) !important;
+ box-shadow:0 8px 28px rgba(120,80,40,.12) !important;
+}
+.card,.rt2-stop{border-radius:20px !important}
+.dash-card,.insp-card{border-radius:22px !important}
+
+/* --- modal: heavier glass + soft warm dim behind --- */
+.mdl{
+ background:rgba(255,255,255,.72) !important;
+ backdrop-filter:blur(26px) saturate(1.6);
+ -webkit-backdrop-filter:blur(26px) saturate(1.6);
+ border:1px solid rgba(255,255,255,.7);
+ border-radius:26px !important;
+ box-shadow:0 30px 80px rgba(40,28,15,.35) !important;
+}
+.ov{background:rgba(28,21,17,.45) !important;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+
+/* --- top tab bar: floating frosted strip --- */
+.aspen-tabs-bar{
+ background:rgba(246,240,229,.6) !important;
+ backdrop-filter:blur(18px) saturate(1.5);
+ -webkit-backdrop-filter:blur(18px) saturate(1.5);
+ border-bottom:1px solid rgba(255,255,255,.55) !important;
+ box-shadow:0 6px 20px rgba(120,80,40,.08);
+}
+
+/* --- primary actions: orange with an iOS-style glow --- */
+.aspen-action-btn.primary,.mbtn-complete:not(.disabled),.mbig.green{
+ background:linear-gradient(135deg,#E54B25,#C73C18) !important;
+ box-shadow:0 8px 20px rgba(229,75,37,.35) !important;
+ border:none !important;
+}
+.aspen-action-btn,.mbtn,.cal-vbtn,.cal-style-btn{border-radius:12px !important}
+button{font-family:inherit}
+
+/* --- inputs pick up a light glass tint --- */
+input,select,textarea{border-radius:11px}
+.ib{background:rgba(255,255,255,.5) !important;border:1px solid rgba(255,255,255,.6) !important;border-radius:13px !important}
+.ib input,.ib select,.ib textarea{background:rgba(255,255,255,.75)}
+
+/* --- fallback when backdrop-filter is unsupported --- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+ .card,.dash-card,.insp-card,.rt2-stop,.cal-rail,#calWrap,.kpi,.kpi-card{background:rgba(255,255,255,.93) !important}
+ .mdl{background:rgba(255,255,255,.97) !important}
+ .aspen-tabs-bar{background:rgba(246,240,229,.96) !important}
+}
+
+/* --- dark mode: espresso glass --- */
+html[data-theme="dark"] body{
+ background:
+  radial-gradient(640px circle at 88% -6%, rgba(229,75,37,.18), transparent 62%),
+  radial-gradient(720px circle at -12% 104%, rgba(28,143,168,.10), transparent 62%),
+  linear-gradient(160deg,#1A1209 0%,#241A11 60%,#1C1409 100%);
+ background-attachment:fixed;
+}
+html[data-theme="dark"] .card,html[data-theme="dark"] .dash-card,html[data-theme="dark"] .insp-card,
+html[data-theme="dark"] .rt2-stop,html[data-theme="dark"] .cal-rail,html[data-theme="dark"] #calWrap,
+html[data-theme="dark"] .kpi,html[data-theme="dark"] .kpi-card{
+ background:rgba(36,26,17,.6) !important;
+ border:1px solid rgba(255,255,255,.08) !important;
+ box-shadow:0 8px 28px rgba(0,0,0,.4) !important;
+}
+html[data-theme="dark"] .mdl{background:rgba(30,22,14,.78) !important;border:1px solid rgba(255,255,255,.1)}
+html[data-theme="dark"] .aspen-tabs-bar{background:rgba(26,18,9,.6) !important;border-bottom:1px solid rgba(255,255,255,.07) !important}
 </style>
 <script>
 // === PWA SERVICE WORKER (network-first) ===
@@ -1423,8 +1513,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070109;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.02 (build 29) — individual accounts phase 1: email sign-in, user emails, presence + old-build detector'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070114;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.02 (build 34) — Aspen Glass stage 1: iOS frosted theme (CSS-only)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1731,6 +1821,7 @@ el.innerHTML=rows.length?rows.map(function(r){return r.html}).join(''):'<span st
 function applyRoleUI(){
 if(!currentUser)return;
 try{startPresence()}catch(e){}
+try{_wxInit()}catch(e){}
 // Set initials in header
 let initials=(currentUser.name||'??').split(/[\s.]+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
 let initEl=document.getElementById('userInitials');if(initEl)initEl.textContent=initials;
@@ -2076,6 +2167,7 @@ h+='</div>';
 // ===== FIXED ACTION DOCK =====
 h+='<div class="td2-dock"><div class="td2-mini-row">';
 if(r.ph)h+='<button class="td2-mini" onclick="techPhoneOptions('+r.i+')"><span class="ic">&#128222;</span>Llamar</button>';
+if(r.ph&&!r.dl)h+='<button class="td2-mini'+(r.onway?' on':'')+'" onclick="techOnMyWay('+r.i+')"><span class="ic">&#128666;</span>'+(r.onway?'Avisado &#10003;':'En camino')+'</button>';
 h+='<button class="td2-mini" onclick="techPhotoUpload('+r.i+')"><span class="ic">&#128247;</span>Fotos'+(r.tech_photos&&r.tech_photos.length?' ('+r.tech_photos.length+')':'')+'</button>';
 let _sigDone=r.signature&&r.signature.data;
 h+='<button class="td2-mini'+(_sigDone?' on':'')+'" onclick="techSignature('+r.i+')"><span class="ic">&#9997;&#65039;</span>'+(_sigDone?'Firmado &#10003;':'Firma')+'</button>';
@@ -2141,10 +2233,33 @@ inner+='<div style="font-size:11px;color:var(--text-tertiary);margin-top:10px;li
 modal.innerHTML=inner;
 modal.classList.remove('hidden')}
 
+// "On my way" \u2014 opens a prefilled SMS to the customer and flips the portal banner so the
+// customer sees "Your crew is on the way!" (pinfo.onway). Stamped on the ticket + activity.
+function techOnMyWay(id){
+var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
+var phs=(typeof parsePhones==='function')?parsePhones(r.ph||''):[];
+if(!phs.length){alert('No phone number on this ticket.');return}
+var num=(typeof phoneLabel==='function')?phoneLabel(phs[0]).num:String(phs[0]);
+var digits=String(num||'').replace(/[^\d+]/g,'');
+if(!digits){alert('No valid phone number on this ticket.');return}
+var who=(currentUser&&currentUser.name)||'Your Aspen Spas crew';
+var body='Hi! This is '+who+' from Aspen Spas \u2014 we are on our way with your spa delivery. See you soon!';
+var sep=/iPhone|iPad|Macintosh/i.test(navigator.userAgent)?'&':'?';
+try{location.href='sms:'+digits+sep+'body='+encodeURIComponent(body)}catch(e){}
+saveTicketFields(id,{onway:Date.now()});
+pushActivity(id,'On-my-way SMS sent to customer');
+try{if(typeof syncPortalInfo==='function')setTimeout(function(){syncPortalInfo(id)},800)}catch(e){}
+setTimeout(function(){try{techOpenDetail(id)}catch(e){}},400)}
 function techMarkDelivered(id){
 let r=AD().find(x=>x.i===id);if(!r||r.dl)return;
 let modal=document.getElementById('tech-deliver-modal');
+var _qcItems=[['lv','\u{1F6C1} Spa nivelado y en posici\u00f3n'],['el','\u26a1 El\u00e9ctrico conectado y probado'],['cv','\u{1F9E2} Cover instalado'],['ch','\u{1F9EA} Qu\u00edmicos / arranque explicado']];
+var _ph=(r.tech_photos&&r.tech_photos.length)||0;
 modal.innerHTML='<div class="box"><h3>Mark as Delivered?</h3><div class="sub">'+escHtml(r.n)+'</div>'+
+'<div style="text-align:left;margin-bottom:10px"><div style="font-size:11px;font-weight:800;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Control de calidad</div>'+
+_qcItems.map(function(q){return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13.5px;font-weight:600;cursor:pointer"><input type="checkbox" class="tdv_qc" value="'+q[0]+'" style="width:18px;height:18px;accent-color:#2F7D52"> '+q[1]+'</label>'}).join('')+
+(_ph?'<div style="font-size:12px;color:#059669;font-weight:700;margin-top:4px">\u{1F4F8} '+_ph+' foto'+(_ph===1?'':'s')+' subida'+(_ph===1?'':'s')+' \u2713</div>':'<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px;font-weight:700;color:#92400E">\u26a0\ufe0f Sin fotos de la instalaci\u00f3n \u2014 <a href="#" onclick="document.getElementById(\'tech-deliver-modal\').classList.add(\'hidden\');techPhotoUpload('+id+');return false" style="color:#92400E">agregar foto</a> (recomendado)</div>')+
+'</div>'+
 '<label style="font-size:11px;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:5px">Optional: notes about delivery</label>'+
 '<textarea id="tdv_notes" placeholder="e.g. Customer was happy. Slight scratch on cabinet noted. Cover keys handed over.">'+escHtml(r.dn||'')+'</textarea>'+
 '<div class="btns">'+
@@ -2155,13 +2270,15 @@ modal.classList.remove('hidden');setTimeout(()=>{let t=document.getElementById('
 
 function techConfirmDelivered(id){
 let notes=document.getElementById('tdv_notes').value.trim()||null;
+var _qc={};try{document.querySelectorAll('.tdv_qc').forEach(function(cb){if(cb.checked)_qc[cb.value]=true})}catch(e){}
 let updates={dl:true,dn:notes};
+if(Object.keys(_qc).length)updates.qc=_qc;
 _pdlAdd(id,notes); // offline-safe: marker persists until the server copy confirms dl=true
 let ai=ADDED.findIndex(x=>x.i===id);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 document.getElementById('tech-deliver-modal').classList.add('hidden');
-pushActivity(id,'Marked Delivered');
+pushActivity(id,'Marked Delivered'+(Object.keys(_qc).length?' \u2014 QC '+Object.keys(_qc).length+'/4':''));
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
 
@@ -2170,6 +2287,52 @@ techCloseDetail();renderTechList()}
 // closes before reconnect, the write is lost ("the tech swears he marked it" case, e.g. Lisa Wolf).
 // Tiny localStorage queue: marker written when the tech confirms, cleared automatically once the
 // server copy shows dl=true (normal listeners), re-applied on load / reconnect / every 60s.
+// === UNIVERSAL OFFLINE QUEUE (tech field writes) ===
+// Generalizes the delivered-mark queue to EVERY small field write a tech makes (notes, check-
+// lists, on-my-way, signature flags). Captured transparently inside saveTicketFields; photos,
+// base64 blobs (>2KB strings), activity and _geo are excluded. An op clears itself once the
+// server copy shows the same values; if someone else changed the field and the op is older
+// than 10 minutes, it is dropped instead of fighting (last-write-wins stays with the human).
+const _PQ_KEY='aspen_pending_ops';
+const _PQ_SKIP={photos:1,tech_photos:1,info_photos:1,activity:1,_geo:1};
+function _pqAll(){try{return JSON.parse(localStorage.getItem(_PQ_KEY)||'{}')||{}}catch(e){return{}}}
+function _pqSet(o){try{localStorage.setItem(_PQ_KEY,JSON.stringify(o))}catch(e){}}
+function _pqCapture(id,fields){
+if(!currentUser||currentUser.role!=='tech')return;
+var safe={},any=false;
+Object.keys(fields).forEach(function(k){
+if(_PQ_SKIP[k])return;
+var v=fields[k];
+if(typeof v==='string'&&v.length>2000)return;
+try{if(JSON.stringify(v).length>2500)return}catch(e){return}
+safe[k]=v;any=true});
+if(!any)return;
+var o=_pqAll();var cur=o[String(id)]||{ts:Date.now(),f:{}};
+Object.assign(cur.f,safe);cur.ts=Date.now();
+o[String(id)]=cur;_pqSet(o)}
+function _pqSweep(){try{
+var o=_pqAll(),ids=Object.keys(o);if(!ids.length)return;
+var changed=false;
+ids.forEach(function(id){
+var op=o[id];if(!op||!op.f){delete o[id];changed=true;return}
+if(Date.now()-op.ts>7*24*3600*1000){delete o[id];changed=true;return}
+var r=AD().find(function(x){return String(x.i)===String(id)});
+if(!r){return}
+var pend=[],conflict=false;
+Object.keys(op.f).forEach(function(k){
+var want,have;
+try{want=JSON.stringify(op.f[k]);have=JSON.stringify(r[k]==null?null:r[k])}catch(e){return}
+if(want===have)return;
+if(r[k]!=null&&r[k]!==''&&Date.now()-op.ts>10*60*1000){conflict=true;return}
+pend.push(k)});
+if(conflict){console.warn('[PENDING-OPS] dropping stale op for',id,'(field changed elsewhere)');delete o[id];changed=true;return}
+if(!pend.length){delete o[id];changed=true;return}
+var re={};pend.forEach(function(k){re[k]=op.f[k]});
+console.log('[PENDING-OPS] re-applying',pend.join(', '),'for ticket',id);
+saveTicketFields(id,re)});
+if(changed)_pqSet(o);
+}catch(e){console.warn('[PENDING-OPS]',e)}}
+
 const _PDL_KEY='aspen_pending_dl';
 function _pdlAll(){try{return JSON.parse(localStorage.getItem(_PDL_KEY)||'{}')||{}}catch(e){return{}}}
 function _pdlSet(o){try{localStorage.setItem(_PDL_KEY,JSON.stringify(o))}catch(e){}}
@@ -2182,9 +2345,9 @@ else if(r){retried++;console.log('[PENDING-DL] Re-applying delivered mark for ti
 else if(Date.now()-o[id].ts>7*24*3600*1000){delete o[id];changed=true}});
 if(changed)_pdlSet(o);
 if(verbose&&retried)showToast('\u23f3 '+retried+' delivered mark(s) pending \u2014 retrying automatically','info')}
-setTimeout(function(){_pdlSweep(true)},12000);
-setInterval(function(){_pdlSweep(false)},60000);
-window.addEventListener('online',function(){setTimeout(function(){_pdlSweep(false)},3000)});
+setTimeout(function(){_pdlSweep(true);_pqSweep()},12000);
+setInterval(function(){_pdlSweep(false);_pqSweep()},60000);
+window.addEventListener('online',function(){setTimeout(function(){_pdlSweep(false);_pqSweep()},3000)});
 
 // === CUSTOMER SIGNATURE ===
 // Tech presents a signature pad to the customer. Customer signs with finger/mouse.
@@ -3753,7 +3916,7 @@ function renderAfterAuth(){
 if(!currentUser)return;
 if(typeof startIntakeListener==='function')startIntakeListener();
 if(currentUser.role==='tech'){renderTechList()}
-else{renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000)}
+else{renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);setTimeout(function(){try{_fu30Sweep()}catch(e){}},25000);if(!window._aspenFu30Timer){window._aspenFu30Timer=true;setInterval(function(){try{_fu30Sweep()}catch(e){}},60*60*1000)}}
 // PAGE-LOAD AUTO-REPAIR: 3 seconds after the user lands, scan for cross-linked tickets and
 // break wrong links so the user never sees stale state for more than that delay. The 3-second
 // wait gives the gcalMap listener (which is not part of the _loadCount=3 gate) time to receive
@@ -4233,7 +4396,7 @@ var toCollect=0,crew={};
 stops.forEach(function(r){if(r.bl>0)toCollect+=Number(r.bl)||0;if(r.assigned_to)crew[r.assigned_to]=1;});
 var crewN=Object.keys(crew).length;
 var h='<div class="rt2">';
-h+='<div class="rt2-head"><div><div class="rt2-kicker">'+(isToday?'Today\u2019s route':'Route plan')+'</div><h2 class="rt2-title">'+human+'</h2><div class="rt2-sub">'+stops.length+' stop'+(stops.length===1?'':'s')+(toCollect>0?' \u00b7 '+fmt(toCollect)+' to collect':'')+(crewN?' \u00b7 '+crewN+' crew':'')+'</div></div>';
+h+='<div class="rt2-head"><div><div class="rt2-kicker">'+(isToday?'Today\u2019s route':'Route plan')+'</div><h2 class="rt2-title">'+human+'</h2><div class="rt2-sub">'+stops.length+' stop'+(stops.length===1?'':'s')+(toCollect>0?' \u00b7 '+fmt(toCollect)+' to collect':'')+(crewN?' \u00b7 '+crewN+' crew':'')+(function(){var w=(typeof _wxFor==='function')?_wxFor(res.key):'';return w?' \u00b7 '+w:''})()+'</div></div>';
 h+='<div class="rt2-nav"><button class="rt2-ibtn" onclick="routeShift(-1)" title="Previous day">\u2190</button><input type="date" class="rt2-date" value="'+res.key+'" onchange="routeSetDate(this.value)"><button class="rt2-ibtn" onclick="routeShift(1)" title="Next day">\u2192</button>'+(isToday?'':'<button class="rt2-today" onclick="routeDate=null;renderRoutePlan()">Today</button>')+'</div></div>';
 if(!stops.length){
 h+='<div class="rt2-empty">\uD83D\uDE9A No deliveries with an address scheduled for this day.</div>';
@@ -4241,6 +4404,7 @@ h+='<div class="rt2-empty">\uD83D\uDE9A No deliveries with an address scheduled 
 var fullUrl=_gmapsRoute(stops);
 h+='<div class="rt2-depot"><span>\uD83D\uDCCD From depot \u00b7 '+escHtml(ROUTE_DEPOT)+'</span>'+(fullUrl?'<a class="rt2-route-go" href="'+fullUrl+'" target="_blank" rel="noopener">\uD83D\uDDFA\uFE0F Open full route</a>':'')+'</div>';
 if(stops.length>9)h+='<div class="rt2-warn">\u26A0\uFE0F Full-route link shows the first 9 stops (Google Maps limit); all stops are listed below.</div>';
+h+='<div id="rtMap" style="height:260px;border-radius:14px;border:1px solid var(--border-soft);margin-bottom:14px;overflow:hidden;background:#EFE7DA;display:none"></div>';
 h+='<div class="rt2-stops">';
 stops.forEach(function(r,i){
 var s=st(r);
@@ -4263,11 +4427,54 @@ h+='</div>';
 }
 h+='</div>';
 host.innerHTML=h;
+try{_routeMapInit(stops,res.key)}catch(e){console.warn('[MAP]',e)}
 }
 // ===================== DASHBOARD (Phase 2, 2026-06-14) =====================
 // A home overview with operational KPIs, native SVG charts and per-tech performance.
 // NO financial figures anywhere by design — operations only.
 function _dashDayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// === WEATHER (Open-Meteo, free, no API key) ===
+// One forecast fetch per session for the St. Louis metro (all deliveries are local). Cached in
+// _WX by date key; calendar cells, the route header and the digest read it synchronously.
+let _WX=null,_WXP=null;
+function _wxInit(){
+if(_WXP)return _WXP;
+_WXP=fetch('https://api.open-meteo.com/v1/forecast?latitude=38.63&longitude=-90.20&daily=weathercode,precipitation_probability_max,temperature_2m_max&forecast_days=16&timezone=America%2FChicago')
+.then(function(r){return r.json()})
+.then(function(j){
+var d=j&&j.daily;if(!d||!d.time)return;
+_WX={};d.time.forEach(function(k,i){_WX[k]={c:d.weathercode[i],p:d.precipitation_probability_max[i],t:d.temperature_2m_max[i]}});
+console.log('[WX] forecast cached for',d.time.length,'days');
+try{if(typeof tab!=='undefined'){if(tab==='cal'&&typeof renderCalendar==='function')renderCalendar();if(tab==='route'&&typeof renderRoutePlan==='function')renderRoutePlan()}}catch(e){}
+}).catch(function(e){console.warn('[WX] forecast failed',e)});
+return _WXP}
+function _wxEmoji(c){
+if(c===0)return '\u2600\ufe0f';if(c<=2)return '\u{1F324}\ufe0f';if(c===3)return '\u2601\ufe0f';
+if(c===45||c===48)return '\u{1F32B}\ufe0f';if(c>=51&&c<=57)return '\u{1F326}\ufe0f';
+if((c>=61&&c<=67)||(c>=80&&c<=82))return '\u{1F327}\ufe0f';if((c>=71&&c<=77)||c===85||c===86)return '\u{1F328}\ufe0f';
+if(c>=95)return '\u26C8\ufe0f';return ''}
+function _wxFor(key){
+if(!_WX||!_WX[key])return '';
+var w=_WX[key];var e=_wxEmoji(w.c);if(!e)return '';
+return e+(w.p>=40?' '+w.p+'%':'')}
+
+// === DUPLICATE WARNING on manual create ===
+// The "ghost Yde" pattern: a manually-created ticket duplicating an auto-created calendar stub
+// (or vice versa). Warns right after saving a NEW ticket when another live record shares the
+// same SN or the same family name. Non-blocking \u2014 just makes the twin visible immediately.
+function _dupWarn(rec){
+if(!rec)return;
+var sn=String(rec.sn||'').trim();
+var fam=String(rec.n||'').trim().split(/\s+/).pop().toLowerCase();
+if(fam.length<3)fam='';
+var hit=AD().find(function(x){
+if(!x||sameId(x.i,rec.i))return false;
+if(sn&&String(x.sn||'').trim()===sn)return true;
+if(fam){var f2=String(x.n||'').trim().split(/\s+/).pop().toLowerCase();if(f2===fam)return true}
+return false});
+if(hit){showToast('\u26a0\ufe0f Possible duplicate: \u201c'+(dispName(hit)||'?')+'\u201d'+(hit.sn?' (SN '+hit.sn+')':'')+' already exists \u2014 check before continuing','warn');
+console.warn('[DUP-WARN] New ticket',rec.i,'may duplicate',hit.i,dispName(hit))}}
+
 // === DAILY DIGEST ===
 // One glance at the day: today's deliveries, balances to collect, tomorrow's incomplete
 // pre-checks, needs-action and holds. Opens automatically once per day for admins/organizers
@@ -4302,6 +4509,9 @@ var c=DIGEST_CFG||{};
 var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
 '<h2 style="font-size:18px;font-weight:800">\u{1F4EC} Daily Digest \u2014 '+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</h2>'+
 '<button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+try{var _tk=_dgDateKey();var _tm=new Date();_tm.setDate(_tm.getDate()+1);var _tk2=_tm.getFullYear()+'-'+String(_tm.getMonth()+1).padStart(2,'0')+'-'+String(_tm.getDate()).padStart(2,'0');
+var _w1=_wxFor(_tk),_w2=_wxFor(_tk2);
+if(_w1||_w2)h+='<div style="font-size:12.5px;color:var(--text-secondary);font-weight:700;margin:-4px 0 10px">'+(_w1?'Today '+_w1:'')+(_w1&&_w2?' \u00b7 ':'')+(_w2?'Tomorrow '+_w2:'')+'</div>';}catch(e){}
 function box(title,inner){return '<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:10px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:6px">'+title+'</div>'+inner+'</div>'}
 h+=box('\u{1F69A} Today \u00b7 '+d.todays.length+' deliver'+(d.todays.length===1?'y':'ies'),
 d.todays.length?d.todays.map(function(r){return _dgLine(r,(+r.bl||0)>0?'<span style="color:#BE4A2F">'+fmt(r.bl)+'</span>':'<span style="color:#2F7D52">\u2713 paid</span>')}).join(''):'<div style="font-size:13px;color:var(--text-secondary)">No deliveries scheduled today.</div>');
@@ -4317,16 +4527,19 @@ h+='<details style="background:var(--surf-soft);border:1px solid var(--border-so
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px">'+
 '<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_on" '+(c.emailOn?'checked':'')+'> Send automatically every morning</label>'+
 '<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_show" '+(c.autoShow===false?'':'checked')+'> Show this digest once per day when I open the app</label>'+
+'<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_fu30" '+(c.fu30===false?'':'checked')+'> Auto-create the 30-day follow-up in TECH-TICKETS when a delivery is marked delivered</label>'+
 '<div style="grid-column:1/-1"><label style="font-weight:700">Recipients (comma-separated)</label><input id="dg_to" value="'+escHtml(c.to||'')+'" placeholder="service1@aspenspas.com, nela@..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<div><label style="font-weight:700">Send at</label><input id="dg_hour" value="'+escHtml(c.hour||'06:30')+'" placeholder="06:30" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<div><label style="font-weight:700">Service ID</label><input id="dg_svc" value="'+escHtml(c.svc||'')+'" placeholder="service_xxx" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<div><label style="font-weight:700">Template ID</label><input id="dg_tpl" value="'+escHtml(c.tpl||'')+'" placeholder="template_xxx" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<div><label style="font-weight:700">Public Key</label><input id="dg_pub" value="'+escHtml(c.pub||'')+'" placeholder="AbCdEf..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
+'<div style="grid-column:1/-1"><label style="font-weight:700">Google review link (shown to 4-5\u2605 customers)</label><input id="dg_rvurl" value="'+escHtml(c.reviewUrl||'')+'" placeholder="https://g.page/r/..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<button onclick="saveDigestConfig()" style="grid-column:1/-1;background:#2F7D52;color:#fff;border:none;padding:9px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">Save settings</button>'+
 '</div></details>';
 h+='<div style="display:flex;gap:8px">'+
 '<button onclick="digestSendTest()" style="flex:1;background:var(--aspen-orange);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u2709\ufe0f Send test email</button>'+
-'<button onclick="digestMailto()" style="flex:1;background:var(--surface);border:1.5px solid var(--border-soft);padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u{1F4CB} Open in Mail</button></div>';
+'<button onclick="digestMailto()" style="flex:1;background:var(--surface);border:1.5px solid var(--border-soft);padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u{1F4CB} Open in Mail</button>'+
+'<button onclick="openWeekly()" style="flex:1;background:#134A63;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u{1F4CA} Weekly</button></div>';
 return h}
 function openDigest(){
 loadDigestConfig(function(){
@@ -4335,8 +4548,8 @@ md.innerHTML='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">'+d
 ov.classList.remove('hidden');document.body.classList.add('modal-open')})}
 function saveDigestConfig(){
 var g=function(id){var e=document.getElementById(id);return e?e.value.trim():''};
-var on=document.getElementById('dg_on'),sh=document.getElementById('dg_show');
-DIGEST_CFG={emailOn:!!(on&&on.checked),autoShow:!(sh&&!sh.checked),to:g('dg_to'),hour:g('dg_hour')||'06:30',svc:g('dg_svc'),tpl:g('dg_tpl'),pub:g('dg_pub')};
+var on=document.getElementById('dg_on'),sh=document.getElementById('dg_show'),fu=document.getElementById('dg_fu30');
+DIGEST_CFG={emailOn:!!(on&&on.checked),autoShow:!(sh&&!sh.checked),to:g('dg_to'),hour:g('dg_hour')||'06:30',svc:g('dg_svc'),tpl:g('dg_tpl'),pub:g('dg_pub'),reviewUrl:g('dg_rvurl'),fu30:!(fu&&!fu.checked)};
 db.ref('digest_config').set(DIGEST_CFG).then(function(){showToast('\u2713 Digest settings saved (shared across devices)')}).catch(function(e){showToast('\u26a0 Could not save: '+(e&&e.message||e),'warn')})}
 function digestText(d){
 var L=[];L.push('ASPEN DAILY DIGEST \u2014 '+new Date().toLocaleDateString());L.push('');
@@ -4391,8 +4604,259 @@ loadDigestConfig(function(){
 var key='aspen_digest_seen_'+_dgDateKey();
 if((DIGEST_CFG.autoShow!==false)&&!localStorage.getItem(key)){setTimeout(function(){try{openDigest();localStorage.setItem(key,'1')}catch(e){}},3500)}
 setTimeout(_digestEmailTick,10000);
-if(!window._aspenDigestTimer){window._aspenDigestTimer=true;setInterval(_digestEmailTick,15*60*1000)}
+if(!window._aspenDigestTimer){window._aspenDigestTimer=true;setInterval(_digestEmailTick,15*60*1000);setTimeout(_weeklyTick,20000);setInterval(_weeklyTick,30*60*1000)}
 })}catch(e){}}
+// === ROUTE MAP (Leaflet + OpenStreetMap, free) ===
+// Lazy-loads Leaflet only when the Route tab renders. Addresses geocode ONCE ever via
+// Nominatim (1 req/sec fair-use, serial queue) and the result is cached on the record
+// (r._geo) so future loads draw instantly. If anything fails, the map hides and the
+// list works exactly as before.
+const DEPOT_GEO={lat:38.6273,lng:-90.2531}; // 4609 McRee Ave, St. Louis
+let _leafletP=null,_rtMap=null;
+function _ensureLeaflet(){
+if(window.L)return Promise.resolve();
+if(_leafletP)return _leafletP;
+_leafletP=new Promise(function(res,rej){
+var css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(css);
+var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+sc.onload=function(){res()};sc.onerror=function(){rej(new Error('leaflet load failed'))};document.head.appendChild(sc)});
+return _leafletP}
+async function _geocode(addr){
+var q=String(addr||'').replace(/\n/g,', ').trim();if(!q)return null;
+try{
+var res=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q='+encodeURIComponent(q));
+var j=await res.json();
+if(j&&j[0])return{lat:+j[0].lat,lng:+j[0].lon}
+}catch(e){console.warn('[GEO]',e)}
+return null}
+let _geoRunning=false;
+async function _geocodeStops(stops){
+if(_geoRunning)return false;_geoRunning=true;var got=false;
+try{
+for(var i=0;i<stops.length;i++){
+var r=stops[i];
+if(!r.st)continue;
+if(r._geo&&r._geo.a===r.st&&(typeof r._geo.lat==='number'||r._geo.fail))continue;
+var g=await _geocode(r.st);
+await new Promise(function(res){setTimeout(res,1100)});
+if(g){var geo={lat:g.lat,lng:g.lng,a:r.st};r._geo=geo;got=true;
+try{saveTicketFields(r.i,{_geo:geo})}catch(e){}
+console.log('[GEO] cached',dispName(r))}
+else{r._geo={fail:1,a:r.st}}
+}}finally{_geoRunning=false}
+return got}
+async function _routeMapInit(stops,dateKey){
+var el=document.getElementById('rtMap');if(!el||!stops||!stops.length)return;
+try{await _ensureLeaflet()}catch(e){console.warn('[MAP]',e);return}
+var el2=document.getElementById('rtMap');if(!el2)return; // tab may have changed while loading
+el2.style.display='block';el2.dataset.k=dateKey;
+if(_rtMap){try{_rtMap.remove()}catch(e){}_rtMap=null}
+_rtMap=L.map('rtMap',{scrollWheelZoom:false});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(_rtMap);
+var pts=[[DEPOT_GEO.lat,DEPOT_GEO.lng]];
+L.marker([DEPOT_GEO.lat,DEPOT_GEO.lng],{icon:L.divIcon({className:'',html:'<div style="background:#2C221C;color:#fff;font-weight:800;font-size:11px;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">Aspen</div>',iconAnchor:[22,10]})}).addTo(_rtMap);
+stops.forEach(function(r,i){
+if(!r._geo||r._geo.fail||typeof r._geo.lat!=='number')return;
+pts.push([r._geo.lat,r._geo.lng]);
+L.marker([r._geo.lat,r._geo.lng],{icon:L.divIcon({className:'',html:'<div style="background:#E54B25;color:#fff;font-weight:800;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.35)">'+(i+1)+'</div>',iconAnchor:[12,12]})}).addTo(_rtMap).on('click',function(){openDet(r.i)})});
+if(pts.length>2)L.polyline(pts,{color:'#E54B25',weight:3,opacity:.6,dashArray:'6 6'}).addTo(_rtMap);
+try{_rtMap.fitBounds(pts,{padding:[30,30]})}catch(e){_rtMap.setView([DEPOT_GEO.lat,DEPOT_GEO.lng],10)}
+// Geocode any new addresses in the background, then redraw once (if still on the same day)
+var missing=stops.some(function(r){return r.st&&!(r._geo&&r._geo.a===r.st)});
+if(missing){_geocodeStops(stops).then(function(got){
+var e3=document.getElementById('rtMap');
+if(got&&e3&&e3.dataset.k===dateKey)_routeMapInit(stops,dateKey)})}
+}
+
+// === COMPARE & MERGE duplicate tickets ===
+// Fills the keeper's empty fields from the duplicate, unions photos, ORs checklists, concats
+// notes, merges activity, re-points the calendar map if needed, then deletes the duplicate
+// through the normal deleteDelivery path (tombstone ledger + gcal-map transactions included).
+function _dupOf(r){
+if(!r)return null;
+var sn=String(r.sn||'').trim();
+var fam=String(r.n||'').trim().split(/\s+/).pop().toLowerCase();if(fam.length<3)fam='';
+return AD().find(function(x){
+if(!x||sameId(x.i,r.i))return false;
+if(sn&&String(x.sn||'').trim()===sn)return true;
+if(fam){var f2=String(x.n||'').trim().split(/\s+/).pop().toLowerCase();if(f2===fam)return true}
+return false})||null}
+function openMergeModal(aId,bId){
+var A=AD().find(function(x){return sameId(x.i,aId)}),B=AD().find(function(x){return sameId(x.i,bId)});
+if(!A||!B){showToast('Ticket not found','err');return}
+var sA=(typeof _dedupScore==='function')?_dedupScore(A):0,sB=(typeof _dedupScore==='function')?_dedupScore(B):0;
+var keep=sA>=sB?A:B,drop=sA>=sB?B:A;
+function cell(v){v=(v==null||v==='')?'\u2014':String(v);return escHtml(v.length>34?v.slice(0,34)+'\u2026':v)}
+function row(l,ka,kb){return '<tr><td style="padding:5px 8px;font-size:11px;color:var(--text-secondary);font-weight:700">'+l+'</td><td style="padding:5px 8px;font-size:12.5px">'+ka+'</td><td style="padding:5px 8px;font-size:12.5px">'+kb+'</td></tr>'}
+var fields=[['Name','n'],['SN','sn'],['Spa','sp'],['Date','dd'],['Phones','ph'],['Email','em'],['Address','st'],['Sales','sl'],['Payment','pay'],['Balance','bl']];
+var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">\u{1F9F2} Compare & Merge</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<table style="width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;overflow:hidden">';
+h+='<tr><td></td><td style="padding:8px;font-weight:800;font-size:13px;background:#e7f8f0">\u2705 KEEP: '+escHtml(dispName(keep))+'</td><td style="padding:8px;font-weight:800;font-size:13px;background:#fef2f2">\u{1F5D1} MERGE & DELETE: '+escHtml(dispName(drop))+'</td></tr>';
+fields.forEach(function(f){h+=row(f[0],cell(keep[f[1]]),cell(drop[f[1]]))});
+h+=row('Photos',String((keep.photos||[]).length)+' info \u00b7 '+String((keep.tech_photos||[]).length)+' tech',String((drop.photos||[]).length)+' info \u00b7 '+String((drop.tech_photos||[]).length)+' tech');
+h+=row('Status',(keep.dl?'Delivered ':'')+(keep.co?'Complete':'')||'\u2014',(drop.dl?'Delivered ':'')+(drop.co?'Complete':'')||'\u2014');
+h+='</table>';
+h+='<div style="font-size:11.5px;color:var(--text-secondary);margin:10px 0">Keeper chosen automatically (richer record). Empty keeper fields are filled from the duplicate; photos, checklists, notes and activity are combined. The duplicate is then deleted (a second confirmation will appear).</div>';
+h+='<div style="display:flex;gap:8px">';
+h+='<button onclick="doMergeTickets(\''+keep.i+'\',\''+drop.i+'\')" style="flex:1;background:#7c3aed;color:#fff;border:none;padding:11px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u{1F9F2} Merge into \u201c'+escHtml(dispName(keep))+'\u201d</button>';
+h+='<button onclick="closeOv()" style="flex:0 0 auto;background:var(--surface);border:1.5px solid var(--border-soft);padding:11px 16px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">Cancel</button></div></div>';
+var ov=document.getElementById('ov'),md=document.getElementById('md');
+md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open')}
+function doMergeTickets(keepId,dropId){
+var K=AD().find(function(x){return sameId(x.i,keepId)}),D=AD().find(function(x){return sameId(x.i,dropId)});
+if(!K||!D){showToast('Ticket not found','err');return}
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){showToast('Only admin/organizer can merge','err');return}
+if(!confirm('Merge \u201c'+dispName(D)+'\u201d into \u201c'+dispName(K)+'\u201d?\n\nThis fills missing data on the keeper, combines photos/notes/checklists, then deletes the duplicate.'))return;
+var u={};
+['n','sn','sp','srs','dd','ph','em','st','sl','pay','pst','assigned_to','crane','extra_person','water_truck'].forEach(function(f){
+var kv=K[f],dv=D[f];
+var empty=kv==null||kv===''||kv===0||kv===false;
+if(empty&&dv!=null&&dv!==''&&dv!==false&&dv!==0)u[f]=dv});
+PRE.concat(POST).forEach(function(pp){if(!K[pp.k]&&D[pp.k])u[pp.k]=true});
+['photos','tech_photos'].forEach(function(f){
+var a=Array.isArray(K[f])?K[f]:[],b=Array.isArray(D[f])?D[f]:[];
+if(b.length){var seen={};a.forEach(function(x){seen[typeof x==='string'?x.slice(0,120):'']=1});
+var add=b.filter(function(x){return !seen[typeof x==='string'?x.slice(0,120):'']});
+if(add.length)u[f]=a.concat(add)}});
+['fn','dn','dnotes','en','cn'].forEach(function(f){
+var kv=String(K[f]||''),dv=String(D[f]||'');
+if(dv&&kv.indexOf(dv)===-1)u[f]=(kv?kv+'\n':'')+dv});
+try{var act=(Array.isArray(K.activity)?K.activity:[]).concat(Array.isArray(D.activity)?D.activity:[]);
+act.sort(function(x,y){return (x.ts||0)-(y.ts||0)});if(act.length>60)act=act.slice(act.length-60);u.activity=act}catch(e){}
+if(D.dl&&!K.dl)u.dl=true;if(D.co&&!K.co)u.co=true;
+// Calendar link: if the keeper has no event and the duplicate does, adopt it and RE-POINT the
+// server map at the keeper BEFORE deleting the duplicate (deleteDelivery's conditional remove
+// then leaves the remapped entry alone \u2014 no orphaned event, no future stub).
+if(!K.gcalId&&D.gcalId){u.gcalId=D.gcalId;
+try{var _eid=String(D.gcalId);db.ref('gcal_map/'+_eid).set(String(keepId));if(typeof gcalMap!=='undefined')gcalMap[_eid]=keepId}catch(e){}}
+saveTicketFields(keepId,u);
+pushActivity(keepId,'Merged duplicate ticket \u201c'+(dispName(D)||dropId)+'\u201d into this one');
+closeOv();
+setTimeout(function(){
+try{deleteDelivery(dropId)}catch(e){alert('Merged \u2713, but could not auto-delete the duplicate \u2014 please delete it manually.')}
+setTimeout(function(){showToast('\u{1F9F2} Merge complete');try{openDet(keepId)}catch(e){}},900);
+},700)}
+
+// === AUTO 30-DAY FOLLOW-UP \u2192 TECH-TICKETS SERVICE LOG ===
+// When a delivery is marked delivered, an admin session auto-creates the 30-day courtesy
+// follow-up (courtesy call + first service check) in the TECH-TICKETS Service Log, using the
+// exact same Firestore pipeline and payload shape as the manual "Send to Service Log" button
+// (source:'dispatch'). One per ticket (fu30 flag), no historical backfill (deliveries older
+// than 45 days are skipped), max 3 creations per sweep, and it never touches the manual
+// service-request thread (svc_id) \u2014 the follow-up gets its own fu30_id.
+function _fu30Payload(rec,dateStr){
+var st=rec.st||'';var zip='';var zm=st.match(/\b(\d{5})\b/);if(zm)zip=zm[1];
+var city='';var address=st;
+var parts=st.split(',').map(function(x){return x.trim()}).filter(Boolean);
+if(parts.length>=2){address=parts[0];
+if(parts.length>=3)city=parts[parts.length-2];
+else city=parts[1].replace(/[A-Z]{2}\s*\d{5}.*/,'').trim()}
+var spaParts=[];if(rec.sp)spaParts.push(rec.sp);if(rec.sn)spaParts.push('S/N: '+rec.sn);if(rec.yr)spaParts.push('Year: '+rec.yr);
+var notes=['\u{1F69A} From Delivery Tracker \u2014 AUTO 30-DAY FOLLOW-UP','',
+'\u{1F4DE} Courtesy call + first service check \u2014 spa delivered '+(rec.dd||'recently')+'.',
+'\u2022 Verify water chemistry & filter condition','\u2022 Check jets, heater and cover fit','\u2022 Answer any customer questions',
+'','\u2014 Spa \u2014',spaParts.join(' \u00b7 ')||'(no spa info)'].join('\n');
+return{
+customer:rec.n||'',date:dateStr||'',techs:[],workTypes:['Service Call'],
+warranty:{has:false,model:rec.sp||'',year:rec.yr||0,type:'',label:''},
+visitNum:5,noLabor:false,arrival:'09:00',departure:'',parts:[],total:0,partsCost:0,totalRda:0,
+spaDesc:spaParts.join(' \u00b7 '),notes:notes,phone:rec.ph||'',phone2:'',
+address:address||'',city:city||'',zip:zip||'',zone:(typeof inferZone==='function'?inferZone(rec):'')||'',
+ccOnFile:false,ccRequested:false,paid:false,paidAt:null,isRepeat:false,payCheck:false,payCredit:false,
+media:[],videoLinks:null,source:'dispatch',delivery_id:rec.i,followup30:true,status:'pending',
+createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()}}
+async function _fu30Sweep(){try{
+if(!currentUser||currentUser.role==='tech')return;
+if(typeof DIGEST_CFG!=='undefined'&&DIGEST_CFG&&DIGEST_CFG.fu30===false)return;
+if(!svcTickets||!navigator.onLine)return;
+var now=Date.now(),day=24*3600*1000;
+var todo=AD().filter(function(r){
+if(!r.dl||r.fu30||r.hold)return false;
+var t=_actTs(r,'Marked Delivered');
+return t&&(now-t)<45*day});
+if(!todo.length)return;
+todo=todo.slice(0,3);
+try{await ensureSvcAuth()}catch(e){console.warn('[FU30] svc auth failed',e);return}
+for(var i=0;i<todo.length;i++){
+var r=todo[i];
+var t=_actTs(r,'Marked Delivered');
+var target=new Date(Math.max(t+30*day,now+day));
+var dateStr=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(target.getDate()).padStart(2,'0');
+try{
+var docRef=await svcTickets.add(_fu30Payload(r,dateStr));
+saveTicketFields(r.i,{fu30:now,fu30_id:docRef.id});
+pushActivity(r.i,'30-day follow-up auto-created in Service Log ('+dateStr+')');
+console.log('[FU30] \u2713 follow-up created for',dispName(r),'\u2192',dateStr,'doc',docRef.id);
+showToast('\u{1F4DE} 30-day follow-up scheduled: '+dispName(r)+' \u2192 '+dateStr);
+}catch(e){console.warn('[FU30] create failed for',r.i,e);break}
+}}catch(e){console.warn('[FU30]',e)}}
+
+// === WEEKLY REPORT (Mondays) ===
+// Owner-level rollup built from ticket activity: deliveries completed in the last 7 days (from
+// their "Marked Delivered" activity stamps), revenue delivered, per-tech counts, top models,
+// outstanding balance and the coming week's load. Auto-emails Monday mornings via the same
+// EmailJS config as the Daily Digest (weekly_sent/{week} flag = one sender per week).
+function _actTs(r,label){var a=r.activity;if(!Array.isArray(a))return 0;for(var i=a.length-1;i>=0;i--){var e=a[i];if(e&&e.action&&String(e.action).indexOf(label)===0&&e.ts)return e.ts}return 0}
+function buildWeeklyData(){
+var now=Date.now(),wk=7*24*3600*1000;
+var all=AD().filter(function(r){return r.n||r.cal});
+var delivered=all.filter(function(r){var t=_actTs(r,'Marked Delivered');return t&&(now-t)<wk});
+var revenue=delivered.reduce(function(sm,r){return sm+(+r.sl||0)},0);
+var byTech={};delivered.forEach(function(r){var nm=(r.assigned_to&&USERS[r.assigned_to]&&USERS[r.assigned_to].name)||r.assigned_to||'\u2014';byTech[nm]=(byTech[nm]||0)+1});
+var models={};delivered.forEach(function(r){if(r.sp)models[r.sp]=(models[r.sp]||0)+1});
+var owing=all.filter(function(r){return !r.hold&&!r.co&&(+r.bl||0)>0});
+var oweTotal=owing.reduce(function(sm,r){return sm+(+r.bl||0)},0);
+var upcoming=all.filter(function(r){var d=parseDate(r.dd);if(!d||isNaN(d))return false;var t=d.getTime();return t>=now-12*3600*1000&&t<now+wk&&!r.co&&!r.hold&&!r.dl});
+return{delivered:delivered,revenue:revenue,byTech:byTech,models:models,owing:owing,oweTotal:oweTotal,upcoming:upcoming}}
+function weeklyRowsHtml(d,forEmail){
+function li(l,v){return forEmail?('<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;font-family:Arial;font-size:13px">'+l+'</td><td style="padding:6px 10px;border-bottom:1px solid #eee;font-family:Arial;font-size:13px;font-weight:bold;text-align:right">'+v+'</td></tr>'):('<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border-soft);font-size:13.5px"><span>'+l+'</span><b>'+v+'</b></div>')}
+var h='';
+h+=li('\u{1F69A} Delivered (last 7 days)',String(d.delivered.length));
+h+=li('\u{1F4B5} Revenue delivered',fmt(d.revenue));
+h+=li('\u{1F4B0} Outstanding balance','<span style="color:#BE4A2F">'+fmt(d.oweTotal)+'</span> ('+d.owing.length+')');
+var tk=Object.keys(d.byTech).sort(function(a,b){return d.byTech[b]-d.byTech[a]});
+if(tk.length)h+=li('\u{1F477} By tech',tk.map(function(k){return k+' '+d.byTech[k]}).join(' \u00b7 '));
+var mk=Object.keys(d.models).sort(function(a,b){return d.models[b]-d.models[a]}).slice(0,4);
+if(mk.length)h+=li('\u{1F6C1} Models',mk.map(function(k){return k+' \u00d7'+d.models[k]}).join(' \u00b7 '));
+h+=li('\u{1F4C5} Next 7 days',String(d.upcoming.length)+' scheduled');
+return h}
+function openWeekly(){
+var d=buildWeeklyData();
+var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
+var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">\u{1F4CA} Weekly Report</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:12px">'+weeklyRowsHtml(d,false)+'</div>';
+h+='<div style="display:flex;gap:8px">';
+h+='<button onclick="weeklySendNow()" style="flex:1;background:#134A63;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u2709\ufe0f Email it now</button>';
+h+='<button onclick="weeklyMailto()" style="flex:1;background:var(--surface);border:1.5px solid var(--border-soft);padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u{1F4CB} Open in Mail</button></div></div>';
+md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open')}
+function _weeklyEmailHtml(){var d=buildWeeklyData();return '<div style="font-family:Arial,sans-serif;max-width:560px"><h2 style="color:#2C221C">\u{1F342} Aspen \u2014 Weekly Report \u00b7 '+new Date().toLocaleDateString()+'</h2><table style="width:100%;border-collapse:collapse">'+weeklyRowsHtml(d,true)+'</table><p style="font-family:Arial;font-size:11px;color:#888">Sent automatically by Aspen Delivery Tracker every Monday.</p></div>'}
+async function weeklySendNow(){
+loadDigestConfig(async function(){
+try{var c=DIGEST_CFG||{};if(!c.svc||!c.tpl||!c.pub||!(c.to||'').trim())throw new Error('Configure EmailJS in the Daily Digest settings first');
+await ensureEmailJs();try{emailjs.init({publicKey:c.pub})}catch(e){}
+await emailjs.send(c.svc,c.tpl,{to_email:c.to,subject:'\u{1F4CA} Aspen Weekly Report \u2014 '+new Date().toLocaleDateString(),message:_weeklyEmailHtml()});
+showToast('\u2713 Weekly report sent!')}catch(e){showToast('\u26a0 '+((e&&e.message)||e),'warn')}})}
+function weeklyMailto(){
+var d=buildWeeklyData();var c=DIGEST_CFG||{};
+var L=['ASPEN WEEKLY REPORT \u2014 '+new Date().toLocaleDateString(),'',
+'Delivered (7d): '+d.delivered.length,'Revenue delivered: '+fmt(d.revenue),
+'Outstanding: '+fmt(d.oweTotal)+' ('+d.owing.length+' tickets)','Next 7 days: '+d.upcoming.length+' scheduled'];
+location.href='mailto:'+encodeURIComponent(c.to||'')+'?subject='+encodeURIComponent('Aspen Weekly Report')+'&body='+encodeURIComponent(L.join('\n'))}
+async function _weeklyTick(){try{
+var c=DIGEST_CFG;if(!c||!c.emailOn||!c.svc||!c.tpl||!c.pub||!(c.to||'').trim())return;
+var now=new Date();if(now.getDay()!==1)return;
+if(now.getHours()<7)return;
+var oj=new Date(now.getFullYear(),0,1);var wn=Math.ceil((((now-oj)/86400000)+oj.getDay()+1)/7);
+var wkKey=now.getFullYear()+'-W'+wn;
+var ref=db.ref('weekly_sent/'+wkKey);
+var sn=await ref.once('value');if(sn.val())return;
+await ref.set({at:Date.now(),by:(currentUser&&currentUser.name)||'?'});
+await ensureEmailJs();try{emailjs.init({publicKey:c.pub})}catch(e){}
+await emailjs.send(c.svc,c.tpl,{to_email:c.to,subject:'\u{1F4CA} Aspen Weekly Report \u2014 '+now.toLocaleDateString(),message:_weeklyEmailHtml()});
+console.log('[WEEKLY] report sent for',wkKey);showToast('\u{1F4CA} Weekly report emailed');
+}catch(e){console.warn('[WEEKLY] tick:',e)}}
 function renderDashboard(){
 var host=document.getElementById('dashWrap');if(!host)return;
 var all=AD().filter(function(r){return r.n||r.cal});
@@ -5290,6 +5754,7 @@ let _rsn=String(r.sn).replace(/\.0$/,'');
 if(_rsn!==_p.serial){
 xlinkWarn='<div style="margin-top:8px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:10px;font-size:13px;color:#991b1b"><div style="font-weight:700;margin-bottom:4px">\u26a0 Cross-link detected</div><div>This ticket has SN <b>'+escHtml(_rsn)+'</b> but is linked to a calendar event titled "<b>'+escHtml(r.cal)+'</b>" (SN <b>'+escHtml(_p.serial)+'</b>). Every sync overwrites this ticket\'s title and date with the wrong event\'s data. Click below to break the wrong link and let SN-match find the correct event.</div><button type="button" class="mbtn mbtn-s" style="margin-top:8px;background:#dc2626;color:#fff;border-color:#dc2626" onclick="repairThisTicketCrosslink('+r.i+')">&#128295; Fix cross-link now</button></div>';
 }}}
+try{var _dp=_dupOf(r);if(_dp){h+='<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:13px;font-weight:700;color:#9A3412">\u26a0\ufe0f Possible duplicate of \u201c'+escHtml(dispName(_dp))+'\u201d'+(_dp.sn?' (SN '+escHtml(String(_dp.sn))+')':'')+'</div><button type="button" class="mbtn mbtn-s" style="background:#7c3aed;color:#fff;border:none" onclick="openMergeModal(\''+r.i+'\',\''+_dp.i+'\')">\u{1F9F2} Compare & Merge</button></div>'}}catch(e){}
 h+='<div class="ig"><div class="ib" style="flex:1"><label>&#128197; CALENDAR EVENT <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(from Google Calendar — this is the master title, fill the fields below yourself)</span></label><input id="e_cal" value="'+String(r.cal||'').replace(/"/g,'&quot;')+'" readonly style="background:#f8fafc;color:var(--ink-slate);font-weight:600"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button type="button" class="mbtn mbtn-s" onclick="openRelinkPicker('+r.i+')" title="If this shows the wrong event, pick the correct one">&#128279; Fix / change linked event</button><button type="button" class="mbtn" onclick="unlinkTicketFromCalendar('+r.i+')" title="Detach this ticket from the calendar event">&#10005; Unlink</button></div>'+xlinkWarn+'</div></div>';
 }
 h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class="ig">';
@@ -6710,6 +7175,7 @@ function saveNew(){
 let n=document.getElementById("e_n").value.trim();if(!n){alert("Enter the customer name.");return}
 let u=gatherEdits();Object.assign(curRec,u);
 ADDED.push(curRec);
+try{_dupWarn(curRec)}catch(e){}
 // Remember the new ticket for 30s so the recent-edit overlay protects it from any stale
 // snapshot that might arrive between push and Firebase confirmation.
 rememberAddedEdit(curRec);
@@ -7738,6 +8204,7 @@ return false}
 // =====================================================================================
 function saveTicketFields(id,fields){
 if(!fields||!Object.keys(fields).length)return false;
+try{_pqCapture(id,fields)}catch(e){}
 if(isTicketDeleted(id))return false; // never resurrect a deleted ticket via field writes
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){
@@ -9607,7 +10074,11 @@ for(let d=1;d<=totalDays;d++){
 let k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 let isToday=k===todayK;
 h+='<div class="cal-cell'+(isToday?' today':'')+'" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
-h+='<div class="cal-dn">'+d+'</div>';
+let _wxc=(typeof _wxFor==='function')?_wxFor(k):'';
+let _den=(evs[k]||[]).length;
+let _crn=(evs[k]||[]).some(function(e){return e.r&&e.r.crane});
+let _heavy=_den>=4||(_den>=3&&_crn);
+h+='<div class="cal-dn">'+d+(_wxc?' <span style="font-size:10px;font-weight:600" title="Forecast">'+_wxc+'</span>':'')+(_heavy?' <span style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:9px;padding:1px 6px;border-radius:8px" title="Heavy day: '+_den+' deliveries'+(_crn?' + crane':'')+'">'+_den+(_crn?'+\u{1F3D7}\uFE0F':'')+'!</span>':'')+'</div>';
 let dayEvs=evs[k]||[];
 let show=dayEvs.slice(0,3);
 show.forEach(e=>{
@@ -9789,13 +10260,13 @@ function _buildPinfo(r){
 return {dd:r.dd||'',slot:_slotOf(r),spa:r.sp||'',
 tech:(r.assigned_to&&USERS[r.assigned_to]&&USERS[r.assigned_to].name)||'',
 bl:(+r.bl||0),pst:r.pst||'',crane:!!r.crane,extra:!!r.extra_person,water:!!r.water_truck,
-dl:!!r.dl,co:!!r.co,updated:Date.now()}}
+dl:!!r.dl,co:!!r.co,onway:(+r.onway||0),rvUrl:(typeof DIGEST_CFG!=='undefined'&&DIGEST_CFG&&DIGEST_CFG.reviewUrl)||'',updated:Date.now()}}
 function syncPortalInfo(id){try{
 var it=INTAKE&&INTAKE[id];if(!it||!it.token)return;
 if(it.expires&&Date.now()>it.expires)return;
 var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
 var p=_buildPinfo(r);
-var old=it.pinfo||{};var same=['dd','slot','spa','tech','bl','pst','crane','extra','water','dl','co'].every(function(k){return old[k]===p[k]});
+var old=it.pinfo||{};var same=['dd','slot','spa','tech','bl','pst','crane','extra','water','dl','co','onway','rvUrl'].every(function(k){return old[k]===p[k]});
 if(same)return;
 it.pinfo=p;db.ref('intake/'+id+'/pinfo').set(p).catch(function(e){console.warn('[PORTAL] pinfo sync failed',e)});
 console.log('[PORTAL] pinfo refreshed for',id);
@@ -9877,7 +10348,7 @@ function refreshIntakeBox(id){let el=document.getElementById('intakeBox_'+id);if
 // ---- Reflect a customer submission back into the ticket (dashboard side only) ----
 function startIntakeListener(){
 if(_intakeListenerOn)return;_intakeListenerOn=true;
-db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};_intakeLoaded=true;reflectIntakeSubmissions();if(curRec)refreshIntakeBox(curRec.i);try{if(typeof _currentTechDetailId!=='undefined'&&_currentTechDetailId&&typeof techOpenDetail==='function'){var _d=document.getElementById('tech-detail');if(_d&&!_d.classList.contains('hidden'))techOpenDetail(_currentTechDetailId)}}catch(e){console.warn('[INTAKE] tech refresh',e)}},err=>console.warn('[INTAKE] listener err',err))}
+db.ref('intake').on('value',snap=>{INTAKE=snap.val()||{};_intakeLoaded=true;reflectIntakeSubmissions();try{reflectReviews()}catch(e){}if(curRec)refreshIntakeBox(curRec.i);try{if(typeof _currentTechDetailId!=='undefined'&&_currentTechDetailId&&typeof techOpenDetail==='function'){var _d=document.getElementById('tech-detail');if(_d&&!_d.classList.contains('hidden'))techOpenDetail(_currentTechDetailId)}}catch(e){console.warn('[INTAKE] tech refresh',e)}},err=>console.warn('[INTAKE] listener err',err))}
 
 // =====================================================================================
 // FIREBASE ARRAY ROBUSTNESS — RTDB sometimes round-trips arrays as objects with numeric
@@ -9892,6 +10363,18 @@ if(v&&typeof v==='object')return Object.values(v);
 return [];
 }
 
+// Pull fresh customer reviews onto the ticket (feedback field + activity). Admin/organizer only.
+function reflectReviews(){try{
+if(!currentUser||currentUser.role==='tech')return;
+Object.keys(INTAKE||{}).forEach(function(id){
+var it=INTAKE[id];if(!it||!it.review||it.review.reflected)return;
+var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
+var rv=it.review;var line='[REVIEW '+rv.stars+'\u2605] '+(rv.feedback||'(no comment)');
+if(String(r.fn||'').indexOf(line)===-1)saveTicketFields(id,{fn:((r.fn?r.fn+'\n':'')+line)});
+pushActivity(id,'Customer review: '+rv.stars+'\u2605'+(rv.feedback?' \u2014 with feedback':''));
+db.ref('intake/'+id+'/review/reflected').set(true);it.review.reflected=true;
+console.log('[REVIEW] reflected',rv.stars,'stars onto ticket',id)})
+}catch(e){console.warn('[REVIEW] reflect',e)}}
 function reflectIntakeSubmissions(){
 if(!fbReady)return; // removed !currentUser — reflection is automatic and doesn't need a logged-in admin
 let processed=0,skipped_unsubmitted=0,skipped_reflected=0,skipped_noTicket=0;
@@ -9984,7 +10467,7 @@ host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);
 db.ref('intake/'+id).once('value').then(snap=>{
 let it=snap.val();
 if(!it||!it.token||String(it.token)!==String(token)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return}
-if(it.submitted){document.title='Aspen Spas \u2014 Your Delivery';host.innerHTML=_portalShell(_portalSubmittedHtml(it));return}
+if(it.submitted){document.title='Aspen Spas \u2014 Your Delivery';_PORTAL={id:id,it:it};host.innerHTML=_portalShell(_portalSubmittedHtml(it));return}
 _PORTAL={id:id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelOk:false,wipOk:false,payment:'',notes:''};
 host.innerHTML=_portalShell(_portalFormHtml(it));
 }).catch(e=>{console.error('[INTAKE] load',e);host.innerHTML=_portalMsg('Something went wrong','Please reload the page or contact Aspen Spas.')})}
@@ -10002,7 +10485,11 @@ var dd=p.dd||it.date||'';var dateStr=dd;
 try{if(dd&&typeof fmtDate==='function')dateStr=fmtDate(dd)}catch(e){}
 if(p.co||p.dl){
 h+='<div style="background:#e7f8f0;border:1px solid #a7e3c6;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center"><div style="font-size:26px">\u2705</div><div style="font-weight:800;font-size:16px;color:#166534">Your spa was delivered!</div><div style="font-size:13px;color:#166534;margin-top:4px">Thank you for choosing Aspen Spas. Enjoy!</div></div>';
+try{h+=_portalReviewHtml(it)}catch(e){}
 return h}
+if(p.onway&&!p.dl&&(Date.now()-p.onway)<12*3600*1000){
+h+='<div style="background:#0f766e;color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;text-align:center"><div style="font-size:22px">\u{1F69A}</div><div style="font-weight:800;font-size:15px">Your Aspen Spas crew is on the way!</div></div>';
+}
 if(dateStr){
 h+=_card('\u{1F4C5} Your delivery',
 '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div><div style="font-weight:800;font-size:17px">'+_iesc(dateStr)+'</div>'+
@@ -10026,6 +10513,41 @@ h+=_card('\u{1F4B5} Balance at delivery','<div style="font-weight:800;font-size:
 h+=_card('\u{1F4B5} Balance','<div style="font-weight:800;font-size:15px;color:#166534">\u2713 Paid in full \u2014 nothing due at delivery.</div>');
 }}
 return h}
+// === POST-DELIVERY REVIEW (customer portal) ===
+// 4-5 stars \u2192 invite to the public Google review link; 1-3 stars \u2192 private feedback that
+// lands on the ticket (Customer feedback field + activity) via reflectReviews on the admin side.
+function _portalReviewHtml(it){
+var rv=it.review;
+if(rv&&rv.stars){
+return '<div style="background:var(--surface);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:20px">'+'\u2B50'.repeat(Math.max(1,Math.min(5,rv.stars)))+'</div><div style="font-weight:700;margin-top:4px">Thank you for your feedback!</div></div>'}
+var h='<div id="pRevCard" style="background:var(--surface);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)">';
+h+='<div style="font-weight:800;font-size:15px;margin-bottom:8px">How was your delivery?</div>';
+h+='<div style="display:flex;justify-content:center;gap:6px">';
+for(var i=1;i<=5;i++)h+='<button onclick="_pStar('+i+')" style="background:none;border:none;font-size:28px;cursor:pointer;padding:2px">\u2B50</button>';
+h+='</div></div>';
+return h}
+function _pStar(n){
+var card=document.getElementById('pRevCard');if(!card||!_PORTAL)return;
+_PORTAL._stars=n;
+var rvUrl=(_PORTAL.it&&_PORTAL.it.pinfo&&_PORTAL.it.pinfo.rvUrl)||'';
+var h='<div style="font-size:22px;margin-bottom:6px">'+'\u2B50'.repeat(n)+'</div>';
+if(n>=4&&rvUrl){
+h+='<div style="font-weight:800;margin-bottom:8px">Thank you! Would you share it with others?</div>';
+h+='<a href="'+_iesc(rvUrl)+'" target="_blank" rel="noopener" onclick="_pSendReview(null)" style="display:inline-block;background:#E54B25;color:#fff;font-weight:800;padding:10px 18px;border-radius:9px;text-decoration:none">\u2B50 Leave a Google review</a>';
+h+='<div style="margin-top:8px"><a href="#" onclick="_pSendReview(null);return false" style="font-size:12px;color:var(--ink-mid)">Maybe later</a></div>';
+}else{
+h+='<div style="font-weight:800;margin-bottom:8px">'+(n>=4?'Thank you!':'We\u2019re sorry it wasn\u2019t perfect \u2014 tell us what happened:')+'</div>';
+h+='<textarea id="pRevTxt" rows="3" placeholder="Your feedback goes straight to our service manager\u2026" style="width:100%;box-sizing:border-box;border:1.5px solid var(--hairline-2);border-radius:9px;padding:9px;font-family:inherit;font-size:14px"></textarea>';
+h+='<button onclick="_pSendReview(document.getElementById(\'pRevTxt\').value)" style="margin-top:8px;background:#2F7D52;color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:9px;cursor:pointer">Send feedback</button>';
+}
+card.innerHTML=h}
+function _pSendReview(txt){
+if(!_PORTAL||!_PORTAL._stars)return;
+var payload={stars:_PORTAL._stars,feedback:(txt&&String(txt).trim())||null,ts:Date.now()};
+try{db.ref('intake/'+_PORTAL.id+'/review').set(payload)}catch(e){}
+_PORTAL.it.review=payload;
+var card=document.getElementById('pRevCard');
+if(card)card.innerHTML='<div style="font-size:20px">'+'\u2B50'.repeat(_PORTAL._stars)+'</div><div style="font-weight:700;margin-top:4px">Thank you for your feedback! \u{1F49A}</div>'}
 function _portalSubmittedHtml(it){
 var when=it.submittedAt?new Date(it.submittedAt).toLocaleDateString():'';
 var h='<div style="background:#e7f8f0;border:1px solid #a7e3c6;border-radius:14px;padding:18px;margin-bottom:14px;text-align:center"><div style="font-size:30px">\u2705</div><div style="font-weight:800;font-size:17px;color:#166534">We received your information'+(when?' \u00b7 '+_iesc(when):'')+'</div><div style="font-size:13px;color:#166534;margin-top:4px">Everything is on file \u2014 here is where your delivery stands:</div></div>';
