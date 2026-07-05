@@ -936,7 +936,13 @@ th,td{padding:7px 6px}
 .tkt-mini{margin-bottom:9px}.tkt-mini:last-child{margin-bottom:0}
 .tkt-mini .l{display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:3px;color:var(--text-primary,#241e18)}
 .tkt-ichip{font-size:11px;font-weight:800;padding:4px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;margin:0 4px 4px 0}
-@media(max-width:860px){.mdl-ticket{max-width:100% !important}.tkt-grid{display:flex;flex-direction:column}.tkt-insp{border-left:none;border-top:1px solid var(--border-soft,#e9e1d8);margin-top:8px;border-bottom:1px solid var(--border-soft,#e9e1d8);max-height:none}.tkt-main{max-height:none;padding:16px 14px}.tkt-insp{padding:12px}}
+/* MOBILE FIX (build 58): .mdl-ticket carries overflow:hidden !important for the desktop
+   hero layout, but on mobile the inner scroll containers (.tkt-main/.tkt-insp) get
+   max-height:none — so NOTHING could scroll and the ticket was clipped at 96vh
+   ("can't advance past the first fields"). Restore touch scrolling on the modal itself. */
+@media(max-width:860px){.mdl-ticket{max-width:100% !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch}.tkt-grid{display:flex;flex-direction:column}.tkt-insp{border-left:none;border-top:1px solid var(--border-soft,#e9e1d8);margin-top:8px;border-bottom:1px solid var(--border-soft,#e9e1d8);max-height:none;overflow:visible}.tkt-main{max-height:none;overflow:visible;padding:16px 14px}.tkt-insp{padding:12px}}
+/* iOS Safari: 96vh includes the URL bar area, hiding the bottom of the sheet. Use dvh where supported. */
+@media(max-width:700px){@supports(height:100dvh){.mdl{max-height:96dvh}}}
 @media(max-width:560px){.mdl-ticket{border-radius:16px 16px 0 0 !important}.tkt-hero{padding:15px 16px}.tkt-hero-id h2{font-size:18px}.tkt-hero-acts .mbtn-complete{font-size:11px;padding:8px 10px}.tkt-main,.tkt-insp{padding:14px}}
 .tech-addr-card{display:block;text-decoration:none;color:inherit;border-color:#3b82f6 !important;background:#eff6ff;transition:all .15s;cursor:pointer}
 .tech-addr-card:hover{background:#dbeafe;box-shadow:var(--shadow-card-hover)}
@@ -1699,8 +1705,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070510;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 57) — i18n round 2: emoji-tolerant translator, English-source sidebar, bilingual greeting, tab/toolbar dictionary'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070511;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 58) — MOBILE FIX: ticket modal was unscrollable on phones/tablets (overflow:hidden + max-height:none clipped everything below the fold); restored touch scroll, dvh sheet height, section-nav scroll target'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -5091,7 +5097,8 @@ function tktJump(id,btn){try{
 var nav=btn&&btn.parentElement;
 if(nav)nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b===btn)});
 var main=btn?btn.closest('.tkt-main'):document.querySelector('.tkt-main');
-if(id==='tksec_over'){if(main)main.scrollTo({top:0,behavior:'smooth'});return}
+// On mobile the modal itself (.mdl-ticket) is the scroll container, not .tkt-main.
+if(id==='tksec_over'){var sc=(main&&main.scrollHeight>main.clientHeight+2)?main:(document.querySelector('.mdl-ticket')||main);if(sc)sc.scrollTo({top:0,behavior:'smooth'});return}
 var el=document.getElementById(id);
 if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
 }catch(e){}}
