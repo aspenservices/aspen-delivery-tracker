@@ -1699,8 +1699,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070509;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 56) — hidden + New Delivery button and FAB (deliveries come from Google Calendar)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070510;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 57) — i18n round 2: emoji-tolerant translator, English-source sidebar, bilingual greeting, tab/toolbar dictionary'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -4967,16 +4967,16 @@ document.body.classList.add('has-glass-dock');
 // macOS-style sidebar (desktop) \u2014 system S1
 var side=document.createElement('div');side.id='glassSide';
 side.innerHTML='<div class="gs-brand"><div class="gs-leaf">\u{1F342}</div><b>Aspen Delivery</b></div>'+
-'<button class="gs-srch" onclick="openGK()">\u{1F50D} Buscar\u2026 <span>\u2318K</span></button>'+
+'<button class="gs-srch" onclick="openGK()">\u{1F50D} Search\u2026 <span>\u2318K</span></button>'+
 '<div class="gs-nav">'+
-'<button id="gs_route" onclick="setTab(\'route\')">\u{1F69A} Hoy</button>'+
-'<button id="gs_board" onclick="setTab(\'board\')">\u{1F4CB} Entregas</button>'+
-'<button id="gs_cal" onclick="setTab(\'cal\')">\u{1F4C5} Planificar</button>'+
+'<button id="gs_route" onclick="setTab(\'route\')">\u{1F69A} Today</button>'+
+'<button id="gs_board" onclick="setTab(\'board\')">\u{1F4CB} Deliveries</button>'+
+'<button id="gs_cal" onclick="setTab(\'cal\')">\u{1F4C5} Plan</button>'+
 '<button id="gs_dash" onclick="setTab(\'dash\')">\u{1F4CA} Insights</button>'+
-'<div class="gs-sep">Sistema</div>'+
+'<div class="gs-sep">System</div>'+
 '<button onclick="openDigest()">\u{1F4EC} Digest</button>'+
-'<button onclick="openGlassNotifs()">\u{1F514} Avisos <span class="gs-bell-n" id="gsBellN" style="display:none"></span></button>'+
-'<button onclick="openGlassSettings()">\u2699\uFE0F Ajustes</button>'+
+'<button onclick="openGlassNotifs()">\u{1F514} Alerts <span class="gs-bell-n" id="gsBellN" style="display:none"></span></button>'+
+'<button onclick="openGlassSettings()">\u2699\uFE0F Settings</button>'+
 '</div>'+
 '<div class="gs-me" onclick="openGlassSettings()"><div class="gs-av">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div class="n">'+escHtml(String(currentUser.name||'').split(' ')[0])+'</div><div class="r">'+escHtml(currentUser.role||'')+'</div></div></div>';
 document.body.appendChild(side);
@@ -4996,7 +4996,7 @@ function renderGlassGreet(){try{
 var g=document.getElementById('glassGreet');if(!g)return;
 if(!currentUser||currentUser.role==='tech'){g.innerHTML='';return}
 var hNow=new Date().getHours();
-var sal=hNow<12?'Good morning':hNow<18?'Good afternoon':'Good evening';
+var sal=hNow<12?_L('Buenos d\u00edas','Good morning'):hNow<18?_L('Buenas tardes','Good afternoon'):_L('Buenas noches','Good evening');
 var name=String(currentUser.name||'').split(' ')[0];
 var today=new Date();today.setHours(0,0,0,0);
 var tk=(typeof _dgDateKey==='function')?_dgDateKey():'';
@@ -5004,9 +5004,9 @@ var todays=AD().filter(function(r){var d=parseDate(r.dd);if(!d||isNaN(d))return 
 var collect=todays.reduce(function(sm,r){return sm+((+r.bl>0)?+r.bl:0)},0);
 var prepped=todays.filter(function(r){return PRE.every(function(pp){return r[pp.k]})}).length;
 var wx=(typeof _wxFor==='function')?_wxFor(tk):'';
-var dateStr=new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+var dateStr=new Date().toLocaleDateString(APP_LANG==='es'?'es-US':undefined,{weekday:'long',month:'long',day:'numeric'});
 g.innerHTML='<div class="gg-hi">'+sal+', '+escHtml(name)+'</div>'+
-'<div class="gg-sub">'+dateStr+' \u00b7 '+todays.length+' deliver'+(todays.length===1?'y':'ies')+(wx?' \u00b7 '+wx:'')+'</div>'+
+'<div class="gg-sub">'+dateStr+' \u00b7 '+todays.length+' '+_L(todays.length===1?'entrega':'entregas',todays.length===1?'delivery':'deliveries')+(wx?' \u00b7 '+wx:'')+'</div>'+
 '<div class="gg-stats"><div><b>'+todays.length+'</b><span>Today</span></div>'+
 '<div><b style="color:#BE4A2F">'+(collect?fmt(collect):'$0')+'</b><span>Collect</span></div>'+
 '<div><b style="color:#2F7D52">'+prepped+'/'+todays.length+'</b><span>Prepped</span></div></div>';
@@ -5077,7 +5077,7 @@ var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!m
 var a=_nfAll().slice().reverse();
 function ago(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return 'ahora';if(m<60)return m+' min';var hh=Math.round(m/60);if(hh<24)return hh+' h';return Math.round(hh/24)+' d'}
 var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
-h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u{1F514} Avisos</h2><div style="display:flex;gap:8px"><button onclick="localStorage.removeItem(\''+_NF_KEY+'\');openGlassNotifs()" style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Limpiar</button><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div></div>';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u{1F514} Alerts</h2><div style="display:flex;gap:8px"><button onclick="localStorage.removeItem(\''+_NF_KEY+'\');openGlassNotifs()" style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Clear</button><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div></div>';
 h+=a.length?a.map(function(x){return '<div class="nf-row"><div>'+x.m+'</div><span class="tm">'+ago(x.t)+'</span></div>'}).join(''):'<div class="gk-hint">Sin avisos todav\u00eda \u2014 aqu\u00ed quedar\u00e1n los eventos de la app (reseñas, follow-ups, guardas de datos\u2026).</div>';
 h+='</div>';
 md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open');
@@ -5106,7 +5106,7 @@ function openGlassSettings(){
 var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
 var isAdmin=currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer');
 var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
-h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u2699\uFE0F Ajustes</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u2699\uFE0F Settings</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
 h+='<div class="set-grp"><div class="set-h">Cuenta</div>'+
 '<div class="set-row" style="cursor:default"><div class="ic" style="background:#2C221C">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div>'+escHtml(currentUser.name||'')+'</div><div class="sub">'+escHtml(currentUser.role||'')+(currentUser.email?' \u00b7 '+escHtml(currentUser.email):'')+'</div></div></div>'+
 _setRow('\u23FB','#dc2626','Cerrar sesi\u00f3n','','doLogout()')+'</div>';
@@ -7934,7 +7934,11 @@ var I18N_EN2ES={
 "Upcoming Deliveries":"Entregas próximas","Deliveries scheduled in the future":"Entregas programadas a futuro",
 "Needs Action Deliveries":"Entregas que requieren acción","Delivered Deliveries":"Entregas realizadas","Follow-Up Deliveries":"Entregas en seguimiento","Complete Deliveries":"Entregas completadas","All Deliveries":"Todas las entregas","On Hold":"En espera",
 "Paused — removed from calendar but info is preserved. Returns to Upcoming when re-added.":"En pausa — removida del calendario pero la información se conserva. Vuelve a Próximas al re-agregarla.",
-"+ New Delivery":"+ Nueva entrega","Deliveries sync in from Google Calendar.":"Las entregas llegan solas desde Google Calendar.","New Delivery":"Nueva entrega","Users":"Usuarios","Backup":"Respaldo","Calendar Synced":"Calendario sincronizado","Google Calendar":"Google Calendar","Returns":"Devoluciones",
+"+ New Delivery":"+ Nueva entrega",
+"UPCOMING":"PR\u00d3XIMAS","NEEDS ACTION":"REQUIEREN ACCI\u00d3N","DELIVERED":"ENTREGADAS","FOLLOW-UP":"SEGUIMIENTO","HOLD":"EN ESPERA","COMPLETE":"COMPLETAS","ALL":"TODAS",
+"Today":"Hoy","Deliveries":"Entregas","Plan":"Planificar","Alerts":"Avisos","Settings":"Ajustes","System":"Sistema","Search\u2026":"Buscar\u2026","Clear":"Limpiar",
+"Collect":"Cobrar","Prepped":"Listas","All techs":"Todos los t\u00e9cnicos","Newest":"Recientes","Oldest":"Antiguas","Date":"Fecha",
+"All deliveries across every status":"Todas las entregas, de todos los estados","Deliveries sync in from Google Calendar.":"Las entregas llegan solas desde Google Calendar.","New Delivery":"Nueva entrega","Users":"Usuarios","Backup":"Respaldo","Calendar Synced":"Calendario sincronizado","Google Calendar":"Google Calendar","Returns":"Devoluciones",
 "All techs":"Todos los técnicos","Date":"Fecha","Oldest":"Más antiguas","Newest":"Más recientes","Balance Due":"Saldo pendiente",
 "Search by name, phone, address, ZIP, SN...":"Buscar por nombre, teléfono, dirección, ZIP, SN...",
 "PRE-DELIVERY":"PRE-ENTREGA","POST-DELIVERY":"POST-ENTREGA","Pre-Delivery":"Pre-entrega","Post-Delivery":"Post-entrega",
@@ -7982,13 +7986,20 @@ var pn=tn.parentNode;if(!pn)return;var tag=pn.nodeName;
 if(tag==='SCRIPT'||tag==='STYLE'||tag==='TEXTAREA'||tag==='OPTION'&&false)return;
 var t=tn.nodeValue,k=t.trim();if(!k)return;
 if(map[k]!=null){tn.nodeValue=t.replace(k,map[k]);return;}
+/* Emoji-prefix tolerance: many buttons render as one text node like "\ud83d\udd04 Returns" \u2014
+   strip the leading symbol run and retry, preserving the prefix. */
+var _pm=k.match(/^([^A-Za-z\u00C0-\u017F]+\s*)([A-Za-z\u00C0-\u017F].*)$/);
+if(_pm&&map[_pm[2]]!=null){tn.nodeValue=t.replace(_pm[2],map[_pm[2]]);return;}
 for(var i=0;i<pats.length;i++){if(pats[i][0].test(k)){tn.nodeValue=t.replace(k,k.replace(pats[i][0],pats[i][1]));return;}}
 });
 ['placeholder','title','aria-label'].forEach(function(a){
 if(root.getAttribute){var rv=root.getAttribute(a);if(rv&&map[rv.trim()]!=null)root.setAttribute(a,map[rv.trim()]);}
 if(root.querySelectorAll)root.querySelectorAll('['+a+']').forEach(function(el){var v=el.getAttribute(a);if(v&&map[v.trim()]!=null)el.setAttribute(a,map[v.trim()]);});
 });
-}else if(root.nodeType===3){var k2=root.nodeValue.trim();if(k2&&map[k2]!=null)root.nodeValue=root.nodeValue.replace(k2,map[k2]);}
+}else if(root.nodeType===3){var k2=root.nodeValue.trim();
+if(k2&&map[k2]!=null){root.nodeValue=root.nodeValue.replace(k2,map[k2]);}
+else if(k2){var _pm3=k2.match(/^([^A-Za-z\u00C0-\u017F]+\s*)([A-Za-z\u00C0-\u017F].*)$/);
+if(_pm3&&map[_pm3[2]]!=null)root.nodeValue=root.nodeValue.replace(_pm3[2],map[_pm3[2]]);}}
 }
 var _i18nObs=null;
 function _i18nStartObserver(){
