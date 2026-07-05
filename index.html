@@ -1622,7 +1622,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 </div>
 <div class="ctx-hdr" id="ctxHdr"></div>
 <div id="holdToolbarHost"></div>
-<div class="filters"><input class="search" id="searchBox" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;renderBoard();renderTable();if(tab==='cal')renderCalendar()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button><select id="techFilter" class="techfilter" onchange="techF=this.value;render()" title="Filter by assigned technician"><option value="">&#128100; All techs</option></select><button id="returnsBtn" class="returns-btn" onclick="returnsF=!returnsF;document.getElementById('returnsBtn').classList.toggle('on',returnsF);render()" title="Show only deliveries that need a second visit">&#128260; Returns</button></div>
+<div class="filters"><input class="search" id="searchBox" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;debouncedSearchRender()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button><select id="techFilter" class="techfilter" onchange="techF=this.value;render()" title="Filter by assigned technician"><option value="">&#128100; All techs</option></select><button id="returnsBtn" class="returns-btn" onclick="returnsF=!returnsF;document.getElementById('returnsBtn').classList.toggle('on',returnsF);render()" title="Show only deliveries that need a second visit">&#128260; Returns</button></div>
 <div class="board" id="board"></div>
 <div class="twrap hidden" id="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
 <div class="dash-wrap hidden" id="dashWrap"></div>
@@ -1713,8 +1713,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070512;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 59) — CALENDAR MOBILE FIX: month grid overflowed viewport (nowrap event names blocked column shrink); min-width:0 grid fix, compact mobile pills, tap-day opens Day view'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070513;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 60) — DEEP FIX PACK (10): BASE→Firebase migration (PII out of public HTML), XSS escaping in board/table/calendar, no more tab hijack on remote saves, slow-network session protection, M/D date drift migration, safer duplicate detector, save retry+flush, debounced search, explicit attention acknowledge, money sanity checks'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1837,6 +1837,12 @@ const ROLES=['admin','organizer','tech'];
 
 // Listen for users (admin/organizer can see all; tech can only see themselves)
 _rtOn(dbUsers,'users',snap=>{USERS=snap.val()||{};
+// FIX #4 (build 60): if bootAuth was waiting for the users node, finish it now
+if(_pendingSessionBoot&&Object.keys(USERS).length){_pendingSessionBoot=false;bootAuth()}
+// If the auth screen is showing the SETUP form (rendered while USERS was empty on a slow
+// connection) and users just arrived, swap it for the real login list. We only re-render
+// when the setup form is on screen (#su_code present) so a PIN being typed is never wiped.
+if(!currentUser&&document.getElementById('su_code')&&Object.keys(USERS).length&&!document.getElementById('auth-screen').classList.contains('hidden')){showAuthScreen()}
 // Refresh assignment dropdown if modal is open
 if(curRec&&document.getElementById('e_assigned')){populateTechDropdown()}
 // Refresh users panel if open
@@ -2065,7 +2071,18 @@ techDate=new Date();techDate.setHours(0,0,0,0);renderTechList()}
 else{
 // Admin/organizer: show normal UI
 document.getElementById('tech-view').classList.add('hidden');
-renderAll()}}
+renderAll();
+// FIX #3/#5/#1 (build 60): the "first render" duties (route tab, digest, migrations) now run
+// HERE — login time — deterministically, instead of inside the snapshot-driven
+// renderAfterAuth (which only fires when remote data changes).
+if(!_didFirstRender){_didFirstRender=true;
+setTab('route');
+try{scheduleDigest()}catch(e){}
+setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);
+setTimeout(function(){
+try{migrateBaseToFirebase()}catch(e){console.warn('[BASE] migrate call failed',e)}
+try{migrateShortDates()}catch(e){console.warn('[DATES] migrate call failed',e)}
+},2500)}}}
 
 // === TECH VIEW LOGIC ===
 let techDate=new Date();techDate.setHours(0,0,0,0);
@@ -3839,7 +3856,40 @@ r[k]=Object.values(v);
 });
 return r;
 }
-function AD(){let d=BASE.map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED).filter(r=>!r._deleted)}
+function AD(){let d=BASEDATA().map(r=>{let e=EDITS[r.i];return e?Object.assign({},r,e):r});return d.concat(ADDED).filter(r=>!r._deleted)}
+
+// === FIX #1 (build 60): BASE LIVES IN FIREBASE, NOT IN THE PUBLIC HTML ===
+// The embedded BASE const is now only a MIGRATION SEED. Once an admin/organizer logs in,
+// it is published (one time) to RTDB node `base` behind auth!=null — same protection as
+// edits/added. From then on every device reads the server copy, and the HTML can be
+// re-deployed WITHOUT the customer data (BASE=[]). Anti-wipe: an empty/short server copy
+// never replaces a substantial local seed.
+let BASE_LIVE=null; // server copy: array once loaded
+function BASEDATA(){return (Array.isArray(BASE_LIVE)&&BASE_LIVE.length)?BASE_LIVE:BASE}
+const dbBase=db.ref('base');
+_rtOn(dbBase,'base',snap=>{
+let v=snap.val();
+if(v&&typeof v==='object'){
+let arr=Array.isArray(v)?v.filter(Boolean):Object.values(v);
+// ANTI-WIPE: never let a suspiciously small server copy shadow a big local seed
+if(BASE.length>=20&&arr.length<BASE.length*0.5){console.error('[BASE] server copy has '+arr.length+' records but local seed has '+BASE.length+' — REFUSING to use server copy.');return}
+if(arr.length){BASE_LIVE=arr;console.log('[BASE] using server copy ('+arr.length+' records)');
+if(fbReady&&currentUser)renderCurrentTab()}
+}
+},err=>console.warn('[BASE] listener error',err));
+// One-time publish: seed → server. Runs only for admin/organizer, only if server is empty
+// and the local seed has data.
+function migrateBaseToFirebase(){
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')))return;
+if(!Array.isArray(BASE)||!BASE.length)return;
+dbBase.once('value').then(s=>{
+let v=s.val();
+if(v&&Object.keys(v).length){return} // already migrated
+let obj={};BASE.forEach(r=>{if(r&&r.i!=null)obj[String(r.i)]=r});
+dbBase.set(obj).then(()=>{console.log('[BASE] ✓ migrated '+BASE.length+' records to Firebase node `base`');
+showToast('&#128274; Customer data migrated to Firebase ('+BASE.length+' records). You can now deploy the no-data build.','ok')})
+.catch(e=>console.error('[BASE] migration failed',e))
+}).catch(e=>console.warn('[BASE] migration check failed',e))}
 
 // === ID-SAFE LOOKUP HELPERS ===
 // Record ids (r.i) come from three sources with potentially different JS types:
@@ -4170,6 +4220,23 @@ updateOfflineIndicator();
 function saveOpts(){dbOpts.update({tb:OPT_TB.slice(3),ss:OPT_SS.slice(8),lf:OPT_LF.slice(7),cv:OPT_CV.slice(4),su:OPT_SU.slice(4),__cats__:CUSTOM_CATS}).catch(e=>console.error('saveOpts:',e))}
 function syncPulse(){let d=document.getElementById('syncDot');d.className='sync-dot on';d.title='Synced';clearTimeout(d._t);d._t=setTimeout(()=>{d.title='Connected'},1500)}
 
+// FIX #7 (build 60): a failed saveE/saveA re-marked the record dirty but only retried when
+// the user touched something ELSE — on flaky field connections an edit could sit unsent
+// until the tab was closed and then be lost. Now: (1) a background timer flushes pending
+// dirty records every 20s, and (2) hiding/closing the tab triggers an immediate flush.
+function flushPendingSaves(reason){
+try{
+if(!fbReady||!currentUser)return;
+let pend=(_dirtyEdits&&_dirtyEdits.size)||(_dirtyAdded&&_dirtyAdded.size)||(_removedAdded&&_removedAdded.size);
+if(!pend)return;
+console.log('[RETRY] flushing pending saves ('+reason+'): edits='+(_dirtyEdits?_dirtyEdits.size:0)+' added='+(_dirtyAdded?_dirtyAdded.size:0));
+try{saveE()}catch(e){console.warn('flush saveE:',e)}
+try{saveA()}catch(e){console.warn('flush saveA:',e)}
+}catch(e){}}
+setInterval(function(){if(isOnline)flushPendingSaves('20s timer')},20000);
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){try{autosaveModal()}catch(e){};flushPendingSaves('tab hidden')}});
+window.addEventListener('pagehide',function(){try{autosaveModal()}catch(e){};flushPendingSaves('pagehide')});
+
 // Firebase real-time listeners
 let _loadCount=0;
 function checkReady(){_loadCount++;if(_loadCount>=3){fbReady=true;
@@ -4179,13 +4246,30 @@ document.getElementById('syncDot').className='sync-dot on';document.getElementBy
 bootAuth()}}
 
 // Auth boot: try to restore session from localStorage; if invalid or missing, show login
+// FIX #4 (build 60): on a slow connection the 8s fallback used to run this with USERS still
+// empty — which DELETED a perfectly valid 14-day session and showed the "First time setup"
+// form (with the setup code!) instead of the login list. Now: if we have a session but the
+// users node hasn't arrived yet, we WAIT (the users listener re-runs bootAuth when data lands)
+// instead of nuking the session.
+let _pendingSessionBoot=false;
 async function bootAuth(){
 let _ip=getIntakeParams();
 if(_ip){renderIntakePortal(_ip.id,_ip.token);return}
 let session=loadSession();
-if(session){let u=USERS[session.id];
+if(session){
+if(Object.keys(USERS).length===0){
+_pendingSessionBoot=true;
+console.warn('[AUTH] Session found but users not loaded yet — waiting for users listener (NOT clearing session).');
+// Friendly waiting screen instead of the misleading setup form
+let scr=document.getElementById('auth-screen');scr.classList.remove('hidden');
+let area=document.getElementById('auth-form-area');
+if(area)area.innerHTML='<div class="auth-form" style="text-align:center"><div style="font-size:30px">&#9203;</div><div style="font-weight:800;margin:8px 0 4px">'+_L('Conectando…','Connecting…')+'</div><div style="font-size:12.5px;color:var(--text-secondary)">'+_L('Restaurando tu sesión. Si tarda, revisa tu conexión.','Restoring your session. If this hangs, check your connection.')+'</div></div>';
+return}
+let u=USERS[session.id];
 if(u&&u.name&&u.name.trim().toLowerCase()===String(session.name||'').trim().toLowerCase()){
-currentUser=Object.assign({id:session.id},u);applyRoleUI();return}
+currentUser=Object.assign({id:session.id},u);
+document.getElementById('auth-screen').classList.add('hidden'); // may be visible if we showed the waiting screen
+applyRoleUI();return}
 clearSession()}
 // No valid session - show auth screen
 showAuthScreen()}
@@ -4319,6 +4403,10 @@ if(tried>=serverBuild){console.warn('[AUTO-UPDATE] Build '+serverBuild+' publish
 try{sessionStorage.setItem('aspen_tried_build',String(serverBuild))}catch(e){}
 console.warn('[AUTO-UPDATE] Newer build '+serverBuild+' detected (running '+APP_BUILD+'). Reloading to update…');
 try{showToast('&#128260; Nueva versi&oacute;n disponible &mdash; actualizando&hellip;')}catch(e){}
+// FIX #7 (build 60): never lose in-progress typing to the auto-update — flush the open
+// modal's draft and any pending dirty saves BEFORE reloading.
+try{if(typeof autosaveModal==='function')autosaveModal()}catch(e){}
+try{if(typeof flushPendingSaves==='function')flushPendingSaves('auto-update reload')}catch(e){}
 setTimeout(()=>{location.replace(location.pathname+'?v='+serverBuild)},1200);
 return}
 // This client is the newest deploy → publish so everyone else updates.
@@ -4433,11 +4521,27 @@ if(fbReady){if(currentUser)renderAfterAuth()}else checkReady()},err=>{console.er
 }); // end AUTH_READY gate
 
 // Wrapper that renders the right view based on the current user's role
+// FIX #3 (build 60): renderAfterAuth used to run renderAll()+setTab('route') on EVERY remote
+// snapshot — any save from another device hijacked your current tab, killed your scroll
+// position and rebuilt the whole UI. Now the tab jump + digest happen ONCE (first render
+// after login); live updates only re-render whatever tab you're actually looking at.
+let _didFirstRender=false;
+function renderCurrentTab(){
+if(!currentUser)return;
+if(currentUser.role==='tech'){renderTechList();return}
+renderKPIs();renderCtxHdr();
+if(tab==='dash')renderDashboard();
+else if(tab==='route')renderRoutePlan();
+else if(tab==='cal')renderCalendar();
+else render()}
 function renderAfterAuth(){
 if(!currentUser)return;
 if(typeof startIntakeListener==='function')startIntakeListener();
 if(currentUser.role==='tech'){renderTechList()}
-else{renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);}
+else if(!_didFirstRender){_didFirstRender=true;
+renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);
+setTimeout(function(){try{migrateBaseToFirebase()}catch(e){};try{migrateShortDates()}catch(e){}},2500)}
+else{renderCurrentTab()}
 // PAGE-LOAD AUTO-REPAIR: 3 seconds after the user lands, scan for cross-linked tickets and
 // break wrong links so the user never sees stale state for more than that delay. The 3-second
 // wait gives the gcalMap listener (which is not part of the _loadCount=3 gate) time to receive
@@ -4607,11 +4711,53 @@ let mdy2=/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(clean);
 if(mdy2){let yr=+mdy2[3];yr=yr<50?2000+yr:1900+yr;return new Date(yr,+mdy2[1]-1,+mdy2[2])}
 let md=/^(\d{1,2})\/(\d{1,2})$/.exec(clean);
 if(md){let m=+md[1],d=+md[2];
-// Dynamic year: if month already passed this year, assume next year
-let now=new Date(),curY=now.getFullYear(),curM=now.getMonth()+1;
-let yr=(m<curM-1)?curY+1:curY;
-return new Date(yr,m-1,d)}
+// FIX #5 (build 60): the old rule ("month already passed → next year") made HISTORICAL
+// M/D dates drift forward every month: by July 2026, "1/21" (a January 2026 delivery)
+// parsed as January 2027 and the ticket reappeared as a phantom future delivery.
+// New rule: consider lastYear/thisYear/nextYear and pick the candidate CLOSEST to today.
+// If a delivered/complete flag is available (ctx), only past candidates are allowed.
+let now=new Date();now.setHours(0,0,0,0);let curY=now.getFullYear();
+let cands=[curY-1,curY,curY+1].map(y=>new Date(y,m-1,d)).filter(dt=>!isNaN(dt));
+if(_parseDateCtxDelivered)cands=cands.filter(dt=>dt.getTime()<=now.getTime());
+if(!cands.length)cands=[new Date(curY,m-1,d)];
+cands.sort((a,b)=>Math.abs(a-now)-Math.abs(b-now));
+return cands[0]}
 return null}
+// Optional context flag for parseDate: when parsing a record known to be delivered/complete,
+// set this so year-less M/D dates never resolve to the future. Used by the date migration.
+let _parseDateCtxDelivered=false;
+function parseDateFor(r){_parseDateCtxDelivered=!!(r&&(r.dl||r.co));let d=parseDate(r&&r.dd);_parseDateCtxDelivered=false;return d}
+// One-time migration: rewrite year-less M/D dates to unambiguous ISO (keeping the am/pm/all-day
+// suffix) via the normal EDITS overlay, so they stop drifting. Admin/organizer only, guarded
+// by a Firebase flag so it runs once for the whole team.
+function migrateShortDates(){
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')))return;
+let flagRef=db.ref('app_meta/dd_migrated_v1');
+flagRef.once('value').then(s=>{
+if(s.val())return; // already done
+let fixed=0;
+AD().forEach(r=>{
+if(!r||!r.dd)return;
+let sdd=String(r.dd).trim();
+if(/^\d{4}-/.test(sdd))return;                              // already ISO
+let core=sdd.replace(/\s*(am|pm|all\s*day|all)\s*/gi,'').trim();
+if(!/^\d{1,2}\/\d{1,2}$/.test(core))return;                 // only M/D without a year (full match — no backtracking traps)
+let d=parseDateFor(r);if(!d||isNaN(d))return;
+let iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+let slot=(sdd.match(/(am|pm|all\s*day)/i)||[])[0];
+let newDd=iso+(slot?' '+slot.toLowerCase():'');
+if(newDd===sdd)return;
+let id=r.i;
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
+if(ai>=0){ADDED[ai].dd=newDd;rememberAddedEdit(ADDED[ai])}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].dd=newDd;rememberEditsEdit(id,EDITS[id])}
+fixed++});
+if(fixed){saveE();saveA();
+console.log('[DATES] ✓ normalized '+fixed+' year-less M/D dates to ISO');
+showToast('&#128197; '+fixed+' fechas ambiguas normalizadas a formato completo','ok');
+renderCurrentTab()}
+flagRef.set({ts:Date.now(),by:(currentUser&&currentUser.name)||'?',fixed:fixed}).catch(()=>{})
+}).catch(e=>console.warn('[DATES] migration check failed',e))}
 function fmtDate(dd){let d=parseDate(dd);if(!d||isNaN(d))return dd||'TBD';
 return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function dateNote(dd){if(!dd)return'';let m=String(dd).match(/(am|pm|all\s*day)/i);return m?' '+m[0]:''}
@@ -4860,7 +5006,7 @@ reqBadgeHtml+='<span style="display:inline-flex;align-items:center;gap:4px;backg
 });
 reqBadgeHtml+='</div>';
 }
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+dispName(r)+'</div><div class="c-spa">'+(r.sp||"—")+(r.sn?" &bull; SN "+r.sn:"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+r.st+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+prev.substring(0,90)+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+escHtml(dispName(r))+'</div><div class="c-spa">'+escHtml(r.sp||"—")+(r.sn?" &bull; SN "+escHtml(String(r.sn)):"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+escHtml(r.st)+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+escHtml(prev.substring(0,90))+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',hold:'&#9209;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -4869,7 +5015,7 @@ h='<div class="empty-state"><div class="es-icon">'+icon+'</div><div class="es-ti
 document.getElementById("board").innerHTML=h}
 function thH(label,col){let active=sortCol===col;let arrow=active?(sortDir==="desc"?"▼":"▲"):"⇅";return'<th class="'+(active?"act-sort":"")+'" onclick="toggleSort(\''+col+'\')">'+label+' <span class="srt">'+arrow+'</span></th>'}
 function renderTable(){document.getElementById("th").innerHTML="<tr>"+thH("Status","status")+thH("Customer","name")+thH("Spa","name")+thH("Date","date")+thH("Balance Due","balance")+"<th>Pre</th><th>Post</th><th>Cover</th><th>Lift</th></tr>";
-let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:var(--ink-strong);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+dispName(r)+'</td><td style="color:var(--ink-mid)">'+(r.sp||"—")+'</td><td style="color:var(--ink-mid);white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:var(--ink-mid);font-size:12px">'+(r.cv||"—")+'</td><td style="color:var(--ink-mid);font-size:12px">'+(r.lf||"—")+'</td></tr>'});
+let h="";let list=fil();list.forEach(r=>{let s=st(r);h+='<tr onclick="openDet('+r.i+')"><td><span class="dot" style="background:'+sC(s)+'"></span><span style="color:'+sC(s)+';font-weight:700">'+sL(s)+'</span></td><td style="font-weight:700;color:var(--ink-strong);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(dispName(r))+'</td><td style="color:var(--ink-mid)">'+escHtml(r.sp||"—")+'</td><td style="color:var(--ink-mid);white-space:nowrap">'+fmtDate(r.dd)+dateNote(r.dd)+'</td><td style="color:'+(r.bl>0?"#dc2626":"#9ca3af")+';font-weight:'+(r.bl>0?700:400)+'">'+(r.bl>0?fmt(r.bl):"—")+'</td><td style="width:100px">'+pH(PRE,r)+'</td><td style="width:100px">'+pH(POST,r)+'</td><td style="color:var(--ink-mid);font-size:12px">'+escHtml(r.cv||"—")+'</td><td style="color:var(--ink-mid);font-size:12px">'+escHtml(r.lf||"—")+'</td></tr>'});
 document.getElementById("tb").innerHTML=h}
 // ===================== DAY ROUTE PLAN (Phase 6, 2026-06-14) =====================
 // Groups deliveries by date and builds a multi-stop Google Maps route from the depot.
@@ -5386,9 +5532,20 @@ function _dupOf(r){
 if(!r)return null;
 var sn=String(r.sn||'').trim();
 var fam=String(r.n||'').trim().split(/\s+/).pop().toLowerCase();if(fam.length<3)fam='';
+var sp=String(r.sp||'').trim().toLowerCase();
 return AD().find(function(x){
 if(!x||sameId(x.i,r.i))return false;
-if(sn&&String(x.sn||'').trim()===sn)return true;
+var xsn=String(x.sn||'').trim();
+// Same non-empty serial → real duplicate, always flag.
+if(sn&&xsn&&xsn===sn)return true;
+// FIX #6 (build 60): TWO DIFFERENT non-empty serials = two separate purchases (repeat
+// customers like Big Dream Rental #22/#24). The old last-name-only match suggested
+// "Compare & Merge" on legitimate deliveries — a wrong merge destroys a real ticket.
+if(sn&&xsn&&xsn!==sn)return false;
+// Different products (e.g. COLD PLUNGE vs Arcadia for the same family) → separate purchases.
+var xsp=String(x.sp||'').trim().toLowerCase();
+if(sp&&xsp&&xsp!==sp)return false;
+// Name match only counts when serial info is incomplete on at least one side.
 if(fam){var f2=String(x.n||'').trim().split(/\s+/).pop().toLowerCase();if(f2===fam)return true}
 return false})||null}
 function openMergeModal(aId,bId){
@@ -5717,14 +5874,10 @@ function openOv(){document.getElementById('ov').classList.remove('hidden');docum
 
 function openDet(id){
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));if(!curRec)return;
-// If this delivery had a tech note pending review, clear the alert flag now that admin is opening it
-if(curRec.needs_attention&&currentUser&&currentUser.role!=='tech'){
-let updates={needs_attention:null,attention_at:null};
-let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
-curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
-renderBoard();renderTable()}
+// FIX #9 (build 60): merely OPENING a ticket used to silently clear the tech's
+// needs_attention flag — an accidental tap by anyone wiped the alert with no record of
+// who saw it. The flag is now cleared only by the explicit "Mark as seen" button in the
+// modal banner (ackAttention), which also logs who acknowledged it and when.
 resetMd('wide');
 // BULLETPROOF OPEN: a single failing widget inside the huge modal render must never leave the
 // admin with a dead tap. If renderModal throws, show a minimal fallback and STILL open.
@@ -6360,6 +6513,20 @@ return!!(r.spd||r.di||r.yr||r.vt||r.jt||r.jm||r.p1||r.p2||r.pks||r.ts||r.tsn||r.
 // Appends a timestamped, attributed entry to a ticket's activity history. Persisted through the
 // same EDITS/ADDED path as every other field (and added to `reserved` so sync never drops it).
 // Capped at the most recent 60 entries so a ticket record can't grow without bound.
+// FIX #9 (build 60): explicit acknowledge for tech attention notes. Clears the flag,
+// records WHO saw it and WHEN in the activity log, and refreshes the UI.
+function ackAttention(id){
+if(!(currentUser&&currentUser.role!=='tech'))return;
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
+let updates={needs_attention:null,attention_at:null,attention_ack_by:(currentUser&&currentUser.name)||'?',attention_ack_ts:Date.now()};
+if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+try{pushActivity(id,'Attention note acknowledged')}catch(e){}
+curRec=AD().find(x=>sameId(x.i,id));
+try{renderModal()}catch(e){}
+renderBoard();renderTable();
+showToast('&#10003; '+_L('Nota marcada como vista','Note marked as seen'))}
+
 function pushActivity(id,action){
 try{
 let rec=AD().find(x=>x.i===id||String(x.i)===String(id));if(!rec)return;
@@ -6458,6 +6625,11 @@ h+='<div class="tkt-grid"><div class="tkt-main">';
 h+='<div class="tksecnav">'+
 [['tksec_over','Overview',1],['tksec_money','\u{1F4B5} Money',0],['tksec_photos','\u{1F4F8} Photos',0],['tksec_prep','\u{1F4CB} Prep',0],['tksec_cust','\u{1F464} Customer',0],['tksec_hist','\u{1F551} History',0]].map(function(t){
 return '<button type="button"'+(t[2]?' class="on"':'')+' onclick="tktJump(\''+t[0]+'\',this)">'+t[1]+'</button>'}).join('')+'</div>';
+// FIX #9 (build 60): attention banner with EXPLICIT acknowledge — replaces the old
+// silent clear-on-open. Shows until someone presses "Mark as seen" (logged to activity).
+if(r.needs_attention&&currentUser&&currentUser.role!=='tech'){
+h+='<div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:2px solid #fb923c;border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:13px;font-weight:800;color:#9a3412"><span class="pulse">&#128276;</span> '+_L('El técnico envió una nota — revisa Delivery Notes','Tech sent a note — check Delivery Notes')+(r.attention_at?' <span style="font-weight:600;opacity:.75">('+new Date(r.attention_at).toLocaleString()+')</span>':'')+'</div><button type="button" class="mbtn mbtn-s" style="background:#ea580c;color:#fff;border:none" onclick="ackAttention('+"'"+r.i+"'"+')">&#10003; '+_L('Marcar como vista','Mark as seen')+'</button></div>'}
+else if(r.attention_ack_by){h+='<div style="font-size:11.5px;color:var(--text-tertiary);margin-bottom:10px">&#10003; '+_L('Última nota del técnico vista por ','Last tech note seen by ')+escHtml(r.attention_ack_by)+(r.attention_ack_ts?' · '+new Date(r.attention_ack_ts).toLocaleDateString():'')+'</div>'}
 h+='<span id="tksec_over" class="tksec"></span>';
 // All fields always editable
 // CALENDAR EVENT — the verbatim Google Calendar title. The calendar OWNS this (it is copied
@@ -7801,6 +7973,19 @@ if(el){let v=el.value;result[c.k]=(v&&v!=='NONE')?v:null}
 return result}
 
 function saveEdit(){let id=curRec.i,u=gatherEdits();
+// FIX #10 (build 60): soft sanity checks — the app used to accept a $95,000 Eldorado
+// (real typo, ticket #56: $9,500) straight into the COLLECT KPIs. Same "never guess"
+// philosophy as the billing verdict: we don't block, we make the human confirm.
+try{
+let warns=[];
+if(u.pr>40000)warns.push(_L('Precio inusualmente ALTO: ','Unusually HIGH price: ')+fmt(u.pr)+_L(' — ¿es un error de dedo?',' — possible typo?'));
+if(u.pr>0&&u.pr<1500)warns.push(_L('Precio inusualmente BAJO: ','Unusually LOW price: ')+fmt(u.pr));
+if(u.py>u.pr&&u.pr>0)warns.push(_L('Pagado (','Paid (')+fmt(u.py)+_L(') es MAYOR que el precio (',') is MORE than the price (')+fmt(u.pr)+')');
+if(u.bl<0)warns.push(_L('Balance NEGATIVO: ','NEGATIVE balance: ')+fmt(u.bl));
+if(u.dd&&(!parseDate(u.dd)||isNaN(parseDate(u.dd))))warns.push(_L('La fecha "','The date "')+u.dd+_L('" no se puede interpretar — no aparecerá en el calendario','" cannot be parsed — it will not show on the calendar'));
+if(warns.length){
+if(!confirm('\u26A0\uFE0F '+_L('REVISA ESTOS DATOS','CHECK THESE VALUES')+':\n\n\u2022 '+warns.join('\n\u2022 ')+'\n\n'+_L('¿Guardar de todos modos?','Save anyway?')))return}
+}catch(e){console.warn('[VALIDATE]',e)}
 // Snapshot the ticket BEFORE the edit so we can compute a diff for the calendar push.
 // Using AD() so we work with the merged BASE+EDITS view, not a partial ADDED entry.
 let prev=AD().find(x=>x.i===id||String(x.i)===String(id));
@@ -10945,7 +11130,7 @@ let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
 let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
-h+='<div class="cal-wk-ev'+(r.i===calSelId?' sel':'')+'"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+dispName(r)+'</div><div class="ev-spa">'+(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
+h+='<div class="cal-wk-ev'+(r.i===calSelId?' sel':'')+'"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+escHtml(dispName(r))+'</div><div class="ev-spa">'+escHtml(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
@@ -10963,7 +11148,7 @@ let dotColor=gcalDotColor(r)||sC2(e.s);
 h+='<div class="cal-wk-row" style="grid-template-columns:1fr;cursor:pointer" onclick="openDet('+r.i+')">';
 h+='<div style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">';
 h+='<div class="ev-dot" style="background:'+dotColor+';width:10px;height:10px"></div>';
-h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:var(--ink-strong)">'+escHtml(dispName(r))+'</div><div style="font-size:12px;color:var(--ink-mid);margin-top:2px">'+(r.sp||'—')+(r.sn?' &bull; SN: '+r.sn:'')+'</div></div>';
+h+='<div style="flex:1;min-width:200px"><div style="font-size:15px;font-weight:800;color:var(--ink-strong)">'+escHtml(dispName(r))+'</div><div style="font-size:12px;color:var(--ink-mid);margin-top:2px">'+escHtml(r.sp||'—')+(r.sn?' &bull; SN: '+escHtml(String(r.sn)):'')+'</div></div>';
 h+='<div style="font-size:13px;font-weight:700;color:#1e40af">'+dateNote(r.dd).trim().toUpperCase()+'</div>';
 if(r.pr>0)h+='<div style="font-size:13px;font-weight:700;color:#7c3aed">'+fmt(r.pr)+'</div>';
 if(r.bl>0)h+='<div style="font-size:13px;font-weight:700;color:#dc2626">Bal: '+fmt(r.bl)+'</div>';
@@ -10983,6 +11168,19 @@ techs.forEach(u=>{html+='<option value="'+u.id+'"'+(String(prev)===String(u.id)?
 if(prev&&!techs.some(u=>String(u.id)===String(prev))){techF="";}
 sel.innerHTML=html}
 function render(){populateTechFilter();renderBoard();renderTable()}
+// FIX #8 (build 60): typing in the search box used to rebuild board + table + calendar on
+// EVERY keystroke (3 full DOM rebuilds, 2 of them for hidden views) — visible keyboard lag
+// on phones. Now: 150ms debounce, and only the tab you're looking at re-renders. Switching
+// tabs re-renders the target anyway (setTab), so hidden views never go stale.
+let _searchT=null;
+function debouncedSearchRender(){
+clearTimeout(_searchT);
+_searchT=setTimeout(function(){
+if(tab==='cal')renderCalendar();
+else if(tab==='table')renderTable();
+else if(tab==='board')renderBoard();
+else render();
+},150)}
 function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();try{renderGlassGreet()}catch(e){}
 render();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
 // Initial render is triggered by Firebase listeners via checkReady()
