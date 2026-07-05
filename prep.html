@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070126;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.03 (build 46) — RESILIENT LISTENERS: auth-gated attach + auto-reattach on cancel + live sync diagnostics'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070503;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 50) — AUTO PHOTO SWEEP: hands-free background migration (8/pass, verified, additive)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2097,12 +2097,13 @@ let segHtml='<div class="tlseg">'+
 '</div>';
 if(!mine.length){
 let msg=seg==='done'?'Sin entregas marcadas como listas':(seg==='pend'?'No pending deliveries':'No deliveries');
-if(!_dataSynced()){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">Conectando con el servidor\u2026</div><div class="sub">Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; Reintentar</button></div><div id="syncDiag" style="margin-top:14px;font-size:11px;color:#9c8e79;font-weight:600;line-height:1.5">diagn\u00f3stico\u2026</div></div>';
+if(!_dataSynced()&&!fbReady){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">Conectando con el servidor\u2026</div><div class="sub">Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; Reintentar</button></div><div id="syncDiag" style="margin-top:14px;font-size:11px;color:#9c8e79;font-weight:600;line-height:1.5">diagn\u00f3stico\u2026</div></div>';
 if(!window._syncDiagT){window._syncDiagT=setInterval(function(){var el=document.getElementById('syncDiag');
 if(!el){clearInterval(window._syncDiagT);window._syncDiagT=null;return}
 var au='\u2014';try{var u=firebase.auth().currentUser;au=u?'\u2713':'\u2717 sin sesi\u00f3n'}catch(e){}
 el.textContent='red '+(navigator.onLine?'\u2713':'\u2717')+' \u00b7 firebase '+(_fbConn?'\u2713':'\u2717')+' \u00b7 sesi\u00f3n '+au+' \u00b7 edits '+(_syncE?'\u2713':'\u2026')+' \u00b7 added '+(_syncA?'\u2713':'\u2026')+(window._syncErr?' \u00b7 \u26a0 '+window._syncErr:'')},1500)}
 return}
+if(!_dataSynced()){segHtml+='<div style="margin:6px 2px 10px;padding:8px 12px;border-radius:10px;background:rgba(230,126,46,.14);color:#8a5a22;font-size:12px;font-weight:800;text-align:center">&#128246; Datos locales \u2014 sincronizando cambios recientes\u2026</div>'}
 listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">'+msg+(techDate.getTime()===today.getTime()?' today':'')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
 let html='';let seqN=0;
 mine.forEach(r=>{
@@ -3005,6 +3006,100 @@ try{renderAll()}catch(e){}
 try{if(typeof pushActivity==='function')pushActivity(null,'photo-doctor: removed '+removed+' dead entries / '+ticketsFixed+' tickets')}catch(e){}
 alert('\u2713 Limpieza completa:\n\n'+removed+' entrada(s) muerta(s) eliminadas en '+ticketsFixed+' ticket(s).\n'+ok+' foto(s) vivas conservadas.\n\nSi a\u00fan no lo hiciste, corre \ud83e\ude79 Rescatar fotos desde backup para reponer las fotos hist\u00f3ricas.')}
 
+// Shared swap engine: given a map of base64\u2192verified URL, updates every reference in every
+// ticket (photos + tech_photos, order-preserving dedup) and every intake record. Used by the
+// manual migration AND the automatic background sweep.
+function _applyPhotoMap(map){
+var t=0,p=0,n=0;
+if(!map||!map.size)return{t:t,p:p,n:n};
+AD().forEach(function(r){var upd=null;
+['photos','tech_photos'].forEach(function(f){
+var cur=Array.isArray(r[f])?r[f]:[];if(!cur.length)return;
+var nu=cur.map(function(ph){var m=map.get(ph);if(m){p++;return m}return ph});
+var seen=new Set();nu=nu.filter(function(ph){if(seen.has(ph))return false;seen.add(ph);return true});
+if(JSON.stringify(nu)!==JSON.stringify(cur)){upd=upd||{};upd[f]=nu}});
+if(!upd)return;
+var ai=ADDED.findIndex(function(x){return sameId(x.i,r.i)});
+if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],upd);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+t++});
+Object.keys(INTAKE).forEach(function(id){var changed=0;
+(function walk(o){if(!o||typeof o!=='object')return;
+Object.keys(o).forEach(function(k){var v=o[k];
+if(typeof v==='string'&&map.has(v)){o[k]=map.get(v);changed++}
+else if(v&&typeof v==='object')walk(v)})})(INTAKE[id]);
+if(changed){n++;db.ref('intake/'+id).set(INTAKE[id]).catch(function(e){console.warn('[MIG2] intake write failed',id,e)})}});
+return{t:t,p:p,n:n}}
+
+// === AUTO PHOTO SWEEP: hands-free background migration ===
+// Whenever an admin/organizer has the app open, this quietly moves inline photos to Storage
+// in small batches (8 per pass, every 10 min + shortly after load). Every protection of the
+// manual migration applies: content dedup, per-upload readability verification (a photo that
+// fails stays inline and is retried on a later pass), reference-counted deletes. Additive
+// only \u2014 it never removes photo entries, so there is nothing to confirm and nothing to forget.
+let _sweepBusy=false,_sweepIdleLogged=false;
+async function _photoSweepTick(){try{
+if(_sweepBusy)return;
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')))return;
+if(document.hidden||!navigator.onLine||!_fbConn||!_dataSynced()||!_intakeLoaded||!fbStorage)return;
+_sweepBusy=true;
+var owners=new Map();
+function consider(b,label){if(owners.size<8&&typeof b==='string'&&b.indexOf('data:image')===0&&!owners.has(b))owners.set(b,label)}
+AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){(Array.isArray(r[f])?r[f]:[]).forEach(function(ph){consider(ph,String(r.i))})})});
+if(owners.size<8)Object.keys(INTAKE).forEach(function(id){(function walk(o){if(!o||typeof o!=='object')return;
+Object.keys(o).forEach(function(k){var v=o[k];
+if(typeof v==='string')consider(v,'intake_'+id);else if(v&&typeof v==='object')walk(v)})})(INTAKE[id])});
+if(!owners.size){if(!_sweepIdleLogged){console.log('[SWEEP] \u2713 all photos live in Storage');_sweepIdleLogged=true}_sweepBusy=false;return}
+_sweepIdleLogged=false;
+var map=new Map();
+for(const _pr of owners){try{var u=await uploadPhotoToStorage(_pr[1],_pr[0]);
+if(typeof u==='string'&&u.indexOf('https://')===0)map.set(_pr[0],u)}catch(e){}}
+var res=_applyPhotoMap(map);
+if(map.size){showToast('&#9729;&#65039; '+map.size+' foto(s) migradas autom\u00e1ticamente');console.log('[SWEEP] migrated',map.size,'\u00b7 refs',res.p,'\u00b7 tickets',res.t,'\u00b7 intakes',res.n,'\u00b7 failed',owners.size-map.size)}
+else console.log('[SWEEP] pass migrated 0 (uploads failing) \u2014 will retry next pass');
+}catch(e){console.warn('[SWEEP]',e)}finally{_sweepBusy=false}}
+setInterval(_photoSweepTick,10*60*1000);
+setTimeout(_photoSweepTick,90*1000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(_photoSweepTick,15*1000)});
+
+// === PHOTO MIGRATION v2: dedup-aware, verified, resumable ===
+// Moves every inline (base64) photo \u2014 in tickets AND in the customer intake node \u2014 to
+// Firebase Storage. Key design points learned the hard way:
+//   \u2022 CONTENT DEDUP: a customer photo and its reflected copy in the ticket are the exact
+//     same base64 string \u2192 uploaded ONCE and both point at the SAME URL. Reflection can
+//     then never re-duplicate, and the b40 reference-counted delete protects shared files.
+//   \u2022 Each upload is verified readable (b42 probe) before any reference is replaced;
+//     failures stay inline. Idempotent \u2014 re-run to retry failures.
+//   \u2022 A full backup downloads automatically before anything is touched.
+async function migrateAllPhotosV2(){
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert('Admin/organizer only');return}
+if(!fbStorage){alert('Storage no disponible en esta sesi\u00f3n.');return}
+if(!_intakeLoaded){showToast('&#8987; Descargando intake completo para deduplicar\u2026');
+try{var _sn=await db.ref('intake').once('value');INTAKE=_sn.val()||{};_intakeLoaded=true}
+catch(e){alert('No pude leer el nodo intake: '+e);return}}
+var owners=new Map();
+AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
+(Array.isArray(r[f])?r[f]:[]).forEach(function(ph){
+if(typeof ph==='string'&&ph.indexOf('data:image')===0&&!owners.has(ph))owners.set(ph,String(r.i))})})});
+Object.keys(INTAKE).forEach(function(id){(function walk(o){if(!o||typeof o!=='object')return;
+Object.keys(o).forEach(function(k){var v=o[k];
+if(typeof v==='string'&&v.indexOf('data:image')===0){if(!owners.has(v))owners.set(v,'intake_'+id)}
+else if(v&&typeof v==='object')walk(v)})})(INTAKE[id])});
+if(!owners.size){alert('\u2713 No hay fotos inline \u2014 todo vive ya en Storage.');return}
+var totalMB=0;owners.forEach(function(_,b){totalMB+=b.length*0.75/1e6});totalMB=Math.round(totalMB);
+if(!confirm('\u2601\ufe0f Migraci\u00f3n de fotos v2\n\n\u2022 '+owners.size+' foto(s) \u00fanicas inline (~'+totalMB+' MB)\n\u2022 Cada una se sube UNA vez (dedup: ticket e intake comparten URL)\n\u2022 Cada subida se VERIFICA legible antes de reemplazar nada\n\u2022 Primero se descarga un backup completo autom\u00e1ticamente\n\n\u00bfContinuar? Deja esta pesta\u00f1a abierta hasta que termine.'))return;
+try{downloadManualBackup()}catch(e){if(!confirm('No pude generar el backup autom\u00e1tico ('+e+'). \u00bfContinuar SIN backup?'))return}
+var map=new Map(),fails=0,i=0,t0=Date.now();
+for(const _pair of owners){i++;var _b=_pair[0],_own=_pair[1];
+try{var u=await uploadPhotoToStorage(_own,_b);
+if(typeof u==='string'&&u.indexOf('https://')===0)map.set(_b,u);else fails++}
+catch(e){fails++}
+if(i%5===0||i===owners.size)showToast('&#9729;&#65039; Subiendo fotos\u2026 '+i+'/'+owners.size+(fails?(' \u00b7 '+fails+' fallidas'):''))}
+var _res=_applyPhotoMap(map);var tFixed=_res.t,pSwapped=_res.p,iFixed=_res.n;
+try{renderAll()}catch(e){}
+try{pushActivity(null,'photo-migration-v2: '+map.size+' uploaded \u00b7 '+pSwapped+' refs swapped \u00b7 '+fails+' kept inline')}catch(e){}
+alert('\u2713 Migraci\u00f3n completada en '+Math.round((Date.now()-t0)/1000)+' s:\n\n\u2022 '+map.size+' foto(s) subidas y verificadas\n\u2022 '+pSwapped+' referencia(s) actualizadas en '+tFixed+' ticket(s)\n\u2022 '+iFixed+' registro(s) de intake aligerados\n'+(fails?('\u2022 '+fails+' quedaron inline (fallo de subida/verificaci\u00f3n) \u2014 re-ejecuta luego para reintentarlas\n'):'')+'\nLa base qued\u00f3 ligera: la app cargar\u00e1 mucho m\u00e1s r\u00e1pido en todos los dispositivos.')}
+
 // === GRACEFUL PHOTO TILES ===
 // One transient retry (cache-busted), then a clean bilingual placeholder instead of the
 // browser's broken-image icon. Data-URIs never retry (a corrupt data: URI can't heal).
@@ -3496,7 +3591,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
 '<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#128230; Photo Storage (Firebase)</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px">Estado SDK: '+(fbStorage?'<strong style="color:#059669">listo</strong>':'<strong style="color:#dc2626">no disponible</strong>')+' &middot; <strong>'+_phB64+'</strong> fotos inline (~'+_phMB+' MB dentro de la base) &middot; <strong>'+_phUrl+'</strong> ya en Storage.</div>'+
-(_phB64?('<button onclick="migratePhotosToStorage()" style="background:#7c3aed;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128230; Migrar '+_phB64+' fotos a Storage (libera ~'+_phMB+' MB)</button>'):'<div style="font-size:12px;color:#059669;font-weight:700">&#10003; Todas las fotos ya viven en Storage.</div>')+
+(_phB64?('<button onclick="migrateAllPhotosV2()" style="background:#7c3aed;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128230; Migrar '+_phB64+' fotos a Storage (libera ~'+_phMB+' MB)</button>'):'<div style="font-size:12px;color:#059669;font-weight:700">&#10003; Todas las fotos ya viven en Storage.</div>')+
 '</div>'+
 
 // MANUAL BACKUP
@@ -10834,7 +10929,21 @@ confirm delivery details. Data lives in RTDB at intake/<ticketId>. The link EXPI
 moment the customer taps "Send Information" (submitted=true). When submitted, the
 authenticated dashboard reflects it into the ticket (checklist + a note) and shows the
 photos inside the ticket's "Customer Upload Link" box. Customer-facing text is English. */
-let INTAKE={};let _intakeLoaded=false;
+let INTAKE={};let _intakeLoaded=false;let _intakeOne={};
+// FAST PATH: the ticket modal must never wait for the FULL intake node (every customer's
+// submission incl. inline photos \u2014 tens of MB on slow links). Fetch just THIS ticket's entry
+// (a few KB) so the customer box renders in milliseconds; the global listener keeps the
+// automatic reflection working in the background exactly as before.
+function _intakeFetchOne(id){var k=String(id);
+if(_intakeOne[k]==='pending'||_intakeOne[k]===true)return;
+_intakeOne[k]='pending';
+AUTH_READY.then(function(){return db.ref('intake/'+k).once('value')}).then(function(snap){
+var v=snap&&snap.val?snap.val():null;
+if(v)INTAKE[k]=v;
+_intakeOne[k]=true;
+try{if(v)reflectIntakeSubmissions()}catch(e){}
+try{refreshIntakeBox(k)}catch(e){}
+}).catch(function(e){console.warn('[INTAKE] one-shot fetch failed',e);_intakeOne[k]=true;try{refreshIntakeBox(k)}catch(_e){}})}
 let _intakeListenerOn=false;
 let _PORTAL=null;
 
@@ -10924,8 +11033,9 @@ return h+'</div>'}
 
 function intakeBoxHtml(r){
 let it=INTAKE[r.i],inner;
-if(!_intakeLoaded){
+if(!_intakeLoaded&&_intakeOne[String(r.i)]!==true){
 inner='<div style="font-size:13px;color:var(--ink-mid);padding:6px 0">&#8987; Cargando datos del cliente\u2026</div>';
+_intakeFetchOne(r.i);
 }else if(!it||!it.token){
 inner='<div style="font-size:13px;color:var(--ink-mid);margin-bottom:8px">Generate a private link the customer opens on their phone to upload access photos and confirm details. It updates this ticket automatically and expires once they submit.</div>'+
 '<button type="button" class="mbtn mbtn-s" onclick="intakeCreateAndCopy('+_ijsv(r.i)+')">&#128228; Create customer upload link</button>';
