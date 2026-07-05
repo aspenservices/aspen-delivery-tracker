@@ -726,15 +726,15 @@ th,td{padding:7px 6px}
 .cal-views{display:flex;gap:4px}
 .cal-vbtn{padding:6px 14px;border-radius:7px;border:2px solid var(--hairline);background:var(--surface);color:var(--ink-mid);font-weight:700;font-size:12px;cursor:pointer;transition:all .15s}
 .cal-vbtn.act{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:2px solid var(--hairline);border-radius:12px;overflow:hidden;background:var(--surface)}
-.cal-dh{background:var(--surf-soft);padding:8px 4px;text-align:center;font-size:11px;font-weight:800;color:var(--ink-mid);text-transform:uppercase;border-bottom:2px solid var(--hairline)}
-.cal-cell{min-height:115px;border:1px solid #f3f4f6;padding:4px 6px;position:relative;cursor:pointer;transition:background .1s;vertical-align:top}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:2px solid var(--hairline);border-radius:12px;overflow:hidden;background:var(--surface);width:100%}
+.cal-dh{background:var(--surf-soft);padding:8px 4px;text-align:center;font-size:11px;font-weight:800;color:var(--ink-mid);text-transform:uppercase;border-bottom:2px solid var(--hairline);min-width:0}
+.cal-cell{min-height:115px;border:1px solid #f3f4f6;padding:4px 6px;position:relative;cursor:pointer;transition:background .1s;vertical-align:top;min-width:0;overflow:hidden}
 .cal-cell:hover{background:#eff6ff}
 .cal-cell.today{background:#eff6ff;border-color:#93c5fd}
 .cal-cell.other{background:var(--surf-soft)}
 .cal-cell.other .cal-dn{color:#d1d5db}
 .cal-dn{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:2px}
-.cal-ev{font-size:10px;padding:3px 6px;border-radius:5px;margin-bottom:3px;cursor:pointer;font-weight:600;display:block;line-height:1.25;border-left:3px solid transparent;overflow:hidden}
+.cal-ev{font-size:10px;padding:3px 6px;border-radius:5px;margin-bottom:3px;cursor:pointer;font-weight:600;display:block;line-height:1.25;border-left:3px solid transparent;overflow:hidden;min-width:0;max-width:100%}
 .cal-ev .ce-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .cal-ev .ce-sub{font-size:9px;font-weight:500;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;margin-top:1px}
 .cal-ev.upcoming{background:#fef9c3;color:#92400e;border-left-color:#d97706}
@@ -759,7 +759,15 @@ th,td{padding:7px 6px}
 .cal-wk-ev .ev-name{font-size:13px;font-weight:700;color:var(--ink-strong);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-wk-ev .ev-time{font-size:11px;color:var(--ink-mid);font-weight:600}
 .cal-wk-ev .ev-spa{font-size:11px;color:var(--ink-mid);min-width:80px}
-@media(max-width:768px){.cal-cell{min-height:60px;padding:2px 3px}.cal-dn{font-size:11px}.cal-ev{font-size:9px;padding:1px 3px}.cal-title{font-size:15px}.cal-wk-row{grid-template-columns:55px 1fr}.cal-wk-label .cw-day{font-size:18px}}
+@media(max-width:768px){.cal-cell{min-height:60px;padding:2px 3px}.cal-dn{font-size:11px}.cal-ev{font-size:9px;padding:1px 3px}.cal-title{font-size:15px}.cal-wk-row{grid-template-columns:55px 1fr}.cal-wk-label .cw-day{font-size:18px}
+/* MOBILE MONTH (build 59): 7 tight columns — compact pills, name only, tap a day to open Day view */
+.cal-dh{font-size:9px;padding:5px 1px;letter-spacing:0}
+.cal-ev .ce-name{font-size:9px;font-weight:700}
+.cal-ev .ce-sub{display:none}
+.cal-ev{border-left-width:2px;margin-bottom:2px;border-radius:4px}
+.cal-more{font-size:9px;padding:0 2px}
+.cal-dn .cal-wx{display:none}
+}
 /* === AUTH SCREEN === */
 .auth-screen{position:fixed;inset:0;background:var(--aspen-black);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px}
 .auth-card{background:var(--surface);border-radius:16px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
@@ -1705,8 +1713,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070511;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 58) — MOBILE FIX: ticket modal was unscrollable on phones/tablets (overflow:hidden + max-height:none clipped everything below the fold); restored touch scroll, dvh sheet height, section-nav scroll target'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070512;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 59) — CALENDAR MOBILE FIX: month grid overflowed viewport (nowrap event names blocked column shrink); min-width:0 grid fix, compact mobile pills, tap-day opens Day view'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -10822,12 +10830,12 @@ for(let i=startDay-1;i>=0;i--){let dn=prevLast-i;h+='<div class="cal-cell other"
 for(let d=1;d<=totalDays;d++){
 let k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 let isToday=k===todayK;
-h+='<div class="cal-cell'+(isToday?' today':'')+'" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
+h+='<div class="cal-cell'+(isToday?' today':'')+'" onclick="calDate=new Date('+y+','+m+','+d+');setCalView(\'day\')" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="calCellDrop(event,\''+k+'\')">';
 let _wxc=(typeof _wxFor==='function')?_wxFor(k):'';
 let _den=(evs[k]||[]).length;
 let _crn=(evs[k]||[]).some(function(e){return e.r&&e.r.crane});
 let _heavy=_den>=4||(_den>=3&&_crn);
-h+='<div class="cal-dn">'+d+(_wxc?' <span style="font-size:10px;font-weight:600" title="Forecast">'+_wxc+'</span>':'')+(_heavy?' <span style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:9px;padding:1px 6px;border-radius:8px" title="Heavy day: '+_den+' deliveries'+(_crn?' + crane':'')+'">'+_den+(_crn?'+\u{1F3D7}\uFE0F':'')+'!</span>':'')+'</div>';
+h+='<div class="cal-dn">'+d+(_wxc?' <span class="cal-wx" style="font-size:10px;font-weight:600" title="Forecast">'+_wxc+'</span>':'')+(_heavy?' <span style="background:#fee2e2;color:#b91c1c;font-weight:800;font-size:9px;padding:1px 6px;border-radius:8px" title="Heavy day: '+_den+' deliveries'+(_crn?' + crane':'')+'">'+_den+(_crn?'+\u{1F3D7}\uFE0F':'')+'!</span>':'')+'</div>';
 let dayEvs=evs[k]||[];
 let show=dayEvs.slice(0,3);
 show.forEach(e=>{
