@@ -936,7 +936,7 @@ th,td{padding:7px 6px}
 .tkt-mini{margin-bottom:9px}.tkt-mini:last-child{margin-bottom:0}
 .tkt-mini .l{display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:3px;color:var(--text-primary,#241e18)}
 .tkt-ichip{font-size:11px;font-weight:800;padding:4px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;margin:0 4px 4px 0}
-@media(max-width:860px){.mdl-ticket{max-width:100% !important}.tkt-grid{display:flex;flex-direction:column}.tkt-insp{order:-1;border-left:none;border-bottom:1px solid var(--border-soft,#e9e1d8);max-height:none}.tkt-main{max-height:none}}
+@media(max-width:860px){.mdl-ticket{max-width:100% !important}.tkt-grid{display:flex;flex-direction:column}.tkt-insp{border-left:none;border-top:1px solid var(--border-soft,#e9e1d8);margin-top:8px;border-bottom:1px solid var(--border-soft,#e9e1d8);max-height:none}.tkt-main{max-height:none;padding:16px 14px}.tkt-insp{padding:12px}}
 @media(max-width:560px){.mdl-ticket{border-radius:16px 16px 0 0 !important}.tkt-hero{padding:15px 16px}.tkt-hero-id h2{font-size:18px}.tkt-hero-acts .mbtn-complete{font-size:11px;padding:8px 10px}.tkt-main,.tkt-insp{padding:14px}}
 .tech-addr-card{display:block;text-decoration:none;color:inherit;border-color:#3b82f6 !important;background:#eff6ff;transition:all .15s;cursor:pointer}
 .tech-addr-card:hover{background:#dbeafe;box-shadow:var(--shadow-card-hover)}
@@ -1697,8 +1697,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070503;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 50) — AUTO PHOTO SWEEP: hands-free background migration (8/pass, verified, additive)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070506;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 53) — invoice PDF everywhere: email fallback attachment + tech sees signed version'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2265,7 +2265,8 @@ h+='</div>';
 // ===== SCROLL CONTENT =====
 h+='<div class="td2-inner">';
 // Invoice (if a PDF exists) — reference card, tap to open
-if(r.pdf_invoice){h+='<a class="tech-section tech-addr-card" style="border-color:#a78bfa !important;background:#f5f3ff" onclick="viewInvoicePDF('+r.i+');return false;" href="#"><div class="tech-spec-row" style="border:none"><span class="lbl" style="color:#6d28d9 !important">&#128196; Invoice (tap to view)</span><span class="val" style="color:#5b21b6">Open PDF &#8250;</span></div></a>'}
+if(r.pdf_invoice_signed){h+='<a class="tech-section tech-addr-card" style="border-color:#059669 !important;background:#ecfdf5" onclick="viewSignedPDF('+r.i+');return false;" href="#"><div class="tech-spec-row" style="border:none"><span class="lbl" style="color:#047857 !important">&#128196; Invoice &#8212; SIGNED &#10003;</span><span class="val" style="color:#065f46">Open PDF &#8250;</span></div></a>'}
+else if(r.pdf_invoice){h+='<a class="tech-section tech-addr-card" style="border-color:#a78bfa !important;background:#f5f3ff" onclick="viewInvoicePDF('+r.i+');return false;" href="#"><div class="tech-spec-row" style="border:none"><span class="lbl" style="color:#6d28d9 !important">&#128196; Invoice (tap to view)</span><span class="val" style="color:#5b21b6">Open PDF &#8250;</span></div></a>'}
 // Address (CLICKABLE — opens map app on tap)
 if(r.st){
 let addrEnc=encodeURIComponent(r.st.replace(/\n/g,' '));
@@ -4409,7 +4410,7 @@ function renderAfterAuth(){
 if(!currentUser)return;
 if(typeof startIntakeListener==='function')startIntakeListener();
 if(currentUser.role==='tech'){renderTechList()}
-else{renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);setTimeout(function(){try{_fu30Sweep()}catch(e){}},25000);if(!window._aspenFu30Timer){window._aspenFu30Timer=true;setInterval(function(){try{_fu30Sweep()}catch(e){}},60*60*1000)}}
+else{renderAll();setTab('route');scheduleDigest();setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);}
 // PAGE-LOAD AUTO-REPAIR: 3 seconds after the user lands, scan for cross-linked tickets and
 // break wrong links so the user never sees stale state for more than that delay. The 3-second
 // wait gives the gcalMap listener (which is not part of the _loadCount=3 gate) time to receive
@@ -5208,7 +5209,7 @@ h+='<details style="background:var(--surf-soft);border:1px solid var(--border-so
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px">'+
 '<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_on" '+(c.emailOn?'checked':'')+'> Send automatically every morning</label>'+
 '<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_show" '+(c.autoShow===false?'':'checked')+'> Show this digest once per day when I open the app</label>'+
-'<label style="grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="dg_fu30" '+(c.fu30===false?'':'checked')+'> Auto-create the 30-day follow-up in TECH-TICKETS when a delivery is marked delivered</label>'+
+
 '<div style="grid-column:1/-1"><label style="font-weight:700">Recipients (comma-separated)</label><input id="dg_to" value="'+escHtml(c.to||'')+'" placeholder="service1@aspenspas.com, nela@..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<div><label style="font-weight:700">Send at</label><input id="dg_hour" value="'+escHtml(c.hour||'06:30')+'" placeholder="06:30" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
 '<div><label style="font-weight:700">Service ID</label><input id="dg_svc" value="'+escHtml(c.svc||'')+'" placeholder="service_xxx" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border-soft);border-radius:7px;margin-top:3px"></div>'+
@@ -5229,8 +5230,8 @@ md.innerHTML='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">'+d
 ov.classList.remove('hidden');document.body.classList.add('modal-open')})}
 function saveDigestConfig(){
 var g=function(id){var e=document.getElementById(id);return e?e.value.trim():''};
-var on=document.getElementById('dg_on'),sh=document.getElementById('dg_show'),fu=document.getElementById('dg_fu30');
-DIGEST_CFG={emailOn:!!(on&&on.checked),autoShow:!(sh&&!sh.checked),to:g('dg_to'),hour:g('dg_hour')||'06:30',svc:g('dg_svc'),tpl:g('dg_tpl'),pub:g('dg_pub'),reviewUrl:g('dg_rvurl'),fu30:!(fu&&!fu.checked)};
+var on=document.getElementById('dg_on'),sh=document.getElementById('dg_show');
+DIGEST_CFG={emailOn:!!(on&&on.checked),autoShow:!(sh&&!sh.checked),to:g('dg_to'),hour:g('dg_hour')||'06:30',svc:g('dg_svc'),tpl:g('dg_tpl'),pub:g('dg_pub'),reviewUrl:g('dg_rvurl')};
 db.ref('digest_config').set(DIGEST_CFG).then(function(){showToast('\u2713 Digest settings saved (shared across devices)')}).catch(function(e){showToast('\u26a0 Could not save: '+(e&&e.message||e),'warn')})}
 function digestText(d){
 var L=[];L.push('ASPEN DAILY DIGEST \u2014 '+new Date().toLocaleDateString());L.push('');
@@ -5419,7 +5420,11 @@ try{deleteDelivery(dropId)}catch(e){alert('Merged \u2713, but could not auto-del
 setTimeout(function(){showToast('\u{1F9F2} Merge complete');try{openDet(keepId)}catch(e){}},900);
 },700)}
 
-// === AUTO 30-DAY FOLLOW-UP \u2192 TECH-TICKETS SERVICE LOG ===
+// === AUTO 30-DAY FOLLOW-UP \u2192 TECH-TICKETS SERVICE LOG === [FEATURE REMOVED 2026-07-05]
+// Removed at Alberto's request: the auto-created follow-up tickets cluttered the Service Log
+// workflow. The scheduler and the Digest \u2699\ufe0f checkbox are gone and the sweep below is a
+// guarded no-op kept only so old references can never crash. Manual service requests from a
+// delivery are UNAFFECTED. Old records may carry harmless fu30/fu30_id flags.
 // When a delivery is marked delivered, an admin session auto-creates the 30-day courtesy
 // follow-up (courtesy call + first service check) in the TECH-TICKETS Service Log, using the
 // exact same Firestore pipeline and payload shape as the manual "Send to Service Log" button
@@ -5447,7 +5452,7 @@ address:address||'',city:city||'',zip:zip||'',zone:(typeof inferZone==='function
 ccOnFile:false,ccRequested:false,paid:false,paidAt:null,isRepeat:false,payCheck:false,payCredit:false,
 media:[],videoLinks:null,source:'dispatch',delivery_id:rec.i,followup30:true,status:'pending',
 createdAt:firebase.firestore.FieldValue.serverTimestamp(),submitted:new Date().toLocaleString()}}
-async function _fu30Sweep(){try{
+async function _fu30Sweep(){return; /* FEATURE REMOVED 2026-07-05 \u2014 see note above */ try{
 if(!currentUser||currentUser.role==='tech')return;
 if(typeof DIGEST_CFG!=='undefined'&&DIGEST_CFG&&DIGEST_CFG.fu30===false)return;
 if(!svcTickets||!navigator.onLine)return;
@@ -5693,7 +5698,11 @@ else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEd
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 renderBoard();renderTable()}
 resetMd('wide');
-renderModal();openOv();startModalAutosave()}
+// BULLETPROOF OPEN: a single failing widget inside the huge modal render must never leave the
+// admin with a dead tap. If renderModal throws, show a minimal fallback and STILL open.
+try{renderModal()}catch(_e){console.error('[MODAL] render failed',_e);
+try{document.getElementById('md').innerHTML='<div style="padding:34px 20px;text-align:center"><div style="font-size:34px">&#9888;&#65039;</div><div style="font-weight:800;margin:8px 0 4px">No se pudo dibujar el ticket completo</div><div style="font-size:12.5px;color:var(--text-secondary);word-break:break-word">'+String(_e).slice(0,180)+'</div><button onclick="closeOv()" style="margin-top:14px;background:var(--aspen-orange);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;cursor:pointer">Cerrar</button></div>'}catch(_e2){}}
+openOv();startModalAutosave()}
 function closeOv(){stopModalAutosave();document.getElementById("ov").classList.add("hidden");document.body.classList.remove('modal-open');resetMd()}
 
 // === MODAL AUTOSAVE ===
@@ -7036,6 +7045,10 @@ list.push({name:'delivery_photo_'+(idx+1)+'.'+ext,source:'photo',data:dataUri,mi
 // 2. Signed invoice PDF (if present — inline legacy, or stored in the invoice_pdfs side node)
 if(r.pdf_invoice_signed){
 list.push({name:r.pdf_invoice_signed.name||'signed_invoice.pdf',source:'signed_pdf',data:r.pdf_invoice_signed.data||null,ticketId:r.i,mime:'application/pdf'})}
+// 2b. No signature yet? Attach the ORIGINAL invoice PDF instead, so the email always
+// carries the invoice whenever one was uploaded.
+else if(r.pdf_invoice){
+list.push({name:r.pdf_invoice.name||'invoice.pdf',source:'invoice_pdf',data:r.pdf_invoice.data||null,ticketId:r.i,mime:'application/pdf'})}
 // 3. Warranty (Spa OR Swim)
 list.push({name:isSwim?EMAIL_PW_ASSETS.warranty_swim:EMAIL_PW_ASSETS.warranty_spa,source:'asset',mime:'application/pdf'});
 // 4. Delivery packet (always)
@@ -7273,6 +7286,11 @@ let _d=a.data;
 if(!_d){let _n=await fetchInvoicePdfNode(a.ticketId);_d=_n&&_n.signed&&_n.signed.data}
 if(!_d)throw new Error('Signed PDF payload not found');
 b64=emailPw_dataUriToBase64(_d)}
+else if(a.source==='invoice_pdf'){
+let _d2=a.data;
+if(!_d2){let _n2=await fetchInvoicePdfNode(a.ticketId);_d2=_n2&&_n2.data}
+if(!_d2)throw new Error('Invoice PDF payload not found');
+b64=emailPw_dataUriToBase64(_d2)}
 else{b64=await emailPw_fetchAssetBase64(a.name)}
 if(!b64)throw new Error('Empty file');
 resolved.push({name:a.name,mime:a.mime,base64:b64})}
@@ -7532,6 +7550,11 @@ let _d=a.data;
 if(!_d){let _n=await fetchInvoicePdfNode(a.ticketId);_d=_n&&_n.signed&&_n.signed.data}
 if(!_d)throw new Error('Signed PDF payload not found');
 b64=emailPw_dataUriToBase64(_d)}
+else if(a.source==='invoice_pdf'){
+let _d2=a.data;
+if(!_d2){let _n2=await fetchInvoicePdfNode(a.ticketId);_d2=_n2&&_n2.data}
+if(!_d2)throw new Error('Invoice PDF payload not found');
+b64=emailPw_dataUriToBase64(_d2)}
 else{b64=await emailPw_fetchAssetBase64(a.name)}
 resolved.push({name:a.name,mime:a.mime,base64:b64})}catch(e){console.error(e)}}
 let eml=emailPw_buildEml(to,subject,body,resolved);
