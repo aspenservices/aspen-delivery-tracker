@@ -1558,7 +1558,9 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <div class="aspen-tabs-bar">
 <div class="aspen-tabs" id="aspenTabs"></div>
 <div class="aspen-tabs-actions">
-<button class="aspen-action-btn primary" onclick="openForm()">+ New Delivery</button>
+<!-- Hidden 2026-07-05 at Alberto's request: deliveries arrive from Google Calendar, never created
+     manually. To restore the button, remove the display:none below. -->
+<button class="aspen-action-btn primary" onclick="openForm()" style="display:none">+ New Delivery</button>
 <div class="aspen-view-toggle">
 <button class="vt-btn" id="tbDash" onclick="setTab('dash')" title="Dashboard">&#128202;</button>
 <button class="vt-btn act" id="tbBoard" onclick="setTab('board')" title="Card view">&#9647;&#9647;</button>
@@ -1697,8 +1699,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070506;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 53) — invoice PDF everywhere: email fallback attachment + tech sees signed version'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070509;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 56) — hidden + New Delivery button and FAB (deliveries come from Google Calendar)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2097,13 +2099,13 @@ let segHtml='<div class="tlseg">'+
 '</div>';
 if(!mine.length){
 let msg=seg==='done'?'Sin entregas marcadas como listas':(seg==='pend'?'No pending deliveries':'No deliveries');
-if(!_dataSynced()&&!fbReady){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">Conectando con el servidor\u2026</div><div class="sub">Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; Reintentar</button></div><div id="syncDiag" style="margin-top:14px;font-size:11px;color:#9c8e79;font-weight:600;line-height:1.5">diagn\u00f3stico\u2026</div></div>';
+if(!_dataSynced()&&!fbReady){listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#9203;</div><div class="title">'+_L('Conectando con el servidor\u2026','Connecting to server\u2026')+'</div><div class="sub">'+_L('Sincronizando entregas. Si tarda m\u00e1s de unos segundos, toca Reintentar.','Syncing deliveries. If it takes more than a few seconds, tap Retry.')+'</div><div style="margin-top:12px"><button onclick="location.reload()" style="background:var(--aspen-orange,#E54B25);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">&#8635; '+_L('Reintentar','Retry')+'</button></div><div id="syncDiag" style="margin-top:14px;font-size:11px;color:#9c8e79;font-weight:600;line-height:1.5">diagn\u00f3stico\u2026</div></div>';
 if(!window._syncDiagT){window._syncDiagT=setInterval(function(){var el=document.getElementById('syncDiag');
 if(!el){clearInterval(window._syncDiagT);window._syncDiagT=null;return}
-var au='\u2014';try{var u=firebase.auth().currentUser;au=u?'\u2713':'\u2717 sin sesi\u00f3n'}catch(e){}
-el.textContent='red '+(navigator.onLine?'\u2713':'\u2717')+' \u00b7 firebase '+(_fbConn?'\u2713':'\u2717')+' \u00b7 sesi\u00f3n '+au+' \u00b7 edits '+(_syncE?'\u2713':'\u2026')+' \u00b7 added '+(_syncA?'\u2713':'\u2026')+(window._syncErr?' \u00b7 \u26a0 '+window._syncErr:'')},1500)}
+var au='\u2014';try{var u=firebase.auth().currentUser;au=u?'\u2713':('\u2717 '+_L('sin sesi\u00f3n','no session'))}catch(e){}
+el.textContent=_L('red ','network ')+(navigator.onLine?'\u2713':'\u2717')+' \u00b7 firebase '+(_fbConn?'\u2713':'\u2717')+' \u00b7 '+_L('sesi\u00f3n ','session ')+au+' \u00b7 edits '+(_syncE?'\u2713':'\u2026')+' \u00b7 added '+(_syncA?'\u2713':'\u2026')+(window._syncErr?' \u00b7 \u26a0 '+window._syncErr:'')},1500)}
 return}
-if(!_dataSynced()){segHtml+='<div style="margin:6px 2px 10px;padding:8px 12px;border-radius:10px;background:rgba(230,126,46,.14);color:#8a5a22;font-size:12px;font-weight:800;text-align:center">&#128246; Datos locales \u2014 sincronizando cambios recientes\u2026</div>'}
+if(!_dataSynced()){segHtml+='<div style="margin:6px 2px 10px;padding:8px 12px;border-radius:10px;background:rgba(230,126,46,.14);color:#8a5a22;font-size:12px;font-weight:800;text-align:center">&#128246; '+_L('Datos locales \u2014 sincronizando cambios recientes\u2026','Local data \u2014 syncing recent changes\u2026')+'</div>'}
 listEl.innerHTML=segHtml+'<div class="tech-empty"><div class="icon">&#128666;</div><div class="title">'+msg+(techDate.getTime()===today.getTime()?' today':'')+'</div><div class="sub">Check back tomorrow or change the date above.</div></div>';return}
 let html='';let seqN=0;
 mine.forEach(r=>{
@@ -2497,6 +2499,17 @@ techCloseDetail();renderTechList()}
 // closes before reconnect, the write is lost ("the tech swears he marked it" case, e.g. Lisa Wolf).
 // Tiny localStorage queue: marker written when the tech confirms, cleared automatically once the
 // server copy shows dl=true (normal listeners), re-applied on load / reconnect / every 60s.
+// One-time cleanup (2026-07-05): remove the old "Auto-created from Google Calendar event"
+// boilerplate from delivery notes \u2014 Alberto wants that field free for real notes. EXACT match
+// only: any note a human typed (or edited) is never touched. Runs once per browser.
+setTimeout(function _cnCleanup(){try{
+if(localStorage.getItem('aspen_cn_cleanup_v1'))return;
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))||!_dataSynced()){setTimeout(_cnCleanup,60000);return}
+var n=0;AD().forEach(function(r){if(r.cn==='Auto-created from Google Calendar event'){saveTicketFields(r.i,{cn:null});n++}});
+localStorage.setItem('aspen_cn_cleanup_v1','1');
+if(n){console.log('[CLEANUP] cleared auto-created note on',n,'tickets');showToast('&#129529; '+n+_L(' nota(s) autom\u00e1ticas limpiadas',' auto-note(s) cleaned'));try{renderAll()}catch(e){}}
+}catch(e){console.warn('[CLEANUP]',e)}},45000);
+
 // === SYNC WATCHDOG ===
 // iOS resumes the PWA with a ZOMBIE Firebase socket: the UI renders but no data ever arrives,
 // so the tech sees "No pending deliveries" (0/0/0) on a day full of work \u2014 it looks like an
@@ -2971,13 +2984,13 @@ im.src=u+(u.indexOf('?')>-1?'&':'?')+'pd='+Date.now()})}
 // statuses (403/402/network) are LEFT ALONE: that's a service condition that can recover.
 // Base64 photos and healthy URLs are never touched. Idempotent; safe to re-run.
 async function photoDoctor(){
-if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert('Admin/organizer only');return}
-showToast&&showToast('\ud83e\ude7a Analizando fotos\u2026');
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert(_L('Solo admin/organizador','Admin/organizer only'));return}
+showToast&&showToast(_L('\ud83e\ude7a Analizando fotos\u2026','\ud83e\ude7a Analyzing photos\u2026'));
 var items=[];
 AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
 (Array.isArray(r[f])?r[f]:[]).forEach(function(ph){
 if(typeof ph==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\//.test(ph))items.push({r:r,f:f,u:ph})})})});
-if(!items.length){alert('No hay URLs de Storage que analizar \u2014 todas las fotos son inline.');return}
+if(!items.length){alert(_L('No hay URLs de Storage que analizar \u2014 todas las fotos son inline.','No Storage URLs to analyze \u2014 all photos are inline.'));return}
 var status={};var uniq=Array.from(new Set(items.map(function(x){return x.u})));
 for(var i=0;i<uniq.length;i++){status[uniq[i]]=await _probeImg(uniq[i]);
 if(i%10===9)console.log('[PHOTO-DOCTOR] probed',i+1,'/',uniq.length)}
@@ -2988,10 +3001,10 @@ var dead=uniq.filter(function(u){return status[u]==='dead'}),
     ok=uniq.length-dead.length-sick.length;
 console.log('[PHOTO-DOCTOR] alive:',ok,'\u00b7 dead:',dead.length,'\u00b7 timeout:',sick.length);
 if(dead.length)console.table(items.filter(function(x){return status[x.u]==='dead'}).map(function(x){return{ticket:dispName(x.r),field:x.f,url:x.u.slice(0,90)}}));
-if(!dead.length){alert('\u2713 An\u00e1lisis completo:\n\n'+ok+' foto(s) en Storage vivas.\n'+(sick.length?sick.length+' con fallo temporal (se dejan \u2014 pueden recuperarse).':'Ninguna entrada muerta.'));return}
+if(!dead.length){alert(_L('\u2713 An\u00e1lisis completo:\n\n'+ok+' foto(s) en Storage vivas.\n'+(sick.length?sick.length+' con fallo temporal (se dejan).':'Ninguna entrada muerta.'),'\u2713 Analysis complete:\n\n'+ok+' live Storage photo(s).\n'+(sick.length?sick.length+' with temporary failures (left alone).':'No dead entries.')));return}
 var deadSet=new Set(dead);
 var byTicket={};items.forEach(function(x){if(deadSet.has(x.u)){var k=String(x.r.i);byTicket[k]=(byTicket[k]||0)+1}});
-if(!confirm('\ud83e\ude7a Doctor de Fotos \u2014 resultado:\n\n\u2713 vivas: '+ok+'\n\u2717 MUERTAS (archivo borrado): '+dead.length+' en '+Object.keys(byTicket).length+' ticket(s)\n\u26a0 fallo temporal: '+sick.length+' (no se tocan)\n\n\u00bfEliminar las '+dead.length+' entradas muertas de los tickets?\n(Las fotos inline y las URLs vivas no se tocan. Antes de esto, corre el Rescate desde backup para recuperar lo recuperable.)'))return;
+if(!confirm(_L('\ud83e\ude7a Doctor de Fotos \u2014 resultado:\n\n\u2713 vivas: '+ok+'\n\u2717 MUERTAS (archivo borrado): '+dead.length+' en '+Object.keys(byTicket).length+' ticket(s)\n\u26a0 fallo temporal: '+sick.length+' (no se tocan)\n\n\u00bfEliminar las '+dead.length+' entradas muertas de los tickets?','\ud83e\ude7a Photo Doctor \u2014 results:\n\n\u2713 alive: '+ok+'\n\u2717 DEAD (file deleted): '+dead.length+' across '+Object.keys(byTicket).length+' ticket(s)\n\u26a0 temporary failures: '+sick.length+' (left alone)\n\nRemove the '+dead.length+' dead entries from the tickets?')))return;
 var ticketsFixed=0,removed=0;
 AD().forEach(function(r){var upd=null;
 ['photos','tech_photos'].forEach(function(f){
@@ -3005,7 +3018,7 @@ else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],upd);rememberEditsEdi
 ticketsFixed++});
 try{renderAll()}catch(e){}
 try{if(typeof pushActivity==='function')pushActivity(null,'photo-doctor: removed '+removed+' dead entries / '+ticketsFixed+' tickets')}catch(e){}
-alert('\u2713 Limpieza completa:\n\n'+removed+' entrada(s) muerta(s) eliminadas en '+ticketsFixed+' ticket(s).\n'+ok+' foto(s) vivas conservadas.\n\nSi a\u00fan no lo hiciste, corre \ud83e\ude79 Rescatar fotos desde backup para reponer las fotos hist\u00f3ricas.')}
+alert(_L('\u2713 Limpieza completa:\n\n'+removed+' entrada(s) muerta(s) eliminadas en '+ticketsFixed+' ticket(s).\n'+ok+' foto(s) vivas conservadas.','\u2713 Cleanup complete:\n\n'+removed+' dead entr'+(removed===1?'y':'ies')+' removed across '+ticketsFixed+' ticket(s).\n'+ok+' live photo(s) kept.'))}
 
 // Shared swap engine: given a map of base64\u2192verified URL, updates every reference in every
 // ticket (photos + tech_photos, order-preserving dedup) and every intake record. Used by the
@@ -3056,7 +3069,7 @@ var map=new Map();
 for(const _pr of owners){try{var u=await uploadPhotoToStorage(_pr[1],_pr[0]);
 if(typeof u==='string'&&u.indexOf('https://')===0)map.set(_pr[0],u)}catch(e){}}
 var res=_applyPhotoMap(map);
-if(map.size){showToast('&#9729;&#65039; '+map.size+' foto(s) migradas autom\u00e1ticamente');console.log('[SWEEP] migrated',map.size,'\u00b7 refs',res.p,'\u00b7 tickets',res.t,'\u00b7 intakes',res.n,'\u00b7 failed',owners.size-map.size)}
+if(map.size){showToast('&#9729;&#65039; '+map.size+_L(' foto(s) migradas autom\u00e1ticamente',' photo(s) auto-migrated'));console.log('[SWEEP] migrated',map.size,'\u00b7 refs',res.p,'\u00b7 tickets',res.t,'\u00b7 intakes',res.n,'\u00b7 failed',owners.size-map.size)}
 else console.log('[SWEEP] pass migrated 0 (uploads failing) \u2014 will retry next pass');
 }catch(e){console.warn('[SWEEP]',e)}finally{_sweepBusy=false}}
 setInterval(_photoSweepTick,10*60*1000);
@@ -3073,11 +3086,11 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)setT
 //     failures stay inline. Idempotent \u2014 re-run to retry failures.
 //   \u2022 A full backup downloads automatically before anything is touched.
 async function migrateAllPhotosV2(){
-if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert('Admin/organizer only');return}
-if(!fbStorage){alert('Storage no disponible en esta sesi\u00f3n.');return}
-if(!_intakeLoaded){showToast('&#8987; Descargando intake completo para deduplicar\u2026');
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert(_L('Solo admin/organizador','Admin/organizer only'));return}
+if(!fbStorage){alert(_L('Storage no disponible en esta sesi\u00f3n.','Storage is not available in this session.'));return}
+if(!_intakeLoaded){showToast(_L('&#8987; Descargando intake completo para deduplicar\u2026','&#8987; Downloading full intake for dedup\u2026'));
 try{var _sn=await db.ref('intake').once('value');INTAKE=_sn.val()||{};_intakeLoaded=true}
-catch(e){alert('No pude leer el nodo intake: '+e);return}}
+catch(e){alert(_L('No pude leer el nodo intake: ','Could not read the intake node: ')+e);return}}
 var owners=new Map();
 AD().forEach(function(r){['photos','tech_photos'].forEach(function(f){
 (Array.isArray(r[f])?r[f]:[]).forEach(function(ph){
@@ -3086,20 +3099,20 @@ Object.keys(INTAKE).forEach(function(id){(function walk(o){if(!o||typeof o!=='ob
 Object.keys(o).forEach(function(k){var v=o[k];
 if(typeof v==='string'&&v.indexOf('data:image')===0){if(!owners.has(v))owners.set(v,'intake_'+id)}
 else if(v&&typeof v==='object')walk(v)})})(INTAKE[id])});
-if(!owners.size){alert('\u2713 No hay fotos inline \u2014 todo vive ya en Storage.');return}
+if(!owners.size){alert(_L('\u2713 No hay fotos inline \u2014 todo vive ya en Storage.','\u2713 No inline photos \u2014 everything already lives in Storage.'));return}
 var totalMB=0;owners.forEach(function(_,b){totalMB+=b.length*0.75/1e6});totalMB=Math.round(totalMB);
-if(!confirm('\u2601\ufe0f Migraci\u00f3n de fotos v2\n\n\u2022 '+owners.size+' foto(s) \u00fanicas inline (~'+totalMB+' MB)\n\u2022 Cada una se sube UNA vez (dedup: ticket e intake comparten URL)\n\u2022 Cada subida se VERIFICA legible antes de reemplazar nada\n\u2022 Primero se descarga un backup completo autom\u00e1ticamente\n\n\u00bfContinuar? Deja esta pesta\u00f1a abierta hasta que termine.'))return;
-try{downloadManualBackup()}catch(e){if(!confirm('No pude generar el backup autom\u00e1tico ('+e+'). \u00bfContinuar SIN backup?'))return}
+if(!confirm(_L('\u2601\ufe0f Migraci\u00f3n de fotos v2\n\n\u2022 '+owners.size+' foto(s) \u00fanicas inline (~'+totalMB+' MB)\n\u2022 Cada una se sube UNA vez (dedup: ticket e intake comparten URL)\n\u2022 Cada subida se VERIFICA legible antes de reemplazar nada\n\u2022 Primero se descarga un backup completo autom\u00e1ticamente\n\n\u00bfContinuar? Deja esta pesta\u00f1a abierta hasta que termine.','\u2601\ufe0f Photo migration v2\n\n\u2022 '+owners.size+' unique inline photo(s) (~'+totalMB+' MB)\n\u2022 Each uploads ONCE (dedup: ticket & intake share the URL)\n\u2022 Every upload is VERIFIED readable before anything is replaced\n\u2022 A full backup downloads automatically first\n\nContinue? Keep this tab open until it finishes.')))return;
+try{downloadManualBackup()}catch(e){if(!confirm(_L('No pude generar el backup autom\u00e1tico ('+e+'). \u00bfContinuar SIN backup?','Could not generate the automatic backup ('+e+'). Continue WITHOUT a backup?')))return}
 var map=new Map(),fails=0,i=0,t0=Date.now();
 for(const _pair of owners){i++;var _b=_pair[0],_own=_pair[1];
 try{var u=await uploadPhotoToStorage(_own,_b);
 if(typeof u==='string'&&u.indexOf('https://')===0)map.set(_b,u);else fails++}
 catch(e){fails++}
-if(i%5===0||i===owners.size)showToast('&#9729;&#65039; Subiendo fotos\u2026 '+i+'/'+owners.size+(fails?(' \u00b7 '+fails+' fallidas'):''))}
+if(i%5===0||i===owners.size)showToast(_L('&#9729;&#65039; Subiendo fotos\u2026 ','&#9729;&#65039; Uploading photos\u2026 ')+i+'/'+owners.size+(fails?(' \u00b7 '+fails+_L(' fallidas',' failed')):''))}
 var _res=_applyPhotoMap(map);var tFixed=_res.t,pSwapped=_res.p,iFixed=_res.n;
 try{renderAll()}catch(e){}
 try{pushActivity(null,'photo-migration-v2: '+map.size+' uploaded \u00b7 '+pSwapped+' refs swapped \u00b7 '+fails+' kept inline')}catch(e){}
-alert('\u2713 Migraci\u00f3n completada en '+Math.round((Date.now()-t0)/1000)+' s:\n\n\u2022 '+map.size+' foto(s) subidas y verificadas\n\u2022 '+pSwapped+' referencia(s) actualizadas en '+tFixed+' ticket(s)\n\u2022 '+iFixed+' registro(s) de intake aligerados\n'+(fails?('\u2022 '+fails+' quedaron inline (fallo de subida/verificaci\u00f3n) \u2014 re-ejecuta luego para reintentarlas\n'):'')+'\nLa base qued\u00f3 ligera: la app cargar\u00e1 mucho m\u00e1s r\u00e1pido en todos los dispositivos.')}
+alert(_L('\u2713 Migraci\u00f3n completada en '+Math.round((Date.now()-t0)/1000)+' s:\n\n\u2022 '+map.size+' foto(s) subidas y verificadas\n\u2022 '+pSwapped+' referencia(s) actualizadas en '+tFixed+' ticket(s)\n\u2022 '+iFixed+' registro(s) de intake aligerados\n'+(fails?('\u2022 '+fails+' quedaron inline \u2014 re-ejecuta luego para reintentarlas\n'):''),'\u2713 Migration finished in '+Math.round((Date.now()-t0)/1000)+' s:\n\n\u2022 '+map.size+' photo(s) uploaded & verified\n\u2022 '+pSwapped+' reference(s) updated across '+tFixed+' ticket(s)\n\u2022 '+iFixed+' intake record(s) slimmed\n'+(fails?('\u2022 '+fails+' stayed inline \u2014 re-run later to retry\n'):'')))}
 
 // === GRACEFUL PHOTO TILES ===
 // One transient retry (cache-busted), then a clean bilingual placeholder instead of the
@@ -3111,7 +3124,7 @@ if(!img.dataset.retry&&u.indexOf('http')===0){img.dataset.retry='1';setTimeout(f
 var w=img.parentElement;if(!w)return;
 w.onclick=null;w.removeAttribute('href');
 w.style.cssText+=';display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.05);cursor:default';
-w.innerHTML='<div style="text-align:center;padding:8px;font-size:10px;line-height:1.4;color:#9c8e79;font-weight:700">&#128247;<br>Foto no disponible</div>';
+w.innerHTML='<div style="text-align:center;padding:8px;font-size:10px;line-height:1.4;color:#9c8e79;font-weight:700">&#128247;<br>'+_L('Foto no disponible','Photo unavailable')+'</div>';
 }catch(e){}}
 
 // === PHOTO RESCUE: restore inline photos from a FULL backup file ===
@@ -3120,14 +3133,14 @@ w.innerHTML='<div style="text-align:center;padding:8px;font-size:10px;line-heigh
 // independent); existing entries — including Storage URLs — are kept after them, so if/when
 // Storage service is restored those simply come back too. Nothing is deleted. Idempotent.
 function repairPhotosFromBackup(){
-if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert('Admin/organizer only');return}
+if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){alert(_L('Solo admin/organizador','Admin/organizer only'));return}
 var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
 inp.onchange=async function(){var f=inp.files&&inp.files[0];if(!f)return;
-var snap;try{snap=JSON.parse(await f.text())}catch(e){alert('Archivo de backup inv\u00e1lido (no es JSON).');return}
+var snap;try{snap=JSON.parse(await f.text())}catch(e){alert(_L('Archivo de backup inv\u00e1lido (no es JSON).','Invalid backup file (not JSON).'));return}
 _repairPhotosApply(snap)};
 inp.click()}
 function _repairPhotosApply(snap){
-if(snap&&snap.light){alert('Ese backup es LIGHT (sin fotos). Usa un backup COMPLETO \u2014 por ejemplo los AutoBackup del 29\u201330 de junio.');return}
+if(snap&&snap.light){alert(_L('Ese backup es LIGHT (sin fotos). Usa un backup COMPLETO.','That backup is LIGHT (no photos). Use a FULL backup.'));return}
 var map={};
 function take(rec,idKey){if(!rec||typeof rec!=='object')return;var e=null;
 ['photos','tech_photos'].forEach(function(f){var arr=rec[f];
@@ -3137,7 +3150,7 @@ if(b.length){e=e||{};e[f]=b}}});
 if(e)map[String(idKey)]=e}
 Object.keys((snap&&snap.edits)||{}).forEach(function(k){take(snap.edits[k],k)});
 (((snap&&snap.added)||[])).forEach(function(a){if(a&&a.i!=null)take(a,a.i)});
-if(!Object.keys(map).length){alert('El backup no contiene fotos base64.');return}
+if(!Object.keys(map).length){alert(_L('El backup no contiene fotos base64.','The backup contains no base64 photos.'));return}
 var ticketsFixed=0,photosAdded=0;
 AD().forEach(function(r){var e=map[String(r.i)];if(!e)return;var upd=null;
 ['photos','tech_photos'].forEach(function(f){if(!e[f])return;
@@ -3153,7 +3166,7 @@ else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],upd);rememberEditsEdi
 ticketsFixed++;console.log('[PHOTO-RESCUE] restored photos on #'+r.i+' '+dispName(r))});
 try{renderAll()}catch(e){}
 try{if(typeof pushActivity==='function'&&ticketsFixed)pushActivity(null,'photo-rescue: '+photosAdded+' photos / '+ticketsFixed+' tickets')}catch(e){}
-alert(photosAdded?('\u2713 Rescate completado:\n\n'+photosAdded+' foto(s) restauradas en '+ticketsFixed+' ticket(s).\n\nLas fotos rescatadas quedan INLINE (ya no dependen de Storage). Las URLs de Storage se conservan al final \u2014 volver\u00e1n solas cuando el servicio se restablezca.'):'Nada que restaurar: las fotos de ese backup ya est\u00e1n presentes en los tickets.')}
+alert(photosAdded?_L('\u2713 Rescate completado:\n\n'+photosAdded+' foto(s) restauradas en '+ticketsFixed+' ticket(s).','\u2713 Rescue complete:\n\n'+photosAdded+' photo(s) restored across '+ticketsFixed+' ticket(s).'):_L('Nada que restaurar: las fotos de ese backup ya est\u00e1n presentes en los tickets.','Nothing to restore: that backup\u2019s photos are already present on the tickets.'))}
 
 // === ONE-TIME PHOTO MIGRATION: inline base64 → Firebase Storage ===
 // Moves every base64 photo (photos + tech_photos) out of RTDB into Storage, replacing each with
@@ -3161,7 +3174,7 @@ alert(photosAdded?('\u2713 Rescate completado:\n\n'+photosAdded+' foto(s) restau
 // everything else). A photo is only swapped AFTER its upload succeeds; failures stay inline.
 // Live-tests Storage with a 1px image first so a misconfigured bucket aborts cleanly.
 async function migratePhotosToStorage(){
-if(!currentUser||currentUser.role==='tech'){alert('Admin/organizer only');return}
+if(!currentUser||currentUser.role==='tech'){alert(_L('Solo admin/organizador','Admin/organizer only'));return}
 if(!fbStorage){alert('Firebase Storage SDK is not available in this session.');return}
 if(!navigator.onLine){alert('No connection — try again with stable internet.');return}
 try{
@@ -4837,7 +4850,7 @@ h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDe
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',hold:'&#9209;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+search+'"':'No '+m.label.toLowerCase()+' deliveries right now';
-let sub=search?'Try a different search term':(statusF==='all'?'Click "+ New Delivery" to add one':'All caught up here.');
+let sub=search?'Try a different search term':(statusF==='all'?'Deliveries sync in from Google Calendar.':'All caught up here.');
 h='<div class="empty-state"><div class="es-icon">'+icon+'</div><div class="es-title">'+msg+'</div><div class="es-sub">'+sub+'</div></div>'}
 document.getElementById("board").innerHTML=h}
 function thH(label,col){let active=sortCol===col;let arrow=active?(sortDir==="desc"?"▼":"▲"):"⇅";return'<th class="'+(active?"act-sort":"")+'" onclick="toggleSort(\''+col+'\')">'+label+' <span class="srt">'+arrow+'</span></th>'}
@@ -4947,7 +4960,7 @@ dock.innerHTML=[['gd_board','\u{1F69A}','Deliveries',"setTab('board')"],
 ['gd_dash','\u{1F4CA}','Dash',"setTab('dash')"]].map(function(b){
 return '<button id="'+b[0]+'" onclick="'+b[3]+'"><span class="gi">'+b[1]+'</span>'+b[2]+'</button>'}).join('');
 document.body.appendChild(dock);
-var fab=document.createElement('button');fab.id='glassFab';fab.innerHTML='\uFF0B';fab.title='New Delivery';
+var fab=document.createElement('button');fab.id='glassFab';fab.innerHTML='\uFF0B';fab.title='New Delivery';fab.style.display='none'; /* hidden 2026-07-05 \u2014 no manual deliveries (see header button note) */
 fab.onclick=function(){try{openForm()}catch(e){}};
 document.body.appendChild(fab);
 document.body.classList.add('has-glass-dock');
@@ -5701,7 +5714,7 @@ resetMd('wide');
 // BULLETPROOF OPEN: a single failing widget inside the huge modal render must never leave the
 // admin with a dead tap. If renderModal throws, show a minimal fallback and STILL open.
 try{renderModal()}catch(_e){console.error('[MODAL] render failed',_e);
-try{document.getElementById('md').innerHTML='<div style="padding:34px 20px;text-align:center"><div style="font-size:34px">&#9888;&#65039;</div><div style="font-weight:800;margin:8px 0 4px">No se pudo dibujar el ticket completo</div><div style="font-size:12.5px;color:var(--text-secondary);word-break:break-word">'+String(_e).slice(0,180)+'</div><button onclick="closeOv()" style="margin-top:14px;background:var(--aspen-orange);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;cursor:pointer">Cerrar</button></div>'}catch(_e2){}}
+try{document.getElementById('md').innerHTML='<div style="padding:34px 20px;text-align:center"><div style="font-size:34px">&#9888;&#65039;</div><div style="font-weight:800;margin:8px 0 4px">'+_L('No se pudo dibujar el ticket completo','Could not render the full ticket')+'</div><div style="font-size:12.5px;color:var(--text-secondary);word-break:break-word">'+String(_e).slice(0,180)+'</div><button onclick="closeOv()" style="margin-top:14px;background:var(--aspen-orange);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:800;font-family:inherit;cursor:pointer">'+_L('Cerrar','Close')+'</button></div>'}catch(_e2){}}
 openOv();startModalAutosave()}
 function closeOv(){stopModalAutosave();document.getElementById("ov").classList.add("hidden");document.body.classList.remove('modal-open');resetMd()}
 
@@ -7911,6 +7924,9 @@ localStorage.setItem('aspen_dt_theme',on?'dark':'light');}catch(e){}}
    is touched (zero risk to saving / Google Calendar sync). Dictionary-driven:
    any phrase that slips through is added in seconds. */
 var APP_LANG=(function(){try{return localStorage.getItem('aspenLang')||'en'}catch(e){return 'en'}})();
+/* Bilingual helper for strings built in JS (alerts, confirms, toasts, dynamic HTML).
+   Native dialogs never pass through the DOM translator, so they pick their language here. */
+function _L(es,en){return APP_LANG==='es'?es:en}
 
 /* English -> Spanish (applied when APP_LANG==='es'). Keys must match the on-screen text exactly. */
 var I18N_EN2ES={
@@ -7918,7 +7934,7 @@ var I18N_EN2ES={
 "Upcoming Deliveries":"Entregas próximas","Deliveries scheduled in the future":"Entregas programadas a futuro",
 "Needs Action Deliveries":"Entregas que requieren acción","Delivered Deliveries":"Entregas realizadas","Follow-Up Deliveries":"Entregas en seguimiento","Complete Deliveries":"Entregas completadas","All Deliveries":"Todas las entregas","On Hold":"En espera",
 "Paused — removed from calendar but info is preserved. Returns to Upcoming when re-added.":"En pausa — removida del calendario pero la información se conserva. Vuelve a Próximas al re-agregarla.",
-"+ New Delivery":"+ Nueva entrega","New Delivery":"Nueva entrega","Users":"Usuarios","Backup":"Respaldo","Calendar Synced":"Calendario sincronizado","Google Calendar":"Google Calendar","Returns":"Devoluciones",
+"+ New Delivery":"+ Nueva entrega","Deliveries sync in from Google Calendar.":"Las entregas llegan solas desde Google Calendar.","New Delivery":"Nueva entrega","Users":"Usuarios","Backup":"Respaldo","Calendar Synced":"Calendario sincronizado","Google Calendar":"Google Calendar","Returns":"Devoluciones",
 "All techs":"Todos los técnicos","Date":"Fecha","Oldest":"Más antiguas","Newest":"Más recientes","Balance Due":"Saldo pendiente",
 "Search by name, phone, address, ZIP, SN...":"Buscar por nombre, teléfono, dirección, ZIP, SN...",
 "PRE-DELIVERY":"PRE-ENTREGA","POST-DELIVERY":"POST-ENTREGA","Pre-Delivery":"Pre-entrega","Post-Delivery":"Post-entrega",
@@ -9138,7 +9154,7 @@ return;
 // BLANK for the user to fill in. The calendar owns cal (title), date, and color only.
 let newId=Date.now()+Math.floor(Math.random()*1000);
 let rec={i:newId,n:'',cal:title,sp:null,sn:null,dd:newDD,
-st:null,ph:null,em:null,cn:'Auto-created from Google Calendar event',
+st:null,ph:null,em:null,cn:null,
 pr:0,py:0,bl:0,ck:false,
 pf:false,iv:false,ca:true,el:false,wp:false,lv:false,pt:false,ch:false,rc:false,
 tb:null,ss:null,lf:null,cv:null,su:null,en:null,dn:null,fn:null,
@@ -11057,7 +11073,7 @@ return h+'</div>'}
 function intakeBoxHtml(r){
 let it=INTAKE[r.i],inner;
 if(!_intakeLoaded&&_intakeOne[String(r.i)]!==true){
-inner='<div style="font-size:13px;color:var(--ink-mid);padding:6px 0">&#8987; Cargando datos del cliente\u2026</div>';
+inner='<div style="font-size:13px;color:var(--ink-mid);padding:6px 0">&#8987; '+_L('Cargando datos del cliente\u2026','Loading customer data\u2026')+'</div>';
 _intakeFetchOne(r.i);
 }else if(!it||!it.token){
 inner='<div style="font-size:13px;color:var(--ink-mid);margin-bottom:8px">Generate a private link the customer opens on their phone to upload access photos and confirm details. It updates this ticket automatically and expires once they submit.</div>'+
