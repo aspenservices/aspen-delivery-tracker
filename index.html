@@ -1723,7 +1723,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <script src="pdf-assets.js"></script>
 
 <script>
-const BASE=[]; // build 63+: customer data lives in Firebase node `base` (auth-protected).
+const BASE=[]; // build 64+: customer data lives in Firebase node `base` (auth-protected).
 const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"];
 const SPA_SERIES=["ES","GS","GS +","VS","Holiday","COLD PLUNGE"];
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
@@ -1799,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070516;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.06 (build 63) — OFFLINE DATA CACHE: local device cache (photos stripped, 7-day TTL, wiped on logout) restores field resilience lost when BASE moved to Firebase; instant boot + session restore on dead connections; honest offline messaging'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070517;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.06 (build 64) — CACHE PHOTO FIX: local cache keeps Storage photo URLs (only residual base64 stripped), saves deferred until first real snapshot (anti photo-clobber), open ticket auto-refreshes when server photos land'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -3515,6 +3515,16 @@ document.body.classList.remove('modal-open')}
 // Photos in EDITS are stored inline as base64 strings, so this snapshot is fully
 // self-contained — restoring it brings back EVERYTHING including images.
 function _stripPhotosRec(r){if(!r||typeof r!=='object')return r;var o={};for(var _k in r){if(_k==='photos'||_k==='tech_photos'||_k==='info_photos')continue;o[_k]=r[_k]}return o}
+// BUILD 64: smart strip for the LOCAL CACHE — photos are Storage URLs now (~150 bytes each),
+// so the cache keeps them (fixes "photos disappear on cached boots"). Only residual base64
+// blobs (data:) are dropped, since those are what actually blow the localStorage quota.
+function _stripB64PhotosRec(r){if(!r||typeof r!=='object')return r;var o={};for(var _k in r){o[_k]=r[_k]}
+['photos','tech_photos','info_photos'].forEach(function(f){
+if(Array.isArray(o[f])){o[f]=o[f].filter(function(p){
+if(typeof p==='string')return p.indexOf('data:')!==0;
+if(p&&typeof p==='object')return !(typeof p.url==='string'&&p.url.indexOf('data:')===0)&&!(typeof p.b64==='string');
+return true});if(!o[f].length)delete o[f]}});
+return o}
 function buildBackupSnapshot(light){
 var _ed=EDITS,_ad=Array.isArray(ADDED)?ADDED:[];
 if(light){_ed={};Object.keys(EDITS).forEach(function(k){_ed[k]=_stripPhotosRec(EDITS[k])});_ad=_ad.map(_stripPhotosRec);}
@@ -3938,14 +3948,21 @@ let EDITS={},ADDED=[];
 // instantly — stale-but-useful beats empty. Real Firebase snapshots replace it when they land.
 const _CACHE_KEY='aspen_dt_cache_v1';
 const _CACHE_MAX_AGE=7*24*3600*1000; // ignore caches older than 7 days
-let _cacheT=null;
+let _cacheT=null,_cacheLastW=0;
+// BUILD 64: true THROTTLE (not debounce). The previous debounce re-postponed on every call, so
+// under continuous activity (snapshots + saves) the cache could go unwritten indefinitely.
+// Now: first call writes in ~300ms; further calls coalesce; guaranteed write every ≤10s.
+function _cacheSave(){
+if(_cacheT)return; // a write is already scheduled — coalesce
+let wait=Math.max(300,10000-(Date.now()-_cacheLastW));
+_cacheT=setTimeout(function(){_cacheT=null;_cacheLastW=Date.now();_cacheSaveNow()},wait)}
 function _cacheSaveNow(){
 try{
 if(!currentUser)return; // never cache the login screen state
 let payload={ts:Date.now(),by:currentUser.id||'',role:currentUser.role||'',
 base:(Array.isArray(BASE_LIVE)&&BASE_LIVE.length)?BASE_LIVE:null,
-edits:(function(){let o={};Object.keys(EDITS).forEach(function(k){o[k]=_stripPhotosRec(EDITS[k])});return o})(),
-added:(Array.isArray(ADDED)?ADDED:[]).map(_stripPhotosRec),
+edits:(function(){let o={};Object.keys(EDITS).forEach(function(k){o[k]=_stripB64PhotosRec(EDITS[k])});return o})(),
+added:(Array.isArray(ADDED)?ADDED:[]).map(_stripB64PhotosRec),
 users:USERS||{}};
 let json=JSON.stringify(payload);
 if(json.length>4.2*1024*1024){ // localStorage safety margin: drop edits first, keep base+users
@@ -3953,7 +3970,7 @@ payload.edits={};payload.added=[];json=JSON.stringify(payload);
 console.warn('[CACHE] payload too big — cached base+users only')}
 localStorage.setItem(_CACHE_KEY,json);
 }catch(e){console.warn('[CACHE] save failed:',e&&e.message)}}
-function _cacheSave(){clearTimeout(_cacheT);_cacheT=setTimeout(_cacheSaveNow,2500)} // throttled
+
 function _cacheHydrate(){
 try{
 let raw=localStorage.getItem(_CACHE_KEY);if(!raw)return false;
@@ -4276,6 +4293,11 @@ return obj}
 let _quotaWarned=false;
 let _fullSyncTimerE=null,_fullSyncTimerA=null;
 function saveE(){
+// BUILD 64 GUARD: never write records to Firebase before the FIRST real edits snapshot of this
+// session. Cache-hydrated records may lack residual base64 photos; writing one pre-sync would
+// clobber those photos on the server. Dirty flags persist — the 20s retry flushes after sync.
+if(!_syncE){console.warn('[SAVE] deferred — waiting for first edits snapshot (cache-hydrated session)');return}
+try{_cacheSave()}catch(e){} // BUILD 64: local edits reach the device cache immediately
 // SINGLE SOURCE OF TRUTH = FIREBASE. No localStorage queue, no whole-object writes.
 // Per-record write of ONLY the ticket(s) flagged dirty since the last save. A single update()
 // with per-id keys writes just those children and never touches siblings — so a write can never
@@ -4315,6 +4337,9 @@ setTimeout(step,40);
 })();
 }
 function saveA(){
+if(!_syncA){console.warn('[SAVE] deferred — waiting for first added snapshot (cache-hydrated session)');return} // BUILD 64 GUARD
+try{_cacheSave()}catch(e){}
+
 // Same single-source-of-truth model as saveE: per-record writes only, no localStorage queue.
 let dirty=Array.from(_dirtyAdded);_dirtyAdded.clear();
 let removed=Array.from(_removedAdded);_removedAdded.clear();
@@ -4422,8 +4447,8 @@ try{saveE()}catch(e){console.warn('flush saveE:',e)}
 try{saveA()}catch(e){console.warn('flush saveA:',e)}
 }catch(e){}}
 setInterval(function(){if(isOnline)flushPendingSaves('20s timer')},20000);
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){try{autosaveModal()}catch(e){};flushPendingSaves('tab hidden')}});
-window.addEventListener('pagehide',function(){try{autosaveModal()}catch(e){};flushPendingSaves('pagehide')});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){try{autosaveModal()}catch(e){};try{_cacheSaveNow()}catch(e){};flushPendingSaves('tab hidden')}});
+window.addEventListener('pagehide',function(){try{autosaveModal()}catch(e){};try{_cacheSaveNow()}catch(e){};flushPendingSaves('pagehide')});
 
 // Firebase real-time listeners
 let _loadCount=0;
@@ -4521,7 +4546,27 @@ Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
 // LEDGER ENFORCEMENT: a stale device's whole-record write may have erased a _deleted flag —
 // re-apply it from the ledger so deleted BASE tickets stay deleted on every device.
 Object.keys(DELETED_TICKETS).forEach(id=>{if(EDITS[id]){if(!EDITS[id]._deleted)EDITS[id]._deleted=true}else if(BASE.some(b=>String(b.i)===id)){EDITS[id]={_deleted:true,_deletedAt:DELETED_TICKETS[id]}}});
-if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
+if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()
+// BUILD 64: if a ticket modal is open in VIEW mode, refresh it when the fresh snapshot
+// changes its photos (typical after a cache-hydrated boot). Never touches EDIT mode.
+try{
+if(curRec&&!document.getElementById('ov').classList.contains('hidden')){
+let fresh=AD().find(x=>sameId(x.i,curRec.i));
+if(fresh){
+let pc=function(r){return ((r.photos||[]).length)+'/'+((r.tech_photos||[]).length)+'/'+((r.info_photos||[]).length)};
+let changed=pc(fresh)!==pc(curRec);
+if(!document.getElementById('e_n')){ // VIEW mode: safe to re-render the whole modal
+if(changed){curRec=fresh;renderModal();console.log('[CACHE] open ticket refreshed with server photos')}
+else curRec=fresh}
+else{ // EDIT mode: never rebuild the DOM (typing is sacred) — sync photo arrays in memory
+if(changed){
+curRec.photos=fresh.photos;curRec.tech_photos=fresh.tech_photos;curRec.info_photos=fresh.info_photos;
+if(!curRec._photoToastShown){curRec._photoToastShown=true;
+showToast('&#128247; '+_L('Fotos actualizadas del servidor — cierra y reabre el ticket para verlas','Photos updated from server — close and reopen the ticket to view'),'warn')}
+console.log('[CACHE] open ticket photo arrays synced (edit mode, no re-render)')}}
+}}
+}catch(e){}
+}else checkReady()
 },err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
 _rtOn(dbAdded,'added',snap=>{try{_cacheSave()}catch(e){}_syncA=true;_lastSyncTs=Date.now();
 let v=snap.val()||[];
@@ -4578,7 +4623,27 @@ return;
 ADDED=overlayRecentAddedEdits(nextArr);
 // LEDGER ENFORCEMENT: re-apply tombstones the server copy may have lost to a stale write.
 ADDED.forEach(r=>{if(r&&r.i!=null&&DELETED_TICKETS[String(r.i)]&&!r._deleted){r._deleted=true;r._deletedAt=r._deletedAt||DELETED_TICKETS[String(r.i)]}});
-if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
+if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()
+// BUILD 64: if a ticket modal is open in VIEW mode, refresh it when the fresh snapshot
+// changes its photos (typical after a cache-hydrated boot). Never touches EDIT mode.
+try{
+if(curRec&&!document.getElementById('ov').classList.contains('hidden')){
+let fresh=AD().find(x=>sameId(x.i,curRec.i));
+if(fresh){
+let pc=function(r){return ((r.photos||[]).length)+'/'+((r.tech_photos||[]).length)+'/'+((r.info_photos||[]).length)};
+let changed=pc(fresh)!==pc(curRec);
+if(!document.getElementById('e_n')){ // VIEW mode: safe to re-render the whole modal
+if(changed){curRec=fresh;renderModal();console.log('[CACHE] open ticket refreshed with server photos')}
+else curRec=fresh}
+else{ // EDIT mode: never rebuild the DOM (typing is sacred) — sync photo arrays in memory
+if(changed){
+curRec.photos=fresh.photos;curRec.tech_photos=fresh.tech_photos;curRec.info_photos=fresh.info_photos;
+if(!curRec._photoToastShown){curRec._photoToastShown=true;
+showToast('&#128247; '+_L('Fotos actualizadas del servidor — cierra y reabre el ticket para verlas','Photos updated from server — close and reopen the ticket to view'),'warn')}
+console.log('[CACHE] open ticket photo arrays synced (edit mode, no re-render)')}}
+}}
+}catch(e){}
+}else checkReady()
 },err=>{console.error('dbAdded error:',err);showReadErrorBanner('added',err);if(!fbReady)checkReady()});
 
 // === FORCED AUTO-UPDATE LISTENER ===
@@ -9379,14 +9444,14 @@ try{_pqCapture(id,fields)}catch(e){}
 if(isTicketDeleted(id))return false; // never resurrect a deleted ticket via field writes
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){
-Object.assign(ADDED[ai],fields);rememberAddedFields(ADDED[ai].i,fields);
+Object.assign(ADDED[ai],fields);rememberAddedFields(ADDED[ai].i,fields);try{_cacheSave()}catch(e){}
 let sid=String(ADDED[ai].i),p={};for(let k in fields)p[sid+'/'+k]=(fields[k]===undefined?null:fields[k]);
 _saveInFlight.added++;_lastLocalSave.added=Date.now();
 dbAdded.update(p).then(()=>{_saveInFlight.added=Math.max(0,_saveInFlight.added-1);syncPulse()})
 .catch(e=>{_saveInFlight.added=Math.max(0,_saveInFlight.added-1);console.error('saveTicketFields(added):',e);_dirtyAdded.add(sid);saveA()});
 return true}
 if(findRecById(id)){
-if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],fields);rememberEditsFields(id,fields);
+if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],fields);rememberEditsFields(id,fields);try{_cacheSave()}catch(e){}
 let sid=String(id),p={};for(let k in fields)p[sid+'/'+k]=(fields[k]===undefined?null:fields[k]);
 _saveInFlight.edits++;_lastLocalSave.edits=Date.now();
 dbEdits.update(p).then(()=>{_saveInFlight.edits=Math.max(0,_saveInFlight.edits-1);syncPulse()})
