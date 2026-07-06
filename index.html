@@ -17,6 +17,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- Google Calendar API (Identity Services + GAPI) -->
@@ -708,6 +709,8 @@ th,td{padding:7px 6px}
 /* Toast notification */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--st-success);color:#fff;padding:14px 22px;border-radius:10px;font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;transition:transform .3s,opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toastStack .toast{position:static;transform:none;pointer-events:auto}
+#toastStack .toast.show{transform:none}
 .toast.err{background:var(--st-danger)}.toast.warn{background:var(--st-warning)}
 /* Missing accessory button */
 .miss-btn{background:var(--st-danger-soft);color:var(--st-danger);border:2px solid var(--st-danger);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;letter-spacing:.02em;transition:all .15s}
@@ -1550,7 +1553,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0
 .toast::before{content:"✓";font-weight:900;font-size:15px;flex-shrink:0}
 .toast.warn::before{content:"⚠"}
 .toast.err::before{content:"✕"}
-@media(max-width:700px){.toast{bottom:calc(env(safe-area-inset-bottom,0px) + 92px);max-width:92vw}}
+@media(max-width:700px){#toastStack{bottom:calc(env(safe-area-inset-bottom,0px) + 92px) !important}.toast{max-width:92vw}}
 
 /* V9 — SCROLLBARS sutiles y cálidos en superficies con overflow */
 .tkt-main::-webkit-scrollbar,.tkt-insp::-webkit-scrollbar,.mdl::-webkit-scrollbar,.twrap::-webkit-scrollbar,.board::-webkit-scrollbar,.tksecnav::-webkit-scrollbar{width:9px;height:9px}
@@ -1583,7 +1586,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 </script>
 </head>
 <body>
-<div id="loading-ov"><div class="ld-spinner"></div><div class="ld-text">Connecting to database...</div></div>
+<div id="loading-ov"><div class="ld-spinner" role="status" aria-label="Loading"></div><div class="ld-text">Connecting to database...</div></div>
 
 <!-- LOGIN / AUTH SCREEN -->
 <div id="auth-screen" class="auth-screen hidden">
@@ -1700,7 +1703,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 </div>
 <div class="ctx-hdr" id="ctxHdr"></div>
 <div id="holdToolbarHost"></div>
-<div class="filters"><input class="search" id="searchBox" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;debouncedSearchRender()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button><select id="techFilter" class="techfilter" onchange="techF=this.value;render()" title="Filter by assigned technician"><option value="">&#128100; All techs</option></select><button id="returnsBtn" class="returns-btn" onclick="returnsF=!returnsF;document.getElementById('returnsBtn').classList.toggle('on',returnsF);render()" title="Show only deliveries that need a second visit">&#128260; Returns</button></div>
+<div class="filters"><input class="search" id="searchBox" aria-label="Search deliveries" placeholder="Search by name, phone, address, ZIP, SN..." oninput="search=this.value;debouncedSearchRender()"><button id="dateSortBtn" class="dsort active" onclick="toggleDateSort()" title="Toggle date order">&#128197; Date <span id="dateSortArrow">▼ Newest</span></button><select id="techFilter" class="techfilter" onchange="techF=this.value;render()" title="Filter by assigned technician"><option value="">&#128100; All techs</option></select><button id="returnsBtn" class="returns-btn" onclick="returnsF=!returnsF;document.getElementById('returnsBtn').classList.toggle('on',returnsF);render()" title="Show only deliveries that need a second visit">&#128260; Returns</button></div>
 <div class="board" id="board"></div>
 <div class="twrap hidden" id="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
 <div class="dash-wrap hidden" id="dashWrap"></div>
@@ -1720,7 +1723,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <script src="pdf-assets.js"></script>
 
 <script>
-const BASE=[]; // build 61+: customer data lives in Firebase node `base` (auth-protected).
+const BASE=[]; // build 62+: customer data lives in Firebase node `base` (auth-protected).
 const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"];
 const SPA_SERIES=["ES","GS","GS +","VS","Holiday","COLD PLUNGE"];
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
@@ -1752,6 +1755,11 @@ console.error('%c[CONFIG] Firebase apiKey/appId not set — a setup box will ask
 window.addEventListener('load',function(){try{showFbKeySetup()}catch(e){console.error('FB key setup modal error',e)}});
 }
 firebase.initializeApp(firebaseConfig);
+// CRIT FIX (build 62) — App Check, code-ready: paste the reCAPTCHA v3 SITE KEY below (from
+// Firebase Console → App Check → register web app) and every request is verified as coming
+// from THIS app on our domain. Empty key = App Check stays off (no behavior change).
+const APPCHECK_SITE_KEY='';
+try{if(APPCHECK_SITE_KEY&&firebase.appCheck){firebase.appCheck().activate(APPCHECK_SITE_KEY,true);console.log('[APPCHECK] activated')}}catch(e){console.warn('[APPCHECK]',e)}
 // Firebase Storage handle (used for new photo uploads). Safe if Storage isn't enabled — uploads
 // just fall back to inline base64 (see uploadPhotoToStorage).
 const fbStorage=(function(){try{return firebase.storage()}catch(e){console.warn('Storage SDK not ready',e);return null}})();
@@ -1791,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070514;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 61) — VISUAL POLISH PACK (10): brand status tokens replace 273 generic hexes (+dark variants), Source Sans 3 body + Fraunces extended, WCAG contrast fix, focus-visible rings, 44px mobile tap targets, premium empty states with clear-filters CTA, on-brand loader, iconified toasts above the dock, warm scrollbars, unified micro-interactions'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070515;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.05 (build 62) — AUDIT PACK (30 findings): backups include base node + chunked restore w/ anti-wipe, fmtDate XSS root fix, PIN brute-force lockout, atomic digest flag + SMS counter (dedicated transaction node), presence timer cleanup, crypto intake tokens, verified deletes, gcalMap orphan pruning, App Check code-ready, phone-extension dialing, negative money format, COLLECT excludes paid, data-anomaly report, merge revalidation, toast stack, a11y labels, legacy node cleanup, year-range validation'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1952,6 +1960,9 @@ function clearSession(){localStorage.removeItem('aspen_session')}
 
 function doLogout(){
 if(!confirm('Sign out?'))return;
+// CRIT FIX (build 62): stop the presence heartbeat — it kept beating with the old user
+// after sign-out if the reload was delayed/blocked.
+try{if(window._aspenPresenceTimer){clearInterval(window._aspenPresenceTimer);window._aspenPresenceTimer=null}}catch(e){}
 try{if(_presenceId)db.ref('presence/'+_presenceId).remove()}catch(e){}
 try{firebase.auth().signOut()}catch(e){}
 clearSession();currentUser=null;location.reload()}
@@ -2033,8 +2044,22 @@ let name=document.getElementById('lo_name').value.trim();
 let pin=document.getElementById('lo_pin').value.trim();
 if(!name||!pin){setAuthMsg('&#9888; Select your name and enter PIN','err');return}
 setAuthMsg('Signing in...','info');
+// CRIT FIX (build 62): brute-force throttle — a 4-digit PIN has only 10,000 combinations.
+// After 5 wrong attempts the login locks for 2 minutes, doubling on each subsequent failure
+// (client-side; App Check will add the server-side layer).
+let _lk={};try{_lk=JSON.parse(localStorage.getItem('aspen_pin_lock')||'{}')}catch(e){}
+let _lkN=_lk[name]||{fails:0,until:0};
+if(_lkN.until>Date.now()){let secs=Math.ceil((_lkN.until-Date.now())/1000);setAuthMsg('&#128274; Too many wrong PINs. Try again in '+(secs>60?Math.ceil(secs/60)+' min':secs+'s'),'err');return}
 let user=await authenticate(name,pin);
-if(!user){setAuthMsg('&#10005; Wrong PIN for '+name,'err');return}
+if(!user){
+_lkN.fails=(_lkN.fails||0)+1;
+if(_lkN.fails>=5){let lockMs=2*60*1000*Math.pow(2,Math.max(0,_lkN.fails-5));_lkN.until=Date.now()+Math.min(lockMs,60*60*1000);
+setAuthMsg('&#128274; Too many wrong PINs for '+name+'. Locked for '+Math.ceil(Math.min(lockMs,3600000)/60000)+' min.','err')}
+else{setAuthMsg('&#10005; Wrong PIN for '+name+' ('+(5-_lkN.fails)+' attempts left)','err')}
+_lk[name]=_lkN;try{localStorage.setItem('aspen_pin_lock',JSON.stringify(_lk))}catch(e){}
+try{db.ref('auth_attempts').push({name:name,ts:Date.now(),ua:String(navigator.userAgent||'').slice(0,80)}).catch(()=>{})}catch(e){}
+return}
+delete _lk[name];try{localStorage.setItem('aspen_pin_lock',JSON.stringify(_lk))}catch(e){}
 currentUser=user;
 saveSession(currentUser);
 // Remember last used name so dropdown defaults to it next time
@@ -2160,6 +2185,17 @@ setTimeout(function(){try{syncAllPortalInfo()}catch(e){}},15000);
 setTimeout(function(){
 try{migrateBaseToFirebase()}catch(e){console.warn('[BASE] migrate call failed',e)}
 try{migrateShortDates()}catch(e){console.warn('[DATES] migrate call failed',e)}
+// MED FIX (build 62): data-anomaly report — flags suspicious money values (like the real
+// $95,000 typo on ticket #56 that inflates COLLECT/revenue) so a human corrects them.
+// NEVER auto-corrects: the app must not guess what a price should be.
+try{setTimeout(function(){
+let odd=AD().filter(function(r){return r&&!r._deleted&&((+r.pr>40000)||(+r.pr>0&&+r.pr<1500)||(+r.py>+r.pr&&+r.pr>0)||(+r.bl<0))});
+if(odd.length){
+console.warn('[DATA-CHECK] '+odd.length+' ticket(s) with suspicious money values:',odd.map(function(r){return '#'+r.i+' '+(r.n||'?')+' pr='+r.pr+' py='+r.py+' bl='+r.bl}).join(' | '));
+let dk='aspen_anomaly_warn_'+new Date().toISOString().slice(0,10);
+if(!localStorage.getItem(dk)){localStorage.setItem(dk,'1');
+showToast('&#128269; '+odd.length+' ticket'+(odd.length>1?'s':'')+' with unusual price/balance — open '+(odd.length===1?('#'+odd[0].i+' '+(odd[0].n||'')):'them')+' to verify (see console)','warn')}}
+},6000)}catch(e){}
 },2500)}}}
 
 // === TECH VIEW LOGIC ===
@@ -3486,13 +3522,16 @@ version:'aspen_delivery_tracker_backup_v1',
 light:!!light,
 exportedAt:new Date().toISOString(),
 exportedBy:(currentUser&&currentUser.name)||'unknown',
-counts:{edits:Object.keys(EDITS).length,added:Array.isArray(ADDED)?ADDED.length:0,users:Object.keys(USERS).length,gcal_map:Object.keys(gcalMap||{}).length},
+counts:{edits:Object.keys(EDITS).length,added:Array.isArray(ADDED)?ADDED.length:0,users:Object.keys(USERS).length,gcal_map:Object.keys(gcalMap||{}).length,base:(function(){try{return BASEDATA().length}catch(e){return 0}})()},
 edits:_ed,
 added:_ad,
 users:USERS,
 gcal_map:Object.assign({},gcalMap||{}),
 gcal_config:{calendarId:(typeof gcalCalendarId!=='undefined'?gcalCalendarId:null)},
 deleted_tickets:Object.assign({},typeof DELETED_TICKETS!=='undefined'?DELETED_TICKETS:{}),
+// CRIT FIX (build 62): customer records now live in Firebase node `base` — a backup that
+// omits them is not a backup. Stored keyed by id (same shape as the server node).
+base:(function(){let o={};try{BASEDATA().forEach(function(r){if(r&&r.i!=null)o[String(r.i)]=r})}catch(e){}return o})(),
 custom_opts:{tb:OPT_TB.slice(),ss:OPT_SS.slice(),lf:OPT_LF.slice(),cv:OPT_CV.slice(),su:OPT_SU.slice(),__cats__:CUSTOM_CATS}
 }}
 
@@ -3577,7 +3616,7 @@ editKeys.forEach(function(k){edits[k]=_keepPhotos(Object.assign({},edits[k]),_sr
 addedKeys.forEach(function(id){addedObj[id]=_keepPhotos(Object.assign({},addedObj[id]),_srvA[id])});
 // Hold the listener defenses for the whole operation so incoming snapshots don't fight the writes.
 _saveInFlight.edits++;_saveInFlight.added++;_lastLocalSave.edits=Date.now();_lastLocalSave.added=Date.now();
-let total=editKeys.length+addedKeys.length+2,done=0;
+let total=editKeys.length+addedKeys.length+2+((snap.base&&typeof snap.base==='object')?Object.keys(snap.base).length:0),done=0;
 let ov=document.createElement('div');
 ov.id='restore-ov';
 ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.92);color:#fff;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:16px;gap:14px;text-align:center;padding:24px';
@@ -3588,6 +3627,16 @@ let bump=(label)=>{done++;if(prog)prog.textContent=label+'\u2026 ('+done+'/'+tot
 // 1) Small nodes first.
 if(snap.custom_opts&&typeof snap.custom_opts==='object'){try{await dbOpts.set(snap.custom_opts)}catch(e){console.error('restore custom_opts:',e)}}bump('Opciones');
 if(snap.users&&typeof snap.users==='object'){try{await dbUsers.set(snap.users)}catch(e){console.error('restore users:',e)}}bump('Usuarios');
+// 1b) CRIT FIX (build 62): restore the customer `base` node (chunked per-record, same model as
+// edits). ANTI-WIPE: never let an empty/short base in an old backup erase a populated server node.
+if(snap.base&&typeof snap.base==='object'){
+let bKeys=Object.keys(snap.base);
+if(bKeys.length){
+let srvB={};try{srvB=((await dbBase.once('value')).val())||{}}catch(e){}
+let srvN=Object.keys(srvB).length;
+if(srvN>=20&&bKeys.length<srvN*0.5){console.warn('[RESTORE] backup base ('+bKeys.length+') much smaller than server ('+srvN+') — SKIPPING base restore to avoid data loss')}
+else{for(let bk of bKeys){try{await dbBase.update({[bk]:snap.base[bk]})}catch(e){console.error('restore base '+bk+':',e)}bump('Clientes')}}
+}}
 // 2) Edits, one record at a time.
 for(let k of editKeys){try{await dbEdits.update({[k]:edits[k]})}catch(e){console.error('restore edit '+k+':',e)}bump('Edits')}
 // 3) Added, one record at a time (object form keyed by ticket id).
@@ -3649,7 +3698,12 @@ try{localStorage.setItem('aspen_drive_backup_last_name',filename)}catch(e){}
 try{localStorage.setItem('aspen_drive_backup_last_id',res.id||'')}catch(e){}
 // Best-effort rotation: keep only the last 14 auto-backups in the folder
 driveRotateOldBackups(folderId,light?'AspenDelivery_LightBackup_':'AspenDelivery_AutoBackup_',light?48:10).catch(()=>{})
-}catch(err){console.warn('[Backup] Drive auto-backup failed (non-fatal):',err.message||err)}}
+}catch(err){console.warn('[Backup] Drive auto-backup failed (non-fatal):',err.message||err);
+// MED FIX (build 62): surface the failure — silently skipping backups for weeks is how you
+// discover you have none the day you need one. One warning per day, not per attempt.
+try{let dk='aspen_drive_bk_warn_'+new Date().toISOString().slice(0,10);
+if(!localStorage.getItem(dk)&&currentUser&&currentUser.role!=='tech'){localStorage.setItem(dk,'1');
+showToast('&#9888; Drive auto-backup failed today — check Google connection in Backup Center','warn')}}catch(e){}}}
 
 async function driveFindOrCreateFolder(name){
 try{
@@ -3681,6 +3735,17 @@ for(let f of toDelete){
 try{await fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:{'Authorization':'Bearer '+gcalToken}})}catch(e){}
 }}
 
+
+// LOW FIX (build 62): one-tap cleanup of legacy Firebase nodes no longer used by the app.
+// Currently: `service_requests` (superseded by the intake portal). Confirm-gated, admin only.
+function pruneLegacyNodes(){
+if(!(currentUser&&currentUser.role==='admin')){showToast('Only admin can prune legacy nodes','err');return}
+db.ref('service_requests').once('value').then(function(s){
+let n=s.exists()?Object.keys(s.val()||{}).length:0;
+if(!n){showToast('&#10003; No legacy data found — already clean');return}
+if(!confirm('Delete legacy node `service_requests` ('+n+' entr'+(n===1?'y':'ies')+')?\n\nThis data is not used by the app anymore. A backup downloaded BEFORE deleting is recommended.'))return;
+db.ref('service_requests').remove().then(function(){showToast('&#129529; Legacy node removed ('+n+' entries)')}).catch(function(e){showToast('&#9888; Could not remove: '+e.message,'err')})
+}).catch(function(e){showToast('&#9888; '+e.message,'err')})}
 function renderBackupCenter(){
 let lastManual=parseInt(localStorage.getItem('aspen_backup_last_manual')||'0',10);
 let lastDrive=parseInt(localStorage.getItem('aspen_drive_backup_last')||'0',10);
@@ -3714,6 +3779,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
 '<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#128230; Photo Storage (Firebase)</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px">Estado SDK: '+(fbStorage?'<strong style="color:var(--st-success)">listo</strong>':'<strong style="color:var(--st-danger)">no disponible</strong>')+' &middot; <strong>'+_phB64+'</strong> fotos inline (~'+_phMB+' MB dentro de la base) &middot; <strong>'+_phUrl+'</strong> ya en Storage.</div>'+
+'<button onclick="pruneLegacyNodes()" style="background:var(--surf-soft);color:var(--text-secondary);border:1.5px solid var(--border-mid);padding:9px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;width:100%;margin-bottom:8px">&#129529; Limpiar nodos legacy (service_requests)</button>'+
 (_phB64?('<button onclick="migrateAllPhotosV2()" style="background:var(--st-hold);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128230; Migrar '+_phB64+' fotos a Storage (libera ~'+_phMB+' MB)</button>'):'<div style="font-size:12px;color:var(--st-success);font-weight:700">&#10003; Todas las fotos ya viven en Storage.</div>')+
 '</div>'+
 
@@ -3886,7 +3952,7 @@ let fbReady=false;
 let DELETED_TICKETS={};
 const dbDeletedLedger=db.ref('deleted_tickets');
 _rtOn(dbDeletedLedger,'ledger',s=>{DELETED_TICKETS=Object.assign(DELETED_TICKETS,(s&&s.val&&s.val())||{})},err=>console.warn('[LEDGER] read error',err));
-function markTicketDeleted(id){if(id==null)return;let sid=String(id);DELETED_TICKETS[sid]=Date.now();dbDeletedLedger.child(sid).set(Date.now()).catch(e=>console.warn('[LEDGER] write failed',e))}
+function markTicketDeleted(id,cb){if(id==null){if(cb)cb(false);return}let sid=String(id);DELETED_TICKETS[sid]=Date.now();dbDeletedLedger.child(sid).set(Date.now()).then(function(){if(cb)cb(true)}).catch(function(e){console.warn('[LEDGER] write failed',e);if(cb)cb(false)})}
 function isTicketDeleted(id){return id!=null&&!!DELETED_TICKETS[String(id)]}
 function _ledgerFlag(r){if(!r||r.i==null)return r;let sid=String(r.i);if(DELETED_TICKETS[sid]&&!r._deleted)return Object.assign({},r,{_deleted:true,_deletedAt:DELETED_TICKETS[sid]});return r}
 function _ledgerFlagEdit(id,v){if(v&&DELETED_TICKETS[String(id)]&&!v._deleted)return Object.assign({},v,{_deleted:true,_deletedAt:DELETED_TICKETS[String(id)]});return v}
@@ -4654,7 +4720,7 @@ return [rec.n,rec.cal,rec.sp,rec.st,rec.ph,String(rec.sn||''),rec.em].some(funct
 if(q&&_srchNorm(v).indexOf(q)>=0)return true;
 if(qd.length>=3){var vd=_srchDigits(v);if(vd&&vd.indexOf(qd)>=0)return true}
 return false})}
-function fmt(n){return n?"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"$0.00"}
+function fmt(n){n=Number(n);if(!isFinite(n)||!n)return"$0.00";let a=Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});return(n<0?"-$":"$")+a} // MED FIX (build 62): -$500.00 (not $-500.00) + NaN-safe
 
 // Phone helpers — a ticket's r.ph may now contain MULTIPLE numbers, one per line.
 // parsePhones() returns a clean array of trimmed entries.
@@ -4667,9 +4733,15 @@ return String(s).split(/\n+/).map(p=>p.trim()).filter(Boolean);
 function phoneDigits(p){return String(p||'').replace(/[^0-9+]/g,'')}
 // Compact display label for a phone entry — "719-510-8200 Tom" → ["719-510-8200","Tom"]
 function phoneLabel(p){
-let m=String(p||'').match(/^([\(\)\d\s\.\-+]+)(.*)$/);
+// MED FIX (build 62): capture only the PHONE pattern (3-3-4 with optional +1) so trailing
+// extensions/annotations become the tag — "314-776-5050 Ext. 114" now dials 3147765050
+// instead of the invalid 13-digit 3147765050114.
+let sp=String(p||'');
+let m=sp.match(/^\s*(\+?1?[\s.\-]*\(?\d{3}\)?[\s.\-]*\d{3}[\s.\-]*\d{4})\s*(.*)$/);
 if(m)return{num:m[1].trim(),tag:m[2].replace(/[()]/g,'').trim()};
-return{num:String(p||'').trim(),tag:''}}
+let m2=sp.match(/^([\(\)\d\s\.\-+]+)(.*)$/);
+if(m2)return{num:m2[1].trim(),tag:m2[2].replace(/[()]/g,'').trim()};
+return{num:sp.trim(),tag:''}}
 
 // === PRE-DELIVERY SMS ===
 // Builds a courteous customer-facing text message asking the customer to
@@ -4709,13 +4781,17 @@ return lines.join('\n')}
 // counter and history make it visible that the customer is being over-messaged.
 const SMS_LIMIT_PER_CUSTOMER=5;
 
-function sendPreDeliverySMS(id){
+async function sendPreDeliverySMS(id){
 let r=AD().find(x=>x.i===id||String(x.i)===String(id));
 if(!r){alert('Ticket not found.');return}
 let phones=parsePhones(r.ph);
 if(!phones.length){alert('No phone number on file for this customer. Add a phone number first.');return}
 
+// CRIT FIX (build 62): the anti-spam limit is checked against a DEDICATED counter node
+// (`sms_counters/{id}`, bumped only by transaction) — full-record saves can never clobber it,
+// so two devices texting the same customer at once can't slip past the limit.
 let currentCount=Number(r.sms_count||0);
+try{let _cs=await db.ref('sms_counters/'+r.i).once('value');let _cv=Number(_cs.val());if(isFinite(_cv)&&_cv>currentCount)currentCount=_cv}catch(e){}
 
 // Soft cap: warn before exceeding the limit, but allow override
 if(currentCount>=SMS_LIMIT_PER_CUSTOMER){
@@ -4750,6 +4826,8 @@ if(_url)msg+='\n\n'+_url+'\n\nThis link is private and secure, and it closes onc
 let now=Date.now();
 let history=Array.isArray(r.sms_history)?r.sms_history.slice():[];
 history.push({ts:now,phone:digits,n:currentCount+1});
+// CRIT FIX (build 62): authoritative count lives in `sms_counters/{id}` (transaction-only);
+// the record's sms_count is a UI mirror kept in sync from the committed transaction result.
 let updates={
 sms_count:currentCount+1,
 sms_last:now,
@@ -4757,6 +4835,14 @@ sms_history:history};
 let ai=ADDED.findIndex(x=>x.i===r.i);
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[r.i])EDITS[r.i]={};Object.assign(EDITS[r.i],updates);rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+try{
+db.ref('sms_counters/'+r.i).transaction(function(cur){return Number(cur||0)+1}).then(function(res){
+try{let v=Number(res&&res.snapshot&&res.snapshot.val());if(!isFinite(v)||v<=currentCount+1)return;
+// another device also sent — reflect the true total into the record mirror
+if(ai>=0){let a2=ADDED.findIndex(x=>x.i===r.i);if(a2>=0){ADDED[a2].sms_count=v;rememberAddedEdit(ADDED[a2]);saveA()}}
+else{if(!EDITS[r.i])EDITS[r.i]={};EDITS[r.i].sms_count=v;rememberEditsEdit(r.i,EDITS[r.i]);saveE()}
+}catch(e){}}).catch(function(){});
+}catch(e){}
 // Refresh in-memory curRec so a subsequent renderModal sees the new count
 if(curRec&&curRec.i===r.i)curRec=AD().find(x=>x.i===r.i);
 // Update the visible counter on the button without a full re-render (preserves
@@ -4836,9 +4922,9 @@ showToast('&#128197; '+fixed+' fechas ambiguas normalizadas a formato completo',
 renderCurrentTab()}
 flagRef.set({ts:Date.now(),by:(currentUser&&currentUser.name)||'?',fixed:fixed}).catch(()=>{})
 }).catch(e=>console.warn('[DATES] migration check failed',e))}
-function fmtDate(dd){let d=parseDate(dd);if(!d||isNaN(d))return dd||'TBD';
+function fmtDate(dd){let d=parseDate(dd);if(!d||isNaN(d))return String(dd||'TBD').replace(/[<>"]/g,'');
 return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-function dateNote(dd){if(!dd)return'';let m=String(dd).match(/(am|pm|all\s*day)/i);return m?' '+m[0]:''}
+function dateNote(dd){if(!dd)return'';let m=String(dd).match(/(am|pm|all\s*day|\ball\b)/i);if(!m)return'';let v=m[0].toLowerCase();return ' '+(v==='all'?'all day':v)}
 
 function st(r){if(r.co)return"complete";
 // Tech marked Delivered but Email PW (ep) is NOT checked → "Delivered" tab (was "action")
@@ -5139,7 +5225,7 @@ var human=dObj.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'nu
 var todayKey=_routeKey(new Date());
 var isToday=res.key===todayKey;
 var toCollect=0,crew={};
-stops.forEach(function(r){if(r.bl>0)toCollect+=Number(r.bl)||0;if(r.assigned_to)crew[r.assigned_to]=1;});
+stops.forEach(function(r){if(r.bl>0&&r.pst!=='paid')toCollect+=Number(r.bl)||0;if(r.assigned_to)crew[r.assigned_to]=1;}); // MED FIX (build 62): paid tickets with a stale balance are not "to collect"
 var crewN=Object.keys(crew).length;
 var h='<div class="rt2">';
 h+='<div class="rt2-head"><div><div class="rt2-kicker">'+(isToday?'Today\u2019s route':'Route plan')+'</div><h2 class="rt2-title">'+human+'</h2><div class="rt2-sub">'+stops.length+' stop'+(stops.length===1?'':'s')+(toCollect>0?' \u00b7 '+fmt(toCollect)+' to collect':'')+(crewN?' \u00b7 '+crewN+' crew':'')+(function(){var w=(typeof _wxFor==='function')?_wxFor(res.key):'';return w?' \u00b7 '+w:''})()+'</div></div>';
@@ -5240,7 +5326,7 @@ var name=String(currentUser.name||'').split(' ')[0];
 var today=new Date();today.setHours(0,0,0,0);
 var tk=(typeof _dgDateKey==='function')?_dgDateKey():'';
 var todays=AD().filter(function(r){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHours(0,0,0,0);return d.getTime()===today.getTime()&&!r.co&&!r.hold});
-var collect=todays.reduce(function(sm,r){return sm+((+r.bl>0)?+r.bl:0)},0);
+var collect=todays.reduce(function(sm,r){return sm+((+r.bl>0&&r.pst!=='paid')?+r.bl:0)},0);
 var prepped=todays.filter(function(r){return PRE.every(function(pp){return r[pp.k]})}).length;
 var wx=(typeof _wxFor==='function')?_wxFor(tk):'';
 var dateStr=new Date().toLocaleDateString(APP_LANG==='es'?'es-US':undefined,{weekday:'long',month:'long',day:'numeric'});
@@ -5316,7 +5402,7 @@ var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!m
 var a=_nfAll().slice().reverse();
 function ago(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return 'ahora';if(m<60)return m+' min';var hh=Math.round(m/60);if(hh<24)return hh+' h';return Math.round(hh/24)+' d'}
 var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
-h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u{1F514} Alerts</h2><div style="display:flex;gap:8px"><button onclick="localStorage.removeItem(\''+_NF_KEY+'\');openGlassNotifs()" style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Clear</button><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div></div>';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u{1F514} Alerts</h2><div style="display:flex;gap:8px"><button onclick="localStorage.removeItem(\''+_NF_KEY+'\');openGlassNotifs()" style="background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Clear</button><button class="xbtn" aria-label="Close" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div></div>';
 h+=a.length?a.map(function(x){return '<div class="nf-row"><div>'+x.m+'</div><span class="tm">'+ago(x.t)+'</span></div>'}).join(''):'<div class="gk-hint">Sin avisos todav\u00eda \u2014 aqu\u00ed quedar\u00e1n los eventos de la app (reseñas, follow-ups, guardas de datos\u2026).</div>';
 h+='</div>';
 md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open');
@@ -5346,7 +5432,7 @@ function openGlassSettings(){
 var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
 var isAdmin=currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer');
 var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
-h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u2699\uFE0F Settings</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u2699\uFE0F Settings</h2><button class="xbtn" aria-label="Close" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
 h+='<div class="set-grp"><div class="set-h">Cuenta</div>'+
 '<div class="set-row" style="cursor:default"><div class="ic" style="background:#2C221C">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div>'+escHtml(currentUser.name||'')+'</div><div class="sub">'+escHtml(currentUser.role||'')+(currentUser.email?' \u00b7 '+escHtml(currentUser.email):'')+'</div></div></div>'+
 _setRow('\u23FB','var(--st-danger)','Cerrar sesi\u00f3n','','doLogout()')+'</div>';
@@ -5429,7 +5515,7 @@ function onDay(r,day){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHo
 var todays=all.filter(function(r){return onDay(r,today)&&!r.co&&!r.hold});
 var tomorrows=all.filter(function(r){return onDay(r,tom)&&!r.co&&!r.hold});
 var tomIncomplete=tomorrows.map(function(r){var done=PRE.filter(function(pp){return r[pp.k]}).length;return{r:r,done:done}}).filter(function(x){return x.done<PRE.length});
-var collectToday=todays.filter(function(r){return (+r.bl||0)>0});
+var collectToday=todays.filter(function(r){return (+r.bl||0)>0&&r.pst!=='paid'});
 var collectTotal=collectToday.reduce(function(sm,r){return sm+(+r.bl||0)},0);
 var needsAction=all.filter(function(r){return st(r)==='overdue'});
 var holds=all.filter(function(r){return r.hold});
@@ -5443,7 +5529,7 @@ function digestHtml(d){
 var c=DIGEST_CFG||{};
 var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
 '<h2 style="font-size:18px;font-weight:800">\u{1F4EC} Daily Digest \u2014 '+new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</h2>'+
-'<button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+'<button class="xbtn" aria-label="Close" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
 try{var _tk=_dgDateKey();var _tm=new Date();_tm.setDate(_tm.getDate()+1);var _tk2=_tm.getFullYear()+'-'+String(_tm.getMonth()+1).padStart(2,'0')+'-'+String(_tm.getDate()).padStart(2,'0');
 var _w1=_wxFor(_tk),_w2=_wxFor(_tk2);
 if(_w1||_w2)h+='<div style="font-size:12.5px;color:var(--text-secondary);font-weight:700;margin:-4px 0 10px">'+(_w1?'Today '+_w1:'')+(_w1&&_w2?' \u00b7 ':'')+(_w2?'Tomorrow '+_w2:'')+'</div>';}catch(e){}
@@ -5529,8 +5615,10 @@ var now=new Date();var hm=String(c.hour||'06:30').split(':');
 var target=new Date(now);target.setHours(parseInt(hm[0],10)||6,parseInt(hm[1],10)||30,0,0);
 if(now<target)return;
 var dk=_dgDateKey();var flagRef=db.ref('digest_sent/'+dk);
-var sn=await flagRef.once('value');if(sn.val())return;
-await flagRef.set({at:Date.now(),by:(currentUser&&currentUser.name)||'?'});
+// CRIT FIX (build 62): once('value')+set() had a race — two devices could both pass the check
+// and send the digest twice. transaction() lets exactly ONE device claim the flag.
+var tx=await flagRef.transaction(function(cur){if(cur)return;return{at:Date.now(),by:(currentUser&&currentUser.name)||'?'}});
+if(!tx.committed){return} // another device already claimed today's send
 await _digestSendEmail();console.log('[DIGEST] Daily email sent for',dk);showToast('\u2709\ufe0f Daily digest emailed');
 }catch(e){console.warn('[DIGEST] tick:',e)}}
 function scheduleDigest(){try{
@@ -5636,7 +5724,7 @@ function cell(v){v=(v==null||v==='')?'\u2014':String(v);return escHtml(v.length>
 function row(l,ka,kb){return '<tr><td style="padding:5px 8px;font-size:11px;color:var(--text-secondary);font-weight:700">'+l+'</td><td style="padding:5px 8px;font-size:12.5px">'+ka+'</td><td style="padding:5px 8px;font-size:12.5px">'+kb+'</td></tr>'}
 var fields=[['Name','n'],['SN','sn'],['Spa','sp'],['Date','dd'],['Phones','ph'],['Email','em'],['Address','st'],['Sales','sl'],['Payment','pay'],['Balance','bl']];
 var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
-h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">\u{1F9F2} Compare & Merge</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">\u{1F9F2} Compare & Merge</h2><button class="xbtn" aria-label="Close" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
 h+='<table style="width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;overflow:hidden">';
 h+='<tr><td></td><td style="padding:8px;font-weight:800;font-size:13px;background:#e7f8f0">\u2705 KEEP: '+escHtml(dispName(keep))+'</td><td style="padding:8px;font-weight:800;font-size:13px;background:var(--st-danger-soft)">\u{1F5D1} MERGE & DELETE: '+escHtml(dispName(drop))+'</td></tr>';
 fields.forEach(function(f){h+=row(f[0],cell(keep[f[1]]),cell(drop[f[1]]))});
@@ -5654,6 +5742,10 @@ var K=AD().find(function(x){return sameId(x.i,keepId)}),D=AD().find(function(x){
 if(!K||!D){showToast('Ticket not found','err');return}
 if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))){showToast('Only admin/organizer can merge','err');return}
 if(!confirm('Merge \u201c'+dispName(D)+'\u201d into \u201c'+dispName(K)+'\u201d?\n\nThis fills missing data on the keeper, combines photos/notes/checklists, then deletes the duplicate.'))return;
+// MED FIX (build 62): re-validate AFTER the confirm — another device may have deleted or
+// merged one of these tickets while the dialog sat open.
+K=AD().find(function(x){return sameId(x.i,keepId)});D=AD().find(function(x){return sameId(x.i,dropId)});
+if(!K||!D){showToast('&#9888; One of these tickets changed while confirming — merge cancelled. Re-check and try again.','warn');return}
 var u={};
 ['n','sn','sp','srs','dd','ph','em','st','sl','pay','pst','assigned_to','crane','extra_person','water_truck'].forEach(function(f){
 var kv=K[f],dv=D[f];
@@ -5775,7 +5867,7 @@ function openWeekly(){
 var d=buildWeeklyData();
 var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
 var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
-h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">\u{1F4CA} Weekly Report</h2><button class="xbtn" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">\u{1F4CA} Weekly Report</h2><button class="xbtn" aria-label="Close" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">\u2715</button></div>';
 h+='<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;margin-bottom:12px">'+weeklyRowsHtml(d,false)+'</div>';
 h+='<div style="display:flex;gap:8px">';
 h+='<button onclick="weeklySendNow()" style="flex:1;background:#134A63;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">\u2709\ufe0f Email it now</button>';
@@ -6693,7 +6785,7 @@ else if(r.bl>0)_chips+='<span class="tkt-chip cash">&#128176; Balance '+fmt(r.bl
 if(r.crane)_chips+='<span class="tkt-chip req">&#128679; Gr&uacute;a</span>';
 if(r.extra_person)_chips+='<span class="tkt-chip req">&#128101; +1 persona</span>';
 if(r.water_truck)_chips+='<span class="tkt-chip req">&#128666; Water Truck</span>';
-let h='<div class="tkt-hero"><div class="tkt-hero-top"><div class="tkt-av">'+_ini+'</div><div class="tkt-hero-id"><h2>'+esc(r.n)+' <span class="tkt-hero-badge">'+sL(s)+'</span></h2><div class="tkt-hero-sub">'+esc(r.sp||'')+(r.sn?' &middot; SN '+esc(r.sn):'')+(r.dd?' &middot; '+fmtDate(r.dd):'')+'</div></div><div class="tkt-hero-acts">'+actBtns+'<button class="xbtn" onclick="closeOv()">&#10005;</button></div></div>'+(_chips?'<div class="tkt-hero-chips">'+_chips+'</div>':'')+'</div>';
+let h='<div class="tkt-hero"><div class="tkt-hero-top"><div class="tkt-av">'+_ini+'</div><div class="tkt-hero-id"><h2>'+esc(r.n)+' <span class="tkt-hero-badge">'+sL(s)+'</span></h2><div class="tkt-hero-sub">'+esc(r.sp||'')+(r.sn?' &middot; SN '+esc(r.sn):'')+(r.dd?' &middot; '+fmtDate(r.dd):'')+'</div></div><div class="tkt-hero-acts">'+actBtns+'<button class="xbtn" aria-label="Close" onclick="closeOv()">&#10005;</button></div></div>'+(_chips?'<div class="tkt-hero-chips">'+_chips+'</div>':'')+'</div>';
 // HOLD banner — visible when the record is parked. Explains why and offers a one-click resume.
 if(r.hold){
 let prevDD=r.hold_prev_dd?fmtDate(r.hold_prev_dd):'unknown';
@@ -7084,8 +7176,14 @@ let sel=document.getElementById(selectId);
 let o=document.createElement('option');o.value=v;o.textContent=v;o.selected=true;sel.appendChild(o)}
 
 function showToast(msg,type){try{_nfAdd(msg,type)}catch(e){}
-let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}
-t.innerHTML=msg;t.className='toast show'+(type?' '+type:'');clearTimeout(t._t);t._t=setTimeout(()=>{t.className='toast'+(type?' '+type:'')},2500)}
+// LOW FIX (build 62): rapid consecutive toasts used to overwrite each other (the first message
+// vanished). Now up to 3 stack bottom-up, each with its own lifetime.
+let stack=document.getElementById('toastStack');
+if(!stack){stack=document.createElement('div');stack.id='toastStack';stack.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:99999;display:flex;flex-direction:column-reverse;gap:8px;align-items:center;pointer-events:none';document.body.appendChild(stack)}
+while(stack.children.length>=3)stack.removeChild(stack.firstChild);
+let t=document.createElement('div');t.className='toast show'+(type?' '+type:'');t.style.position='static';t.style.transform='none';t.innerHTML=msg;
+stack.appendChild(t);
+setTimeout(function(){t.classList.remove('show');setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},350)},2500)}
 
 function markMissing(selectId,label,btn){
 let dnEl=document.getElementById('e_dn');if(!dnEl){showToast('Delivered Notes field not found','err');return}
@@ -8062,6 +8160,7 @@ if(u.pr>0&&u.pr<1500)warns.push(_L('Precio inusualmente BAJO: ','Unusually LOW p
 if(u.py>u.pr&&u.pr>0)warns.push(_L('Pagado (','Paid (')+fmt(u.py)+_L(') es MAYOR que el precio (',') is MORE than the price (')+fmt(u.pr)+')');
 if(u.bl<0)warns.push(_L('Balance NEGATIVO: ','NEGATIVE balance: ')+fmt(u.bl));
 if(u.dd&&(!parseDate(u.dd)||isNaN(parseDate(u.dd))))warns.push(_L('La fecha "','The date "')+u.dd+_L('" no se puede interpretar — no aparecerá en el calendario','" cannot be parsed — it will not show on the calendar'));
+else if(u.dd){let _pd=parseDate(u.dd);if(_pd&&(_pd.getFullYear()<2020||_pd.getFullYear()>2035))warns.push(_L('Año fuera de rango: ','Year out of range: ')+_pd.getFullYear())} // LOW FIX (build 62)
 if(warns.length){
 if(!confirm('\u26A0\uFE0F '+_L('REVISA ESTOS DATOS','CHECK THESE VALUES')+':\n\n\u2022 '+warns.join('\n\u2022 ')+'\n\n'+_L('¿Guardar de todos modos?','Save anyway?')))return}
 }catch(e){console.warn('[VALIDATE]',e)}
@@ -8130,11 +8229,15 @@ if(gcalMap[_eid]==null||sameId(gcalMap[_eid],id)){trackGcalMapRemoval(_eid);dele
 try{db.ref('invoice_pdfs/'+String(id)).remove().catch(()=>{})}catch(e){}
 try{if(typeof _pdfNodeCache!=='undefined')delete _pdfNodeCache[String(id)]}catch(e){}
 if(Object.keys(upd).length)db.ref().update(upd);
-markTicketDeleted(id); // LEDGER: deletion becomes authoritative on every device
+// CRIT FIX (build 62): the ledger write is now VERIFIED — the success toast only fires when
+// the server confirms; on failure/offline the user is told it's queued (retry timer resends).
+markTicketDeleted(id,function(ok){
+if(ok)showToast('&#128465; Delivery deleted: '+(r.n||'(no name)'));
+else showToast('&#9888; Delete saved locally — will sync when back online','warn')});
 let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],{_deleted:true,_deletedAt:Date.now()});rememberAddedEdit(ADDED[ai]);saveA()} // TOMBSTONE: stays in DB flagged, so a stale snapshot on another device can never resurrect it and dedup can never mistake a ghost copy for a live duplicate
 else{if(!EDITS[id])EDITS[id]={};EDITS[id]._deleted=true;rememberEditsEdit(id,EDITS[id]);saveE()}
-closeOv();renderAll();showToast('&#128465; Delivery deleted: '+(r.n||'(no name)'))}
+closeOv();renderAll()}
 
 // Safely refresh the edit modal after a background update (photo upload, drive sync, external
 // service-log change, etc.). If the modal is open and showing the same ticket, this captures
@@ -8299,6 +8402,7 @@ function toggleDarkMode(){var on=document.documentElement.getAttribute('data-the
 // Restore saved preference immediately on load.
 (function(){try{var t=localStorage.getItem('aspen_dt_theme');if(t==='dark')applyDarkMode(true);}catch(e){}})();
 function setTab(t){tab=t;
+try{clearTimeout(_searchT)}catch(e){} // MED FIX (build 62): pending search debounce can't fire on the wrong tab
 try{_glassDockSync(t)}catch(e){}
 var _db=document.getElementById("tbDash");if(_db)_db.classList.toggle("act",t==="dash");
 var _rb=document.getElementById("tbRoute");if(_rb)_rb.classList.toggle("act",t==="route");
@@ -9787,6 +9891,21 @@ let _gcalAuditInFlight=false;
 let _gcalLastAuditAt=0;
 async function gcalAutoAudit(){
 if(_gcalAuditInFlight)return;
+// CRIT FIX (build 62): gcalMap grew forever (one entry per calendar event, never pruned).
+// Prune ORPHANS — map entries whose ticket no longer exists in AD() — via the same
+// conditional server-side remove the delete path uses (safe against concurrent re-links).
+// Throttled to once per session start; the map stays bounded by the live ticket count.
+try{
+if(!window._gcalMapPrunedThisSession){window._gcalMapPrunedThisSession=true;
+let live={};AD().forEach(function(r){if(r&&r.i!=null)live[String(r.i)]=1});
+let pruned=0;
+Object.keys(gcalMap||{}).forEach(function(eid){
+let tid=gcalMap[eid];
+if(tid!=null&&!live[String(tid)]){
+trackGcalMapRemoval(eid);gcalMapConditionalRemove(eid,tid);delete gcalMap[eid];pruned++}
+});
+if(pruned)console.log('[GCAL-MAP] pruned '+pruned+' orphan map entries')}
+}catch(e){console.warn('[GCAL-MAP] prune:',e)}
 if(!gcalToken||!gcalCalendarId)return;
 // Don't run audit during local writes — they could create races.
 if(_saveInFlight.added>0||_saveInFlight.edits>0||_gcalWritesInFlight>0)return;
@@ -10194,7 +10313,8 @@ let _gcalWritesInFlight=0;
 // Build the calendar event title from a ticket. Format matches what manual events use so a
 // human reading the calendar can't tell which side created the event:
 //   "AM-Sellers-30155-Chesterfield"   (slot from r.dd or default AM)
-function gcalBuildSummary(r){
+function gcalBuildSummary(r){r=r||{}; // MED FIX (build 62): null-safe on malformed tickets
+
 let parts=[];
 let slot='AM';
 if(r.dd){
@@ -10240,7 +10360,8 @@ return isPastDate(r.dd)}   // dates strictly before today are the company's perm
 // Convert a ticket dd field into Google Calendar event start/end blocks. We use all-day events
 // because slot (AM/PM) is encoded in the title and matches how the team already operates the
 // calendar. Returns null if the date can't be parsed.
-function gcalBuildDates(r){
+function gcalBuildDates(r){r=r||{}; // MED FIX (build 62): null-safe on malformed tickets
+
 let d=parseDate(r.dd);if(!d||isNaN(d))return null;
 let iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 // Google Calendar all-day events are exclusive-end: end.date must be the day AFTER start.date.
@@ -10253,7 +10374,8 @@ return{start:{date:iso},end:{date:nextIso}}}
 // single comma-separated line. Returns empty string if the ticket has no address.
 //   r.st = "6504 Southwest Avenue\nSt. Louis, MO 63139"
 //   →     "6504 Southwest Avenue, St. Louis, MO 63139"
-function gcalBuildLocation(r){
+function gcalBuildLocation(r){r=r||{}; // MED FIX (build 62): null-safe on malformed tickets
+
 if(!r||!r.st)return'';
 return String(r.st).split('\n').map(s=>s.trim()).filter(Boolean).join(', ')}
 
@@ -10266,7 +10388,8 @@ const APP_BLOCK_END='───── END ─────';
 
 // Build the human-readable description block from a ticket. Plain text, similar in style to
 // what the team types manually (see Bertram-30724-Marthasville for the reference layout).
-function gcalBuildDescriptionBlock(r){
+function gcalBuildDescriptionBlock(r){r=r||{}; // MED FIX (build 62): null-safe on malformed tickets
+
 if(!r)return'';
 let lines=[];
 // Customer name
@@ -11209,7 +11332,7 @@ let r=e.r;
 let dotColor=gcalDotColor(r)||sC2(e.s);
 let canDrag=!isCalendarReadOnly(r)&&r.gcalColorId&&typeof isAllowedColor==='function'&&isAllowedColor(r.gcalColorId);
 let dragAttrs=canDrag?' draggable="true" ondragstart="calEvDragStart(event,'+r.i+')" ondragend="calEvDragEnd(event)"':'';
-h+='<div class="cal-wk-ev'+(r.i===calSelId?' sel':'')+'"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" style="background:'+dotColor+'"></div><div class="ev-name">'+escHtml(dispName(r))+'</div><div class="ev-spa">'+escHtml(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
+h+='<div class="cal-wk-ev'+(r.i===calSelId?' sel':'')+'"'+dragAttrs+' onclick="openDet('+r.i+')"'+(canDrag?' title="Drag to move date"':'')+'><div class="ev-dot" title="'+sL(e.s)+'" style="background:'+dotColor+'"></div><div class="ev-name">'+escHtml(dispName(r))+'</div><div class="ev-spa">'+escHtml(r.sp||'')+'</div><div class="ev-time">'+dateNote(r.dd).trim()+'</div></div>'});
 h+='</div></div>'}
 h+='</div>';document.getElementById('calBody').innerHTML=h}
 
@@ -11327,7 +11450,7 @@ if(!window._aspenPinfoTimer){window._aspenPinfoTimer=true;setInterval(function()
 }catch(e){}}
 function createIntakeLink(id,opts){
 let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showToast('Ticket not found','err');return null}
-let token=Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+let token=(function(){try{let a=new Uint8Array(16);crypto.getRandomValues(a);return Array.from(a,b=>b.toString(16).padStart(2,'0')).join('')}catch(e){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}})(); // CRIT FIX (build 62): crypto-strength token (was Math.random — guessable)
 let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
 let node={token:token,created:Date.now(),expires:Date.now()+21*24*60*60*1000,submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested,pinfo:_buildPinfo(r)};
 db.ref('intake/'+id).update(node).catch(e=>console.warn('[FB] intake link write failed',e));INTAKE[id]=node;
