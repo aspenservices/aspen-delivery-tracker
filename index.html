@@ -1723,7 +1723,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <script src="pdf-assets.js"></script>
 
 <script>
-const BASE=[]; // build 62+: customer data lives in Firebase node `base` (auth-protected).
+const BASE=[]; // build 63+: customer data lives in Firebase node `base` (auth-protected).
 const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"];
 const SPA_SERIES=["ES","GS","GS +","VS","Holiday","COLD PLUNGE"];
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
@@ -1799,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070515;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.05 (build 62) — AUDIT PACK (30 findings): backups include base node + chunked restore w/ anti-wipe, fmtDate XSS root fix, PIN brute-force lockout, atomic digest flag + SMS counter (dedicated transaction node), presence timer cleanup, crypto intake tokens, verified deletes, gcalMap orphan pruning, App Check code-ready, phone-extension dialing, negative money format, COLLECT excludes paid, data-anomaly report, merge revalidation, toast stack, a11y labels, legacy node cleanup, year-range validation'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070516;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.06 (build 63) — OFFLINE DATA CACHE: local device cache (photos stripped, 7-day TTL, wiped on logout) restores field resilience lost when BASE moved to Firebase; instant boot + session restore on dead connections; honest offline messaging'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1922,7 +1922,7 @@ const SETUP_CODE='ASPEN-SETUP-2026';
 const ROLES=['admin','organizer','tech'];
 
 // Listen for users (admin/organizer can see all; tech can only see themselves)
-_rtOn(dbUsers,'users',snap=>{USERS=snap.val()||{};
+_rtOn(dbUsers,'users',snap=>{USERS=snap.val()||{};try{_cacheSave()}catch(e){}
 // FIX #4 (build 60): if bootAuth was waiting for the users node, finish it now
 if(_pendingSessionBoot&&Object.keys(USERS).length){_pendingSessionBoot=false;bootAuth()}
 // If the auth screen is showing the SETUP form (rendered while USERS was empty on a slow
@@ -1963,6 +1963,7 @@ if(!confirm('Sign out?'))return;
 // CRIT FIX (build 62): stop the presence heartbeat — it kept beating with the old user
 // after sign-out if the reload was delayed/blocked.
 try{if(window._aspenPresenceTimer){clearInterval(window._aspenPresenceTimer);window._aspenPresenceTimer=null}}catch(e){}
+try{localStorage.removeItem('aspen_dt_cache_v1')}catch(e){} // BUILD 63: signing out wipes the local data cache
 try{if(_presenceId)db.ref('presence/'+_presenceId).remove()}catch(e){}
 try{firebase.auth().signOut()}catch(e){}
 clearSession();currentUser=null;location.reload()}
@@ -3928,6 +3929,45 @@ opts+=techs.map(([id,u])=>'<option value="'+id+'"'+(id===cur?' selected':'')+'>'
 sel.innerHTML=opts}
 
 let EDITS={},ADDED=[];
+
+// ═══ BUILD 63 · OFFLINE DATA CACHE ═══════════════════════════════════════════════
+// WHY: moving BASE out of the public HTML (build 60, correct for privacy) silently removed
+// the app's de-facto offline fallback — with a slow connection at 7 AM a tech saw ZERO
+// deliveries until Firebase answered. This cache restores field resilience: after every
+// sync the data (photos stripped) is persisted on the device, and on boot it hydrates
+// instantly — stale-but-useful beats empty. Real Firebase snapshots replace it when they land.
+const _CACHE_KEY='aspen_dt_cache_v1';
+const _CACHE_MAX_AGE=7*24*3600*1000; // ignore caches older than 7 days
+let _cacheT=null;
+function _cacheSaveNow(){
+try{
+if(!currentUser)return; // never cache the login screen state
+let payload={ts:Date.now(),by:currentUser.id||'',role:currentUser.role||'',
+base:(Array.isArray(BASE_LIVE)&&BASE_LIVE.length)?BASE_LIVE:null,
+edits:(function(){let o={};Object.keys(EDITS).forEach(function(k){o[k]=_stripPhotosRec(EDITS[k])});return o})(),
+added:(Array.isArray(ADDED)?ADDED:[]).map(_stripPhotosRec),
+users:USERS||{}};
+let json=JSON.stringify(payload);
+if(json.length>4.2*1024*1024){ // localStorage safety margin: drop edits first, keep base+users
+payload.edits={};payload.added=[];json=JSON.stringify(payload);
+console.warn('[CACHE] payload too big — cached base+users only')}
+localStorage.setItem(_CACHE_KEY,json);
+}catch(e){console.warn('[CACHE] save failed:',e&&e.message)}}
+function _cacheSave(){clearTimeout(_cacheT);_cacheT=setTimeout(_cacheSaveNow,2500)} // throttled
+function _cacheHydrate(){
+try{
+let raw=localStorage.getItem(_CACHE_KEY);if(!raw)return false;
+let c=JSON.parse(raw);
+if(!c||!c.ts||(Date.now()-c.ts)>_CACHE_MAX_AGE){localStorage.removeItem(_CACHE_KEY);return false}
+let used=false;
+if(Array.isArray(c.base)&&c.base.length&&!(Array.isArray(BASE_LIVE)&&BASE_LIVE.length)){BASE_LIVE=c.base;used=true}
+if(c.edits&&typeof c.edits==='object'&&Object.keys(c.edits).length&&!Object.keys(EDITS).length){EDITS=c.edits;used=true}
+if(Array.isArray(c.added)&&c.added.length&&!ADDED.length){ADDED=c.added;used=true}
+if(c.users&&typeof c.users==='object'&&Object.keys(c.users).length&&!Object.keys(USERS).length){USERS=c.users;used=true}
+if(used)console.log('[CACHE] hydrated from local cache ('+Math.round(raw.length/1024)+' KB, '+Math.round((Date.now()-c.ts)/60000)+' min old)');
+return used;
+}catch(e){console.warn('[CACHE] hydrate failed:',e&&e.message);return false}}
+// (Hydration is invoked right after BASE_LIVE is declared below — see [CACHE] hydrate call.)
 // Ids of EDITS records changed since the last Firebase flush. saveE() writes only these
 // children (per-child write) instead of re-uploading the whole EDITS node + every photo.
 let _dirtyEdits=new Set();
@@ -4017,7 +4057,7 @@ if(v&&typeof v==='object'){
 let arr=Array.isArray(v)?v.filter(Boolean):Object.values(v);
 // ANTI-WIPE: never let a suspiciously small server copy shadow a big local seed
 if(BASE.length>=20&&arr.length<BASE.length*0.5){console.error('[BASE] server copy has '+arr.length+' records but local seed has '+BASE.length+' — REFUSING to use server copy.');return}
-if(arr.length){BASE_LIVE=arr;console.log('[BASE] using server copy ('+arr.length+' records)');
+if(arr.length){BASE_LIVE=arr;console.log('[BASE] using server copy ('+arr.length+' records)');try{_cacheSave()}catch(e){}
 if(fbReady&&currentUser)renderCurrentTab()}
 }
 },err=>console.warn('[BASE] listener error',err));
@@ -4034,6 +4074,10 @@ dbBase.set(obj).then(()=>{console.log('[BASE] ✓ migrated '+BASE.length+' recor
 showToast('&#128274; Customer data migrated to Firebase ('+BASE.length+' records). You can now deploy the no-data build.','ok')})
 .catch(e=>console.error('[BASE] migration failed',e))
 }).catch(e=>console.warn('[BASE] migration check failed',e))}
+
+// BUILD 63 [CACHE] hydrate call — BASE_LIVE/EDITS/ADDED/USERS all declared by this point.
+// Runs at parse time: before any Firebase snapshot, before bootAuth, before the 8s fallback.
+let _cacheUsed=_cacheHydrate();
 
 // === ID-SAFE LOOKUP HELPERS ===
 // Record ids (r.i) come from three sources with potentially different JS types:
@@ -4422,7 +4466,9 @@ showAuthScreen()}
 setTimeout(()=>{if(!fbReady){fbReady=true;
 let lo=document.getElementById('loading-ov');if(lo){lo.classList.add('hide');setTimeout(()=>lo.remove(),400)}
 document.getElementById('syncDot').className='sync-dot off';document.getElementById('syncDot').title='Database connection slow — check internet';
-showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn');
+// BUILD 63: honest message — say "cached data" only when we actually HAVE cached data.
+try{if(AD().length>0)showToast('&#9888; Database is slow to respond. Working offline with cached data.','warn');
+else showToast('&#9888; No connection and no local data yet \u2014 check internet and pull to refresh.','warn')}catch(e){showToast('&#9888; Database is slow to respond.','warn')}
 bootAuth()}},8000);
 
 // Attach all real-time data listeners only AFTER the anonymous auth attempt completes, so
@@ -4436,7 +4482,7 @@ fbReady=true;
 let _lo=document.getElementById('loading-ov');if(_lo)_lo.remove();
 let _ip=getIntakeParams();renderIntakePortal(_ip.id,_ip.token);
 }else{
-_rtOn(dbEdits,'edits',snap=>{_syncE=true;_lastSyncTs=Date.now();
+_rtOn(dbEdits,'edits',snap=>{_syncE=true;_lastSyncTs=Date.now();try{_cacheSave()}catch(e){}
 let v=snap.val()||{};
 // No offline queue — Firebase is the single source of truth; always reconcile with the server.
 // Defense layer 2: in-flight save protection — we've called set() but Firebase hasn't
@@ -4477,7 +4523,7 @@ Object.keys(EDITS).forEach(k=>_normalizeRecord(EDITS[k]));
 Object.keys(DELETED_TICKETS).forEach(id=>{if(EDITS[id]){if(!EDITS[id]._deleted)EDITS[id]._deleted=true}else if(BASE.some(b=>String(b.i)===id)){EDITS[id]={_deleted:true,_deletedAt:DELETED_TICKETS[id]}}});
 if(fbReady){if(currentUser)renderAfterAuth();liveRefreshTechDetail()}else checkReady()
 },err=>{console.error('dbEdits error:',err);showReadErrorBanner('edits',err);if(!fbReady)checkReady()});
-_rtOn(dbAdded,'added',snap=>{_syncA=true;_lastSyncTs=Date.now();
+_rtOn(dbAdded,'added',snap=>{try{_cacheSave()}catch(e){}_syncA=true;_lastSyncTs=Date.now();
 let v=snap.val()||[];
 try{window._srvAddedCount=Array.isArray(v)?v.filter(Boolean).length:Object.keys(v||{}).length}catch(e){}
 // ONE-TIME (self-healing) MIGRATION: the `added` node was a JS array (keys 0,1,2…). Per-child
