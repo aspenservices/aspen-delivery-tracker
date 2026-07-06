@@ -1723,7 +1723,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <script src="pdf-assets.js"></script>
 
 <script>
-const BASE=[]; // build 66+: customer data lives in Firebase node `base` (auth-protected).
+const BASE=[]; // build 67+: customer data lives in Firebase node `base` (auth-protected).
 const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"];
 const SPA_SERIES=["ES","GS","GS +","VS","Holiday","COLD PLUNGE"];
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
@@ -1799,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070519;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.06 (build 66) — AUTO PHOTO RECOVERY: silent integrity check on every ticket open (24h throttle) + daily background sweep on admin devices; deletion tombstones ensure deliberately deleted photos never resurrect'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070520;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.06 (build 67) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -3456,6 +3456,48 @@ function showFullPhoto(src){openPhotoLightbox([src],0)}
 // the photo ARRAYS on two tickets, but the FILES were never deleted. Storage cannot tell us
 // whether a file was an admin info photo or a tech delivery photo, so recovered orphans are
 // added to `photos` (info) with an activity-log note — reclassify by re-uploading if needed.
+
+// ═══ BUILD 67 · RESTORE PHOTOS FROM A BACKUP FILE ═══════════════════════════════
+// Non-destructive, photo-fields-only restore. Reads a backup JSON (Drive auto-backups keep
+// full photo arrays; 10 are rotated), and for every live ticket where the backup has MORE
+// photos than the current record, merges the missing ones back in (union — never removes,
+// never touches any other field). Made for the July 6 clobber incident.
+function restorePhotosFromBackupFile(){
+if(!(currentUser&&currentUser.role!=='tech')){showToast('Admin/organizer only','err');return}
+let inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+inp.onchange=async function(e){
+let f=e.target.files&&e.target.files[0];if(!f)return;
+showToast('&#128269; Reading backup\u2026');
+try{
+let snap=JSON.parse(await f.text());
+let src={};
+if(snap.edits&&typeof snap.edits==='object')Object.keys(snap.edits).forEach(function(k){src[String(k)]=snap.edits[k]});
+let addedArr=snap.added?(Array.isArray(snap.added)?snap.added:Object.values(snap.added)):[];
+addedArr.forEach(function(r){if(r&&r.i!=null)src[String(r.i)]=r});
+if(!Object.keys(src).length){showToast(_L('El archivo no contiene tickets','The file contains no tickets'),'err');return}
+let fields=['photos','tech_photos','info_photos'];
+let fixedTickets=0,fixedPhotos=0;
+for(let r of AD()){
+let b=src[String(r.i)];if(!b)continue;
+let updates=null;
+for(let fld of fields){
+let bArr=Array.isArray(b[fld])?b[fld].filter(Boolean):(b[fld]&&typeof b[fld]==='object'?Object.values(b[fld]).filter(Boolean):[]);
+if(!bArr.length)continue;
+let cur=Array.isArray(r[fld])?r[fld].filter(Boolean):[];
+let curKeys={};cur.forEach(function(p){curKeys[(typeof p==='string')?p:JSON.stringify(p)]=1});
+let missing=bArr.filter(function(p){return !curKeys[(typeof p==='string')?p:JSON.stringify(p)]});
+if(!missing.length)continue;
+let base=await _freshPhotoMerge(r.i,fld,cur);
+let baseKeys={};base.forEach(function(p){baseKeys[(typeof p==='string')?p:JSON.stringify(p)]=1});
+let toAdd=missing.filter(function(p){return !baseKeys[(typeof p==='string')?p:JSON.stringify(p)]});
+if(!toAdd.length)continue;
+updates=updates||{};updates[fld]=base.concat(toAdd);fixedPhotos+=toAdd.length}
+if(updates){saveTicketFields(r.i,updates);fixedTickets++;
+try{pushActivity(r.i,'Photos restored from backup file: '+Object.keys(updates).map(function(k){return k+'('+updates[k].length+')'}).join(', '))}catch(e2){}}}
+if(!fixedTickets){showToast(_L('Nada que restaurar: todos los tickets ya tienen las fotos del backup','Nothing to restore: every ticket already has the backup\u2019s photos'))}
+else{showToast('&#128736; '+fixedPhotos+_L(' fotos restauradas en ',' photos restored across ')+fixedTickets+' ticket'+(fixedTickets===1?'':'s'));renderCurrentTab()}
+}catch(err){console.error('[PHOTO-RESTORE]',err);showToast('&#9888; '+(err&&err.message||err),'err')}};
+inp.click()}
 // Core (silent-capable): returns {recovered:N, files:M} or throws. Respects deletion tombstones.
 async function _repairPhotosCore(id){
 let r=AD().find(x=>sameId(x.i,id));if(!r)throw new Error('Ticket not found');
@@ -3483,7 +3525,20 @@ if(!(currentUser&&currentUser.role!=='tech')){showToast('Admin/organizer only','
 showToast('&#128269; Scanning Storage for this ticket\u2019s photos\u2026');
 try{
 let res=await _repairPhotosCore(id);
-if(!res.files){showToast(_L('No hay archivos en Storage para este ticket','No files in Storage for this ticket'),'warn');return}
+if(!res.files){
+// BUILD 67 DIAGNOSTIC: the ticket's folder is EMPTY. Photos may have been stored inline
+// (base64 in the record — recoverable only from a backup) or under a different ticket id
+// (id drift after a gcal re-create/merge). Scan the Storage root and report orphan folders.
+showToast(_L('Sin archivos bajo este ticket. Buscando carpetas huérfanas\u2026','No files under this ticket. Scanning for orphan folders\u2026'),'warn');
+try{
+let root=await fbStorage.ref('delivery_photos').listAll();
+let live={};AD().forEach(function(x){if(x&&x.i!=null)live[String(x.i)]=1});
+let orphans=(root.prefixes||[]).map(function(p){return p.name}).filter(function(n){return !live[n]});
+console.warn('[REPAIR] ticket '+id+': 0 files in its folder. Storage has '+(root.prefixes||[]).length+' ticket folders; '+orphans.length+' are ORPHANS (no live ticket): ',orphans.join(', ')||'(none)');
+showToast(_L('0 archivos bajo este ticket. Carpetas huérfanas en Storage: ','0 files under this ticket. Orphan folders in Storage: ')+orphans.length+_L('. Usa \u201cRestore photos from backup\u201d en Backup Center para recuperarlas del respaldo de Drive.','. Use \u201cRestore photos from backup\u201d in Backup Center to recover them from the Drive backup.'),'warn');
+}catch(e2){console.warn('[REPAIR] root scan failed:',e2&&e2.message);
+showToast(_L('Sin archivos bajo este ticket — recupera desde el backup de Drive (Backup Center → Restore photos from backup)','No files under this ticket — recover from the Drive backup (Backup Center → Restore photos from backup)'),'warn')}
+return}
 if(!res.recovered){showToast(_L('Todo en orden: los '+res.files+' archivos ya están referenciados','All good: all '+res.files+' files already referenced'));return}
 showToast('&#128736; '+res.recovered+' foto'+(res.recovered===1?'':'s')+' recuperada'+(res.recovered===1?'':'s')+' de Storage');
 safeRefreshModalIfOpen(id)}
@@ -3890,6 +3945,7 @@ let h='<div style="display:flex;justify-content:space-between;align-items:center
 '<div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:14px;margin-bottom:12px">'+
 '<div style="font-weight:800;font-size:14px;margin-bottom:3px">&#128230; Photo Storage (Firebase)</div>'+
 '<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px">Estado SDK: '+(fbStorage?'<strong style="color:var(--st-success)">listo</strong>':'<strong style="color:var(--st-danger)">no disponible</strong>')+' &middot; <strong>'+_phB64+'</strong> fotos inline (~'+_phMB+' MB dentro de la base) &middot; <strong>'+_phUrl+'</strong> ya en Storage.</div>'+
+'<button onclick="restorePhotosFromBackupFile()" style="background:var(--st-info-soft);color:var(--st-info);border:1.5px solid var(--st-info);padding:9px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;width:100%;margin-bottom:8px">&#128736; Restore photos from backup file (.json)</button>'+
 '<button onclick="pruneLegacyNodes()" style="background:var(--surf-soft);color:var(--text-secondary);border:1.5px solid var(--border-mid);padding:9px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;width:100%;margin-bottom:8px">&#129529; Limpiar nodos legacy (service_requests)</button>'+
 (_phB64?('<button onclick="migrateAllPhotosV2()" style="background:var(--st-hold);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;width:100%">&#128230; Migrar '+_phB64+' fotos a Storage (libera ~'+_phMB+' MB)</button>'):'<div style="font-size:12px;color:var(--st-success);font-weight:700">&#10003; Todas las fotos ya viven en Storage.</div>')+
 '</div>'+
