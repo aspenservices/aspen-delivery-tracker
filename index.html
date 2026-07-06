@@ -1723,7 +1723,7 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 <script src="pdf-assets.js"></script>
 
 <script>
-const BASE=[]; // build 64+: customer data lives in Firebase node `base` (auth-protected).
+const BASE=[]; // build 66+: customer data lives in Firebase node `base` (auth-protected).
 const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"];
 const SPA_SERIES=["ES","GS","GS +","VS","Holiday","COLD PLUNGE"];
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
@@ -1799,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070517;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.06 (build 64) — CACHE PHOTO FIX: local cache keeps Storage photo URLs (only residual base64 stripped), saves deferred until first real snapshot (anti photo-clobber), open ticket auto-refreshes when server photos land'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070519;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.06 (build 66) — AUTO PHOTO RECOVERY: silent integrity check on every ticket open (24h throttle) + daily background sweep on admin devices; deletion tombstones ensure deliberately deleted photos never resurrect'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2197,6 +2197,7 @@ let dk='aspen_anomaly_warn_'+new Date().toISOString().slice(0,10);
 if(!localStorage.getItem(dk)){localStorage.setItem(dk,'1');
 showToast('&#128269; '+odd.length+' ticket'+(odd.length>1?'s':'')+' with unusual price/balance — open '+(odd.length===1?('#'+odd[0].i+' '+(odd[0].n||'')):'them')+' to verify (see console)','warn')}}
 },6000)}catch(e){}
+setTimeout(function(){try{_dailyPhotoSweep()}catch(e){}},45000); // BUILD 66: daily background photo sweep
 },2500)}}}
 
 // === TECH VIEW LOGIC ===
@@ -3040,11 +3041,10 @@ let added=[],skipped=0;
 for(let f of files){try{let b64=await compressImage(f,1200,0.7);let stored=await uploadPhotoToStorage(id,b64);let isUrl=/^https?:/.test(stored);if(!isUrl&&stored.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');skipped++;continue}added.push(stored)}catch(err){console.error('compress err:',err);skipped++}}
 if(skipped){showToast('&#9888; '+skipped+' photo'+(skipped===1?'':'s')+" couldn't be read. iPhone HEIC: open in Photos → Share → Save as JPG, or set Camera → Formats → Most Compatible.",'warn')}
 if(!added.length)return;
-let newPhotos=existing.concat(added);
-let updates={tech_photos:newPhotos};
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+// BUILD 65: merge with the CURRENT server array + field-level write (see _freshPhotoMerge).
+let base=await _freshPhotoMerge(id,'tech_photos',existing);
+let newPhotos=base.concat(added);
+saveTicketFields(id,{tech_photos:newPhotos});
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
 // Auto-sync to Google Drive (debounced, silent if Drive not connected)
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
@@ -3086,6 +3086,10 @@ var stillUsed=AD().some(function(o){
 if(exceptTicketId!=null&&sameId(o.i,exceptTicketId))return false;
 return (Array.isArray(o.photos)&&o.photos.indexOf(p)!==-1)||(Array.isArray(o.tech_photos)&&o.tech_photos.indexOf(p)!==-1)});
 if(stillUsed){console.log('[STORAGE] keep file (still referenced by another ticket):',p.slice(0,90));return}
+// BUILD 66: TOMBSTONE the deletion — if the Storage delete fails (offline, rules) the file
+// survives as an orphan, and auto-recovery must NOT resurrect a deliberately deleted photo.
+try{let _fm=p.match(/([0-9]+_[a-z0-9]+\.jpg)/i);
+if(_fm&&exceptTicketId!=null)db.ref('photo_tombstones/'+String(exceptTicketId)+'/'+_fm[1].replace(/\./g,'_')).set(Date.now()).catch(function(){})}catch(_e){}
 fbStorage.refFromURL(p).delete().catch(function(){})
 }catch(e){}}
 
@@ -3373,14 +3377,15 @@ img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('Could not load im
 img.src=url})}
 
 // Tech deletes their own delivery photo (from r.tech_photos)
-function techDeletePhoto(id,idx){
+async function techDeletePhoto(id,idx){
 if(!confirm('Delete this delivery photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
-let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm,id);
-let updates={tech_photos:newPhotos.length?newPhotos:null};
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+// BUILD 65: merged server∪local view + field-level write (see _freshPhotoMerge).
+let _rm=r.tech_photos[idx];_storageDeleteIfOurs(_rm,id);
+let base=await _freshPhotoMerge(id,'tech_photos',r.tech_photos);
+let _rmKey=(typeof _rm==='string')?_rm:JSON.stringify(_rm);
+let newPhotos=base.filter(function(p){return ((typeof p==='string')?p:JSON.stringify(p))!==_rmKey});
+saveTicketFields(id,{tech_photos:newPhotos.length?newPhotos:null});
 techOpenDetail(id)}
 
 // Tech views their own delivery photo (full screen, with navigation across all tech_photos)
@@ -3436,6 +3441,100 @@ render()}
 function showFullPhoto(src){openPhotoLightbox([src],0)}
 
 // Admin/manager uploads info photos (saves to r.photos — visible to tech, read-only for them)
+
+// ═══ BUILD 65 · PHOTO ARRAY SAFETY ═══════════════════════════════════════════════
+// ROOT-CAUSE FIX for the photo-clobber bug: every photo mutation used to read the LOCAL
+// array, mutate it, and write the WHOLE record. Any desync (cache-hydrated boot, second
+// device, pre-snapshot window) silently erased server photos. Now every mutation:
+//   1. reads the CURRENT server array (once) right before writing,
+//   2. merges it with the local view (union, order-preserving),
+//   3. writes ONLY the photo field via saveTicketFields (field-level, never whole-record).
+
+// ═══ BUILD 65 · PHOTO RECOVERY ═══════════════════════════════════════════════════
+// Rebuilds a ticket's photo references from the files that still live in Firebase Storage
+// (delivery_photos/{id}/). Made for the July 6 incident: a cache-hydrated device overwrote
+// the photo ARRAYS on two tickets, but the FILES were never deleted. Storage cannot tell us
+// whether a file was an admin info photo or a tech delivery photo, so recovered orphans are
+// added to `photos` (info) with an activity-log note — reclassify by re-uploading if needed.
+// Core (silent-capable): returns {recovered:N, files:M} or throws. Respects deletion tombstones.
+async function _repairPhotosCore(id){
+let r=AD().find(x=>sameId(x.i,id));if(!r)throw new Error('Ticket not found');
+if(!fbStorage)throw new Error('Storage not available');
+let listing=await fbStorage.ref('delivery_photos/'+String(id)).listAll();
+if(!listing.items.length)return{recovered:0,files:0};
+let known={};
+(r.photos||[]).concat(r.tech_photos||[]).concat(r.info_photos||[]).forEach(function(p){
+if(typeof p==='string'){let m=p.match(/([0-9]+_[a-z0-9]+\.jpg)/i);if(m)known[m[1]]=1;if(p.indexOf('data:')===0)known['__b64_'+p.length]=1}});
+// BUILD 66: deletion tombstones — never resurrect a photo someone deleted on purpose.
+let tomb={};
+try{let ts=await db.ref('photo_tombstones/'+String(id)).once('value');let tv=ts.val()||{};Object.keys(tv).forEach(function(k){tomb[k.replace(/_jpg$/i,'.jpg')]=1})}catch(e){}
+let recovered=[];
+for(let item of listing.items){
+if(known[item.name]||tomb[item.name])continue;
+try{let url=await item.getDownloadURL();if(url)recovered.push(url)}catch(e){console.warn('[REPAIR] URL failed for',item.name,e&&e.message)}}
+if(recovered.length){
+let base=await _freshPhotoMerge(id,'photos',r.photos||[]);
+saveTicketFields(id,{photos:base.concat(recovered)});
+try{pushActivity(id,'Photo recovery: '+recovered.length+' orphaned file(s) re-linked from Storage')}catch(e){}}
+return{recovered:recovered.length,files:listing.items.length}}
+// Manual button (kept): verbose version
+async function repairTicketPhotos(id){
+if(!(currentUser&&currentUser.role!=='tech')){showToast('Admin/organizer only','err');return}
+showToast('&#128269; Scanning Storage for this ticket\u2019s photos\u2026');
+try{
+let res=await _repairPhotosCore(id);
+if(!res.files){showToast(_L('No hay archivos en Storage para este ticket','No files in Storage for this ticket'),'warn');return}
+if(!res.recovered){showToast(_L('Todo en orden: los '+res.files+' archivos ya están referenciados','All good: all '+res.files+' files already referenced'));return}
+showToast('&#128736; '+res.recovered+' foto'+(res.recovered===1?'':'s')+' recuperada'+(res.recovered===1?'':'s')+' de Storage');
+safeRefreshModalIfOpen(id)}
+catch(e){console.error('[REPAIR]',e);showToast('&#9888; Recovery failed: '+(e&&e.message||e),'err')}}
+// ── BUILD 66: AUTOMATIC RECOVERY ──
+// (a) On ticket open: silent per-ticket check, throttled to once per 24h per ticket per device.
+// (b) Daily background sweep on admin/organizer devices: all tickets, sequential + gentle,
+//     once per day per device. Toast only when something was actually recovered.
+function _autoRepairPhotos(id){
+try{
+if(!(currentUser&&currentUser.role!=='tech'))return;
+if(!fbStorage||!isOnline)return;
+let key='aspen_photo_repair_'+String(id);
+let last=Number(localStorage.getItem(key)||0);
+if(Date.now()-last<24*3600*1000)return;
+localStorage.setItem(key,String(Date.now()));
+setTimeout(function(){_repairPhotosCore(id).then(function(res){
+if(res.recovered){showToast('&#128736; '+res.recovered+' foto'+(res.recovered===1?'':'s')+' recuperada'+(res.recovered===1?'':'s')+' autom\u00e1ticamente');safeRefreshModalIfOpen(id)}
+}).catch(function(e){console.warn('[AUTO-REPAIR]',id,e&&e.message)})},900)
+}catch(e){}}
+async function _dailyPhotoSweep(){
+try{
+if(!(currentUser&&currentUser.role!=='tech'))return;
+if(!fbStorage||!isOnline)return;
+let dk='aspen_photo_sweep_'+new Date().toISOString().slice(0,10);
+if(localStorage.getItem(dk))return;
+localStorage.setItem(dk,'1');
+let list=AD().slice();let totalRec=0,scanned=0;
+console.log('[SWEEP] daily photo integrity sweep starting ('+list.length+' tickets)');
+for(let r of list){
+if(!isOnline)break;
+try{let res=await _repairPhotosCore(r.i);scanned++;if(res.recovered){totalRec+=res.recovered;console.warn('[SWEEP] ticket '+r.i+' ('+(r.n||'?')+'): recovered '+res.recovered)}}catch(e){}
+await new Promise(function(rs){setTimeout(rs,350)})}
+console.log('[SWEEP] done: '+scanned+' scanned, '+totalRec+' photos recovered');
+if(totalRec)showToast('&#128736; Barrido diario: '+totalRec+' foto'+(totalRec===1?'':'s')+' recuperada'+(totalRec===1?'':'s')+' autom\u00e1ticamente','warn')
+}catch(e){console.warn('[SWEEP]',e)}}
+
+async function _freshPhotoMerge(id,field,localArr){
+let server=[];
+try{
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
+let ref=(ai>=0)?dbAdded.child(String(ADDED[ai].i)+'/'+field):dbEdits.child(String(id)+'/'+field);
+let sn=await ref.once('value');let v=sn.val();
+if(Array.isArray(v))server=v.filter(Boolean);
+else if(v&&typeof v==='object')server=Object.values(v).filter(Boolean); // Firebase array-as-object quirk
+}catch(e){console.warn('[PHOTO-SAFE] server read failed — merging with local only:',e&&e.message)}
+let seen={},out=[];
+server.concat(Array.isArray(localArr)?localArr:[]).forEach(function(p){
+let k=(typeof p==='string')?p:JSON.stringify(p);
+if(!seen[k]){seen[k]=1;out.push(p)}});
+return out}
 function adminPhotoUpload(id){
 let inp=document.createElement('input');
 inp.type='file';inp.accept='image/*';inp.multiple=true;
@@ -3450,11 +3549,11 @@ let added=[],skipped=0;
 for(let f of files){try{let b64=await compressImage(f,1200,0.7);let stored=await uploadPhotoToStorage(id,b64);let isUrl=/^https?:/.test(stored);if(!isUrl&&stored.length>1100000){showToast('&#9888; Photo too large after compression — skipped','warn');skipped++;continue}added.push(stored)}catch(err){console.error('compress err:',err);skipped++}}
 if(skipped){showToast('&#9888; '+skipped+' photo'+(skipped===1?'':'s')+" couldn't be read. iPhone HEIC: open in Photos → Share → Save as JPG, or set Camera → Formats → Most Compatible.",'warn')}
 if(!added.length)return;
-let newPhotos=existing.concat(added);
-let updates={photos:newPhotos};
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+// BUILD 65: merge with the CURRENT server array (never trust the local view alone) and
+// write only the field — a cache-hydrated or stale device can no longer erase photos.
+let base=await _freshPhotoMerge(id,'photos',existing);
+let newPhotos=base.concat(added);
+saveTicketFields(id,{photos:newPhotos});
 showToast('&#10003; '+added.length+' photo'+(added.length===1?'':'s')+' added');
 // Auto-sync to Google Drive (debounced, silent if Drive not connected)
 if(typeof scheduleAutoSync==='function')scheduleAutoSync(id);
@@ -3462,14 +3561,15 @@ safeRefreshModalIfOpen(id)};
 inp.click()}
 
 // Admin deletes one of their own info photos (r.photos)
-function adminDeletePhoto(id,idx){
+async function adminDeletePhoto(id,idx){
 if(!confirm('Delete this info photo?'))return;
 let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
-let newPhotos=r.photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm,id);
-let updates={photos:newPhotos.length?newPhotos:null};
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+// BUILD 65: delete against the MERGED server∪local view, write field-level only.
+let _rm=r.photos[idx];_storageDeleteIfOurs(_rm,id);
+let base=await _freshPhotoMerge(id,'photos',r.photos);
+let _rmKey=(typeof _rm==='string')?_rm:JSON.stringify(_rm);
+let newPhotos=base.filter(function(p){return ((typeof p==='string')?p:JSON.stringify(p))!==_rmKey});
+saveTicketFields(id,{photos:newPhotos.length?newPhotos:null});
 safeRefreshModalIfOpen(id)}
 
 // Admin deletes a tech delivery photo (r.tech_photos) — admin can review and curate the ticket
@@ -6156,6 +6256,7 @@ function openOv(){document.getElementById('ov').classList.remove('hidden');docum
 
 function openDet(id){
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));if(!curRec)return;
+try{_autoRepairPhotos(id)}catch(e){} // BUILD 66: silent photo-integrity check (throttled 24h/ticket)
 // FIX #9 (build 60): merely OPENING a ticket used to silently clear the tech's
 // needs_attention flag — an accidental tap by anyone wiped the alert with no record of
 // who saw it. The flag is now cleared only by the explicit "Mark as seen" button in the
@@ -7075,6 +7176,7 @@ h+='<div style="background:var(--bg-card-soft);border:1.5px dashed var(--border-
 h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:'+(infoCount?'12px':'0')+'">';
 h+='<div style="font-size:13px;color:var(--text-secondary)">'+(infoCount?'<strong style="color:var(--text-primary)">'+infoCount+' info photo'+(infoCount===1?'':'s')+'</strong> shared with tech.':'No info photos yet. Upload site photos, electrical setup, access path, etc.')+'</div>';
 h+='<button type="button" class="pdf-btn" style="background:var(--st-hold);border-color:var(--st-hold)" onclick="adminPhotoUpload('+r.i+')"><span>&#128247;</span> Upload Info Photos</button>';
+h+='<button type="button" class="pdf-btn" style="background:var(--surf-soft);color:var(--text-secondary);border-color:var(--border-mid)" onclick="repairTicketPhotos('+r.i+')" title="Re-link photos that exist in Storage but are missing from this ticket"><span>&#128736;</span> Recover photos</button>'; // BUILD 65
 h+='</div>';
 if(infoCount){
 h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
