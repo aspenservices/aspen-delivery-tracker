@@ -1799,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070520;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.06 (build 67) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070701;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.07 (build 68) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2627,6 +2627,49 @@ _qcItems.map(function(q){return '<label style="display:flex;align-items:center;g
 '</div></div>';
 modal.classList.remove('hidden');setTimeout(()=>{let t=document.getElementById('tdv_notes');if(t)t.focus()},80)}
 
+// ═══ ASPEN BRAIN — shared customer event log (schema v2, name-key) ═══
+// Zero-read logging. Customers joined by a normalized name key (no importer,
+// no customers/ collection). Writes to the master Firestore (tech-tickets-a9485);
+// on a different project it opens a secondary "brain" app and signs in anonymously.
+// Deterministic event IDs mean a re-save MERGES — logging can't inflate the count.
+const AspenBrain = (() => {
+  const MASTER_CONFIG = {
+    apiKey: "AIzaSyDsmFIRqRrvTqRgzWKLFjA9Sdnro7nz8zc",
+    authDomain: "tech-tickets-a9485.firebaseapp.com",
+    projectId: "tech-tickets-a9485",
+    storageBucket: "tech-tickets-a9485.firebasestorage.app",
+    messagingSenderId: "680308339087",
+    appId: "1:680308339087:web:3d18766c4b0e465a1a9bfa"
+  };
+  function custKey(name){return String(name||"").replace(/\s+/g," ").trim().toLowerCase();}
+  function fnv1a(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0;}return("00000000"+h.toString(16)).slice(-8);}
+  function _app(){
+    const primary=firebase.apps.find(a=>a.options&&a.options.projectId===MASTER_CONFIG.projectId);
+    if(primary)return primary;
+    try{return firebase.app("brain");}catch(e){return firebase.initializeApp(MASTER_CONFIG,"brain");}
+  }
+  async function _db(){
+    const app=_app();
+    try{if(app.auth&&!app.auth().currentUser){await app.auth().signInAnonymously();}}catch(e){}
+    return app.firestore();
+  }
+  async function logEvent(e){
+    if(!e||!e.customer||!e.app||!e.type){console.warn("[AspenBrain] skipped \u2014 missing customer/app/type",e);return null;}
+    const key=custKey(e.customer);if(!key)return null;
+    const sourceId=e.ref&&e.ref.id?String(e.ref.id):(e.title||"");
+    const eventId=e.app+"_"+fnv1a(e.app+"|"+e.type+"|"+sourceId);
+    const doc={customerKey:key,customer:String(e.customer),app:e.app,type:e.type,title:e.title||"",actor:e.actor||"",ref:e.ref||null,meta:e.meta||{},schemaV:2,ts:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    try{const database=await _db();await database.collection("events").doc(eventId).set(doc,{merge:true});return eventId;}
+    catch(err){console.error("[AspenBrain] logEvent failed",err);return null;}
+  }
+  async function timeline(name,max=50){
+    const key=custKey(name);if(!key)return[];
+    try{const database=await _db();const snap=await database.collection("events").where("customerKey","==",key).orderBy("ts","desc").limit(max).get();return snap.docs.map(d=>Object.assign({id:d.id},d.data()));}
+    catch(err){console.error("[AspenBrain] timeline failed",err);return[];}
+  }
+  return{logEvent,timeline,custKey,fnv1a};
+})();
+
 function techConfirmDelivered(id){
 let notes=document.getElementById('tdv_notes').value.trim()||null;
 var _qc={};try{document.querySelectorAll('.tdv_qc').forEach(function(cb){if(cb.checked)_qc[cb.value]=true})}catch(e){}
@@ -2638,6 +2681,8 @@ if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 document.getElementById('tech-deliver-modal').classList.add('hidden');
 pushActivity(id,'Marked Delivered'+(Object.keys(_qc).length?' \u2014 QC '+Object.keys(_qc).length+'/4':''));
+// Aspen Brain: delivery completed.
+try{var _br=findRecById(id);AspenBrain.logEvent({customer:_br?dispName(_br):"",app:"delivery",type:"delivery.completed",title:"Delivery completed",actor:(currentUser&&currentUser.name)||"",ref:{app:"delivery",id:id}});}catch(_be){}
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
 
