@@ -1799,8 +1799,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070701;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.07 (build 68) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
+const APP_BUILD   = 2026070804;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.08 (build 71) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2531,6 +2531,7 @@ h+='<button class="td2-mini" onclick="techPhotoUpload('+r.i+')"><span class="ic"
 let _sigDone=r.signature&&r.signature.data;
 h+='<button class="td2-mini'+(_sigDone?' on':'')+'" onclick="techSignature('+r.i+')"><span class="ic">&#9997;&#65039;</span>'+(_sigDone?'Firmado &#10003;':'Firma')+'</button>';
 h+='<button class="td2-mini" onclick="techAddNote('+r.i+')"><span class="ic">&#128221;</span>Nota</button>';
+h+='<button class="td2-mini" onclick="deliveryAskReview('+r.i+')"><span class="ic">&#11088;</span>Rese\u00f1a</button>';
 h+='</div>';
 if(!r.dl){
 h+='<div class="td2-swipe-wrap"><div class="td2-swipe-bg">&#10003; Entregado</div>';
@@ -2648,26 +2649,77 @@ const AspenBrain = (() => {
     if(primary)return primary;
     try{return firebase.app("brain");}catch(e){return firebase.initializeApp(MASTER_CONFIG,"brain");}
   }
-  async function _db(){
+  async function _dbP(){
     const app=_app();
-    try{if(app.auth&&!app.auth().currentUser){await app.auth().signInAnonymously();}}catch(e){}
+    try{if(app.name==="brain"&&app.auth&&!app.auth().currentUser){await app.auth().signInAnonymously();}}catch(e){}
     return app.firestore();
+  }
+  // v3: alias map (self-healing identity) — 1 read per session, cached.
+  let _ALIAS=null,_aliasLoading=null;
+  async function _aliases(){
+    if(_ALIAS)return _ALIAS;
+    if(_aliasLoading)return _aliasLoading;
+    _aliasLoading=(async()=>{
+      try{const d=await (await _dbP()).collection("config").doc("brainAliases").get();
+        _ALIAS=(d.exists&&d.data()&&d.data().map)||{};}
+      catch(e){_ALIAS={};}
+      return _ALIAS;})();
+    return _aliasLoading;
+  }
+  async function canonKey(name){
+    const k=custKey(name);if(!k)return k;
+    try{const a=await _aliases();return a[k]||k;}catch(e){return k;}
+  }
+  // v3: offline outbox — failed events are queued and retried on the next log.
+  const OUTBOX_KEY="brainOutbox";
+  function _obLoad(){try{return JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");}catch(e){return[];}}
+  function _obSave(a){try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(a.slice(-100)));}catch(e){}}
+  async function _obFlush(){
+    let q=_obLoad();if(!q.length)return;
+    const database=await _dbP();const keep=[];
+    for(const it of q){
+      try{
+        const doc=it.doc;doc.ts=firebase.firestore.Timestamp.fromDate(new Date(it.when));doc.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
+        await database.collection("events").doc(it.id).set(doc,{merge:true});
+      }catch(e){keep.push(it);}
+    }
+    _obSave(keep);
   }
   async function logEvent(e){
     if(!e||!e.customer||!e.app||!e.type){console.warn("[AspenBrain] skipped \u2014 missing customer/app/type",e);return null;}
-    const key=custKey(e.customer);if(!key)return null;
-    const sourceId=e.ref&&e.ref.id?String(e.ref.id):(e.title||"");
+    const key=await canonKey(e.customer);if(!key||key==="(no name yet)")return null;
+    const sourceId=e.dedup?String(e.dedup):(e.ref&&e.ref.id?String(e.ref.id):(e.title||""));
     const eventId=e.app+"_"+fnv1a(e.app+"|"+e.type+"|"+sourceId);
-    const doc={customerKey:key,customer:String(e.customer),app:e.app,type:e.type,title:e.title||"",actor:e.actor||"",ref:e.ref||null,meta:e.meta||{},schemaV:2,ts:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-    try{const database=await _db();await database.collection("events").doc(eventId).set(doc,{merge:true});return eventId;}
-    catch(err){console.error("[AspenBrain] logEvent failed",err);return null;}
+    const doc={customerKey:key,customer:String(e.customer),app:e.app,type:e.type,title:e.title||"",actor:e.actor||"",ref:e.ref||null,meta:e.meta||{},schemaV:3,
+      ts:e.when?firebase.firestore.Timestamp.fromDate(new Date(e.when)):firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    try{
+      const database=await _dbP();
+      await database.collection("events").doc(eventId).set(doc,{merge:true});
+      _obFlush().catch(function(){});
+      return eventId;
+    }catch(err){
+      console.error("[AspenBrain] logEvent failed \u2014 queued for retry",err);
+      const q=_obLoad();q.push({id:eventId,doc:Object.assign({},doc,{ts:null,updatedAt:null}),when:new Date().toISOString()});_obSave(q);
+      return null;
+    }
   }
   async function timeline(name,max=50){
-    const key=custKey(name);if(!key)return[];
-    try{const database=await _db();const snap=await database.collection("events").where("customerKey","==",key).orderBy("ts","desc").limit(max).get();return snap.docs.map(d=>Object.assign({id:d.id},d.data()));}
+    const key=await canonKey(name);if(!key)return[];
+    try{const database=await _dbP();const snap=await database.collection("events").where("customerKey","==",key).limit(200).get();
+      const rows=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+      rows.sort((a,b)=>{const ta=a.ts&&a.ts.toMillis?a.ts.toMillis():0;const tb=b.ts&&b.ts.toMillis?b.ts.toMillis():0;return tb-ta;});
+      return rows.slice(0,max);}
     catch(err){console.error("[AspenBrain] timeline failed",err);return[];}
   }
-  return{logEvent,timeline,custKey,fnv1a};
+  async function addAlias(fromKey,toKey){
+    try{const database=await _dbP();
+      const m={};m[fromKey]=toKey;
+      await database.collection("config").doc("brainAliases").set({map:m},{merge:true});
+      if(_ALIAS)_ALIAS[fromKey]=toKey;return true;
+    }catch(e){console.error("[AspenBrain] addAlias failed",e);return false;}
+  }
+  return{logEvent,timeline,custKey,canonKey,addAlias,fnv1a};
 })();
 
 function techConfirmDelivered(id){
@@ -2682,7 +2734,7 @@ else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEd
 document.getElementById('tech-deliver-modal').classList.add('hidden');
 pushActivity(id,'Marked Delivered'+(Object.keys(_qc).length?' \u2014 QC '+Object.keys(_qc).length+'/4':''));
 // Aspen Brain: delivery completed.
-try{var _br=findRecById(id);AspenBrain.logEvent({customer:_br?dispName(_br):"",app:"delivery",type:"delivery.completed",title:"Delivery completed",actor:(currentUser&&currentUser.name)||"",ref:{app:"delivery",id:id}});}catch(_be){}
+try{var _br=findRecById(id);AspenBrain.logEvent({customer:_br?cleanBrainName(dispName(_br)):"",app:"delivery",type:"delivery.completed",title:"Delivery completed",actor:(currentUser&&currentUser.name)||"",meta:{phone:(_br&&_br.ph)||"",address:(_br&&_br.st)||"",spa:{model:(_br&&_br.sp)||"",sn:(_br&&_br.sn)||""}},ref:{app:"delivery",id:id,url:location.href.split("#")[0]}});}catch(_be){}
 showToast('&#10003; Delivery confirmed!');
 techCloseDetail();renderTechList()}
 
@@ -5037,6 +5089,24 @@ function fmt(n){n=Number(n);if(!isFinite(n)||!n)return"$0.00";let a=Math.abs(n).
 // Phone helpers — a ticket's r.ph may now contain MULTIPLE numbers, one per line.
 // parsePhones() returns a clean array of trimmed entries.
 // Each entry can be a bare number ("719-510-8200") or annotated ("314-555-1234 (wife)").
+function cleanBrainName(n){
+  n=String(n||"").replace(/\s+/g," ").trim();
+  n=n.replace(/^(AM|PM)[\s\-\u2013]+/i,"");
+  n=n.replace(/[\s\-\u2013]+\d{4,}(?:[\s\-\u2013]+\d{3,})*\s*$/,"");
+  var w=n.split(" ");
+  if(w.length>=2&&w.length%2===0){var h1=w.slice(0,w.length/2).join(" "),h2=w.slice(w.length/2).join(" ");if(h1.toLowerCase()===h2.toLowerCase())n=h1;}
+  return n.trim();
+}
+function deliveryAskReview(id){
+  var r=(typeof findRecById==="function")?findRecById(id):null;if(!r){return;}
+  var ph=String(r.ph||"").split(/[\n,;]/)[0].replace(/[^\d+]/g,"");
+  var nm=cleanBrainName((typeof dispName==="function")?dispName(r):(r.n||""));
+  var raw=String(nm||""),first=raw.indexOf(",")>=0?((raw.split(",")[1]||"").trim().split(/\s+/)[0]||""):(raw.trim().split(/\s+/)[0]||"");
+  first=first?(first.charAt(0).toUpperCase()+first.slice(1).toLowerCase()):"";
+  var msg=(first?("Hi "+first+", "):"Hi, ")+"thank you for choosing Aspen Spas! It was a pleasure delivering your spa. If you have a moment, please leave us a quick Google review \u2014 it means the world to our team: https://search.google.com/local/writereview?placeid=ChIJU9ADtwK12IcRNXtXcrRw3pQ";
+  if(!ph){if(typeof showToast==="function")showToast("No phone on file \u2014 message copied");try{navigator.clipboard.writeText(msg);}catch(_e){}return;}
+  window.location.href="sms:"+ph+"?&body="+encodeURIComponent(msg);
+}
 function parsePhones(s){
 if(!s)return[];
 return String(s).split(/\n+/).map(p=>p.trim()).filter(Boolean);
@@ -7087,6 +7157,7 @@ let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt
 let canCompl=r.cl&&(r.gb||r.ngb);let actBtns='';
 if(s!=='complete'&&!r.hold){
 actBtns+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete':'&#9888; Complete (Call + G.B./N.G.B.)')+'</button>';
+actBtns+='<button onclick="deliveryAskReview('+r.i+')" title="Text the customer a Google review request" style="background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:12px;white-space:nowrap">&#11088; Review</button>';
 actBtns+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved" style="background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:12px;white-space:nowrap">&#9208; Hold</button>';}
 let _ini=(esc(r.n).split(/[ ,]+/).filter(Boolean).slice(0,2).map(function(w){return w.charAt(0)}).join('')||'?').toUpperCase();
 let _chips='';
@@ -8737,6 +8808,8 @@ let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){ADDED[ai].co=true;rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};EDITS[id].co=true;rememberEditsEdit(id,EDITS[id]);saveE()}
 pushActivity(id,'Marked Complete');
+// Aspen Brain: delivery completed (admin path) — same dedup id as the tech path, so it MERGES, never duplicates.
+try{AspenBrain.logEvent({customer:cleanBrainName(dispName(rec)),app:"delivery",type:"delivery.completed",title:"Delivery completed",actor:(currentUser&&currentUser.name)||"",meta:{phone:(rec&&rec.ph)||"",address:(rec&&rec.st)||"",spa:{model:(rec&&rec.sp)||"",sn:(rec&&rec.sn)||""}},ref:{app:"delivery",id:id,url:location.href.split("#")[0]}});}catch(_be){}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll();
 fireConfetti()}
 
@@ -8797,6 +8870,7 @@ let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 pushActivity(id,'Moved to Hold'+(reason?' \u2014 '+String(reason).slice(0,80):''));
+try{var _hr=AD().find(function(x){return x.i===id||String(x.i)===String(id)});if(_hr)AspenBrain.logEvent({customer:cleanBrainName(dispName(_hr)),app:"delivery",type:"delivery.hold",title:"Delivery on hold",dedup:id+"|hold|"+(new Date().toISOString().slice(0,10)),actor:(currentUser&&currentUser.name)||"",ref:{app:"delivery",id:id}});}catch(_be){}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 showToast('&#9209; '+(rec.n||'Delivery')+' moved to Hold');
 renderModal();renderAll()}
@@ -8820,6 +8894,7 @@ if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));
 pushActivity(id,'Resumed from Hold'+(newDD?' \u2014 new date '+newDD:''));
+try{var _rr=AD().find(function(x){return x.i===id||String(x.i)===String(id)});if(_rr)AspenBrain.logEvent({customer:cleanBrainName(dispName(_rr)),app:"delivery",type:"delivery.resumed",title:"Delivery resumed"+(newDD?" \u2014 "+newDD:""),dedup:id+"|resume|"+(new Date().toISOString().slice(0,10)),actor:(currentUser&&currentUser.name)||"",ref:{app:"delivery",id:id}});}catch(_be){}
 showToast('&#9654; '+(rec.n||'Delivery')+' resumed from Hold');
 renderModal();renderAll()}
 // === END HOLD / RESUME ===
