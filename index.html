@@ -1799,7 +1799,7 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070804;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_BUILD   = 2026070805;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
 const APP_VERSION = 'v2026.07.08 (build 71) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
@@ -8811,7 +8811,9 @@ pushActivity(id,'Marked Complete');
 // Aspen Brain: delivery completed (admin path) — same dedup id as the tech path, so it MERGES, never duplicates.
 try{AspenBrain.logEvent({customer:cleanBrainName(dispName(rec)),app:"delivery",type:"delivery.completed",title:"Delivery completed",actor:(currentUser&&currentUser.name)||"",meta:{phone:(rec&&rec.ph)||"",address:(rec&&rec.st)||"",spa:{model:(rec&&rec.sp)||"",sn:(rec&&rec.sn)||""}},ref:{app:"delivery",id:id,url:location.href.split("#")[0]}});}catch(_be){}
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll();
-fireConfetti()}
+fireConfetti();
+// \u2b50 Ask the tech (their choice) to send the customer a Google review after completing the delivery.
+setTimeout(function(){try{if(window.confirm('\u00bfEnviar solicitud de Google review a "'+rec.n+'"?'))deliveryAskReview(id);}catch(_e){}},600);}
 
 // Brief one-shot confetti shower. Builds ~60 pieces with random color/x/duration,
 // appends them to a fixed-position host, and cleans up after 2.4s. No deps.
