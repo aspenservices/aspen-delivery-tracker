@@ -1799,7 +1799,7 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070805;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_BUILD   = 2026070806;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
 const APP_VERSION = 'v2026.07.08 (build 71) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
@@ -7150,11 +7150,53 @@ if(r.cl)act+='<div>&#10003; Llamada confirmada</div>';
 act+=(r.dl)?'<div>&#10003; Entregado</div>':'<div style="opacity:.5">&#9675; Pendiente entrega</div>';
 s+='<div class="tkt-iw"><div class="iwt">&#128203; Actividad</div><div style="font-size:11.5px;color:var(--text-secondary);line-height:1.8">'+act+'</div></div>';
 return s;}
+function _dBrainPanel(name,events){
+  try{events=events||[];
+    function latest(pfx){var best=null,bms=-1;events.forEach(function(e){if(String(e.type||"").indexOf(pfx)===0){var ms=e.ts&&e.ts.toMillis?e.ts.toMillis():0;if(ms>bms){bms=ms;best=e;best._ms=ms;}}});return best;}
+    function dAgo(e){if(!e||!e._ms)return null;return Math.floor((Date.now()-e._ms)/86400000);}
+    function fmt(e){var d=dAgo(e);return d===null?"—":(d===0?"today":(d+"d ago"));}
+    var del=latest("delivery"),svc=latest("ticket.closed"),chem=latest("chemical"),rev=latest("review");
+    var apps={};events.forEach(function(e){if(e.app)apps[e.app]=1;});
+    function row(l,e){return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:#888">'+l+'</span><span style="color:#222;font-weight:600">'+(e?fmt(e):"—")+'</span></div>';}
+    var h='<div style="background:#f7f7f8;border:1px solid #e6e6e8;border-radius:12px;padding:12px 14px;margin-bottom:12px">';
+    h+='<div style="font-size:13px;font-weight:800;color:#B5733A;margin-bottom:8px">🧠 Customer profile</div>';
+    h+=row("Last delivery",del)+row("Last service",svc)+row("Last chemical",chem)+row("Last review",rev);
+    h+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span style="color:#888">Touchpoints</span><span style="color:#222;font-weight:600">'+events.length+' · '+escHtml(Object.keys(apps).join(", "))+'</span></div>';
+    var alerts=[];
+    if(del&&del._ms){var after=events.some(function(e){var ms=e.ts&&e.ts.toMillis?e.ts.toMillis():0;return (e.type==="ticket.closed"||String(e.type||"").indexOf("chemical")===0)&&ms>del._ms;});var dd=dAgo(del);if(!after&&dd!==null&&dd>=14)alerts.push("🆕 Spa delivered "+dd+"d ago with no follow-up — schedule a visit.");}
+    var recent=events.filter(function(e){return e.type==="ticket.closed"&&e.ts&&e.ts.toMillis&&(Date.now()-e.ts.toMillis())<=2592000000;}).length;
+    if(recent>=3)alerts.push("🔁 "+recent+" services in 30 days — possible chronic issue.");
+    if(svc&&svc._ms){var revAfter=rev&&rev._ms&&rev._ms>svc._ms;var sd=dAgo(svc);if(!revAfter&&sd!==null&&sd>=2&&sd<=21)alerts.push("⭐ Service "+sd+"d ago with no review — request it.");}
+    if(alerts.length){h+='<div style="margin-top:8px">'+alerts.map(function(a){return '<div style="background:#fff4e5;color:#8a5a20;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;margin-top:5px">'+escHtml(a)+'</div>';}).join("")+'</div>';}
+    h+='<div style="margin-top:10px;display:flex;gap:6px"><input id="dBrainNoteInput" placeholder="Shared note (shows in all apps)…" style="flex:1;min-width:0;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit"><button onclick="_dBrainAddNote(this.getAttribute(\'data-n\'))" data-n="'+escHtml(name)+'" style="background:#134A63;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap">Note</button></div>';
+    h+='</div>';return h;
+  }catch(_e){return "";}
+}
+function _dBrainEvents(events){
+  var chip={tickets:{t:"TICKETS",c:"#134A63"},chemical:{t:"CHEM",c:"#1C8FA8"},delivery:{t:"DELIVERY",c:"#B5733A"}};
+  if(!events||!events.length)return '<div style="padding:16px;text-align:center;color:#999;font-size:13px">No cross-app activity yet.</div>';
+  return events.map(function(ev){var m=chip[ev.app]||{t:String(ev.app||"").toUpperCase(),c:"#999"};var when="";try{if(ev.ts&&ev.ts.toDate)when=ev.ts.toDate().toLocaleString();}catch(_e){}return '<div style="display:flex;gap:8px;padding:8px 0;border-top:1px solid #eee"><span style="background:'+m.c+';color:#fff;font-size:10px;font-weight:800;border-radius:5px;padding:2px 6px;height:16px;white-space:nowrap">'+m.t+'</span><div style="flex:1;min-width:0"><div style="font-size:13px;color:#222;font-weight:600">'+escHtml(ev.title||ev.type||"")+'</div><div style="font-size:11px;color:#999">'+escHtml([when,ev.actor].filter(Boolean).join(" · "))+'</div></div></div>';}).join("");
+}
+async function _dBrainAddNote(name){
+  try{var inp=document.getElementById("dBrainNoteInput");if(!inp)return;var txt=(inp.value||"").trim();if(!txt)return;inp.value="";
+    if(typeof AspenBrain!=="undefined"&&AspenBrain.logEvent){await AspenBrain.logEvent({customer:name,app:"delivery",type:"note",title:"📝 "+txt,actor:(typeof currentUser!=="undefined"&&currentUser&&currentUser.name)||"Delivery"});}
+    try{showToast("Note saved","success")}catch(_e){}
+    setTimeout(function(){try{openBrainModal(name);}catch(_e){}},450);
+  }catch(_e){try{showToast("Error","error")}catch(_e2){}}
+}
+async function openBrainModal(name){
+  var ov=document.getElementById("brainOv");
+  if(!ov){ov=document.createElement("div");ov.id="brainOv";ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:flex-end;justify-content:center";ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);}
+  ov.innerHTML='<div style="background:#fff;width:100%;max-width:540px;max-height:86vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="font-size:16px;font-weight:800;color:#B5733A">🧠 '+escHtml(name||"")+'</div><button onclick="var o=document.getElementById(\'brainOv\');if(o)o.remove()" style="margin-left:auto;background:#eee;border:none;border-radius:8px;padding:6px 11px;cursor:pointer;font-weight:800">✕</button></div><div id="brainOvBody"><div style="padding:20px;text-align:center;color:#999">Loading…</div></div></div>';
+  var events=[];try{events=await AspenBrain.timeline(name,50);}catch(e){events=[];}
+  var body=document.getElementById("brainOvBody");if(body)body.innerHTML=_dBrainPanel(name,events)+_dBrainEvents(events);
+}
+function openBrainModalById(id){try{var rec=(typeof AD==="function"?AD():[]).find(function(x){return String(x.i)===String(id);});if(rec)openBrainModal(rec.n||"");}catch(_e){}}
 function renderModal(){let r=curRec,s=st(r);
 let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
 // === TICKET HERO (desktop B+C redesign) — replaces the old text header + badge row. ===
 // Complete/Hold logic is moved here verbatim (same onclick, same canCompl rule).
-let canCompl=r.cl&&(r.gb||r.ngb);let actBtns='';
+let canCompl=r.cl&&(r.gb||r.ngb);let actBtns='';actBtns+='<button onclick="openBrainModalById('+r.i+')" title="Customer brain" style="background:#134A63;color:#fff;border:none;border-radius:8px;padding:0 12px;font-weight:800;cursor:pointer;font-size:15px">\U0001F9E0</button>';
 if(s!=='complete'&&!r.hold){
 actBtns+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete':'&#9888; Complete (Call + G.B./N.G.B.)')+'</button>';
 actBtns+='<button onclick="deliveryAskReview('+r.i+')" title="Text the customer a Google review request" style="background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:12px;white-space:nowrap">&#11088; Review</button>';
