@@ -6236,6 +6236,48 @@ var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
 var val=r.tn_fu?null:{by:(currentUser&&currentUser.name)||'?',at:Date.now()};
 saveTicketFields(id,{tn_fu:val});
 setTimeout(function(){openTechNotesPanel();_tnBadge()},120)}
+// --- Tech-note translation (2026-07-22) ---------------------------------------------
+// Techs write in Spanish; an admin with the app in English (or vice versa) can tap 🌐 on
+// a note to translate it ON DEMAND. The result is saved on the ticket (tn_tr, field-level)
+// so it's translated ONCE and every device shows it instantly afterwards. Engine: the
+// Anthropic API if an aspenAIKey is saved in this browser (same pattern as other Aspen
+// apps), otherwise the free Google translate endpoint — zero setup required.
+function _tnHash(s){var h=5381;s=String(s||'');for(var i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0}return String(h)}
+async function _aspenTranslate(text,target){
+var key=null;try{key=localStorage.getItem('aspenAIKey')}catch(e){}
+if(key){
+try{
+var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+body:JSON.stringify({model:'claude-3-5-haiku-latest',max_tokens:1024,
+system:'You translate field-technician notes for a hot tub company. Translate the user message to '+(target==='es'?'Spanish':'English')+'. Keep names, addresses, URLs and part names as-is. Output ONLY the translation, nothing else.',
+messages:[{role:'user',content:text}]})});
+if(resp.ok){var j=await resp.json();var t=(j&&j.content&&j.content[0]&&j.content[0].text)||'';if(t.trim())return t.trim()}
+}catch(e){console.warn('[TN-TR] Anthropic failed, falling back:',e)}
+}
+// Free fallback — no key needed. Notes are short; endpoint handles them fine.
+var url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl='+encodeURIComponent(target)+'&dt=t&q='+encodeURIComponent(text);
+var res=await fetch(url);
+if(!res.ok)throw new Error('translate http '+res.status);
+var data=await res.json();
+return (data&&data[0]?data[0].map(function(seg){return (seg&&seg[0])||''}).join(''):'').trim()}
+async function translateTechNote(id,btn){
+var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
+var info=_tnInfo(r);if(!info||!info.last.text)return;
+var target=APP_LANG==='es'?'es':'en';
+if(btn){btn.disabled=true;btn.textContent='…'}
+try{
+var tr=await _aspenTranslate(info.last.text,target);
+if(!tr)throw new Error('empty translation');
+// Persist so the whole team gets it without re-translating. h ties the translation to
+// THIS note text+language; a newer note or a language switch shows the button again.
+saveTicketFields(id,{tn_tr:{h:_tnHash(info.last.text+'|'+target),text:tr,target:target,at:Date.now(),by:(currentUser&&currentUser.name)||'?'}});
+showToast('🌐 '+_L('Nota traducida','Note translated'));
+setTimeout(function(){openTechNotesPanel()},150);
+}catch(e){
+console.warn('[TN-TR]',e);
+if(btn){btn.disabled=false;btn.textContent='🌐 '+_L('Traducir','Translate')}
+showToast('⚠ '+_L('No se pudo traducir — revisa tu conexión','Could not translate — check your connection'),'warn')}}
 function openTechNotesPanel(){
 var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
 var list=_tnList();
@@ -6244,6 +6286,12 @@ function row(x){
 var r=x.r,i=x.info,fu=!!r.tn_fu;
 var full=String(i.last.text||'');
 var prev=escHtml(full.slice(0,220));
+// Saved translation valid only if it matches THIS note text and the CURRENT app language.
+var target=APP_LANG==='es'?'es':'en';
+var trOk=!!(r.tn_tr&&r.tn_tr.text&&r.tn_tr.h===_tnHash(full+'|'+target));
+var trHtml=trOk
+?'<div style="margin-top:6px;padding:7px 10px;background:var(--st-info-soft);border-left:3px solid var(--st-info);border-radius:0 8px 8px 0;font-size:12.5px;color:var(--text-primary);line-height:1.45;white-space:pre-line"><span style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--st-info)">🌐 '+_L('Traducción','Translation')+'</span><br>'+escHtml(String(r.tn_tr.text).slice(0,400))+'</div>'
+:(full?'<button onclick="event.stopPropagation();translateTechNote(\''+r.i+'\',this)" style="margin-top:6px;background:var(--st-info-soft);color:var(--st-info);border:1px solid var(--st-info);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🌐 '+_L('Traducir','Translate')+'</button>':'');
 return '<div style="display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border-soft);border-left:4px solid '+(fu?'var(--st-success)':(r.needs_attention?'var(--st-danger)':'var(--st-warning)'))+';border-radius:12px;padding:12px 14px;margin-bottom:9px'+(fu?';opacity:.72':'')+'">'
 +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0;padding-top:2px" title="'+(fu?_L('Ya seguido — clic para reabrir','Followed up — click to reopen'):_L('Marcar como seguido','Mark as followed up'))+'"><input type="checkbox" '+(fu?'checked':'')+' onchange="toggleTechNoteFu(\''+r.i+'\')" style="width:19px;height:19px;cursor:pointer"></label>'
 +'<div style="flex:1;min-width:0;cursor:pointer" onclick="closeOv();openDet(\''+r.i+'\')">'
@@ -6253,6 +6301,7 @@ return '<div style="display:flex;gap:12px;align-items:flex-start;background:var(
 +'</div>'
 +'<div style="font-size:11px;color:var(--text-tertiary);font-weight:700;margin:2px 0 5px">'+escHtml(i.last.stamp)+' · '+escHtml(i.last.tech)+(r.dd?' · '+escHtml(String(r.dd)):'')+'</div>'
 +'<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45;white-space:pre-line">'+prev+(full.length>220?'…':'')+'</div>'
++trHtml
 +(fu?'<div style="font-size:10.5px;color:var(--st-success);font-weight:700;margin-top:5px">✓ '+_L('Seguido por ','Followed up by ')+escHtml((r.tn_fu&&r.tn_fu.by)||'')+(r.tn_fu&&r.tn_fu.at?' · '+new Date(r.tn_fu.at).toLocaleDateString():'')+'</div>':'')
 +'</div>'
 +'<button onclick="closeOv();openDet(\''+r.i+'\')" style="flex-shrink:0;background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+_L('Abrir','Open')+' ›</button>'
