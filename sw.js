@@ -8,7 +8,8 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v1';
+const CACHE_VERSION = 'aspen-delivery-v9'; // 2026-07-22 — Tech Notes también en el dock móvil (5 botones + badge)
+const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 
 self.addEventListener('install', (e) => {
@@ -23,7 +24,7 @@ self.addEventListener('activate', (e) => {
   // Drop old caches from previous versions.
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE_VERSION).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -51,8 +52,10 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then((c) => c.put(APP_SHELL, copy)).catch(() => {});
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then((c) => c.put(APP_SHELL, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() => caches.match(APP_SHELL).then((r) => r || caches.match(req)))
