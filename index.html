@@ -1929,6 +1929,16 @@ body.command-center-ui #glassDock button.on{background:rgba(230,126,46,.17);colo
 html[data-theme="dark"] body.command-center-ui .cmd-band{background:transparent}
 html[data-theme="dark"] body.command-center-ui .cmd-metric{background:var(--surface);border-color:var(--border-soft)}
 html[data-theme="dark"] body.command-center-ui .cmd-card-action{background:var(--bg-card-soft)}
+
+/* ═══ HOTFIX 2026-07-22 · TABLE HEADER FLOATING OVER ROWS ═══
+   The redesign made th sticky with top:64px, but th's nearest scroll container is
+   .twrap (overflow-x:auto), NOT the page — so the header pinned 64px down INSIDE the
+   table, covering the first row(s). In short tables (e.g. Needs Action with 1 row) it
+   hid every row and the table looked empty. .twrap never scrolls vertically, so the
+   offset bought nothing: pin the header at its natural position. */
+@media(min-width:1024px){
+.twrap th{top:0 !important}
+}
 </style>
 <script>
 // === PWA SERVICE WORKER (network-first) ===
