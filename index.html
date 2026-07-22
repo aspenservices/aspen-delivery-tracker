@@ -6071,8 +6071,9 @@ var dock=document.createElement('div');dock.id='glassDock';
 dock.innerHTML=[['gd_board','\u{1F69A}','Deliveries',"setTab('board')"],
 ['gd_route','\u{1F5FA}\uFE0F','Route',"setTab('route')"],
 ['gd_cal','\u{1F4C5}','Calendar',"setTab('cal')"],
+['gd_notes','\u{1F4DD}','Notes',"openTechNotesPanel()"], /* 2026-07-22: Tech Notes follow-up, also on mobile */
 ['gd_dash','\u{1F4CA}','Dash',"setTab('dash')"]].map(function(b){
-return '<button id="'+b[0]+'" onclick="'+b[3]+'"><span class="gi">'+b[1]+'</span>'+b[2]+'</button>'}).join('');
+return '<button id="'+b[0]+'" onclick="'+b[3]+'" style="position:relative"><span class="gi">'+b[1]+'</span>'+b[2]+(b[0]==='gd_notes'?'<span id="gdTnN" style="display:none;position:absolute;top:2px;right:14%;background:var(--st-danger);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;line-height:16px;border-radius:999px;padding:0 4px;text-align:center">0</span>':'')+'</button>'}).join('');
 document.body.appendChild(dock);
 var fab=document.createElement('button');fab.id='glassFab';fab.innerHTML='\uFF0B';fab.title='New Delivery';fab.style.display='none'; /* hidden 2026-07-05 \u2014 no manual deliveries (see header button note) */
 fab.onclick=function(){try{openForm()}catch(e){}};
@@ -6090,6 +6091,7 @@ side.innerHTML='<div class="gs-brand"><div class="gs-leaf">A</div><b>Aspen Comma
 '<div class="gs-sep">System</div>'+
 '<button onclick="openDigest()">\u{1F4EC} Digest</button>'+
 '<button onclick="openGlassNotifs()">\u{1F514} Alerts <span class="gs-bell-n" id="gsBellN" style="display:none"></span></button>'+
+'<button onclick="openTechNotesPanel()">\u{1F4DD} Tech Notes <span class="gs-bell-n" id="gsTnN" style="display:none"></span></button>'+
 '<button onclick="openGlassSettings()">\u2699\uFE0F Settings</button>'+
 '</div>'+
 '<div class="gs-me" onclick="openGlassSettings()"><div class="gs-av">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div class="n">'+escHtml(String(currentUser.name||'').split(' ')[0])+'</div><div class="r">'+escHtml(currentUser.role||'')+'</div></div></div>';
@@ -6097,6 +6099,7 @@ document.body.appendChild(side);
 document.body.classList.add('has-glass-side');
 document.body.classList.add('command-center-ui');
 try{_nfBadge()}catch(e){}
+try{_tnBadge()}catch(e){}
 _glassDockSync(typeof tab!=='undefined'?tab:'board');
 renderGlassGreet();
 }catch(e){console.warn('[GLASS]',e)}}
@@ -6197,6 +6200,73 @@ h+=a.length?a.map(function(x){return '<div class="nf-row"><div>'+x.m+'</div><spa
 h+='</div>';
 md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open');
 _nfBadge()}
+
+// === TECH NOTES FOLLOW-UP (2026-07-22) =============================================
+// Sidebar list of EVERY ticket that has at least one stamped tech note in its Delivered
+// Notes ("[M/D/YYYY H:MM AM — Name] ..."), split into Pending / Followed-up. Each row has
+// a check that stores r.tn_fu = {by,at} (field-level via saveTicketFields, so it can't
+// clobber other fields). The sidebar badge counts pending ones.
+var _TN_RE=/\[(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)\s*(?:—|-)\s*([^\]]+)\]/g;
+function _tnInfo(r){
+if(!r||!r.dn)return null;
+var txt=String(r.dn),m,last=null,count=0;_TN_RE.lastIndex=0;
+while((m=_TN_RE.exec(txt))){
+count++;
+var hr=(+m[2]%12)+(m[4]==='PM'?12:0);
+var dp=m[1].split('/');
+var ms=new Date(+dp[2],+dp[0]-1,+dp[1],hr,+m[3]).getTime();
+var noteStart=m.index+m[0].length;
+var nextIdx=txt.indexOf('\n\n[',noteStart);
+var body=txt.slice(noteStart,nextIdx>=0?nextIdx:txt.length).trim();
+last={ms:ms||0,tech:m[5].trim(),stamp:m[1]+' '+m[2]+':'+m[3]+' '+m[4],text:body}
+}
+return count?{count:count,last:last}:null}
+function _tnList(){
+var out=[];AD().forEach(function(r){var i=_tnInfo(r);if(i)out.push({r:r,info:i})});
+out.sort(function(a,b){return (b.info.last.ms||0)-(a.info.last.ms||0)});
+return out}
+function _tnBadge(){
+var n=0;try{n=_tnList().filter(function(x){return !x.r.tn_fu}).length}catch(e){}
+var el=document.getElementById('gsTnN');   // desktop sidebar badge
+if(el){el.style.display=n?'':'none';el.textContent=n}
+var eld=document.getElementById('gdTnN');  // mobile dock badge
+if(eld){eld.style.display=n?'':'none';eld.textContent=n}}
+function toggleTechNoteFu(id){
+var r=AD().find(function(x){return sameId(x.i,id)});if(!r)return;
+var val=r.tn_fu?null:{by:(currentUser&&currentUser.name)||'?',at:Date.now()};
+saveTicketFields(id,{tn_fu:val});
+setTimeout(function(){openTechNotesPanel();_tnBadge()},120)}
+function openTechNotesPanel(){
+var ov=document.getElementById('ov'),md=document.getElementById('md');if(!ov||!md)return;
+var list=_tnList();
+var pend=list.filter(function(x){return !x.r.tn_fu}),done=list.filter(function(x){return !!x.r.tn_fu});
+function row(x){
+var r=x.r,i=x.info,fu=!!r.tn_fu;
+var full=String(i.last.text||'');
+var prev=escHtml(full.slice(0,220));
+return '<div style="display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border-soft);border-left:4px solid '+(fu?'var(--st-success)':(r.needs_attention?'var(--st-danger)':'var(--st-warning)'))+';border-radius:12px;padding:12px 14px;margin-bottom:9px'+(fu?';opacity:.72':'')+'">'
++'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0;padding-top:2px" title="'+(fu?_L('Ya seguido — clic para reabrir','Followed up — click to reopen'):_L('Marcar como seguido','Mark as followed up'))+'"><input type="checkbox" '+(fu?'checked':'')+' onchange="toggleTechNoteFu(\''+r.i+'\')" style="width:19px;height:19px;cursor:pointer"></label>'
++'<div style="flex:1;min-width:0;cursor:pointer" onclick="closeOv();openDet(\''+r.i+'\')">'
++'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:14.5px">'+escHtml(dispName(r))+'</b>'
++(r.needs_attention&&!fu?'<span style="background:var(--st-danger-soft);color:var(--st-danger);font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px">NEEDS ACTION</span>':'')
++(i.count>1?'<span style="background:var(--surf-soft);color:var(--text-secondary);font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px">'+i.count+' '+_L('notas','notes')+'</span>':'')
++'</div>'
++'<div style="font-size:11px;color:var(--text-tertiary);font-weight:700;margin:2px 0 5px">'+escHtml(i.last.stamp)+' · '+escHtml(i.last.tech)+(r.dd?' · '+escHtml(String(r.dd)):'')+'</div>'
++'<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45;white-space:pre-line">'+prev+(full.length>220?'…':'')+'</div>'
++(fu?'<div style="font-size:10.5px;color:var(--st-success);font-weight:700;margin-top:5px">✓ '+_L('Seguido por ','Followed up by ')+escHtml((r.tn_fu&&r.tn_fu.by)||'')+(r.tn_fu&&r.tn_fu.at?' · '+new Date(r.tn_fu.at).toLocaleDateString():'')+'</div>':'')
++'</div>'
++'<button onclick="closeOv();openDet(\''+r.i+'\')" style="flex-shrink:0;background:var(--surf-soft);border:1px solid var(--border-soft);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'+_L('Abrir','Open')+' ›</button>'
++'</div>'}
+var h='<div style="padding:20px 22px;max-height:82vh;overflow-y:auto">';
+h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h2 style="font-size:19px;font-weight:800;letter-spacing:-.02em">\u{1F4DD} '+_L('Notas del técnico','Tech Notes')+'</h2><button class="xbtn" aria-label="Close" onclick="closeOv()" style="background:var(--surf-soft);border:1px solid var(--border-soft);width:32px;height:32px;border-radius:9px;cursor:pointer">✕</button></div>';
+h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+_L('Tickets con comentarios enviados por el técnico. Marca el check cuando ya le diste seguimiento.','Tickets with comments sent by the tech. Tick the box once you have followed up.')+'</div>';
+h+='<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#b45309;margin-bottom:8px">'+_L('Pendientes','Pending')+' ('+pend.length+')</div>';
+h+=pend.length?pend.map(row).join(''):'<div class="gk-hint">'+_L('Nada pendiente — todo seguido.','Nothing pending — all followed up.')+'</div>';
+if(done.length){
+h+='<details style="margin-top:14px"><summary style="cursor:pointer;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--st-success)">'+_L('Atendidos','Followed up')+' ('+done.length+')</summary><div style="margin-top:8px">'+done.map(row).join('')+'</div></details>'}
+h+='</div>';
+md.innerHTML=h;ov.classList.remove('hidden');document.body.classList.add('modal-open');
+_tnBadge()}
 
 // === TICKET SECTION NAV (system S2) ===
 // Sticky pill bar inside the ticket: Overview \u00b7 Money \u00b7 Prep \u00b7 Photos \u00b7 Customer \u00b7 History.
@@ -8842,6 +8912,10 @@ rememberEditsEdit(id,EDITS[id]);saveE()}
 curRec=AD().find(r=>r.i===id||String(r.i)===String(id));
 let dot=el.querySelector(".cd"),on=curRec[key];
 dot.className="cd "+(on?"on":"off");el.className="ci "+(on?"on":"off");
+/* ⭐ FEATURE 2026-07-22: marking "Call" done also preps the Google-review text.
+   Opens Messages with the review link + message ready — NOTHING is sent until the
+   user taps send (deliveryAskReview uses the sms: composer). Unchecking does nothing. */
+if(key==='cl'&&on){showToast('⭐ '+_L('Preparando SMS de review…','Preparing review SMS…'));setTimeout(function(){try{deliveryAskReview(id)}catch(_e){}},350)}
 renderKPIs();renderCtxHdr();
 // Pay Full toggle ON: update the Payment input + Balance span in place WITHOUT
 // re-rendering the entire modal. A full re-render would wipe out any unsaved typing
@@ -12288,7 +12362,7 @@ else if(tab==='table')renderTable();
 else if(tab==='board')renderBoard();
 else render();
 },150)}
-function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();try{renderGlassGreet()}catch(e){}
+function renderAll(){if(!fbReady)return;renderKPIs();renderCtxHdr();try{renderGlassGreet()}catch(e){}try{_tnBadge()}catch(e){}
 render();if(tab==='cal')renderCalendar();if(tab==='dash')renderDashboard();if(tab==='route')renderRoutePlan()}
 // Initial render is triggered by Firebase listeners via checkReady()
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeOv()});
