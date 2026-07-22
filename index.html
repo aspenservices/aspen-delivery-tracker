@@ -3899,7 +3899,10 @@ function openPhotoLightbox(photos,startIdx){
 let cur=startIdx||0;
 let modal=document.createElement('div');
 modal.className='tech-modal photo-lightbox';
-modal.style.cssText='z-index:200;padding:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';
+/* BUGFIX 2026-07-22: z-index was 200 (enough over the tech view) but the ADMIN ticket
+   modal is z-index 999 — previewing a photo from the ticket opened the lightbox BEHIND
+   the modal. 1500 puts it above every modal (ov 999) and below the ⌘K palette (2000). */
+modal.style.cssText='z-index:1500;padding:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';
 let render=function(){
 let multi=photos.length>1;
 modal.innerHTML='<button class="lb-close" aria-label="Close">&#10005;</button>'+
