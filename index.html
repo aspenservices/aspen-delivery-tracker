@@ -1930,6 +1930,15 @@ html[data-theme="dark"] body.command-center-ui .cmd-band{background:transparent}
 html[data-theme="dark"] body.command-center-ui .cmd-metric{background:var(--surface);border-color:var(--border-soft)}
 html[data-theme="dark"] body.command-center-ui .cmd-card-action{background:var(--bg-card-soft)}
 
+/* ═══ HOTFIX 2026-07-22 · LEAFLET CONTROLS POKING THROUGH MODALS ═══
+   The Live Route map's zoom buttons and "Leaflet | © OpenStreetMap" attribution use
+   z-index:1000 — one point ABOVE the modal overlay (.ov is z-index:999) — so they floated
+   on top of any open modal (Tech Notes, tickets). Two defenses:
+   1) isolation:isolate traps ALL of Leaflet's internal z-indexes inside the map box, and
+   2) the controls are capped below the overlay as a belt-and-suspenders fallback. */
+#rtMap,.leaflet-container{isolation:isolate;z-index:0}
+.leaflet-top,.leaflet-bottom{z-index:800 !important}
+
 /* ═══ HOTFIX 2026-07-22 · TABLE HEADER FLOATING OVER ROWS ═══
    The redesign made th sticky with top:64px, but th's nearest scroll container is
    .twrap (overflow-x:auto), NOT the page — so the header pinned 64px down INSIDE the
