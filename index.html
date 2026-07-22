@@ -25,7 +25,7 @@
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <!-- PDF.js for invoice auto-fill -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -45,7 +45,7 @@
 --aspen-teal:#1C8FA8;
 --aspen-aqua:#4FC3D9;
 --aspen-deep:#134A63;
---font-head:'Fraunces',Georgia,serif;
+--font-head:'Source Sans 3','Segoe UI',system-ui,-apple-system,sans-serif;
 --font-body:'Source Sans 3','Segoe UI',system-ui,-apple-system,sans-serif;
 --bg-cream:#faf7f1;
 --bg-card:#ffffff;
@@ -326,7 +326,7 @@ tbody tr{cursor:pointer}
 .returns-btn{padding:8px 13px;border:1.5px solid var(--border-mid);border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;color:var(--text-secondary);background:var(--surface);cursor:pointer;white-space:nowrap;transition:all .15s}
 .returns-btn:hover{border-color:var(--aspen-orange);color:var(--aspen-orange)}
 .returns-btn.on{background:var(--aspen-orange);border-color:var(--aspen-orange);color:#fff}
-.c-chip.return-chip{background:var(--surface)7ed;color:#c2410c;border-color:#fdba74;font-weight:700}
+.c-chip.return-chip{background:var(--st-action-soft);color:#c2410c;border-color:#fdba74;font-weight:700}
 /* ===== NOTIFICATIONS (Phase 4) ===== */
 .aspen-tab.has-alert{position:relative}
 .tab-alert-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--st-danger);margin-left:6px;vertical-align:middle;box-shadow:0 0 0 0 rgba(220,38,38,.6);animation:alertPulse 1.8s infinite}
@@ -766,7 +766,7 @@ th,td{padding:7px 6px}
 .cal-ev.delivered{background:#dbeafe;color:#1d4ed8;border-left-color:var(--st-info)}
 .cal-ev.complete{background:#dcfce7;color:var(--st-success);border-left-color:var(--st-success)}
 .cal-ev.overdue{background:var(--st-danger-soft);color:var(--st-danger);border-left-color:var(--st-danger)}
-.cal-ev.action{background:var(--surface)7ed;color:#c2410c;border-left-color:var(--st-action)}
+.cal-ev.action{background:var(--st-action-soft);color:#c2410c;border-left-color:var(--st-action)}
 .cal-ev:hover{opacity:.8}
 .cal-more{font-size:10px;color:var(--st-info);font-weight:700;cursor:pointer;padding:1px 4px}
 /* Week/Day view */
@@ -1141,17 +1141,17 @@ th,td{padding:7px 6px}
   --border-soft:#E7DCC9;        /* warm hairlines */
   --border-mid:#D9CDB7;
 }
-.aspen-logo-text{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:.01em}
+.aspen-logo-text{font-family:var(--font-body);font-weight:700;letter-spacing:.01em}
 .aspen-subtitle{letter-spacing:.3em}
-.c-name{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:.004em}
-.cal-title{font-family:'Fraunces',Georgia,serif;font-weight:600}
+.c-name{font-family:var(--font-body);font-weight:700;letter-spacing:.004em}
+.cal-title{font-family:var(--font-body);font-weight:700}
 .card{border-radius:14px}
 
 /* ===== Aspen Warm — Stage 2 (Today route landing) 2026-06-29 ===== */
 .rt2{max-width:960px;margin:0 auto;padding:6px 4px 30px}
 .rt2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .rt2-kicker{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--aspen-orange)}
-.rt2-title{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;color:var(--text-primary);margin-top:4px}
+.rt2-title{font-family:var(--font-body);font-weight:700;font-size:26px;color:var(--text-primary);margin-top:4px}
 .rt2-sub{font-size:13.5px;color:var(--text-secondary);margin-top:4px}
 .rt2-nav{display:flex;align-items:center;gap:6px}
 .rt2-ibtn,.rt2-today{height:36px;border:1px solid var(--border-mid);background:var(--bg-card);border-radius:10px;color:var(--text-secondary);font-weight:600;cursor:pointer}
@@ -1167,10 +1167,10 @@ th,td{padding:7px 6px}
 .rt2-stop.overdue,.rt2-stop.action{border-left-color:var(--aspen-orange)}
 .rt2-stop.delivered,.rt2-stop.complete{border-left-color:#2F7D52}
 .rt2-stop.hold{border-left-color:#b08968;opacity:.85}
-.rt2-num{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--bg-cream);border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:16px;color:var(--text-primary)}
+.rt2-num{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--bg-cream);border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;font-family:var(--font-body);font-weight:700;font-size:16px;color:var(--text-primary)}
 .rt2-body{flex:1;min-width:0}
 .rt2-row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.rt2-name{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:16px;color:var(--text-primary)}
+.rt2-name{font-family:var(--font-body);font-weight:700;font-size:16px;color:var(--text-primary)}
 .rt2-pay{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
 .rt2-pay.paid{background:#E6F0E7;color:#2F7D52}
 .rt2-pay.due{background:#FBEAE2;color:#BE4A2F}
@@ -1207,7 +1207,7 @@ th,td{padding:7px 6px}
 .crl-card{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card-hover)}
 .crl-head{background:#2C221C;color:#F0E7DA;padding:16px 18px;position:relative}
 .crl-x{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.2);color:#CFC0B0;background:none;cursor:pointer}
-.crl-nm{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:18px;padding-right:30px}
+.crl-nm{font-family:var(--font-body);font-weight:700;font-size:18px;padding-right:30px}
 .crl-sub{font-size:12px;color:#C9AE99;margin-top:5px}
 .crl-pill{display:inline-block;margin-top:9px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.16);color:#F3E7DA}
 .crl-body{padding:16px 18px}
@@ -1571,6 +1571,364 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0
 .bal,.rt2-pay,.kpi-money,.c-meta .bal{font-variant-numeric:tabular-nums}
 .tkt-hero-id h2{font-family:var(--font-head);letter-spacing:.002em}
 .mdl h2{font-family:var(--font-head);font-weight:600}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   BUILD 62 · MOBILE FIX PACK (2026-07-21) — appended last so it wins the cascade
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* MF1 v2 — The sticky .filters panel (v2 FRAME, line ~1133) pinned itself at top:0 with
+   z-index:25 and slid OVER the sticky tabs bar (z-index:10) while scrolling: the status
+   tabs disappeared under the search panel and the search box sat under the notch.
+   Phones AND tablets (≤1023px): filters scroll normally with the page.
+   Desktop (≥1024px, Admin Redesign): keep the sticky search, but pin it BELOW the 64px
+   tabs bar instead of on top of it, so the tabs never get covered. */
+@media(max-width:1023px){
+.filters{position:static !important;box-shadow:none !important}
+}
+@media(min-width:1024px){
+/* --tabsbar-h is kept in sync with the real tabs-bar height by a ResizeObserver
+   (see MOBILE/STICKY FIX JS at the end of the script). 64px fallback. */
+.filters{top:var(--tabsbar-h,64px) !important}
+}
+
+/* MF2 — Liquid-glass perf on phones: backdrop-filter on EVERY card made long boards
+   janky on iOS (each card re-composites per scroll frame), and iOS Safari doesn't honor
+   background-attachment:fixed (gradient looked broken/flat). Cards go solid on mobile;
+   blur stays only on the few fixed surfaces (dock, tabs bar, modal) which are cheap. */
+@media(max-width:820px){
+body,html[data-theme="dark"] body{background-attachment:scroll}
+.card,.rt2-stop,.dash-card,.insp-card,.kpi,.kpi-card{
+ backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
+ background:rgba(255,255,255,.93) !important}
+html[data-theme="dark"] .card,html[data-theme="dark"] .rt2-stop,
+html[data-theme="dark"] .dash-card,html[data-theme="dark"] .insp-card,
+html[data-theme="dark"] .kpi,html[data-theme="dark"] .kpi-card{
+ background:rgba(36,26,17,.96) !important}
+}
+
+/* MF3 — Bottom sheet: later radius overrides (16px / 26px !important) re-rounded the
+   BOTTOM corners of the mobile sheet, so two dark notches of the dim overlay peeked
+   through at the bottom edge. Restore top-only rounding on phones. */
+@media(max-width:700px){
+.mdl{border-radius:22px 22px 0 0 !important}
+}
+
+/* MF4 — Glass dock: respect the iPhone home-indicator safe area (taps on the dock were
+   competing with the system swipe gesture), and reserve matching body padding. */
+@media(max-width:820px){
+#glassDock{bottom:calc(env(safe-area-inset-bottom,0px) + 12px)}
+body.has-glass-dock{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 92px)}
+}
+
+/* MF5 — Toasts vs dock: the lift above the dock only existed ≤700px, so on 701–820px
+   (landscape phones / small tablets) toasts covered the dock buttons. Widen the band. */
+@media(min-width:701px) and (max-width:820px){
+#toastStack{bottom:calc(env(safe-area-inset-bottom,0px) + 92px) !important}
+}
+
+/* MF6 — Tech day-list swipe cards: without touch-action:pan-y the finger's horizontal
+   wobble dragged cards sideways while scrolling (jitter / green flash). Matches the
+   td2-swiper which already declares it. */
+.tlcard{touch-action:pan-y}
+
+/* ============================================================================
+   ASPEN ADMIN REDESIGN · 2026-07-21
+   Hybrid direction: Mobile Operations + Professional Desktop + Aspen Premium.
+   Visual-only override layer. Existing data flows and business logic untouched.
+   ============================================================================ */
+:root{
+--ui-radius:14px;
+--ui-radius-lg:20px;
+--ui-control:44px;
+--ui-content:1480px;
+--ui-sidebar:232px;
+}
+
+/* Shared clarity: quieter surfaces, stronger hierarchy, consistent controls. */
+body{background-color:var(--bg-cream)}
+.card,.cbox,.dash-card,.insp-card,.rt2-stop,.kpi,.kpi-card{
+backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+background:var(--surface)!important;border-color:var(--border-soft)!important;
+box-shadow:0 1px 2px rgba(26,20,16,.04),0 6px 18px rgba(26,20,16,.045)!important
+}
+.aspen-action-btn,.vt-btn,.dsort,.returns-btn,.techfilter,.cal-nbtn,.cal-vbtn,.cal-style-btn,.mbtn,.pbtn{
+min-height:var(--ui-control);border-radius:11px
+}
+.search{min-height:var(--ui-control);border-radius:11px}
+.badge,.pst-badge,.svc-tag{font-size:11px;line-height:1.2;padding:4px 8px}
+.c-name{font-size:15px;line-height:1.25}
+.c-spa{font-size:12px;line-height:1.35;margin-top:4px}
+.c-meta{font-size:12px;line-height:1.4;margin:10px 0;gap:10px}
+.pl,.c-chip{font-size:10.5px}
+.c-note{font-size:12px;padding:8px 10px}
+.pcnt{font-size:12px}
+
+/* Fix two malformed legacy color declarations. */
+.cal-ev.action{background:var(--st-action-soft)}
+
+/* Premium brand restraint: solid navigation, glass reserved for the mobile dock. */
+#glassSide{
+background:var(--surface)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+border:1px solid var(--border-soft)!important;box-shadow:0 10px 30px rgba(44,34,28,.09)!important
+}
+#glassSide .gs-brand{padding:4px 8px 18px}
+#glassSide .gs-leaf{width:36px;height:36px;border-radius:12px}
+#glassSide .gs-brand b{font-family:var(--font-head);font-size:16px;font-weight:600}
+#glassSide .gs-srch{background:var(--bg-cream);border-color:var(--border-soft);min-height:40px}
+#glassSide .gs-nav button{min-height:42px;padding:10px 11px;font-size:13.5px}
+#glassSide .gs-nav button.on{background:var(--st-action-soft);color:var(--aspen-orange-dark)}
+#glassSide .gs-me{background:var(--bg-cream);border:1px solid var(--border-soft)}
+
+/* Desktop: one navigation system, aligned content, professional density. */
+@media(min-width:1024px){
+body.has-glass-side{padding-left:var(--ui-sidebar)}
+#glassSide{left:16px;top:16px;bottom:16px;width:200px;border-radius:var(--ui-radius-lg);padding:18px 12px}
+body.has-glass-side>.aspen-hdr{display:none}
+body.has-glass-side .aspen-tabs-bar{top:0;padding:0 28px;min-height:64px;background:color-mix(in srgb,var(--surface) 96%,transparent)!important;border-bottom:1px solid var(--border-soft)!important;box-shadow:none!important}
+body.has-glass-side .aspen-tabs{min-height:64px}
+body.has-glass-side .aspen-tab{padding:22px 0 18px;font-size:12px;margin-right:24px}
+body.has-glass-side .aspen-tabs-actions{padding:8px 0}
+#glassGreet,.ctx-hdr,.filters,.board,.twrap,.cal-wrap,.gcal-panel{max-width:var(--ui-content);margin-left:auto;margin-right:auto}
+#glassGreet{padding:10px 32px 0;margin-top:10px}
+#glassGreet .gg-hi{font-family:var(--font-head);font-weight:600;font-size:30px}
+#glassGreet .gg-stats{max-width:none;width:min(620px,100%);background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-color:var(--border-soft);box-shadow:none}
+.ctx-hdr{margin-top:18px;margin-bottom:14px}
+.filters{padding:0 40px 16px;flex-wrap:nowrap}
+.search{font-size:15px}
+.board{grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:14px;padding-bottom:48px}
+.card{border-radius:var(--ui-radius);padding:16px 17px;min-height:188px}
+.card:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(26,20,16,.05),0 12px 28px rgba(26,20,16,.09)!important}
+.twrap{padding-bottom:48px}
+table{font-size:14px;background:var(--surface);border-radius:var(--ui-radius);overflow:hidden}
+th{position:sticky;top:64px;z-index:4;font-size:11px;padding:12px 14px;background:var(--bg-card-soft)}
+td{padding:12px 14px}
+.cal-wrap{padding-bottom:48px}
+.cal-cell{min-height:130px;padding:7px 8px}
+.cal-ev{font-size:11px;padding:5px 7px}
+.cal-ev .ce-sub{font-size:10px}
+.ov{padding:28px}
+.mdl-ticket{width:min(1180px,calc(100vw - 290px))!important;max-width:1180px!important;max-height:92vh!important}
+.tkt-grid{grid-template-columns:minmax(0,1fr) 300px}
+.tkt-main{padding:24px 28px;max-height:calc(92vh - 138px)}
+.tkt-insp{padding:22px;max-height:calc(92vh - 138px)}
+}
+
+/* Tablet: retain dock and reduce duplicated header controls. */
+@media(min-width:701px) and (max-width:1023px){
+.aspen-hdr{padding-left:24px;padding-right:24px}
+.aspen-tabs-bar{padding:0 20px}
+.aspen-tabs-actions{flex-wrap:wrap}
+.board{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#glassDock{left:50%;right:auto;width:min(520px,calc(100vw - 40px));transform:translateX(-50%)}
+}
+
+/* Mobile Operations: content-first, one dock, large readable tickets. */
+@media(max-width:700px){
+body.has-glass-dock{padding-bottom:96px}
+.aspen-hdr{padding:calc(env(safe-area-inset-top,0px) + 9px) 14px 10px}
+.aspen-hdr-inner{min-height:42px}
+.aspen-logo-svg{height:28px}
+.aspen-subtitle{display:none}
+.aspen-user{padding:6px 8px;background:transparent}
+.role-badge{display:none}
+.aspen-tabs-bar{position:relative;top:auto;border-bottom:0!important;box-shadow:none!important;background:transparent!important}
+.aspen-tabs{display:none}
+.aspen-tabs-actions{padding:8px 14px 6px;display:grid;grid-template-columns:1fr auto auto;gap:7px}
+.aspen-view-toggle{grid-column:1/-1;order:2;width:100%;padding:4px;background:var(--surface);border-color:var(--border-soft)}
+.vt-btn{min-height:42px;font-size:18px}
+.aspen-action-btn.primary{display:none!important}
+#usersBtn,#backupBtn,#gcalBtn,#langToggle,#darkToggle{min-width:44px;min-height:42px;padding:8px 10px}
+#usersBtn{font-size:0}
+#usersBtn::before{content:"Users";font-size:12px}
+#gcalBtn .gcal-btn-label{max-width:96px}
+#glassGreet{margin:8px 14px 4px}
+#glassGreet .gg-hi{font-family:var(--font-head);font-size:24px;font-weight:600;letter-spacing:-.015em}
+#glassGreet .gg-sub{font-size:12px}
+#glassGreet .gg-stats{margin-top:10px;padding:10px 4px;border-radius:14px;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-color:var(--border-soft);box-shadow:none}
+#glassGreet .gg-stats b{font-size:19px}
+#glassGreet .gg-stats span{font-size:10px}
+.ctx-hdr{margin:10px 14px 8px;padding:10px 12px;background:transparent;border:0;border-left:0;border-radius:0}
+.ctx-hdr h2{font-family:var(--font-head);font-size:17px;font-weight:600}
+.ctx-hdr .ctx-meta{font-size:12px}
+.filters{padding:0 14px 10px;display:grid!important;grid-template-columns:1fr 1fr;gap:7px}
+.search{grid-column:1/-1;font-size:16px;padding:11px 13px}
+.dsort{width:auto;min-width:0}
+.techfilter{max-width:none;width:100%;min-width:0}
+.returns-btn{grid-column:1/-1}
+.board{padding:0 14px 24px;gap:10px}
+.card{padding:14px 15px;border-radius:var(--ui-radius);min-height:auto}
+.c-name{font-family:var(--font-head);font-size:17px;font-weight:600;letter-spacing:0}
+.c-spa{font-size:12.5px}
+.c-meta{font-size:12px;gap:9px;margin:10px 0}
+.pl{font-size:11px}
+.pbar{margin-bottom:7px}
+.c-chip{font-size:11px;padding:3px 7px}
+.c-note{font-size:12px;line-height:1.45}
+#glassDock{left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);padding:7px 5px 6px;border-radius:20px;background:color-mix(in srgb,var(--surface) 84%,transparent);border-color:color-mix(in srgb,var(--border-soft) 80%,transparent);box-shadow:0 10px 28px rgba(26,20,16,.2)}
+#glassDock button{min-height:48px;font-size:11px;color:var(--text-secondary);border-radius:14px}
+#glassDock button .gi{font-size:20px;margin-bottom:2px}
+#glassDock button.on{color:var(--aspen-orange-dark);background:var(--st-action-soft)}
+.twrap{padding:0 14px 24px}
+table{font-size:13px}
+th{font-size:11px;position:sticky;top:0;background:var(--bg-card-soft)}
+.cal-wrap{padding:0 14px 24px}
+.cal-hdr{display:grid;grid-template-columns:1fr;gap:8px}
+.cal-nav{justify-content:space-between}
+.cal-views,.cal-style{display:flex;justify-content:stretch}
+.cal-vbtn,.cal-style-btn{flex:1}
+/* Month becomes an occupancy map; detailed work belongs in Week/Day. */
+.cal-cell{min-height:54px;padding:4px}
+.cal-ev{height:6px;padding:0;margin:2px 0;border:0;border-radius:999px;font-size:0}
+.cal-ev .ce-name,.cal-ev .ce-sub{display:none}
+.cal-more{font-size:10px}
+.ov{align-items:stretch;padding:0;background:var(--bg-cream);backdrop-filter:none;-webkit-backdrop-filter:none}
+.mdl,.mdl-ticket{width:100%!important;max-width:none!important;max-height:none!important;height:100dvh;border-radius:0!important;padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 18px);box-shadow:none!important;background:var(--surface)!important}
+.tkt-hero{position:sticky;top:0;z-index:15;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px}
+.tkt-hero-id h2{font-size:20px}
+.tkt-main,.tkt-insp{padding:16px 14px;max-height:none;overflow:visible}
+.tksecnav{top:0;border-radius:0;margin:0 -14px 14px;padding:8px 14px;background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;border-width:0 0 1px;box-shadow:none}
+.mactions{position:sticky;bottom:0;z-index:20;background:var(--surface);padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 6px);border-top:1px solid var(--border-soft)}
+.mactions .mbtn{min-height:48px}
+}
+
+@media(max-width:380px){
+.aspen-tabs-actions{padding-left:10px;padding-right:10px}
+#glassGreet{margin-left:10px;margin-right:10px}
+.ctx-hdr{margin-left:10px;margin-right:10px}
+.filters,.board{padding-left:10px;padding-right:10px}
+#glassDock{left:8px;right:8px}
+#glassDock button{font-size:10px;padding:2px}
+}
+
+/* Dark mode remains solid and readable rather than stacking translucent layers. */
+html[data-theme="dark"] .card,html[data-theme="dark"] .dash-card,html[data-theme="dark"] .insp-card,
+html[data-theme="dark"] .rt2-stop,html[data-theme="dark"] .kpi,html[data-theme="dark"] .kpi-card,
+html[data-theme="dark"] #glassSide{background:var(--surface)!important;border-color:var(--border-soft)!important}
+
+/* ============================================================================
+   ASPEN COMMAND CENTER · Premium operational design layer
+   Keeps the existing app architecture, IDs and event handlers intact.
+   ============================================================================ */
+body.command-center-ui{
+--cmd-sidebar:#211914;
+--cmd-sidebar-2:#2b211a;
+--cmd-ink:#f8f2e9;
+--cmd-muted:#b9aa9a;
+--cmd-line:rgba(255,255,255,.10);
+--cmd-panel:var(--surface);
+background:var(--bg-cream)
+}
+body.command-center-ui,h1,h2,h3,h4,.cmd-title,.cmd-metric .cm-v,.c-name,.rt2-title,.rt2-name,.cal-title,.crl-nm,.mdl h2,.tkt-hero-id h2{
+font-family:'Source Sans 3','Segoe UI',system-ui,-apple-system,sans-serif!important
+}
+h1,h2,h3,h4{letter-spacing:-.01em}
+
+/* Command header generated by renderGlassGreet(). */
+.cmd-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+.cmd-kicker{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--aspen-orange);text-transform:uppercase;margin-bottom:5px}
+.cmd-title{font-size:28px;font-weight:700;letter-spacing:-.012em;color:var(--text-primary);line-height:1.15}
+.cmd-sub{font-size:13px;font-weight:600;color:var(--text-secondary);margin-top:6px}
+.cmd-live{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border-soft);padding:8px 12px;border-radius:999px;color:var(--text-secondary);font-size:11px;font-weight:800;white-space:nowrap}
+.cmd-live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--st-success);box-shadow:0 0 0 4px var(--st-success-soft)}
+.cmd-band{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px;background:transparent;color:var(--text-primary);border-radius:0;overflow:visible;box-shadow:none}
+.cmd-metric{position:relative;padding:15px 18px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:3px 12px;background:var(--surface);border:1px solid var(--border-soft);border-radius:13px;box-shadow:0 3px 12px rgba(44,34,27,.055)}
+.cmd-metric::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3px;border-radius:0 4px 4px 0;background:var(--aspen-orange)}
+.cmd-metric.attn::before{background:var(--st-warning)}
+.cmd-metric:last-child::before{background:var(--st-success)}
+.cmd-metric .cm-l{grid-column:1/-1;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary)}
+.cmd-metric .cm-v{font-size:23px;font-weight:700;line-height:1.1;color:var(--text-primary)}
+.cmd-metric .cm-s{font-size:11px;font-weight:600;color:var(--text-secondary);text-align:right}
+.cmd-metric.attn .cm-v{color:var(--st-warning)}
+
+/* Operational card additions. */
+.cmd-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-3px 0 10px;padding-bottom:9px;border-bottom:1px solid var(--border-soft)}
+.cmd-card-time{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--text-secondary);text-transform:uppercase}
+.cmd-card-time::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--text-tertiary)}
+.card.upcoming .cmd-card-time::before{background:var(--st-warning)}
+.card.overdue .cmd-card-time::before,.card.action .cmd-card-time::before{background:var(--st-danger)}
+.card.delivered .cmd-card-time::before,.card.complete .cmd-card-time::before{background:var(--st-success)}
+.card.hold .cmd-card-time::before{background:var(--st-hold)}
+.cmd-card-id{font-size:10px;font-weight:700;color:var(--text-tertiary)}
+.cmd-card-action{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;padding:9px 10px;background:var(--bg-cream);border-radius:9px;font-size:11.5px;font-weight:700;color:var(--text-secondary)}
+.cmd-card-action strong{color:var(--text-primary);font-weight:800}
+.cmd-card-action::after{content:"›";font-size:18px;color:var(--aspen-orange);line-height:1}
+.card.action .cmd-card-action,.card.overdue .cmd-card-action,.card.needs-attn .cmd-card-action{background:var(--st-danger-soft)}
+.card.complete .cmd-card-action{background:var(--st-success-soft)}
+
+@media(min-width:1024px){
+body.command-center-ui.has-glass-side{padding-left:248px}
+body.command-center-ui #glassSide{left:0;top:0;bottom:0;width:220px;border-radius:0;padding:24px 14px 18px;background:linear-gradient(180deg,var(--cmd-sidebar),var(--cmd-sidebar-2))!important;border:0!important;box-shadow:12px 0 34px rgba(33,25,20,.12)!important;color:var(--cmd-ink)}
+body.command-center-ui #glassSide .gs-brand{padding:0 10px 22px;border-bottom:1px solid var(--cmd-line);margin-bottom:15px}
+body.command-center-ui #glassSide .gs-leaf{background:var(--aspen-orange);box-shadow:none;width:38px;height:38px}
+body.command-center-ui #glassSide .gs-brand b{color:var(--cmd-ink);font-size:16px}
+body.command-center-ui #glassSide .gs-srch{background:rgba(255,255,255,.07);border-color:var(--cmd-line);color:var(--cmd-muted);margin-bottom:18px}
+body.command-center-ui #glassSide .gs-srch span{background:rgba(255,255,255,.08);color:var(--cmd-muted)}
+body.command-center-ui #glassSide .gs-nav button{color:var(--cmd-muted);border:1px solid transparent;margin-bottom:4px}
+body.command-center-ui #glassSide .gs-nav button:hover{background:rgba(255,255,255,.06);color:var(--cmd-ink)}
+body.command-center-ui #glassSide .gs-nav button.on{background:rgba(230,126,46,.18);color:#ffb373;border-color:rgba(230,126,46,.22)}
+body.command-center-ui #glassSide .gs-nav .gs-sep{color:#806f60;margin-top:20px}
+body.command-center-ui #glassSide .gs-me{background:rgba(255,255,255,.06);border-color:var(--cmd-line)}
+body.command-center-ui #glassSide .gs-me .n{color:var(--cmd-ink)}
+body.command-center-ui #glassSide .gs-me .r{color:var(--cmd-muted)}
+body.command-center-ui #glassSide .gs-av{background:var(--cmd-ink);color:var(--cmd-sidebar)}
+body.command-center-ui .aspen-tabs-bar{min-height:60px;padding:0 36px;border-bottom:1px solid var(--border-soft)!important;background:var(--surface)!important}
+body.command-center-ui .aspen-tabs{min-height:60px}
+body.command-center-ui .aspen-tab{padding:20px 0 16px;font-size:11px}
+body.command-center-ui #glassGreet{max-width:1500px;padding:22px 40px 0;margin:0 auto}
+body.command-center-ui .ctx-hdr,body.command-center-ui .filters,body.command-center-ui .board,body.command-center-ui .twrap,body.command-center-ui .cal-wrap,body.command-center-ui .gcal-panel{max-width:1500px}
+body.command-center-ui .ctx-hdr{margin-top:18px;background:transparent;border:0;border-radius:0;padding:0 40px 10px}
+body.command-center-ui .ctx-hdr h2{font-family:var(--font-head);font-size:18px;font-weight:600}
+body.command-center-ui .filters{padding:0 40px 18px}
+body.command-center-ui .board{grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px;padding:0 40px 56px}
+body.command-center-ui .card{min-height:0;padding:15px 16px;border:1px solid var(--border-soft)!important;border-left:5px solid var(--text-tertiary)!important;border-radius:12px!important;box-shadow:0 2px 4px rgba(26,20,16,.03),0 8px 22px rgba(26,20,16,.055)!important}
+body.command-center-ui .card.upcoming{border-left-color:var(--st-warning)!important}
+body.command-center-ui .card.action,body.command-center-ui .card.overdue{border-left-color:var(--st-danger)!important}
+body.command-center-ui .card.delivered,body.command-center-ui .card.complete{border-left-color:var(--st-success)!important}
+body.command-center-ui .card.hold{border-left-color:var(--st-hold)!important}
+body.command-center-ui .card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(26,20,16,.04),0 16px 34px rgba(26,20,16,.10)!important}
+body.command-center-ui .c-name{font-size:16px}
+body.command-center-ui .c-spa{font-size:12.5px}
+}
+
+@media(max-width:700px){
+body.command-center-ui .aspen-hdr{background:var(--cmd-sidebar);padding-bottom:9px}
+body.command-center-ui .aspen-tabs-actions{display:flex;padding:8px 12px 4px}
+body.command-center-ui .aspen-view-toggle{display:none}
+body.command-center-ui #usersBtn,body.command-center-ui #backupBtn,body.command-center-ui #gcalBtn,body.command-center-ui #langToggle,body.command-center-ui #darkToggle{display:none!important}
+body.command-center-ui #glassGreet{margin:0;padding:16px 14px 4px}
+body.command-center-ui .cmd-head{align-items:center}
+body.command-center-ui .cmd-kicker{font-size:9px}
+body.command-center-ui .cmd-title{font-size:25px}
+body.command-center-ui .cmd-sub{font-size:12px}
+body.command-center-ui .cmd-live{font-size:0;width:38px;height:38px;padding:0;justify-content:center;border-radius:50%}
+body.command-center-ui .cmd-live::before{width:9px;height:9px}
+body.command-center-ui .cmd-band{grid-template-columns:repeat(3,1fr);gap:7px;margin-top:13px;border-radius:0;box-shadow:none}
+body.command-center-ui .cmd-metric{display:flex;flex-direction:column;align-items:flex-start;padding:11px 9px 10px 12px;gap:3px;border-radius:11px;box-shadow:0 2px 8px rgba(44,34,27,.045)}
+body.command-center-ui .cmd-metric::before{top:10px;bottom:10px;width:3px}
+body.command-center-ui .cmd-metric .cm-l{font-size:8px;letter-spacing:.05em}
+body.command-center-ui .cmd-metric .cm-v{font-size:18px}
+body.command-center-ui .cmd-metric .cm-s{font-size:9px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.command-center-ui .ctx-hdr{margin:11px 14px 6px;padding:0 0 8px;border-bottom:1px solid var(--border-soft)}
+body.command-center-ui .filters{grid-template-columns:1fr auto!important;padding-bottom:10px}
+body.command-center-ui .search{grid-column:auto}
+body.command-center-ui .dsort{width:44px;font-size:0;padding:0}
+body.command-center-ui .dsort::before{content:"↕";font-size:17px}
+body.command-center-ui .techfilter,body.command-center-ui .returns-btn{display:none}
+body.command-center-ui .board{padding:0 12px 24px;gap:8px}
+body.command-center-ui .card{display:grid;grid-template-columns:1fr;padding:12px 13px;border-radius:12px!important;border-left-width:5px!important;box-shadow:none!important}
+body.command-center-ui .cmd-card-top{margin-bottom:9px}
+body.command-center-ui .c-name{font-size:17px}
+body.command-center-ui .c-meta{margin:8px 0}
+body.command-center-ui .c-chips,body.command-center-ui .card .pl,body.command-center-ui .card .pbar{display:none}
+body.command-center-ui .cmd-card-action{margin-top:7px}
+body.command-center-ui #glassDock{background:rgba(33,25,20,.94);border-color:rgba(255,255,255,.09);box-shadow:0 12px 28px rgba(0,0,0,.28)}
+body.command-center-ui #glassDock button{color:#a99887}
+body.command-center-ui #glassDock button.on{background:rgba(230,126,46,.17);color:#ffb373}
+}
+
+html[data-theme="dark"] body.command-center-ui .cmd-band{background:transparent}
+html[data-theme="dark"] body.command-center-ui .cmd-metric{background:var(--surface);border-color:var(--border-soft)}
+html[data-theme="dark"] body.command-center-ui .cmd-card-action{background:var(--bg-card-soft)}
 </style>
 <script>
 // === PWA SERVICE WORKER (network-first) ===
@@ -1799,8 +2157,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026070806;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.08 (build 71) — PHOTO RESTORE FROM BACKUP: non-destructive photo-fields-only restore from any backup JSON (Drive auto-backups keep full arrays); Recover-photos diagnostic now scans root for orphan folders and reports clearly'; // human-readable label (shown in console)
+const APP_BUILD   = 2026072103;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.21 (build 74) — COMMAND CENTER METRICS: light individual status cards'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -1818,12 +2176,17 @@ const dbAdded=db.ref('added');
 // AUTO-REATTACHES if Firebase cancels the read (permission_denied when auth lost the race on
 // a slow device, expired token, transient outage\u2026). A cancelled on() is DEAD FOREVER in the
 // SDK \u2014 without this helper the device silently shows an empty app until a manual reload.
-function _rtOn(ref,label,cb){
+function _rtOn(ref,label,cb,onErr){
+/* BUGFIX 2026-07-21: every call site passed a 4th error-callback argument that this
+   function silently discarded \u2014 so showReadErrorBanner/checkReady never fired on
+   permission errors and a rules problem looked like "all my data disappeared".
+   The callback now runs on each cancellation (retry logic unchanged). */
 var tries=0;
 function attach(){ref.on('value',cb,function(err){
 try{ref.off('value',cb)}catch(_e){}
 tries++;var wait=Math.min(30000,1500*tries);
 window._syncErr=label+': '+((err&&err.code)||err);
+if(typeof onErr==='function'){try{onErr(err)}catch(_e){}}
 console.warn('[RT] '+label+' listener cancelled ('+window._syncErr+') \u2014 retry in '+wait+'ms');
 setTimeout(function(){
 var u=null;try{u=firebase.auth().currentUser}catch(_e){}
@@ -2055,8 +2418,8 @@ let user=await authenticate(name,pin);
 if(!user){
 _lkN.fails=(_lkN.fails||0)+1;
 if(_lkN.fails>=5){let lockMs=2*60*1000*Math.pow(2,Math.max(0,_lkN.fails-5));_lkN.until=Date.now()+Math.min(lockMs,60*60*1000);
-setAuthMsg('&#128274; Too many wrong PINs for '+name+'. Locked for '+Math.ceil(Math.min(lockMs,3600000)/60000)+' min.','err')}
-else{setAuthMsg('&#10005; Wrong PIN for '+name+' ('+(5-_lkN.fails)+' attempts left)','err')}
+setAuthMsg('&#128274; Too many wrong PINs for '+escHtml(name)+'. Locked for '+Math.ceil(Math.min(lockMs,3600000)/60000)+' min.','err')}
+else{setAuthMsg('&#10005; Wrong PIN for '+escHtml(name)+' ('+(5-_lkN.fails)+' attempts left)','err')}
 _lk[name]=_lkN;try{localStorage.setItem('aspen_pin_lock',JSON.stringify(_lk))}catch(e){}
 try{db.ref('auth_attempts').push({name:name,ts:Date.now(),ua:String(navigator.userAgent||'').slice(0,80)}).catch(()=>{})}catch(e){}
 return}
@@ -2090,7 +2453,7 @@ var uid=cred.user.uid;var match=null,mid=null;
 Object.keys(USERS||{}).forEach(function(k){var u=USERS[k];if(!u||match)return;
 if((u.fbUid&&u.fbUid===uid)||(u.email&&String(u.email).toLowerCase()===em)){match=u;mid=k}});
 if(!match){
-setAuthMsg('&#10005; No Aspen user is linked to '+em+'. An admin must add this email to your user in the Users panel.','err');
+setAuthMsg('&#10005; No Aspen user is linked to '+escHtml(em)+'. An admin must add this email to your user in the Users panel.','err');
 try{await firebase.auth().signOut()}catch(e){}
 try{firebase.auth().signInAnonymously()}catch(e){}
 return}
@@ -2099,7 +2462,7 @@ currentUser=Object.assign({id:mid},match);
 saveSession(currentUser);
 try{localStorage.setItem('aspen_last_user',match.name||'')}catch(e){}
 console.log('[AUTH] Email sign-in as',match.name,'(verified Firebase account)');
-setAuthMsg('&#10003; Welcome, '+match.name+'! (verified)','ok');
+setAuthMsg('&#10003; Welcome, '+escHtml(match.name)+'! (verified)','ok');
 setTimeout(function(){document.getElementById('auth-screen').classList.add('hidden');applyRoleUI()},400);
 }catch(e){
 var m=(e&&e.code)||'';
@@ -2317,6 +2680,11 @@ card.onclick=function(){techOpenDetail(id)};
 });}
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+/* SECURITY 2026-07-21: photo/URL sanitizer for values that reach src/href attributes.
+   Intake photos are written to RTDB by the ANONYMOUS customer portal, so they must be
+   treated as hostile: only data:image/* and https: URLs pass, and the result is
+   attribute-escaped so a crafted string can never break out of src="..."/href="...". */
+function safeUrl(u){u=String(u||'');if(!/^(data:image\/|https:\/\/)/i.test(u))return'';return escHtml(u)}
 // Generate a small colored circle with the customer's initials. Color is derived
 // from a stable hash of (SN || name) so the same customer always gets the same
 // color across renders — useful for fast visual scanning when scrolling cards.
@@ -2385,7 +2753,7 @@ if(!auditLine)return'';
 return '<div class="hold-activity"><span style="font-weight:800;color:var(--st-hold)">&#128221;</span> '+escHtml(auditLine.substring(0,160))+(auditLine.length>160?'…':'')+'</div>'}
 
 function techOpenDetail(id){
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let isReRender=(_currentTechDetailId===id);
 _currentTechDetailId=id;
 let det=document.getElementById('tech-detail');
@@ -2446,7 +2814,7 @@ if(typeof rp.levelOk!=='undefined')ans+='<div class="tech-spec-row"><span class=
 if(typeof rp.wipOk!=='undefined')ans+='<div class="tech-spec-row"><span class="lbl">&#128268; WIP listo</span><span class="val">'+(rp.wipOk?'S\u00ed':'No')+'</span></div>';
 if(rp.notes)ans+='<div class="tech-spec-row"><span class="lbl">&#128221; Nota del cliente</span><span class="val">'+escHtml(rp.notes)+'</span></div>';
 var groups=[['access','Acceso / camino'],['levelPhotos','Piso / nivel'],['electricity','Caja de breakers'],['wipPhotos','WIP / el\u00e9ctrico']],photoHtml='',total=0;
-groups.forEach(function(g){var arr=_intakeArr(rp[g[0]]);if(arr.length){total+=arr.length;photoHtml+='<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:8px 0 5px">'+g[1]+' ('+arr.length+')</div><div class="tech-photos">'+arr.map(function(b){return '<a class="tech-photo" href="'+b+'" target="_blank" rel="noopener" style="display:block"><img src="'+b+'" alt="customer photo" onerror="_imgFail(this)"></a>'}).join('')+'</div>';}});
+groups.forEach(function(g){var arr=_intakeArr(rp[g[0]]);if(arr.length){total+=arr.length;photoHtml+='<div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:8px 0 5px">'+g[1]+' ('+arr.length+')</div><div class="tech-photos">'+arr.map(function(b){var u=safeUrl(b);if(!u)return'';return '<a class="tech-photo" href="'+u+'" target="_blank" rel="noopener" style="display:block"><img src="'+u+'" alt="customer photo" onerror="_imgFail(this)"></a>'}).join('')+'</div>';}});
 if(!ans&&!total)return;
 h+='<div class="tech-section" style="border-color:#10b981 !important;background:var(--st-success-soft)">';
 h+='<div style="font-size:11px;font-weight:800;color:var(--st-success);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#10003; Fotos e info del cliente'+(it.submittedAt?(' &middot; '+new Date(it.submittedAt).toLocaleDateString()):'')+'</div>';
@@ -2456,12 +2824,12 @@ h+=photoHtml+'</div>';
 // Photos from the manager (admin/Alberto) — read-only for the tech, no delete button
 if(r.photos&&r.photos.length){
 h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--aspen-orange);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128231; Photos from Manager</div><div class="tech-photos">';
-r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo" onerror="_imgFail(this)"></div>'});
+r.photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewInfoPhoto(\''+r.i+'\','+idx+')"><img src="'+safeUrl(p)+'" alt="photo" onerror="_imgFail(this)"></div>'});
 h+='</div></div>'}
 // Tech's own delivery photos — tech can view, add, and delete these
 if(r.tech_photos&&r.tech_photos.length){
 h+='<div class="tech-section"><div style="font-size:11px;font-weight:800;color:var(--st-hold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">&#128247; Your Delivery Photos</div><div class="tech-photos">';
-r.tech_photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+p+'" alt="photo" onerror="_imgFail(this)"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
+r.tech_photos.forEach((p,idx)=>{h+='<div class="tech-photo" onclick="techViewPhoto(\''+r.i+'\','+idx+')"><img src="'+safeUrl(p)+'" alt="photo" onerror="_imgFail(this)"><button class="del" onclick="event.stopPropagation();techDeletePhoto('+r.i+','+idx+')">&#10005;</button></div>'});
 h+='</div></div>'}
 // Accessories (read-only) — what to bring/install
 let acc=[];
@@ -2560,14 +2928,14 @@ sw.onpointercancel=function(){drag=false;sw.classList.remove('drag');sw.style.tr
 }
 
 function techOpenMaps(id){
-let r=AD().find(x=>x.i===id);if(!r||!r.st)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r||!r.st)return;
 let addr=encodeURIComponent(r.st.replace(/\n/g,', '));
 // Universal link works on iOS, Android, web - the OS picks the right app
 let url='https://www.google.com/maps/dir/?api=1&destination='+addr;
 window.open(url,'_blank')}
 
 function techPhoneOptions(id){
-let r=AD().find(x=>x.i===id);if(!r||!r.ph)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r||!r.ph)return;
 let phones=parsePhones(r.ph);
 if(!phones.length)return;
 let modal=document.getElementById('tech-phone-modal');
@@ -2611,7 +2979,7 @@ pushActivity(id,'On-my-way SMS sent to customer');
 try{if(typeof syncPortalInfo==='function')setTimeout(function(){syncPortalInfo(id)},800)}catch(e){}
 setTimeout(function(){try{techOpenDetail(id)}catch(e){}},400)}
 function techMarkDelivered(id){
-let r=AD().find(x=>x.i===id);if(!r||r.dl)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r||r.dl)return;
 let modal=document.getElementById('tech-deliver-modal');
 var _qcItems=[['lv','\u{1F6C1} Spa nivelado y en posici\u00f3n'],['el','\u26a1 El\u00e9ctrico conectado y probado'],['cv','\u{1F9E2} Cover instalado'],['ch','\u{1F9EA} Qu\u00edmicos / arranque explicado']];
 var _ph=(r.tech_photos&&r.tech_photos.length)||0;
@@ -2728,7 +3096,10 @@ var _qc={};try{document.querySelectorAll('.tdv_qc').forEach(function(cb){if(cb.c
 let updates={dl:true,dn:notes};
 if(Object.keys(_qc).length)updates.qc=_qc;
 _pdlAdd(id,notes); // offline-safe: marker persists until the server copy confirms dl=true
-let ai=ADDED.findIndex(x=>x.i===id);
+/* BUGFIX 2026-07-21: tolerant id compare — with a string-typed ADDED id the strict findIndex
+   missed the record and the delivered mark landed in EDITS (a dead overlay for ADDED
+   tickets), i.e. the mark never rendered and was effectively lost. */
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 document.getElementById('tech-deliver-modal').classList.add('hidden');
@@ -2818,6 +3189,11 @@ var o=_pqAll();var cur=o[String(id)]||{ts:Date.now(),f:{}};
 Object.assign(cur.f,safe);cur.ts=Date.now();
 o[String(id)]=cur;_pqSet(o)}
 function _pqSweep(){try{
+/* BUGFIX 2026-07-21: never clear pending-op markers while offline or before the first
+   snapshots arrive. AD() reflects the LOCAL optimistic write immediately, so the old
+   check ("value matches AD()") deleted the safety marker while the RTDB write was still
+   buffered in memory — kill the PWA before reconnect and both were lost (Lisa Wolf case). */
+if(!_fbConn||!_dataSynced())return;
 var o=_pqAll(),ids=Object.keys(o);if(!ids.length)return;
 var changed=false;
 ids.forEach(function(id){
@@ -2845,7 +3221,9 @@ function _pdlAll(){try{return JSON.parse(localStorage.getItem(_PDL_KEY)||'{}')||
 function _pdlSet(o){try{localStorage.setItem(_PDL_KEY,JSON.stringify(o))}catch(e){}}
 function _pdlAdd(id,notes){var o=_pdlAll();o[String(id)]={ts:Date.now(),dn:(notes==null?null:notes)};_pdlSet(o)}
 function _pdlHas(id){return !!_pdlAll()[String(id)]}
-function _pdlSweep(verbose){var o=_pdlAll(),ids=Object.keys(o);if(!ids.length)return;var changed=false,retried=0;
+function _pdlSweep(verbose){
+if(!_fbConn||!_dataSynced())return; /* BUGFIX 2026-07-21: same guard as _pqSweep — don't clear the offline-delivered marker from the local optimistic echo */
+var o=_pdlAll(),ids=Object.keys(o);if(!ids.length)return;var changed=false,retried=0;
 ids.forEach(function(id){var r=AD().find(function(x){return String(x.i)===String(id)});
 if(r&&r.dl){delete o[id];changed=true}
 else if(r){retried++;console.log('[PENDING-DL] Re-applying delivered mark for ticket',id);saveTicketFields(r.i,{dl:true,dn:(o[id].dn!=null?o[id].dn:(r.dn||null))})}
@@ -2910,7 +3288,7 @@ return blob||file;
 }
 
 function techSignature(id){
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let hasPdf=!!r.pdf_invoice; // inline legacy or side-node slim format (stored:1)
 let hasExistingSig=r.signature&&r.signature.data;
 let modal=document.createElement('div');
@@ -2984,7 +3362,7 @@ _sigPad=null;
 
 async function techSignatureSave(id){
 if(!_sigPad||!_sigPad.hasInk){alert('Please sign in the box first.');return}
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let saveBtn=document.getElementById('sig-save-btn');
 if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='&#9203; Saving...'}
 try{
@@ -3020,7 +3398,7 @@ console.error('PDF sign failed:',pdfErr);
 showToast('&#9888; Signature saved but could not embed in PDF: '+pdfErr.message,'warn');
 }
 }
-let ai=ADDED.findIndex(x=>x.i===id);
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 showToast('&#10003; Customer signature saved'+(updates.pdf_invoice_signed?' &amp; embedded in PDF':''));
@@ -3083,7 +3461,7 @@ return'data:application/pdf;base64,'+btoa(bin);
 // Tech adds a note that gets appended to Delivered Notes (r.dn) with timestamp + tech name
 // and flags r.needs_attention so the manager sees an alert.
 function techAddNote(id){
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let modal=document.createElement('div');
 modal.className='tech-modal';
 modal.style.zIndex=200;
@@ -3104,7 +3482,7 @@ let ta=document.getElementById('tech_note_input');
 if(!ta)return;
 let txt=ta.value.trim();
 if(!txt){alert('Please type a note before sending.');return}
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 // Build a timestamp like "4/30/2026 11:15 AM"
 let now=new Date();
 let dStr=(now.getMonth()+1)+'/'+now.getDate()+'/'+now.getFullYear();
@@ -3116,7 +3494,7 @@ let entry='['+stamp+' — '+techName+']\n'+txt;
 let existing=(r.dn||'').trim();
 let newDn=existing?existing+'\n\n'+entry:entry;
 let updates={dn:newDn,needs_attention:true,attention_at:Date.now()};
-let ai=ADDED.findIndex(x=>x.i===id);
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 // Close modal + refresh detail
@@ -3130,7 +3508,7 @@ inp.type='file';inp.accept='image/*';inp.multiple=true;
 inp.onchange=async function(e){
 let files=Array.from(e.target.files||[]);
 if(!files.length)return;
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let existing=r.tech_photos||[];
 // No quantity limit - tech can upload as many delivery photos as needed
 showToast('Uploading photos...');
@@ -3476,7 +3854,7 @@ img.src=url})}
 // Tech deletes their own delivery photo (from r.tech_photos)
 async function techDeletePhoto(id,idx){
 if(!confirm('Delete this delivery photo?'))return;
-let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r||!r.tech_photos)return;
 // BUILD 65: merged server∪local view + field-level write (see _freshPhotoMerge).
 let _rm=r.tech_photos[idx];_storageDeleteIfOurs(_rm,id);
 let base=await _freshPhotoMerge(id,'tech_photos',r.tech_photos);
@@ -3507,7 +3885,7 @@ let render=function(){
 let multi=photos.length>1;
 modal.innerHTML='<button class="lb-close" aria-label="Close">&#10005;</button>'+
 (multi?'<button class="lb-prev" aria-label="Previous">&#10094;</button>':'')+
-'<div class="lb-stage"><img class="lb-img" src="'+photos[cur]+'" alt="photo"></div>'+
+'<div class="lb-stage"><img class="lb-img" src="'+safeUrl(photos[cur])+'" alt="photo"></div>'+
 (multi?'<button class="lb-next" aria-label="Next">&#10095;</button>':'')+
 (multi?'<div class="lb-count">'+(cur+1)+' / '+photos.length+'</div>':'');
 modal.querySelector('.lb-close').onclick=function(e){e.stopPropagation();close()};
@@ -3693,7 +4071,7 @@ inp.type='file';inp.accept='image/*';inp.multiple=true;
 inp.onchange=async function(e){
 let files=Array.from(e.target.files||[]);
 if(!files.length)return;
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let existing=r.photos||[];
 // No quantity limit - admin can upload as many info photos as needed
 showToast('Uploading photos...');
@@ -3715,7 +4093,7 @@ inp.click()}
 // Admin deletes one of their own info photos (r.photos)
 async function adminDeletePhoto(id,idx){
 if(!confirm('Delete this info photo?'))return;
-let r=AD().find(x=>x.i===id);if(!r||!r.photos)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r||!r.photos)return;
 // BUILD 65: delete against the MERGED server∪local view, write field-level only.
 let _rm=r.photos[idx];_storageDeleteIfOurs(_rm,id);
 let base=await _freshPhotoMerge(id,'photos',r.photos);
@@ -3725,14 +4103,18 @@ saveTicketFields(id,{photos:newPhotos.length?newPhotos:null});
 safeRefreshModalIfOpen(id)}
 
 // Admin deletes a tech delivery photo (r.tech_photos) — admin can review and curate the ticket
-function adminDeleteTechPhoto(id,idx){
+async function adminDeleteTechPhoto(id,idx){
+/* BUGFIX 2026-07-21: this was the last photo path still splicing the LOCAL array by index
+   and writing the whole field — a stale admin device could silently erase photos a tech
+   just uploaded (July-6 incident class). Now mirrors adminDeletePhoto: delete against the
+   merged server∪local view and write field-level via saveTicketFields. */
 if(!confirm('Delete this delivery photo from the ticket?'))return;
-let r=AD().find(x=>x.i===id);if(!r||!r.tech_photos)return;
-let newPhotos=r.tech_photos.slice();var _rm=newPhotos.splice(idx,1)[0];_storageDeleteIfOurs(_rm,id);
-let updates={tech_photos:newPhotos.length?newPhotos:null};
-let ai=ADDED.findIndex(x=>x.i===id);
-if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
+let r=AD().find(x=>sameId(x.i,id));if(!r||!r.tech_photos)return;
+let _rm=r.tech_photos[idx];_storageDeleteIfOurs(_rm,id);
+let base=await _freshPhotoMerge(id,'tech_photos',r.tech_photos);
+let _rmKey=(typeof _rm==='string')?_rm:JSON.stringify(_rm);
+let newPhotos=base.filter(function(p){return ((typeof p==='string')?p:JSON.stringify(p))!==_rmKey});
+saveTicketFields(id,{tech_photos:newPhotos.length?newPhotos:null});
 safeRefreshModalIfOpen(id)}
 
 // === ADMIN: USER MANAGEMENT ===
@@ -4261,6 +4643,7 @@ let fbReady=false;
 // =====================================================================================
 let DELETED_TICKETS={};
 const dbDeletedLedger=db.ref('deleted_tickets');
+if(!getIntakeParams()) /* SECURITY 2026-07-21: don't stream the deleted-tickets ledger into the customer portal */
 _rtOn(dbDeletedLedger,'ledger',s=>{DELETED_TICKETS=Object.assign(DELETED_TICKETS,(s&&s.val&&s.val())||{})},err=>console.warn('[LEDGER] read error',err));
 function markTicketDeleted(id,cb){if(id==null){if(cb)cb(false);return}let sid=String(id);DELETED_TICKETS[sid]=Date.now();dbDeletedLedger.child(sid).set(Date.now()).then(function(){if(cb)cb(true)}).catch(function(e){console.warn('[LEDGER] write failed',e);if(cb)cb(false)})}
 function isTicketDeleted(id){return id!=null&&!!DELETED_TICKETS[String(id)]}
@@ -4321,6 +4704,12 @@ function AD(){let d=BASEDATA().map(r=>{let e=EDITS[r.i];return e?Object.assign({
 let BASE_LIVE=null; // server copy: array once loaded
 function BASEDATA(){return (Array.isArray(BASE_LIVE)&&BASE_LIVE.length)?BASE_LIVE:BASE}
 const dbBase=db.ref('base');
+/* SECURITY 2026-07-21: never subscribe the full customer DB inside the customer intake
+   portal. This listener used to attach unconditionally at parse time, so a customer
+   opening their private #intake link downloaded the ENTIRE `base` node (every customer's
+   name, phone, address, balance) — bypassing the intake gate that already protects
+   dbEdits/dbAdded. */
+if(!getIntakeParams())
 _rtOn(dbBase,'base',snap=>{
 let v=snap.val();
 if(v&&typeof v==='object'){
@@ -5242,7 +5631,7 @@ let href='sms:'+digits+'?&body='+encodeURIComponent(msg);
 // Open in the same window — iOS Safari + Android handle this natively
 window.location.href=href;
 // Toast feedback
-if(typeof showToast==='function')showToast('&#128241; Opening Messages ('+(currentCount+1)+'/'+SMS_LIMIT_PER_CUSTOMER+') for '+(r.n||'customer'))}
+if(typeof showToast==='function')showToast('&#128241; Opening Messages ('+(currentCount+1)+'/'+SMS_LIMIT_PER_CUSTOMER+') for '+escHtml(r.n||'customer'))}
 // === END PRE-DELIVERY SMS ===
 
 
@@ -5364,7 +5753,7 @@ if(sortCol==="date"){let da=parseDate(a.dd),db=parseDate(b.dd);da=da&&!isNaN(da)
 else if(sortCol==="name"){v=(a.n||"").localeCompare(b.n||"")}
 else if(sortCol==="price"){v=(a.pr||0)-(b.pr||0)}
 else if(sortCol==="balance"){v=(a.bl||0)-(b.bl||0)}
-else if(sortCol==="status"){let o={overdue:0,action:1,upcoming:2,delivered:3,complete:4};v=(o[st(a)]||0)-(o[st(b)]||0)}
+else if(sortCol==="status"){let o={overdue:0,action:1,upcoming:2,delivered:3,complete:4,hold:5};v=(o[st(a)]||0)-(o[st(b)]||0)}
 return sortDir==="desc"?-v:v});
 return list}
 function pH(items,r){let d=items.filter(c=>r[c.k]).length,p=items.length?(d/items.length)*100:0,col=p===100?"var(--st-success)":p>50?"var(--st-info)":"var(--st-warning)";
@@ -5513,6 +5902,14 @@ function toggleSort(col){if(sortCol===col){sortDir=sortDir==="desc"?"asc":"desc"
 function toggleDateSort(){sortCol="date";sortDir=sortDir==="desc"?"asc":"desc";
 let arrow=document.getElementById("dateSortArrow");if(arrow)arrow.textContent=sortDir==="desc"?"▼ Newest":"▲ Oldest";
 render()}
+function commandNextAction(r,s){
+if(r.needs_attention)return _L('Revisar nota del técnico','Review technician note');
+if(r.bl>0&&r.pst!=='paid')return _L('Confirmar cobro de '+fmt(r.bl),'Confirm collection of '+fmt(r.bl));
+if(!r.assigned_to&&!r.co)return _L('Asignar equipo de entrega','Assign delivery crew');
+if(r.hold)return _L('Revisar motivo de Hold','Review hold reason');
+if(s==='complete')return _L('Entrega cerrada','Delivery closed');
+if(s==='delivered'||r.dl)return _L('Completar seguimiento','Complete follow-up');
+return _L('Abrir detalles y checklist','Open details and checklist')}
 function renderBoard(){let h="";let list=fil();list.forEach(r=>{let s=st(r);
 let chips=[];
 if(r.yr)chips.push(r.yr);
@@ -5552,7 +5949,7 @@ reqBadgeHtml+='<span style="display:inline-flex;align-items:center;gap:4px;backg
 });
 reqBadgeHtml+='</div>';
 }
-h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')">'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+escHtml(dispName(r))+'</div><div class="c-spa">'+escHtml(r.sp||"—")+(r.sn?" &bull; SN "+escHtml(String(r.sn)):"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+escHtml(r.st)+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+escHtml(prev.substring(0,90))+(prev.length>90?"...":"")+'</div>':''})()+'</div>'});
+h+='<div class="card '+s+(r.needs_attention?' needs-attn':'')+'" onclick="openDet('+r.i+')"><div class="cmd-card-top"><span class="cmd-card-time">'+escHtml(dateNote(r.dd).trim()||fmtDate(r.dd))+'</span><span class="cmd-card-id">#'+escHtml(String(r.i))+'</span></div>'+(r.needs_attention?'<div class="attn-banner"><span class="pulse">&#128276;</span> NEEDS ATTENTION — tech sent a note</div>':'')+reqBadgeHtml+'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1">'+avatarFor(r)+'<div style="min-width:0;flex:1"><div class="c-name">'+escHtml(dispName(r))+'</div><div class="c-spa">'+escHtml(r.sp||"—")+(r.sn?" &bull; SN "+escHtml(String(r.sn)):"")+'</div>'+staleHoldBadge(r)+gcalSyncBadge(r)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><span class="badge '+s+'">'+sL(s)+'</span>'+pstBadge+svcBadge+'</div></div><div class="c-meta"><span>&#128197; '+fmtDate(r.dd)+dateNote(r.dd)+'</span>'+(function(){let phs=parsePhones(r.ph);if(!phs.length)return'';let parts=phs.map(p=>{let pl=phoneLabel(p);return escHtml(pl.num+(pl.tag?' '+pl.tag:''))});return'<span class="phone">&#128222; '+parts.join(' &middot; ')+'</span>'})()+(r.bl>0?'<span class="bal">&#9888; Balance '+fmt(r.bl)+'</span>':'')+(function(){let n=Number(r.sms_count||0);if(!n)return'';let cls=n>=SMS_LIMIT_PER_CUSTOMER?'sms-mini limit-reached':(n>=SMS_LIMIT_PER_CUSTOMER-1?'sms-mini limit-near':'sms-mini');return '<span class="'+cls+'" title="'+n+' SMS sent to this customer">&#128241; '+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span>'})()+'</div>'+(r.st?'<div class="c-meta" style="margin-top:0"><span>&#128205; '+escHtml(r.st)+'</span></div>':'')+chipHtml+'<div><div class="pl">Pre-Delivery</div>'+pH(PRE,r)+'</div><div><div class="pl">Post-Delivery</div>'+pH(POST,r)+'</div>'+lastActivityPreview(r)+(function(){if(r.hold)return'';let prev=r.dnotes||r.en||r.cn;return prev?'<div class="c-note">'+escHtml(prev.substring(0,90))+(prev.length>90?"...":"")+'</div>':''})()+'<div class="cmd-card-action"><strong>'+escHtml(commandNextAction(r,s))+'</strong></div></div>'});
 if(!list.length){let m=STATUS_META[statusF]||STATUS_META.all;
 let icon=({upcoming:'&#128340;',overdue:'&#9888;',action:'&#128221;',delivered:'&#128666;',hold:'&#9209;',complete:'&#10003;',all:'&#128194;'})[statusF]||'&#128194;';
 let msg=search?'No matches for "'+escHtml(search)+'"':'No '+m.label.toLowerCase()+' deliveries right now';
@@ -5580,7 +5977,7 @@ function _routeStops(){
 // Deliveries for the selected day that have an address, ordered am -> pm -> all day.
 var key=routeDate||_routeKey(new Date());
 var list=AD().filter(function(r){
-if(!r.st||r.co)return false; // need an address; skip completed
+if(!r.st||r.co||r.hold)return false; // need an address; skip completed and ON-HOLD (BUGFIX 2026-07-21: holds kept their date and showed up as route stops)
 var d=parseDate(r.dd);if(!d||isNaN(d))return false;
 return _routeKey(d)===key;
 });
@@ -5673,13 +6070,13 @@ document.body.appendChild(fab);
 document.body.classList.add('has-glass-dock');
 // macOS-style sidebar (desktop) \u2014 system S1
 var side=document.createElement('div');side.id='glassSide';
-side.innerHTML='<div class="gs-brand"><div class="gs-leaf">\u{1F342}</div><b>Aspen Delivery</b></div>'+
+side.innerHTML='<div class="gs-brand"><div class="gs-leaf">A</div><b>Aspen Command</b></div>'+
 '<button class="gs-srch" onclick="openGK()">\u{1F50D} Search\u2026 <span>\u2318K</span></button>'+
 '<div class="gs-nav">'+
-'<button id="gs_route" onclick="setTab(\'route\')">\u{1F69A} Today</button>'+
-'<button id="gs_board" onclick="setTab(\'board\')">\u{1F4CB} Deliveries</button>'+
-'<button id="gs_cal" onclick="setTab(\'cal\')">\u{1F4C5} Plan</button>'+
-'<button id="gs_dash" onclick="setTab(\'dash\')">\u{1F4CA} Insights</button>'+
+'<button id="gs_board" onclick="setTab(\'board\')">\u{1F4E1} Command</button>'+
+'<button id="gs_route" onclick="setTab(\'route\')">\u{1F69A} Live Route</button>'+
+'<button id="gs_cal" onclick="setTab(\'cal\')">\u{1F4C5} Schedule</button>'+
+'<button id="gs_dash" onclick="setTab(\'dash\')">\u{1F4CA} Performance</button>'+
 '<div class="gs-sep">System</div>'+
 '<button onclick="openDigest()">\u{1F4EC} Digest</button>'+
 '<button onclick="openGlassNotifs()">\u{1F514} Alerts <span class="gs-bell-n" id="gsBellN" style="display:none"></span></button>'+
@@ -5688,6 +6085,7 @@ side.innerHTML='<div class="gs-brand"><div class="gs-leaf">\u{1F342}</div><b>Asp
 '<div class="gs-me" onclick="openGlassSettings()"><div class="gs-av">'+escHtml(String(currentUser.name||'?').charAt(0).toUpperCase())+'</div><div><div class="n">'+escHtml(String(currentUser.name||'').split(' ')[0])+'</div><div class="r">'+escHtml(currentUser.role||'')+'</div></div></div>';
 document.body.appendChild(side);
 document.body.classList.add('has-glass-side');
+document.body.classList.add('command-center-ui');
 try{_nfBadge()}catch(e){}
 _glassDockSync(typeof tab!=='undefined'?tab:'board');
 renderGlassGreet();
@@ -5712,11 +6110,11 @@ var collect=todays.reduce(function(sm,r){return sm+((+r.bl>0&&r.pst!=='paid')?+r
 var prepped=todays.filter(function(r){return PRE.every(function(pp){return r[pp.k]})}).length;
 var wx=(typeof _wxFor==='function')?_wxFor(tk):'';
 var dateStr=new Date().toLocaleDateString(APP_LANG==='es'?'es-US':undefined,{weekday:'long',month:'long',day:'numeric'});
-g.innerHTML='<div class="gg-hi">'+sal+', '+escHtml(name)+'</div>'+
-'<div class="gg-sub">'+dateStr+' \u00b7 '+todays.length+' '+_L(todays.length===1?'entrega':'entregas',todays.length===1?'delivery':'deliveries')+(wx?' \u00b7 '+wx:'')+'</div>'+
-'<div class="gg-stats"><div><b>'+todays.length+'</b><span>Today</span></div>'+
-'<div><b style="color:#BE4A2F">'+(collect?fmt(collect):'$0')+'</b><span>Collect</span></div>'+
-'<div><b style="color:#2F7D52">'+prepped+'/'+todays.length+'</b><span>Prepped</span></div></div>';
+var attention=todays.filter(function(r){return r.needs_attention||(!r.assigned_to&&!r.co)||(+r.bl>0&&r.pst!=='paid')}).length;
+g.innerHTML='<div class="cmd-head"><div><div class="cmd-kicker">'+_L('Operaciones en vivo','Live operations')+' \u00b7 '+dateStr+'</div><div class="cmd-title">'+sal+', '+escHtml(name)+'</div><div class="cmd-sub">'+todays.length+' '+_L(todays.length===1?'entrega programada':'entregas programadas',todays.length===1?'scheduled delivery':'scheduled deliveries')+(wx?' \u00b7 '+wx:'')+'</div></div><div class="cmd-live">'+_L('Base de datos sincronizada','Database synced')+'</div></div>'+
+'<div class="cmd-band"><div class="cmd-metric"><span class="cm-l">'+_L('En operación','In operation')+'</span><span class="cm-v">'+todays.length+'</span><span class="cm-s">'+prepped+' '+_L('preparadas','prepared')+'</span></div>'+
+'<div class="cmd-metric attn"><span class="cm-l">'+_L('Necesitan acción','Need attention')+'</span><span class="cm-v">'+attention+'</span><span class="cm-s">'+_L('antes de salir','before departure')+'</span></div>'+
+'<div class="cmd-metric"><span class="cm-l">'+_L('Por cobrar','To collect')+'</span><span class="cm-v">'+(collect?fmt(collect):'$0')+'</span><span class="cm-s">'+_L('saldo del día','today balance')+'</span></div></div>';
 }catch(e){console.warn('[GLASS] greet',e)}}
 // === \u2318K COMMAND PALETTE (system S3) ===
 // Global search from anywhere: \u2318K / Ctrl+K (or the sidebar search button) opens a glass
@@ -5865,17 +6263,25 @@ return e+(w.p>=40?' '+w.p+'%':'')}
 // The "ghost Yde" pattern: a manually-created ticket duplicating an auto-created calendar stub
 // (or vice versa). Warns right after saving a NEW ticket when another live record shares the
 // same SN or the same family name. Non-blocking \u2014 just makes the twin visible immediately.
+/* GOLDEN RULE 2026-07 (Meyer incident): customer-name matching must use the FULL, sorted
+   token set of the name — never last-name-only and never lastname+firstname subsets.
+   "Meyer, Doug & Carrie" / "Meyer, Doug & Edith" / "Lee & Barb Meyer" are DIFFERENT
+   customers and must not match each other. "Doug Meyer" === "Meyer, Doug" still matches
+   because tokens are sorted. */
+function _nameTokKey(s){
+var clean=String(s||'').toLowerCase().replace(/[^a-z0-9, ]/g,' ').replace(/,/g,' ').replace(/\s+/g,' ').trim();
+var sig=clean.split(/\s+/).filter(function(w){return w.length>=2&&w!=='and'&&w!=='the'});
+return sig.length?sig.sort().join('+'):''}
 function _dupWarn(rec){
 if(!rec)return;
 var sn=String(rec.sn||'').trim();
-var fam=String(rec.n||'').trim().split(/\s+/).pop().toLowerCase();
-if(fam.length<3)fam='';
+var nk=_nameTokKey(rec.n); /* BUGFIX 2026-07-21: was last-name-only (fam) matching */
 var hit=AD().find(function(x){
 if(!x||sameId(x.i,rec.i))return false;
 if(sn&&String(x.sn||'').trim()===sn)return true;
-if(fam){var f2=String(x.n||'').trim().split(/\s+/).pop().toLowerCase();if(f2===fam)return true}
+if(nk&&_nameTokKey(x.n)===nk)return true;
 return false});
-if(hit){showToast('\u26a0\ufe0f Possible duplicate: \u201c'+(dispName(hit)||'?')+'\u201d'+(hit.sn?' (SN '+hit.sn+')':'')+' already exists \u2014 check before continuing','warn');
+if(hit){showToast('\u26a0\ufe0f Possible duplicate: \u201c'+escHtml(dispName(hit)||'?')+'\u201d'+(hit.sn?' (SN '+escHtml(hit.sn)+')':'')+' already exists \u2014 check before continuing','warn');
 console.warn('[DUP-WARN] New ticket',rec.i,'may duplicate',hit.i,dispName(hit))}}
 
 // === DAILY DIGEST ===
@@ -6001,7 +6407,11 @@ var dk=_dgDateKey();var flagRef=db.ref('digest_sent/'+dk);
 // and send the digest twice. transaction() lets exactly ONE device claim the flag.
 var tx=await flagRef.transaction(function(cur){if(cur)return;return{at:Date.now(),by:(currentUser&&currentUser.name)||'?'}});
 if(!tx.committed){return} // another device already claimed today's send
+/* BUGFIX 2026-07-21: if the send fails AFTER claiming the flag, roll the flag back so
+   another tick/device can retry \u2014 otherwise the digest silently never goes out that day. */
+try{
 await _digestSendEmail();console.log('[DIGEST] Daily email sent for',dk);showToast('\u2709\ufe0f Daily digest emailed');
+}catch(sendErr){try{await flagRef.remove()}catch(_e){}throw sendErr}
 }catch(e){console.warn('[DIGEST] tick:',e)}}
 function scheduleDigest(){try{
 if(!currentUser||currentUser.role==='tech')return;
@@ -6080,7 +6490,7 @@ if(got&&e3&&e3.dataset.k===dateKey)_routeMapInit(stops,dateKey)})}
 function _dupOf(r){
 if(!r)return null;
 var sn=String(r.sn||'').trim();
-var fam=String(r.n||'').trim().split(/\s+/).pop().toLowerCase();if(fam.length<3)fam='';
+var nk=_nameTokKey(r.n); /* BUGFIX 2026-07-21: was last-name-only (fam) matching — could suggest merging two different customers who share a surname; a wrong merge DELETES a real ticket */
 var sp=String(r.sp||'').trim().toLowerCase();
 return AD().find(function(x){
 if(!x||sameId(x.i,r.i))return false;
@@ -6094,8 +6504,9 @@ if(sn&&xsn&&xsn!==sn)return false;
 // Different products (e.g. COLD PLUNGE vs Arcadia for the same family) → separate purchases.
 var xsp=String(x.sp||'').trim().toLowerCase();
 if(sp&&xsp&&xsp!==sp)return false;
-// Name match only counts when serial info is incomplete on at least one side.
-if(fam){var f2=String(x.n||'').trim().split(/\s+/).pop().toLowerCase();if(f2===fam)return true}
+// Name match only counts when serial info is incomplete on at least one side —
+// and requires the FULL token set of both names to be identical (golden rule).
+if(nk&&_nameTokKey(x.n)===nk)return true;
 return false})||null}
 function openMergeModal(aId,bId){
 var A=AD().find(function(x){return sameId(x.i,aId)}),B=AD().find(function(x){return sameId(x.i,bId)});
@@ -6226,7 +6637,7 @@ function buildWeeklyData(){
 var now=Date.now(),wk=7*24*3600*1000;
 var all=AD().filter(function(r){return r.n||r.cal});
 var delivered=all.filter(function(r){var t=_actTs(r,'Marked Delivered');return t&&(now-t)<wk});
-var revenue=delivered.reduce(function(sm,r){return sm+(+r.sl||0)},0);
+var revenue=delivered.reduce(function(sm,r){return sm+(+r.pr||0)},0); /* BUGFIX 2026-07-21: was r.sl (a boolean return-visit flag) — weekly report showed "$2" instead of real revenue. pr = sales price. */
 var byTech={};delivered.forEach(function(r){var nm=(r.assigned_to&&USERS[r.assigned_to]&&USERS[r.assigned_to].name)||r.assigned_to||'\u2014';byTech[nm]=(byTech[nm]||0)+1});
 var models={};delivered.forEach(function(r){if(r.sp)models[r.sp]=(models[r.sp]||0)+1});
 var owing=all.filter(function(r){return !r.hold&&!r.co&&(+r.bl||0)>0});
@@ -6259,6 +6670,7 @@ function _weeklyEmailHtml(){var d=buildWeeklyData();return '<div style="font-fam
 async function weeklySendNow(){
 loadDigestConfig(async function(){
 try{var c=DIGEST_CFG||{};if(!c.svc||!c.tpl||!c.pub||!(c.to||'').trim())throw new Error('Configure EmailJS in the Daily Digest settings first');
+if(!confirm(_L('\u00bfEnviar el reporte semanal a '+c.to+' ahora?','Send the weekly report to '+c.to+' now?')))return; /* outbound action \u2192 confirm (app rule) */
 await ensureEmailJs();try{emailjs.init({publicKey:c.pub})}catch(e){}
 await emailjs.send(c.svc,c.tpl,{to_email:c.to,subject:'\u{1F4CA} Aspen Weekly Report \u2014 '+new Date().toLocaleDateString(),message:_weeklyEmailHtml()});
 showToast('\u2713 Weekly report sent!')}catch(e){showToast('\u26a0 '+((e&&e.message)||e),'warn')}})}
@@ -6277,9 +6689,13 @@ var wkKey=now.getFullYear()+'-W'+wn;
 var ref=db.ref('weekly_sent/'+wkKey);
 var sn=await ref.once('value');if(sn.val())return;
 await ref.set({at:Date.now(),by:(currentUser&&currentUser.name)||'?'});
+/* BUGFIX 2026-07-21: roll the weekly_sent flag back if the send fails, so the report
+   isn't permanently lost for that week. */
+try{
 await ensureEmailJs();try{emailjs.init({publicKey:c.pub})}catch(e){}
 await emailjs.send(c.svc,c.tpl,{to_email:c.to,subject:'\u{1F4CA} Aspen Weekly Report \u2014 '+now.toLocaleDateString(),message:_weeklyEmailHtml()});
 console.log('[WEEKLY] report sent for',wkKey);showToast('\u{1F4CA} Weekly report emailed');
+}catch(sendErr){try{await ref.remove()}catch(_e){}throw sendErr}
 }catch(e){console.warn('[WEEKLY] tick:',e)}}
 function renderDashboard(){
 var host=document.getElementById('dashWrap');if(!host)return;
@@ -6500,6 +6916,10 @@ if(typeof pdfjsLib==='undefined'){
 setStat('err','\u2715 PDF reader not loaded yet. Try again in a moment.');return}
 ensurePdfWorker();
 setStat('loading','\u23F3 Reading invoice...');
+/* BUGFIX 2026-07-21 (race): capture WHICH ticket was open when the upload started. Parsing
+   a big PDF takes seconds; if the user closes this ticket and opens another mid-parse, the
+   PDF + parsed fields used to land on the wrong ticket. */
+let _pdfTicketId=curRec?curRec.i:null;
 try{
 let buf=await file.arrayBuffer();
 let pdf=await pdfjsLib.getDocument({data:buf}).promise;
@@ -6517,13 +6937,18 @@ extracted._fullText=fullText; // 2026-06-12: description now carries EVERYTHING 
 // Detect whether the PDF had any usable spa data at all (independent of whether the form already had values).
 // This is the real "is this a valid Aspen Spas invoice?" check.
 let extractedAny=!!(extracted._customerName||extracted._serial||extracted._spaDescription||extracted._cover||extracted._lift||extracted._model||extracted._price);
-let res=applyExtractedToForm(extracted);
-let filled=res.filled,upgraded=res.upgraded;
-// Only show "could not detect" if the PDF truly had nothing recognizable.
-// If the PDF was valid but the form was already filled (typical for tickets imported from GCal),
-// show a friendly message instead of an error.
+// BUGFIX 2026-07-21 (order): the "could not detect" bail-out now runs BEFORE
+// applyExtractedToForm. Previously a wrong/random PDF overwrote the Spa Description
+// (applyExtractedToForm always overwrites it with _fullText) and the 5s autosave
+// persisted the junk even though the user saw an error saying nothing happened.
 if(!extractedAny){
 setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
+// BUGFIX 2026-07-21 (race): if the modal was closed or another ticket opened while the
+// PDF was parsing, do NOT apply the parsed fields to the currently-open form.
+if(_pdfTicketId==null||!curRec||String(curRec.i)!==String(_pdfTicketId)){
+setStat('err','\u2715 Ticket changed while the PDF was being read \u2014 please re-upload with the right ticket open.');return}
+let res=applyExtractedToForm(extracted);
+let filled=res.filled,upgraded=res.upgraded;
 // Save the PDF so admin AND tech can preview/download it later.
 // Convert ArrayBuffer to base64 (chunked to avoid call-stack overflow on large files).
 try{
@@ -6543,7 +6968,7 @@ setStat('warn','&#9888; PDF is large ('+sizeKB+' KB) — saved, but consider com
 // pdf_invoice.data inline remain fully readable (viewers check both places). Re-uploading
 // a PDF on an old ticket migrates it to the slim format automatically.
 let pdfMeta={name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null,stored:1};
-if(curRec){
+if(curRec&&String(curRec.i)===String(_pdfTicketId)){
 let id=curRec.i;
 try{
 await db.ref('invoice_pdfs/'+String(id)).set({data:b64,name:pdfMeta.name,size:pdfMeta.size,uploaded_at:pdfMeta.uploaded_at,uploaded_by:pdfMeta.uploaded_by});
@@ -6579,7 +7004,7 @@ showToast(toastMsg);
 // CRITICAL: persist the values applied by applyExtractedToForm to Firebase BEFORE re-rendering.
 // Otherwise renderModal() rebuilds the form from curRec (which has the OLD data) and the
 // extracted values are lost. We capture all current form values via gatherEdits() and merge.
-if(curRec){
+if(curRec&&String(curRec.i)===String(_pdfTicketId)){
 try{
 let updates=gatherEdits();
 let id=curRec.i;
@@ -7196,7 +7621,7 @@ function renderModal(){let r=curRec,s=st(r);
 let esc=function(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
 // === TICKET HERO (desktop B+C redesign) — replaces the old text header + badge row. ===
 // Complete/Hold logic is moved here verbatim (same onclick, same canCompl rule).
-let canCompl=r.cl&&(r.gb||r.ngb);let actBtns='';actBtns+='<button onclick="openBrainModalById('+r.i+')" title="Customer brain" style="background:#134A63;color:#fff;border:none;border-radius:8px;padding:0 12px;font-weight:800;cursor:pointer;font-size:15px">\U0001F9E0</button>';
+let canCompl=r.cl&&(r.gb||r.ngb);let actBtns='';actBtns+='<button onclick="openBrainModalById('+r.i+')" title="Customer brain" style="background:#134A63;color:#fff;border:none;border-radius:8px;padding:0 12px;font-weight:800;cursor:pointer;font-size:15px">🧠</button>';
 if(s!=='complete'&&!r.hold){
 actBtns+='<button class="mbtn-complete'+(canCompl?'':' disabled')+'" onclick="'+(canCompl?'completeTicket('+r.i+')':'alert(\'Cannot complete: Call must be green AND either G.B. or N.G.B. must be green.\')')+'">'+(canCompl?'&#10003; Complete':'&#9888; Complete (Call + G.B./N.G.B.)')+'</button>';
 actBtns+='<button onclick="deliveryAskReview('+r.i+')" title="Text the customer a Google review request" style="background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:12px;white-space:nowrap">&#11088; Review</button>';
@@ -7252,8 +7677,8 @@ h+='<div class="ig">'+ib("Full Name","e_n",r.n)+ddPicker(r.dd)+'</div><div class
 h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BASES,(r.sp||"").split(",")[0].trim())+'</select></div>';
 h+='<div class="ib"><label>SERIES</label><select id="e_spa_series">'+opt(SPA_SERIES,((r.sp||"").split(",")[1]||"").trim())+'</select></div>';
 h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Phones <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(one per line — add wife/spouse, etc.)</span></label><textarea id="e_ph" rows="2" style="font-family:inherit">'+escHtml(r.ph||'')+'</textarea></div></div><div class="ig">';
-h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="number" step="0.01" value="'+(r.pr||0)+'"></div></div><div class="ig">';
-h+='<div class="ib"><label>Payment</label><input id="e_py" type="number" step="0.01" value="'+(r.py||0)+'"></div>';
+h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="text" inputmode="decimal" value="'+(r.pr||0)+'"></div></div><div class="ig">';
+h+='<div class="ib"><label>Payment</label><input id="e_py" type="text" inputmode="decimal" value="'+(r.py||0)+'"></div>';
 h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'var(--st-danger)':'var(--st-success)')+'">'+fmt(r.bl)+'</span></div></div>';
 h+='<span id="tksec_money" class="tksec"></span>';
 // Payment Status pills — one-click status indicator for the financial state of this delivery.
@@ -7318,7 +7743,7 @@ h+='<button type="button" class="pst-pill'+(active?' pst-active':'')+'" onclick=
 });
 h+='</div></div>'}
 }
-h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+(r.st||"")+'</textarea></div>';
+h+='<div class="ib" style="margin-bottom:16px"><label>Address</label><textarea id="e_st" rows="2">'+esc(r.st||"")+'</textarea></div>';
 // Assigned tech dropdown (admin/organizer only)
 if(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')){
 h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label><select id="e_assigned" style="padding:9px 12px;border:2px solid var(--hairline);border-radius:8px;font-size:14px;font-family:inherit;width:100%;background:var(--surface);outline:none"><option value="">— Unassigned —</option></select></div>'}
@@ -7504,13 +7929,13 @@ h+='<span id="tksec_cust" class="tksec"></span>';
 h+=intakeBoxHtml(r);
 // Delivered Notes (between checklists)
 h+='<span id="tksec_hist" class="tksec"></span>';
-h+='<div class="nb"><label>Delivered Notes</label><textarea id="e_dn">'+(r.dn||"")+'</textarea></div>';
+h+='<div class="nb"><label>Delivered Notes</label><textarea id="e_dn">'+esc(r.dn||"")+'</textarea></div>';
 // Post-Delivery Checklist
 h+='<div class="cs"><div class="ct">Post-Delivery Checklist</div><div class="cg">';
 POST.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
 h+='</div></div>';
 // Customer Feedback (after post-delivery)
-h+='<div class="nb"><label>Customer Feedback</label><textarea id="e_fn">'+(r.fn||"")+'</textarea></div>';
+h+='<div class="nb"><label>Customer Feedback</label><textarea id="e_fn">'+esc(r.fn||"")+'</textarea></div>';
 // Service Request — sends to Service Log instead of downloading .ics
 let svcStat=r.svc_status||null;  // requested | assigned | in_progress | completed
 let svcId=r.svc_id||null;
@@ -7553,7 +7978,7 @@ slots.forEach(s=>{h+='<option value="'+s+'"'+(p.slot===s?' selected':'')+'>'+lab
 h+='</select></div></div>';return h}
 function ai(l,id,opts,val,optKey,isCustom){
 let delBtn=isCustom?'<button style="background:var(--st-danger);color:#fff;border:none;width:24px;height:24px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center" onclick="removeCategory(\''+optKey+'\')" title="Remove this category">&#10005;</button>':'';
-return'<div class="ai"><label>'+escHtml(l)+'</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><select id="'+id+'">'+opt(opts,val)+'</select><button style="background:var(--st-info);color:#fff;border:none;width:24px;height:24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center" onclick="addOpt(\''+id+'\',\''+optKey+'\')" title="Add new option">+</button>'+delBtn+'<button class="miss-btn" onclick="markMissing(\''+id+'\',\''+l.replace(/\'/g,"\\'")+'\',this)" title="Mark as missing — sends to Delivered Notes">MISSING</button></div></div>'}
+return'<div class="ai"><label>'+escHtml(l)+'</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><select id="'+id+'">'+opt(opts,val)+'</select><button style="background:var(--st-info);color:#fff;border:none;width:24px;height:24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center" onclick="addOpt(\''+id+'\',\''+optKey+'\')" title="Add new option">+</button>'+delBtn+'<button class="miss-btn" onclick="markMissing(\''+id+'\',\''+escHtml(l).replace(/\'/g,"\\'")+'\',this)" title="Mark as missing — sends to Delivered Notes">MISSING</button></div></div>'}
 
 // Add a new accessory category. Prompts for name, generates a unique key.
 function addCategory(){
@@ -7974,14 +8399,27 @@ showToast('&#10003; Email PW marked as sent')}
 
 // Persist ep=true through the same path the existing toggleCk uses.
 function emailPw_setEpTrue(id){
-let addIdx=ADDED.findIndex(r=>r.i===id);
-if(addIdx>=0){ADDED[addIdx].ep=true;_dirtyAdded.add(String(ADDED[addIdx].i));saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].ep=true;_dirtyEdits.add(String(id));saveE()}
-curRec=AD().find(r=>r.i===id);
+/* BUGFIX 2026-07-21: tolerant id compare (Firebase can return ADDED ids as strings — strict
+   === missed the record and the ep flag landed in EDITS, a dead overlay for ADDED tickets),
+   plus rememberAddedEdit/rememberEditsEdit so a stale snapshot can't wipe the write. */
+let addIdx=ADDED.findIndex(r=>r.i===id||String(r.i)===String(id));
+if(addIdx>=0){ADDED[addIdx].ep=true;rememberAddedEdit(ADDED[addIdx]);_dirtyAdded.add(String(ADDED[addIdx].i));saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].ep=true;rememberEditsEdit(id,EDITS[id]);_dirtyEdits.add(String(id));saveE()}
+curRec=AD().find(r=>r.i===id||String(r.i)===String(id));
 renderKPIs();renderCtxHdr();renderBoard()}
 
 // Convert a data URI (e.g. "data:image/jpeg;base64,...") to its base64 payload.
 function emailPw_dataUriToBase64(dataUri){let m=String(dataUri).match(/^data:[^;]+;base64,(.*)$/);return m?m[1]:''}
+/* BUGFIX 2026-07-21: modern tech photos are Firebase Storage HTTPS URLs, not data URIs, so
+   photo attachments ALWAYS failed ("Empty file"). Resolve either form to base64. */
+async function emailPw_photoToBase64(src){
+src=String(src||'');
+if(/^data:/.test(src))return emailPw_dataUriToBase64(src);
+if(/^https:\/\//.test(src)){
+let resp=await fetch(src);if(!resp.ok)throw new Error('Photo download failed ('+resp.status+')');
+let blob=await resp.blob();
+return await new Promise(function(res,rej){var fr=new FileReader();fr.onload=function(){res(String(fr.result).split(',')[1]||'')};fr.onerror=rej;fr.readAsDataURL(blob)})}
+return ''}
 
 // Resolve a static asset PDF as base64. Tries the embedded ASPEN_PDF_LIBRARY
 // first (loaded from pdf-assets.js next to index.html); falls back to fetching
@@ -8063,7 +8501,7 @@ setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},500)}
 //      pops a new email with To/Subject/Body pre-filled. The user
 //      drags the files in. Works on every platform.
 async function emailPwSendViaOutlook(id){
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let toEl=document.getElementById('emailpw_to');
 let subjEl=document.getElementById('emailpw_subject');
 let bodyEl=document.getElementById('emailpw_body');
@@ -8084,7 +8522,7 @@ let a=attList[i];
 statusEl.innerHTML='&#8987; Loading attachment '+(i+1)+' of '+attList.length+': '+escHtml(a.name)+' ...';
 try{
 let b64;
-if(a.source==='photo'){b64=emailPw_dataUriToBase64(a.data)}
+if(a.source==='photo'){b64=await emailPw_photoToBase64(a.data)}
 else if(a.source==='signed_pdf'){
 let _d=a.data;
 if(!_d){let _n=await fetchInvoicePdfNode(a.ticketId);_d=_n&&_n.signed&&_n.signed.data}
@@ -8334,7 +8772,7 @@ md.style.padding='0'}
 // a hidden advanced option in case the team ever needs it.
 // =================================================================
 async function emailPwGenerateEml(id){
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 let to=(document.getElementById('emailpw_to').value||'').trim();
 let subject=(document.getElementById('emailpw_subject').value||'').trim();
 let body=document.getElementById('emailpw_body').value||'';
@@ -8348,7 +8786,7 @@ statusEl.style.color='#6b7280';
 statusEl.innerHTML='&#8987; Building .eml — loading '+(i+1)+'/'+attList.length+'...';
 try{
 let b64;
-if(a.source==='photo'){b64=emailPw_dataUriToBase64(a.data)}
+if(a.source==='photo'){b64=await emailPw_photoToBase64(a.data)}
 else if(a.source==='signed_pdf'){
 let _d=a.data;
 if(!_d){let _n=await fetchInvoicePdfNode(a.ticketId);_d=_n&&_n.signed&&_n.signed.data}
@@ -8378,7 +8816,7 @@ function toggleCk(id,key,el){
 //   - If ep is ON (done): confirm with user, then reset back to OFF so they
 //     can re-send. Falls through to the standard toggle path below.
 if(key==='ep'){
-let r=AD().find(x=>x.i===id);if(!r)return;
+let r=AD().find(x=>sameId(x.i,id));if(!r)return;
 if(!r.ep){openEmailPwModal(r);return}
 // ep is true → ask before resetting
 if(!confirm('Email PW is marked as done. Reset it so you can send the email again?'))return;
@@ -8398,7 +8836,10 @@ renderKPIs();renderCtxHdr();
 // Pay Full toggle ON: update the Payment input + Balance span in place WITHOUT
 // re-rendering the entire modal. A full re-render would wipe out any unsaved typing
 // the user has on other fields (spa description, notes, address edits, etc.).
-if(key==='pf'&&curRec.pf){updatePaymentDisplayInPlace(curRec)}}
+/* BUGFIX 2026-07-21: was `key==='pf'&&curRec.pf` — turning Pay Full OFF restored py/bl on
+   the record but left the visible e_py input showing the full price, so a later Save
+   silently re-zeroed the balance. Refresh the display on BOTH transitions. */
+if(key==='pf'){updatePaymentDisplayInPlace(curRec)}}
 
 // Update the Payment input + Balance span inside the open modal without re-rendering.
 // Called whenever py / bl change programmatically (toggling Pay Full, marking Paid, etc).
@@ -8539,14 +8980,19 @@ if(!mt)return;
 let cid=mt[1];let active=String(next||'')===cid;
 b.classList.toggle('pst-active',active)
 });
-renderModal();renderAll();
+// BUGFIX 2026-07-21: renderModal() here rebuilt the whole form and WIPED any typed-but-
+// unsaved fields (phone, notes, price...) when tapping a color pill. The in-place pill
+// toggle above already updates the UI — only the board/cards need re-rendering.
+renderAll();
 let cur=AD().find(x=>x.i===id||String(x.i)===String(id));
 if(prevSnapshot&&cur)gcalPushTicketChanges(prevSnapshot,cur);
 showToast(next?'&#10003; Color set':'&#10003; Color cleared');
 }
 
 function gatherEdits(){
-let pr=parseFloat(document.getElementById("e_pr").value)||0,py=parseFloat(document.getElementById("e_py").value)||0;
+/* Money fields are type=text (app rule): strip "$", commas and spaces before parsing so "$8,500" doesn't silently become 0. */
+let _money=function(id){return parseFloat(String(document.getElementById(id).value||'').replace(/[^0-9.\-]/g,''))||0};
+let pr=_money("e_pr"),py=_money("e_py");
 let sB=document.getElementById("e_spa_base").value,sS=document.getElementById("e_spa_series").value;
 let getV=function(id){let el=document.getElementById(id);return el?(el.value||'').trim()||null:null};
 let result={n:document.getElementById("e_n").value.trim(),cal:getV('e_cal'),dd:(function(){let dv=document.getElementById("e_dd_date"),sv=document.getElementById("e_dd_slot");if(!dv||!dv.value)return null;let slot=sv?sv.value:'am';let label={'am':' am','pm':' pm','allday':' all day'}[slot]||' am';return dv.value+(label||'')})(),
@@ -8640,7 +9086,6 @@ if(!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer')))
 let label=(r.n||'(no name)')+(r.sn?'  \u00b7  SN '+r.sn:'')+(r.dd?'  \u00b7  '+r.dd:'');
 if(!confirm('Delete this delivery ticket?\n\n'+label+'\n\n\u2022 Removes the ticket from the app and unlinks it from Google Calendar.\n\u2022 Does NOT delete the Google Calendar event.\n\u2022 Permanent in-app (recover from a backup if needed).'))return;
 // Drop any calendar mapping that points at this ticket
-let upd={};
 // COMPARE-AND-DELETE every map entry for this ticket — on the SERVER. Plain null-writes
 // here raced against concurrent re-links (the server may already point the event at a
 // NEWER ticket), and guessing from this device's local map fails in BOTH directions when
@@ -8655,7 +9100,6 @@ if(gcalMap[_eid]==null||sameId(gcalMap[_eid],id)){trackGcalMapRemoval(_eid);dele
 // Side-node cleanup: drop the stored invoice PDF payload (and its signed copy) for this ticket.
 try{db.ref('invoice_pdfs/'+String(id)).remove().catch(()=>{})}catch(e){}
 try{if(typeof _pdfNodeCache!=='undefined')delete _pdfNodeCache[String(id)]}catch(e){}
-if(Object.keys(upd).length)db.ref().update(upd);
 // CRIT FIX (build 62): the ledger write is now VERIFIED — the success toast only fires when
 // the server confirms; on failure/offline the user is told it's queued (retry timer resends).
 markTicketDeleted(id,function(ok){
@@ -8855,7 +9299,7 @@ try{AspenBrain.logEvent({customer:cleanBrainName(dispName(rec)),app:"delivery",t
 curRec=AD().find(x=>x.i===id||String(x.i)===String(id));renderModal();renderAll();
 fireConfetti();
 // \u2b50 Ask the tech (their choice) to send the customer a Google review after completing the delivery.
-setTimeout(function(){try{if(window.confirm('\u00bfEnviar solicitud de Google review a "'+rec.n+'"?'))deliveryAskReview(id);}catch(_e){}},600);}
+setTimeout(function(){try{if(window.confirm(_L('\u00bfEnviar solicitud de Google review a "'+rec.n+'"?','Send Google review request to "'+rec.n+'"?')))deliveryAskReview(id);}catch(_e){}},600);}
 
 // Brief one-shot confetti shower. Builds ~60 pieces with random color/x/duration,
 // appends them to a fixed-position host, and cleans up after 2.4s. No deps.
@@ -8982,7 +9426,7 @@ return null}
 
 function sendServiceRequest(id){
 console.log('[SVC-LOG] sendServiceRequest called for delivery id:',id);
-let rec=AD().find(x=>x.i===id);
+let rec=AD().find(x=>sameId(x.i,id));
 if(!rec){console.error('[SVC-LOG] ✗ Delivery record not found for id:',id);alert('Error: delivery record not found.');return}
 
 let tvd=document.getElementById('tv_date').value||null;
@@ -8998,7 +9442,10 @@ alert('❌ '+msg);
 return}
 
 let now=Date.now();
-let isRepeat=!!(rec.svc_history&&rec.svc_history.length>0);
+/* BUGFIX 2026-07-21: svc_history is never written anywhere, so isRepeat was always false
+   and the Service Log never flagged repeat visits. A prior send is recorded in
+   svc_sent_at / svc_id — use those. */
+let isRepeat=!!(rec.svc_sent_at||rec.svc_id);
 
 // Parse address into address/city/zip for Service Log compatibility
 let st=rec.st||'';
@@ -9095,10 +9542,10 @@ let timeoutPromise=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout af
 Promise.race([writePromise,timeoutPromise])
 .then(docId=>{
 let updates={tvd,tvt,tvn,svc_id:docId,svc_status:'requested',svc_sent_at:rec.svc_sent_at||now};
-let ai=ADDED.findIndex(x=>x.i===id);
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
-curRec=AD().find(x=>x.i===id);
+curRec=AD().find(x=>sameId(x.i,id));
 SVC_LOG_READY=true;SVC_LOG_ERROR=null;
 console.log('[SVC-LOG] ✓ Ticket sent successfully. Doc id:',docId);
 showToast('&#10003; Sent to Service Log — Awaiting assignment');
@@ -9119,16 +9566,16 @@ showToast('&#10005; Send failed — see alert for details','err');
 })}
 
 function cancelServiceRequest(id){
-let rec=AD().find(x=>x.i===id);if(!rec||!rec.svc_id)return;
+let rec=AD().find(x=>sameId(x.i,id));if(!rec||!rec.svc_id)return;
 if(!confirm('Cancel this service request? It will be removed from the Service Log.'))return;
 console.log('[SVC-LOG] Canceling ticket:',rec.svc_id);
 
 let clearLocal=()=>{
 let updates={svc_id:null,svc_status:null,svc_sent_at:null,svc_assigned_to:null};
-let ai=ADDED.findIndex(x=>x.i===id);
+let ai=ADDED.findIndex(x=>sameId(x.i,id));
 if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
-curRec=AD().find(x=>x.i===id);
+curRec=AD().find(x=>sameId(x.i,id));
 showToast('Service request cancelled');renderModal()};
 
 // Legacy SVC_ ids never made it to Firestore — just clear locally
@@ -9691,7 +10138,9 @@ if(gcalSyncToken){params.syncToken=gcalSyncToken}
 else{// First sync: pull from today forward only (avoid pulling old delivered events as Needs Action)
 let now=new Date();now.setHours(0,0,0,0);
 params.timeMin=now.toISOString();
-params.orderBy='startTime'}
+/* BUGFIX 2026-07-21: orderBy:'startTime' removed — Google NEVER returns nextSyncToken when
+   orderBy is set, so the sync token stayed null forever and every sync (including the
+   auto-sync) refetched everything as a full sync. Event order isn't used anyway. */}
 let allEvents=[];let pageToken=null;let nextSync=null;
 do{if(pageToken)params.pageToken=pageToken;
 let res;try{res=await gapi.client.calendar.events.list(params)}
@@ -10044,7 +10493,10 @@ let updates={};
 // sever every existing link pointing to THIS ticket (removes the wrong one)
 Object.keys(gcalMap).forEach(k=>{if(String(gcalMap[k])===String(tid)){trackGcalMapRemoval(k);updates['gcal_map/'+k]=null;delete gcalMap[k]}});
 // link the chosen event to this ticket (also steals it away from any other ticket)
-updates['gcal_map/'+eventId]=tid;gcalMap[eventId]=tid;
+// BUGFIX 2026-07-21: store as String (like every other writer) and register with
+// trackGcalMapSet so the anti-wipe listener can't revert this hand-picked link.
+updates['gcal_map/'+eventId]=String(tid);gcalMap[eventId]=String(tid);
+try{trackGcalMapSet(eventId,String(tid))}catch(_e){}
 db.ref().update(updates);
 let u={gcalId:eventId,cal:ev.summary,dd:ev.dd,gcalColorId:ev.colorId};
 let ai=ADDED.findIndex(x=>sameId(x.i,tid));
@@ -10329,7 +10781,10 @@ if(_gcalAuditInFlight)return;
 // conditional server-side remove the delete path uses (safe against concurrent re-links).
 // Throttled to once per session start; the map stays bounded by the live ticket count.
 try{
-if(!window._gcalMapPrunedThisSession){window._gcalMapPrunedThisSession=true;
+/* BUGFIX 2026-07-21: only prune once the edits/added snapshots have actually arrived —
+   on a slow connection AD() was still partial, live server tickets looked dead, their
+   map entries were removed and the next sync created duplicate tickets. */
+if(!window._gcalMapPrunedThisSession&&_dataSynced()){window._gcalMapPrunedThisSession=true;
 let live={};AD().forEach(function(r){if(r&&r.i!=null)live[String(r.i)]=1});
 let pruned=0;
 Object.keys(gcalMap||{}).forEach(function(eid){
@@ -10629,11 +11084,13 @@ if(labels)msg+='• '+labels+' calendar labels (COLOR, WEEK, etc.)\n';
 if(badColor)msg+='• '+badColor+' events with non-delivery colors\n';
 msg+='\nThese are the records to remove (none have customer info you typed):\n'+names+(candidates.length>12?'\n   …and '+(candidates.length-12)+' more':'')+'\n\nOnly empty, not-completed, not-delivered records are removed. Anything you filled in (phone, address, payment, specs, notes) is PROTECTED and will NOT be touched.';
 if(!confirm(msg))return;
-let idsToRemove=new Set(candidates.map(r=>r.i));
-ADDED=ADDED.filter(r=>!idsToRemove.has(r.i));
+/* BUGFIX 2026-07-21: compare as strings — gcal_map values are often written as String(id),
+   so the strict Set.has missed them and orphaned map entries survived the clean. */
+let idsToRemove=new Set(candidates.map(r=>String(r.i)));
+ADDED=ADDED.filter(r=>!idsToRemove.has(String(r.i)));
 saveA();
 let updates={};
-Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(gcalMap[eventId])){trackGcalMapRemoval(eventId);updates['gcal_map/'+eventId]=null;delete gcalMap[eventId]}});
+Object.keys(gcalMap).forEach(eventId=>{if(idsToRemove.has(String(gcalMap[eventId]))){trackGcalMapRemoval(eventId);updates['gcal_map/'+eventId]=null;delete gcalMap[eventId]}});
 updates['gcal_config/syncToken']=null;
 db.ref().update(updates);
 gcalSyncToken=null;
@@ -10837,7 +11294,7 @@ if(lines.length)lines.push('');
 String(r.st).split('\n').forEach(a=>{a=a.trim();if(a)lines.push(a)});
 }
 // Payment status + balance
-let pstLabels={paid:'Paid in full',collect_check:'Collect Check',financed:'Financed',collect_cash:'Collect Cash'};
+let pstLabels={paid:'Paid in full',check:'Collect Check',financed:'Financed',cash:'Collect Cash'}; /* BUGFIX 2026-07-21: keys were collect_check/collect_cash but pst stores check/cash — payment line never reached the Calendar description for exactly the two collect statuses */
 let payLines=[];
 if(r.pst&&pstLabels[r.pst])payLines.push(pstLabels[r.pst]);
 if(typeof r.pr==='number'&&r.pr>0){
@@ -11267,11 +11724,16 @@ if(parts.length>1){lastName=parts[0].trim()}
 else{let words=r.n.trim().split(/\s+/);lastName=words[words.length-1]}
 }
 let sn=r.sn?String(r.sn).trim():null;
+/* BUGFIX 2026-07-21 (golden rule): last-name-substring matching put one customer's photos,
+   invoice and signature in ANOTHER customer's Drive folder ("Rose" matched "Rosenberg";
+   two Smiths collided). A name match now requires EVERY significant token of the ticket's
+   customer name to appear in the folder name — otherwise fall through to folder creation. */
+let nameToks=String(r.n||'').toLowerCase().replace(/[^a-z0-9, ]/g,' ').replace(/,/g,' ').split(/\s+/).filter(w=>w.length>=2&&w!=='and'&&w!=='the');
 let candidates=[];
 folders.forEach(f=>{
 let name=(f.name||'').toLowerCase();
 if(sn&&name.indexOf(String(sn).toLowerCase())>=0){candidates.push({f:f,reason:'SN '+sn,score:100})}
-else if(lastName&&lastName.length>=3&&name.indexOf(lastName.toLowerCase())>=0){candidates.push({f:f,reason:'last name "'+lastName+'"',score:50})}
+else if(nameToks.length&&nameToks.every(t=>name.indexOf(t)>=0)){candidates.push({f:f,reason:'full name match',score:50})}
 });
 if(!candidates.length)return null;
 candidates.sort((a,b)=>b.score-a.score);
@@ -11595,7 +12057,7 @@ function evsByDate(evs){let m={};evs.forEach(e=>{let k=e.d.getFullYear()+'-'+Str
 function setCalView(v){calView=v;calRailReset();document.querySelectorAll('.cal-vbtn').forEach(b=>b.classList.toggle('act',b.dataset.v===v));renderCalendar()}
 function calNav(dir){calRailReset();
 if(dir===0){calDate=new Date();renderCalendar();return}
-if(calView==='month'){calDate.setMonth(calDate.getMonth()+dir)}
+if(calView==='month'){calDate.setDate(1);calDate.setMonth(calDate.getMonth()+dir)} /* BUGFIX 2026-07-21: without setDate(1), navigating from day 29–31 skipped months (May 31 → "June 31" → July) */
 else if(calView==='week'){calDate.setDate(calDate.getDate()+(dir*7))}
 else{calDate.setDate(calDate.getDate()+dir)}
 renderCalendar()}
@@ -11893,7 +12355,7 @@ function _icopy(t){try{navigator.clipboard.writeText(t)}catch(e){let ta=document
 
 function intakeCreateAndCopy(id){
 let it=INTAKE[id];
-let url=(it&&it.token&&!it.submitted)?intakeUrl(id,it.token):createIntakeLink(id);
+let url=(it&&it.token&&!it.submitted&&!(it.expires&&Date.now()>it.expires))?intakeUrl(id,it.token):createIntakeLink(id); /* BUGFIX 2026-07-21: don't re-copy an expired link */
 if(!url)return;
 _icopy(url);
 showToast('&#128279; Customer upload link copied — paste into a text/email, or it is added automatically when you Send Pre-Delivery SMS');
@@ -11925,7 +12387,7 @@ let rp=it.resp||{},h='<div style="font-size:13px;line-height:1.6">';
 if(rp.payment)h+='<div>&#128181; Payment: <b>'+_iesc(_ipayLabel(rp.payment))+'</b></div>';
 if(typeof rp.levelOk!=='undefined')h+='<div>&#128208; Pad is level &amp; clear: <b>'+(rp.levelOk?'Yes':'No')+'</b></div>';
 if(typeof rp.wipOk!=='undefined')h+='<div>&#128268; WIP ready (15ft conduit + adapters): <b>'+(rp.wipOk?'Yes':'No')+'</b></div>';
-[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=_intakeArr(rp[g[0]]);if(arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>'<a href="'+b+'" target="_blank" rel="noopener"><img src="'+b+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd" onerror="_imgFail(this)"></a>').join('')+'</div></div>'}});
+[['access','Access photos'],['levelPhotos','Pad / level'],['electricity','Breaker box'],['wipPhotos','WIP']].forEach(g=>{let arr=_intakeArr(rp[g[0]]);if(arr.length){h+='<div style="margin-top:6px"><b>'+g[1]+'</b> ('+arr.length+'):<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+arr.map(b=>{let u=safeUrl(b);if(!u)return'';return '<a href="'+u+'" target="_blank" rel="noopener"><img src="'+u+'" style="width:62px;height:62px;object-fit:cover;border-radius:6px;border:1px solid #ddd" onerror="_imgFail(this)"></a>'}).join('')+'</div></div>'}});
 if(rp.notes)h+='<div style="margin-top:6px">&#128221; Customer notes: '+_iesc(rp.notes)+'</div>';
 return h+'</div>'}
 
@@ -12047,7 +12509,7 @@ if(ai>=0){Object.assign(ADDED[ai],upd);rememberAddedEdit(ADDED[ai]);saveA();cons
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],upd);rememberEditsEdit(id,EDITS[id]);saveE();console.log('[INTAKE] Set EDITS overlay for ticket #'+id+'.');}
 db.ref('intake/'+id+'/reflected').set(true);it.reflected=true;
 processed++;
-if(typeof showToast==='function')showToast('&#128228; '+(it.cust||'Customer')+' submitted delivery info \u2014 ticket updated'+(customerPhotos.length?(' ('+customerPhotos.length+' photos)'):''));
+if(typeof showToast==='function')showToast('&#128228; '+_iesc(it.cust||'Customer')+' submitted delivery info \u2014 ticket updated'+(customerPhotos.length?(' ('+customerPhotos.length+' photos)'):''));
 if(curRec&&sameId(curRec.i,id)&&typeof safeRefreshModalIfOpen==='function')safeRefreshModalIfOpen(id);
 });
 if(processed||skipped_noTicket){
@@ -12072,7 +12534,7 @@ if(!host){host=document.createElement('div');host.id='intakePortalRoot';host.sty
 host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);padding:40px">Loading\u2026</div>');
 db.ref('intake/'+id).once('value').then(snap=>{
 let it=snap.val();
-if(!it||!it.token||String(it.token)!==String(token)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return}
+if(!it||!it.token||String(it.token)!==String(token)||(it.expires&&Date.now()>it.expires&&!it.submitted)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return} /* BUGFIX 2026-07-21: the 21-day expires stamp was never enforced */
 if(it.submitted){document.title='Aspen Spas \u2014 Your Delivery';_PORTAL={id:id,it:it};host.innerHTML=_portalShell(_portalSubmittedHtml(it));return}
 _PORTAL={id:id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelOk:false,wipOk:false,payment:'',notes:''};
 host.innerHTML=_portalShell(_portalFormHtml(it));
@@ -12172,7 +12634,7 @@ if(rq.access)h+=_card('&#128205; Access photos','<div style="font-size:13px;colo
 
 if(rq.level)h+=_card('&#128208; Level surface','<label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--ink-strong);margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.levelOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>The pad / patio where the spa will sit is <b>solid and level</b>, with nothing in the way.</span></label>'+_photoField('levelPhotos','Add a photo of the pad / patio where the spa will be placed.'));
 
-if(rq.wip)h+=_card('&#128268; Wiring (WIP)','<div style="background:var(--surface)beb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;margin-bottom:10px">Please have ready before delivery: <b>15 ft of conduit / whip cable</b> and the <b>adapters</b> needed to connect the spa.</div><label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--ink-strong);margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.wipOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>I have the <b>15 ft conduit + adapters</b> ready.</span></label>'+_photoField('wipPhotos','Optional: add a photo of the conduit / whip run if you have it.'));
+if(rq.wip)h+=_card('&#128268; Wiring (WIP)','<div style="background:var(--st-warning-soft);border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.5;margin-bottom:10px">Please have ready before delivery: <b>15 ft of conduit / whip cable</b> and the <b>adapters</b> needed to connect the spa.</div><label style="display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--ink-strong);margin-bottom:12px;cursor:pointer"><input type="checkbox" onchange="_PORTAL.wipOk=this.checked" style="width:20px;height:20px;margin-top:1px"><span>I have the <b>15 ft conduit + adapters</b> ready.</span></label>'+_photoField('wipPhotos','Optional: add a photo of the conduit / whip run if you have it.'));
 
 if(rq.electricity)h+=_card('&#9889; Electrical panel','<div style="font-size:13px;color:var(--ink-slate);line-height:1.55;margin-bottom:10px">Please send a clear photo of your <b>breaker box / electrical panel</b> &mdash; with the cover open so the breakers are visible.</div>'+_photoField('electricity','Add a photo of the open breaker box.'));
 
@@ -12193,7 +12655,7 @@ if(_PORTAL[group].length>=10){showToast&&showToast('Max 10 photos per section','
 try{let b64=await compressImage(f,1100,0.6);
 // Try Firebase Storage first (tiny URL in the ticket instead of a multi-MB base64 blob).
 // Falls back to inline base64 if Storage is off/blocked — exactly the old behavior.
-let _tid=(_PORTAL.it&&(_PORTAL.it.i||_PORTAL.it.id))||'portal';
+let _tid=(_PORTAL&&_PORTAL.id)||'portal'; /* BUGFIX 2026-07-21: _PORTAL.it has no i/id field, so EVERY customer's photos uploaded to the shared 'portal' folder; the ticket id lives at _PORTAL.id */
 let stored=await uploadPhotoToStorage('intake_'+_tid,b64);
 if(!/^https?:/.test(stored)&&stored.length>1100000){alert('That photo is too large even after shrinking — please try a smaller one.');continue}
 _PORTAL[group].push(stored)}catch(e){console.error('compress',e);alert("We couldn't read one of your photos. If you're on an iPhone, open it in Photos, tap Share, choose \"Save as File\" (it saves as JPG), then upload that — or change Settings → Camera → Formats to \"Most Compatible\".")}
@@ -12226,5 +12688,41 @@ db.ref('intake/'+id).update({resp:resp,submitted:true,submittedAt:Date.now()}).t
 _PORTAL.it.resp=resp;_PORTAL.it.submitted=true;_PORTAL.it.submittedAt=Date.now();if(host)host.innerHTML=_portalShell(_portalSubmittedHtml(_PORTAL.it));
 }).catch(e=>{console.error('[INTAKE] submit',e);if(host)host.innerHTML=_portalMsg('Could not send','Please check your connection and try again, or contact Aspen Spas.')})}
 
+/* === MOBILE KEYBOARD FIX (2026-07-21, adapted to the Admin Redesign full-screen modal) ===
+   iOS keyboard does not shrink vh/dvh, so the bottom of the modal — including the sticky
+   Save/Cancel bar — sat behind the keyboard while typing. The redesign layer sets
+   height:100dvh / max-height:none!important on mobile modals, so we must use inline
+   styles with the 'important' priority to win. Shrinks the open modal to the visible
+   viewport height while the keyboard is up, restores it on close. */
+if(window.visualViewport){
+(function(){
+function _kbFit(){try{
+var m=document.querySelector('.ov:not(.hidden) .mdl');if(!m)return;
+if(window.innerWidth>700){m.style.removeProperty('height');m.style.removeProperty('max-height');return}
+var kb=Math.max(0,window.innerHeight-window.visualViewport.height);
+if(kb>60){
+var h=Math.round(window.visualViewport.height)+'px';
+m.style.setProperty('height',h,'important');
+m.style.setProperty('max-height',h,'important');
+}else{m.style.removeProperty('height');m.style.removeProperty('max-height')}
+}catch(e){}}
+window.visualViewport.addEventListener('resize',_kbFit);
+window.visualViewport.addEventListener('scroll',_kbFit);
+})();
+}
+/* === STICKY FILTERS FIX (2026-07-21, MF1 v2 companion) ===
+   On desktop the search/filters row stays sticky but must pin BELOW the tabs bar, whose
+   height varies (64px with sidebar, ~71px+ without, more if it wraps). Keep --tabsbar-h
+   in sync with the bar's real rendered height. */
+(function(){try{
+var bar=document.querySelector('.aspen-tabs-bar');if(!bar)return;
+var apply=function(){try{
+var h=Math.ceil(bar.getBoundingClientRect().height||0);
+document.documentElement.style.setProperty('--tabsbar-h',(h>0?h:64)+'px');
+}catch(e){}};
+apply();
+if(window.ResizeObserver){new ResizeObserver(apply).observe(bar)}
+else{window.addEventListener('resize',apply)}
+}catch(e){}})();
 </script>
 </body></html>
