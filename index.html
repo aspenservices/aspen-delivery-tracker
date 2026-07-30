@@ -2176,8 +2176,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026072103;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.21 (build 74) — COMMAND CENTER METRICS: light individual status cards'; // human-readable label (shown in console)
+const APP_BUILD   = 2026072901;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.29 (build 75) — SMS: el separador correcto en Android (el texto llegaba vacio)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2972,7 +2972,7 @@ inner+='<div style="border:1px solid var(--border-soft);border-radius:10px;paddi
 inner+='<div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px">&#128222; '+label+'</div>';
 inner+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
 inner+='<a class="mbig green" href="tel:'+digits+'" style="text-decoration:none;flex:1;min-width:120px;padding:11px 14px;font-size:13px">&#128222; Call</a>';
-inner+='<a class="mbig" href="sms:'+digits+'?&body='+encodeURIComponent(msg)+'" style="text-decoration:none;flex:1;min-width:120px;padding:11px 14px;font-size:13px">&#128241; Send SMS</a>';
+inner+='<a class="mbig" href="'+smsHref(digits,msg)+'" style="text-decoration:none;flex:1;min-width:120px;padding:11px 14px;font-size:13px">&#128241; Send SMS</a>';
 inner+='</div></div>';
 });
 inner+='<button class="mbig gray" onclick="document.getElementById(\'tech-phone-modal\').classList.add(\'hidden\')">Cancel</button>';
@@ -2991,8 +2991,7 @@ var digits=String(num||'').replace(/[^\d+]/g,'');
 if(!digits){alert('No valid phone number on this ticket.');return}
 var who=(currentUser&&currentUser.name)||'Your Aspen Spas crew';
 var body='Hi! This is '+who+' from Aspen Spas \u2014 we are on our way with your spa delivery. See you soon!';
-var sep=/iPhone|iPad|Macintosh/i.test(navigator.userAgent)?'&':'?';
-try{location.href='sms:'+digits+sep+'body='+encodeURIComponent(body)}catch(e){}
+try{location.href=smsHref(digits,body)}catch(e){}
 saveTicketFields(id,{onway:Date.now()});
 pushActivity(id,'On-my-way SMS sent to customer');
 try{if(typeof syncPortalInfo==='function')setTimeout(function(){syncPortalInfo(id)},800)}catch(e){}
@@ -5516,12 +5515,24 @@ function deliveryAskReview(id){
   first=first?(first.charAt(0).toUpperCase()+first.slice(1).toLowerCase()):"";
   var msg=(first?("Hi "+first+", "):"Hi, ")+"thank you for choosing Aspen Spas! It was a pleasure delivering your spa. If you have a moment, please leave us a quick Google review \u2014 it means the world to our team: https://search.google.com/local/writereview?placeid=ChIJU9ADtwK12IcRNXtXcrRw3pQ";
   if(!ph){if(typeof showToast==="function")showToast("No phone on file \u2014 message copied");try{navigator.clipboard.writeText(msg);}catch(_e){}return;}
-  window.location.href="sms:"+ph+"?&body="+encodeURIComponent(msg);
+  window.location.href=smsHref(ph,msg);
 }
 function parsePhones(s){
 if(!s)return[];
 return String(s).split(/\n+/).map(p=>p.trim()).filter(Boolean);
 }
+// El separador de "sms:" NO es igual en los dos sistemas: iOS quiere
+// "sms:NUMERO&body=..." y Android quiere "sms:NUMERO?body=...". Con el formato
+// de iOS, en Android se abre Mensajes con el numero puesto y EL TEXTO VACIO, y
+// el tecnico ni se entera de que el cliente recibio un mensaje en blanco.
+// techOnMyWay ya lo hacia bien; las otras tres llamadas no. Ahora todas pasan
+// por aqui, para que no vuelva a divergir. (build 75)
+function smsHref(phone,body){
+  var digits=String(phone||'').replace(/[^\d+]/g,'');
+  var sep=/iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent||'')?'&':'?';
+  return 'sms:'+digits+sep+'body='+encodeURIComponent(body||'');
+}
+
 // Strip everything except digits/+ — used for tel: and sms: hrefs
 function phoneDigits(p){return String(p||'').replace(/[^0-9+]/g,'')}
 // Compact display label for a phone entry — "719-510-8200 Tom" → ["719-510-8200","Tom"]
@@ -5649,7 +5660,7 @@ else if(currentCount+1>=SMS_LIMIT_PER_CUSTOMER-1)btn.classList.add('limit-near')
 try{var _lb=document.querySelector('.smslog[data-rec-id="'+r.i+'"]');if(_lb&&typeof _smsLogHtml==='function'){var _lh=_smsLogHtml(curRec&&curRec.i===r.i?curRec:r);_lb.innerHTML=_lh;_lb.style.display=_lh?'':'none';}}catch(e){console.warn('smslog refresh',e);}
 
 // Use the same sms: URL format already used elsewhere in the app
-let href='sms:'+digits+'?&body='+encodeURIComponent(msg);
+let href=smsHref(digits,msg);
 // Open in the same window — iOS Safari + Android handle this natively
 window.location.href=href;
 // Toast feedback

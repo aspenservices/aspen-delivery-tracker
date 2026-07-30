@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v9'; // 2026-07-22 — Tech Notes también en el dock móvil (5 botones + badge)
+const CACHE_VERSION = 'aspen-delivery-v10'; // 2026-07-29 — build 75: SMS con el separador correcto en Android. iOS quiere "sms:NUM&body=" y Android quiere "sms:NUM?body="; con el formato de iOS el mensaje llegaba VACIO en Android y el tecnico no se enteraba. techOnMyWay ya lo hacia bien, las otras tres no: sendPreDeliverySMS (el mensaje pre-entrega), deliveryAskReview y techPhoneOptions. Ahora las cuatro pasan por un solo ayudante smsHref() para que no vuelva a divergir.
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 

@@ -1,6 +1,19 @@
 {
+  "_comment_1": "Aspen Delivery Tracker - reglas de la Realtime Database.",
+  "_comment_2": "29 jul 2026: este archivo NO coincidia con lo publicado. Decia '.read': true y",
+  "_comment_3": "'.write': true en la RAIZ, o sea la base abierta a cualquiera sin ninguna sesion.",
+  "_comment_4": "Lo publicado siempre fue auth != null. Se corrige el archivo para que coincida:",
+  "_comment_5": "si algun dia se corre 'firebase deploy' desde este repo, la version vieja habria",
+  "_comment_6": "pisado las reglas buenas y abierto la base sin que nadie se entere.",
+  "_comment_7": "",
+  "_comment_8": "PENDIENTE (no se arregla solo con reglas): tecnicos y clientes usan la MISMA",
+  "_comment_9": "sesion anonima, asi que auth != null no los distingue. Quien tenga prep.html",
+  "_comment_10": "tiene la clave para autenticarse. El cierre de verdad es el mismo movimiento",
+  "_comment_11": "que se hizo en TECH-TICKETS: login por Cloud Function que emite un token con",
+  "_comment_12": "claim de personal, y los hashes de PIN en un nodo que nadie pueda leer.",
+
   "rules": {
-    ".read": true,
-    ".write": true
+    ".read": "auth != null",
+    ".write": "auth != null"
   }
 }
