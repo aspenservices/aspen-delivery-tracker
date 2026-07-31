@@ -65,17 +65,37 @@ input,textarea{font-size:16px}   /* 16px = iOS no hace zoom al enfocar */
 <body>
 <div id="bootMsg"><div class="sp"></div><div>Loading your delivery details&hellip;</div></div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<!-- Sin SDK de Firebase, a proposito. Ver la nota de la cabecera. -->
 <script>
-var PORTAL_BUILD='75-portal';
+var PORTAL_BUILD='77-portalC';
 console.log('%c[PORTAL] Aspen Delivery Prep build '+PORTAL_BUILD,'color:#fff;background:#0f766e;padding:2px 6px;border-radius:3px');
 
-firebase.initializeApp({apiKey:"AIzaSyDo97EFo1B61WBlCE_DV73GOlvQfPSMuZg",authDomain:"aspen-delivery-tracker.firebaseapp.com",databaseURL:"https://aspen-delivery-tracker-default-rtdb.firebaseio.com",projectId:"aspen-delivery-tracker",storageBucket:"aspen-delivery-tracker.firebasestorage.app",messagingSenderId:"80987548985",appId:"1:80987548985:web:36dcdb7b3c05a093318ce8"});
-var db=firebase.database();
-var fbStorage=(function(){try{return firebase.storage()}catch(e){console.warn('Storage no disponible',e);return null}})();
+var PORTAL_GET_FN  ="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/portalGet";
+var PORTAL_POST_FN ="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/portalSubmit";
+var _PID="", _PTOK="";
+
+/* POST con reintentos y espera creciente. Un bache de cobertura en el patio de
+   un cliente no puede perder una foto sin avisar. */
+function pPost(body,tries){
+  tries=tries||3;
+  return new Promise(function(resolve,reject){
+    var k=0;
+    (function go(){
+      k++;
+      var ctl=(typeof AbortController!=="undefined")?new AbortController():null;
+      var timer=setTimeout(function(){try{ctl&&ctl.abort()}catch(_e){}},45000);
+      fetch(PORTAL_POST_FN,{method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify(Object.assign({id:_PID,t:_PTOK},body)),
+            signal:ctl?ctl.signal:undefined})
+      .then(function(r){clearTimeout(timer);return r.json().then(function(j){
+        if(!r.ok||!j||j.ok!==true)throw new Error((j&&j.error)||("HTTP "+r.status));return j})})
+      .then(resolve)
+      .catch(function(e){clearTimeout(timer);
+        if(k<tries)setTimeout(go,250*Math.pow(2,k-1)); else reject(e)});
+    })();
+  });
+}
+
 var _PORTAL=null;
 
 /* ---------- codigo del portal, identico al del index build 75 ---------- */
@@ -144,21 +164,14 @@ return blob||file;
 }catch(e){console.warn('[HEIC] convert failed — passing original through:',e);return file}
 }
 
+/* Las fotos ya no van a Storage desde aqui: se mandan a la Cloud Function,
+   que las sube con Admin SDK. Asi el navegador del cliente no necesita ninguna
+   sesion, y en la Fase D se podran cerrar tambien las reglas de Storage.
+   Si falla, la foto se conserva en base64 como antes: nunca se pierde. */
 async function uploadPhotoToStorage(ticketId,b64){
-if(!fbStorage||typeof b64!=='string'||b64.indexOf('data:')!==0)return b64;
-try{
-let path='delivery_photos/'+String(ticketId)+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.jpg';
-let ref=fbStorage.ref(path);
-await ref.putString(b64,'data_url');
-let url=await ref.getDownloadURL();
-if(!url)return b64;
-// READBACK PROBE: uploading can succeed while DOWNLOADS are blocked (Storage billing/rules
-// outage). Verify the URL is actually readable before trusting it; if not, keep the photo
-// inline (base64) so it can never appear broken, and drop the unreadable orphan file.
-let _vis=await _probeImg(url);
-if(_vis==='dead'){console.warn('[STORAGE] uploaded but unreadable \u2014 keeping photo inline');try{ref.delete().catch(function(){})}catch(_e){}return b64}
-return url;
-}catch(e){console.warn('[STORAGE] upload failed — keeping inline base64:',e&&e.code,e&&e.message);return b64}
+  if(typeof b64!=='string'||b64.indexOf('data:')!==0)return b64;
+  try{ var res=await pPost({kind:"photo",dataUrl:b64}); return (res&&res.url)?res.url:b64; }
+  catch(e){ console.warn('[PORTAL] la foto no subio, se queda en base64:',e&&e.message); return b64; }
 }
 
 function showToast(msg,type){
@@ -206,7 +219,7 @@ card.innerHTML=h}
 function _pSendReview(txt){
 if(!_PORTAL||!_PORTAL._stars)return;
 var payload={stars:_PORTAL._stars,feedback:(txt&&String(txt).trim())||null,ts:Date.now()};
-try{db.ref('intake/'+_PORTAL.id+'/review').set(payload)}catch(e){}
+try{pPost({kind:"review",stars:payload.stars,feedback:payload.feedback}).catch(function(e){console.warn("[PORTAL] review",e)})}catch(e){}
 _PORTAL.it.review=payload;
 var card=document.getElementById('pRevCard');
 if(card)card.innerHTML='<div style="font-size:20px">'+'\u2B50'.repeat(_PORTAL._stars)+'</div><div style="font-weight:700;margin-top:4px">Thank you for your feedback! \u{1F49A}</div>'}
@@ -303,18 +316,32 @@ h+='<button type="button" onclick="submitIntake()" style="background:#15803d;col
 return h}
 
 function renderIntakePortal(id,token){
+/* El id y el token se fijan AQUI, desde los argumentos de esta misma funcion.
+   Antes solo los ponia el arranque, asi que cualquier otra ruta de entrada
+   habria mandado cada POST con id y token vacios — un fallo silencioso. */
+_PID=String(id||""); _PTOK=String(token||"");
 document.title='Aspen Spas \u2014 Delivery Prep';
 let lo=document.getElementById('loading-ov');if(lo)lo.remove();
 let host=document.getElementById('intakePortalRoot');
 if(!host){host=document.createElement('div');host.id='intakePortalRoot';host.style.cssText='position:fixed;inset:0;z-index:100000;overflow:auto;-webkit-overflow-scrolling:touch;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif';document.body.appendChild(host)}
 host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);padding:40px">Loading\u2026</div>');
-db.ref('intake/'+id).once('value').then(snap=>{
-let it=snap.val();
-if(!it||!it.token||String(it.token)!==String(token)||(it.expires&&Date.now()>it.expires&&!it.submitted)){host.innerHTML=_portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas for a new one.');return} /* BUGFIX 2026-07-21: the 21-day expires stamp was never enforced */
+/* El token ya NO se comprueba aqui: lo valida el SERVIDOR antes de mandar
+   nada. Antes se descargaba el nodo entero y se comparaba despues, en JS —
+   y como los ids de ticket son Date.now(), eso permitia leer nombre, spa,
+   fecha de entrega y SALDO a quien acertara el id sin saber el token. */
+fetch(PORTAL_GET_FN+"?id="+encodeURIComponent(id)+"&t="+encodeURIComponent(token))
+.then(function(r){return r.json()})
+.then(function(j){
+if(!j||j.ok!==true){
+  host.innerHTML=(j&&j.error==="expired")
+    ? _portalMsg('This link has expired','Give Aspen Spas a call and we will send you a fresh one.')
+    : _portalMsg('Link not valid','This link is invalid or has expired. Please contact Aspen Spas.');
+  return}
+var it=j.intake;
 if(it.submitted){document.title='Aspen Spas \u2014 Your Delivery';_PORTAL={id:id,it:it};host.innerHTML=_portalShell(_portalSubmittedHtml(it));return}
 _PORTAL={id:id,it:it,access:[],levelPhotos:[],electricity:[],wipPhotos:[],levelOk:false,wipOk:false,payment:'',notes:''};
 host.innerHTML=_portalShell(_portalFormHtml(it));
-}).catch(e=>{console.error('[INTAKE] load',e);host.innerHTML=_portalMsg('Something went wrong','Please reload the page or contact Aspen Spas.')})}
+}).catch(function(e){console.error('[PORTAL] load',e);host.innerHTML=_portalMsg('We could not open your form','Check your signal and reload the page. If it keeps happening, call Aspen Spas.')})}
 
 async function intakeFiles(input,group){
 let files=Array.from(input.files||[]);if(!files.length)return;
@@ -349,7 +376,7 @@ if(_PORTAL.notes)resp.notes=_PORTAL.notes;
 let host=document.getElementById('intakePortalRoot');
 if(host)host.innerHTML=_portalShell('<div style="text-align:center;color:var(--ink-mid);padding:40px">Sending\u2026</div>');
 let id=_PORTAL.id;
-db.ref('intake/'+id).update({resp:resp,submitted:true,submittedAt:Date.now()}).then(()=>{
+pPost({kind:"final",resp:resp}).then(function(){
 _PORTAL.it.resp=resp;_PORTAL.it.submitted=true;_PORTAL.it.submittedAt=Date.now();if(host)host.innerHTML=_portalShell(_portalSubmittedHtml(_PORTAL.it));
 }).catch(e=>{console.error('[INTAKE] submit',e);if(host)host.innerHTML=_portalMsg('Could not send','Please check your connection and try again, or contact Aspen Spas.')})}
 /* ---------------------------- fin del portal --------------------------- */
@@ -370,13 +397,10 @@ _PORTAL.it.resp=resp;_PORTAL.it.submitted=true;_PORTAL.it.submittedAt=Date.now()
     return fail('Link not valid',
       'Please open the exact link we sent you, or call Aspen Spas and we will send a new one.');
   }
-  firebase.auth().signInAnonymously()
-    .then(function(){ if(boot)boot.remove(); renderIntakePortal(p.id,p.token); })
-    .catch(function(e){
-      console.error('[PORTAL] auth',e);
-      fail('We could not open your form',
-           'Check your signal and reload the page. If it keeps happening, call Aspen Spas.');
-    });
+  /* Nada de signInAnonymously: aqui ya no hay Firebase que iniciar. */
+  _PID=p.id; _PTOK=p.token;
+  if(boot)boot.remove();
+  renderIntakePortal(p.id,p.token);
 })();
 </script>
 </body>
