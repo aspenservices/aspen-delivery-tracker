@@ -2176,10 +2176,67 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026073102;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.31 (build 78) — SESION: el arranque ya no pisa la sesion de personal (prepara el cierre de reglas)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026073103;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.31 (build 79) — ACTUALIZACION FORZADA que no depende de las reglas de Firebase'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DISPARADOR DE ACTUALIZACION QUE NO DEPENDE DE LAS REGLAS (build 79)
+   El listener de app_meta de mas abajo sigue siendo la via rapida: en
+   cuanto alguien publica un build nuevo, los que estan conectados se
+   recargan al instante. Pero desde la Fase D ese nodo exige staff===true,
+   asi que un equipo con build VIEJO y sesion anonima no puede leerlo: se
+   queda con la app abierta, sin datos y sin enterarse de que hay version
+   nueva. El propio mecanismo que lo sacaria de ahi es el que le bloquean.
+   Esto pregunta el build a una Cloud Function, que responde sin sesion.
+   Se comprueba al arrancar, al volver a primer plano, y cada 10 minutos.
+   ═══════════════════════════════════════════════════════════════════════ */
+var DELIVERY_VERSION_FN="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/deliveryVersion";
+
+function _forceUpdateTo(serverBuild){
+  /* Guard contra bucle: si ya intentamos ir a este build y seguimos aqui, el
+     archivo nuevo aun no esta en el CDN. Avisar y NO recargar otra vez. */
+  var tried=0; try{tried=Number(sessionStorage.getItem('aspen_tried_build')||0)}catch(e){}
+  if(tried>=serverBuild){
+    console.warn('[AUTO-UPDATE] build '+serverBuild+' publicado pero este archivo sigue siendo '+APP_BUILD+' — el deploy aun no esta vivo');
+    return false;
+  }
+  try{sessionStorage.setItem('aspen_tried_build',String(serverBuild))}catch(e){}
+  console.warn('[AUTO-UPDATE] build '+serverBuild+' detectado (corriendo '+APP_BUILD+'). Recargando…');
+  try{showToast('&#128260; Nueva versi&oacute;n disponible &mdash; actualizando&hellip;')}catch(e){}
+  /* Nunca perder lo que se este escribiendo. */
+  try{if(typeof autosaveModal==='function')autosaveModal()}catch(e){}
+  try{if(typeof flushPendingSaves==='function')flushPendingSaves('auto-update reload')}catch(e){}
+  setTimeout(function(){location.replace(location.pathname+'?v='+serverBuild)},1200);
+  return true;
+}
+
+var _verGateBusy=false;
+function _versionGate(why){
+  if(_verGateBusy)return; _verGateBusy=true;
+  var ctl=(typeof AbortController!=="undefined")?new AbortController():null;
+  var timer=setTimeout(function(){try{ctl&&ctl.abort()}catch(_e){}},10000);
+  fetch(DELIVERY_VERSION_FN,{signal:ctl?ctl.signal:undefined})
+    .then(function(r){return r.json()})
+    .then(function(j){
+      clearTimeout(timer); _verGateBusy=false;
+      var b=Number((j&&j.build)||0);
+      if(b>APP_BUILD)_forceUpdateTo(b);
+      else console.log('[AUTO-UPDATE] al dia (servidor '+b+', local '+APP_BUILD+', via '+why+')');
+    })
+    .catch(function(e){
+      clearTimeout(timer); _verGateBusy=false;
+      /* Sin red o funcion caida: no se hace nada. Quedarse en la version vieja
+         es mejor que un bucle de recargas. */
+      console.warn('[AUTO-UPDATE] no se pudo consultar la version ('+why+')',e&&e.message);
+    });
+}
+setTimeout(function(){_versionGate('arranque')},3000);
+setInterval(function(){_versionGate('periodico')},10*60*1000);
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible')_versionGate('vuelve a primer plano');
+});
 // === ANONYMOUS AUTH GATE ===
 // Sign the dashboard in anonymously so Firebase rules can require auth!=null (closes the
 // "public database" hole + warning). This is transparent — it does NOT change the PIN login.
@@ -5460,6 +5517,10 @@ console.log('[CACHE] open ticket photo arrays synced (edit mode, no re-render)')
 _rtOn(dbAppMeta,'meta',s=>{
 let serverBuild=Number(s.val()||0);
 if(serverBuild>APP_BUILD){
+/* build 79: la logica de forzar la recarga vive ahora en _forceUpdateTo, para
+   que la via rapida (este listener) y la via que no depende de reglas (la
+   Cloud Function) no puedan divergir. */
+if(typeof _forceUpdateTo==='function'){_forceUpdateTo(serverBuild);return}
 let tried=Number(sessionStorage.getItem('aspen_tried_build')||0);
 if(tried>=serverBuild){console.warn('[AUTO-UPDATE] Build '+serverBuild+' published but this file is still '+APP_BUILD+' — the deploy may not be live yet. Not reloading again (loop guard).');return}
 try{sessionStorage.setItem('aspen_tried_build',String(serverBuild))}catch(e){}
