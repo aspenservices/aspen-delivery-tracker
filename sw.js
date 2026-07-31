@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v10'; // 2026-07-29 — build 75: SMS con el separador correcto en Android. iOS quiere "sms:NUM&body=" y Android quiere "sms:NUM?body="; con el formato de iOS el mensaje llegaba VACIO en Android y el tecnico no se enteraba. techOnMyWay ya lo hacia bien, las otras tres no: sendPreDeliverySMS (el mensaje pre-entrega), deliveryAskReview y techPhoneOptions. Ahora las cuatro pasan por un solo ayudante smsHref() para que no vuelva a divergir.
+const CACHE_VERSION = 'aspen-delivery-v11'; // 2026-07-30 - build 76: LOGIN EN SERVIDOR (Fase B). El PIN ya no se compara en el navegador contra el pinHash que viene dentro de users: va a la Cloud Function deliveryLogin, que compara con scrypt y sal por persona contra staff_auth y devuelve un custom token con claim staff:true. Ese claim es lo que en la Fase D permitira que las reglas distingan al equipo de un cliente (hoy los dos son sesiones anonimas identicas). RESPALDO: si el servidor no responde, o responde error, se usa el metodo anterior -- un fallo de red no puede dejar a nadie fuera. El respaldo se quita en la Fase E. Verificado con 20 pruebas: servidor caido, error 500, credenciales rechazadas, bloqueo, token que no se canjea y respuesta basura; en todos los casos quien sabe su PIN entra.
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 

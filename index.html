@@ -2176,8 +2176,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026072901;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.29 (build 75) — SMS: el separador correcto en Android (el texto llegaba vacio)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026073001;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.30 (build 76) — LOGIN EN SERVIDOR: el PIN se verifica en Cloud Function, con respaldo al metodo anterior'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2326,12 +2326,74 @@ let hash=await crypto.subtle.digest('SHA-256',buf);
 return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('')}
 
 // Returns user matching name + pin, or null. Name match is case-insensitive.
-async function authenticate(name,pin){
+/* ═══════════════════════════════════════════════════════════════════════
+   LOGIN EN SERVIDOR (Fase B, build 76)
+   ═══════════════════════════════════════════════════════════════════════
+   Antes el PIN se comparaba AQUI, en el navegador, contra el `pinHash` que
+   venia dentro de `users` — y `users` se lee antes del login. O sea que los
+   hashes estaban al alcance de cualquiera con una sesion anonima, el hash era
+   SHA-256 con una sal fija escrita en este mismo archivo, y el PIN son 4
+   digitos: 10.000 combinaciones que se prueban en milisegundos.
+
+   Ahora el PIN va a la Cloud Function deliveryLogin, que compara con scrypt y
+   sal POR PERSONA contra `staff_auth` (un nodo que el navegador no necesita
+   leer) y devuelve un custom token con el claim `staff:true`. Ese claim es lo
+   que en la Fase D permitira que las reglas distingan al equipo de un cliente:
+   hoy los dos son sesiones anonimas identicas.
+
+   RESPALDO: si el servidor no responde se usa el metodo anterior, para que un
+   fallo de red no deje a nadie fuera. Se quita en la Fase E, cuando lleve
+   tiempo funcionando.
+   ═══════════════════════════════════════════════════════════════════════ */
+var DELIVERY_LOGIN_FN="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/deliveryLogin";
+var _authVia="";   /* diagnostico: "server" | "local" | "locked" */
+
+/* El metodo de siempre. Queda como red de seguridad durante la transicion. */
+async function _authenticateLocal(name,pin){
 let h=await hashPin(pin);
 let target=String(name||'').trim().toLowerCase();
 for(let id in USERS){let u=USERS[id];
 if(u.name&&u.name.trim().toLowerCase()===target&&u.pinHash===h)return Object.assign({id:id},u)}
 return null}
+
+async function authenticate(name,pin){
+_authVia="";
+try{
+  var ctl=(typeof AbortController!=="undefined")?new AbortController():null;
+  var timer=setTimeout(function(){try{ctl&&ctl.abort()}catch(_e){}},12000);
+  var r=await fetch(DELIVERY_LOGIN_FN,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({name:name,pin:pin}),signal:ctl?ctl.signal:undefined});
+  clearTimeout(timer);
+  var j=await r.json().catch(function(){return null});
+
+  if(j&&j.ok===true){
+    /* El token cambia la sesion anonima por una de personal. Si el canje
+       falla no se bloquea la entrada: hoy las reglas solo piden auth!=null,
+       asi que la app funciona igual y se avisa por consola. */
+    try{await firebase.auth().signInWithCustomToken(j.token)}
+    catch(e){console.warn("[AUTH] el token de personal no se pudo canjear",e)}
+    var local=(USERS||{})[j.id]||{};
+    _authVia="server";
+    console.log("%c[AUTH] verificado en el servidor","color:#fff;background:#0f766e;padding:2px 6px;border-radius:3px");
+    return Object.assign({id:j.id},local,{
+      name:j.displayName||local.name||name,
+      role:j.role||local.role||"tech"});
+  }
+
+  if(j&&j.error==="locked"){
+    _authVia="locked";
+    setAuthMsg("&#128274; Too many wrong PINs. Try again in "+(j.minutes||15)+" min.","err");
+    return null;
+  }
+  /* bad_credentials: NO se corta aqui. Durante la transicion puede faltar el
+     registro de alguien en staff_auth, y prefiero que entre por el camino
+     viejo a dejar a una persona fuera un lunes por la manana. */
+}catch(e){
+  console.warn("[AUTH] el servidor no respondio, se usa el metodo anterior",e);
+}
+_authVia="local";
+console.log("[AUTH] login local (respaldo)");
+return await _authenticateLocal(name,pin)}
 
 function saveSession(user){localStorage.setItem('aspen_session',JSON.stringify({id:user.id,name:user.name,ts:Date.now()}))}
 function loadSession(){try{let s=JSON.parse(localStorage.getItem('aspen_session'));if(!s)return null;
@@ -2434,6 +2496,9 @@ let _lk={};try{_lk=JSON.parse(localStorage.getItem('aspen_pin_lock')||'{}')}catc
 let _lkN=_lk[name]||{fails:0,until:0};
 if(_lkN.until>Date.now()){let secs=Math.ceil((_lkN.until-Date.now())/1000);setAuthMsg('&#128274; Too many wrong PINs. Try again in '+(secs>60?Math.ceil(secs/60)+' min':secs+'s'),'err');return}
 let user=await authenticate(name,pin);
+/* Si el bloqueo lo puso el SERVIDOR, el mensaje ya esta escrito: no lo pises
+   con el del contador local. */
+if(!user&&_authVia==="locked")return;
 if(!user){
 _lkN.fails=(_lkN.fails||0)+1;
 if(_lkN.fails>=5){let lockMs=2*60*1000*Math.pow(2,Math.max(0,_lkN.fails-5));_lkN.until=Date.now()+Math.min(lockMs,60*60*1000);
