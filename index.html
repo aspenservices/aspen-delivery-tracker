@@ -2176,8 +2176,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026073101;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.31 (build 77) — CACHE: la firma del cliente (176 KB en PNG) ya no se guarda en localStorage'; // human-readable label (shown in console)
+const APP_BUILD   = 2026073102;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.31 (build 78) — SESION: el arranque ya no pisa la sesion de personal (prepara el cierre de reglas)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -2186,9 +2186,52 @@ const dbAppMeta=db.ref('app_meta/build');
 // AUTH_READY resolves once the sign-in attempt finishes (success or fail) so data listeners
 // attach with a token. If Anonymous sign-in is disabled in the Firebase console it logs an
 // error and the app still falls back to cached data via the 8s safety timeout.
-const AUTH_READY=firebase.auth().signInAnonymously()
-.then(()=>{console.log('[AUTH] anonymous session ready')})
-.catch(e=>{console.error('[AUTH] anonymous sign-in failed — enable Authentication \u2192 Sign-in method \u2192 Anonymous in the Firebase console',e)});
+/* ═══════════════════════════════════════════════════════════════════════
+   Fase D (build 78) — EL ARRANQUE YA NO PISA LA SESION DE PERSONAL.
+   Antes esto era `firebase.auth().signInAnonymously()` a secas, en cada
+   arranque y sin condicion. Firebase restaura la sesion guardada de forma
+   ASINCRONA, asi que esa llamada se adelantaba y REEMPLAZABA la sesion de
+   personal (la del custom token con claim staff:true) por una anonima nueva.
+   Efecto: entrabas con tu PIN, el claim funcionaba... y a la siguiente
+   recarga volvias a ser anonimo. Y como bootAuth() reutiliza la sesion de
+   localStorage sin volver a autenticar, ya no se recuperaba nunca.
+   Con las reglas en `auth != null` eso no se notaba. Al cerrarlas a
+   `staff===true` habria dejado a TODO EL EQUIPO sin datos en su siguiente
+   recarga: la app abre, y no carga nada.
+   Ahora se espera al primer onAuthStateChanged y solo se entra en anonimo si
+   NO hay usuario. La red de 8 s cubre que ese evento no llegue nunca.
+   ═══════════════════════════════════════════════════════════════════════ */
+const AUTH_READY=new Promise(function(resolve){
+  var settled=false;
+  function done(msg){ if(settled)return; settled=true; if(msg)console.log(msg); resolve(); }
+  function goAnon(){
+    try{
+      firebase.auth().signInAnonymously()
+        .then(function(){done('[AUTH] anonymous session ready')})
+        .catch(function(e){console.error('[AUTH] anonymous sign-in failed',e);done()});
+    }catch(e){console.error('[AUTH] sign-in threw',e);done()}
+  }
+  try{
+    var _unsub=firebase.auth().onAuthStateChanged(function(u){
+      if(settled)return;
+      try{_unsub&&_unsub()}catch(_e){}
+      if(u){done('[AUTH] sesion restaurada: '+(u.isAnonymous?'anonima':'PERSONAL'));return}
+      goAnon();
+    });
+  }catch(e){goAnon()}
+  setTimeout(function(){ if(!settled)goAnon() },8000);
+});
+
+/* Lo que las reglas van a mirar. La app tiene que poder preguntarselo antes de
+   dar por buena una sesion guardada. */
+async function _hasStaffClaim(){
+  try{
+    var u=firebase.auth().currentUser;
+    if(!u||u.isAnonymous)return false;
+    var t=await u.getIdTokenResult();
+    return !!(t&&t.claims&&t.claims.staff===true);
+  }catch(e){return false}
+}
 const dbEdits=db.ref('edits');
 const dbAdded=db.ref('added');
 // Resilient realtime listener: attaches only after the anonymous-auth attempt settles, and
@@ -5224,6 +5267,26 @@ if(area)area.innerHTML='<div class="auth-form" style="text-align:center"><div st
 return}
 let u=USERS[session.id];
 if(u&&u.name&&u.name.trim().toLowerCase()===String(session.name||'').trim().toLowerCase()){
+/* Fase D: la sesion de la APP (localStorage, 14 dias) no es la sesion de
+   FIREBASE. Si la de Firebase se perdio o quedo anonima, con las reglas
+   cerradas la app abriria SIN DATOS — la peor forma de fallar, porque parece
+   que funciona. Mejor pedir el PIN una vez y recuperar el claim.
+   Se espera a AUTH_READY para no preguntar antes de que Firebase termine de
+   restaurar la sesion guardada. */
+try{
+  await AUTH_READY;
+  if(!(await _hasStaffClaim())){
+    console.warn('[AUTH] hay sesion de app pero la de Firebase no es de personal - se pide el PIN de nuevo');
+    showAuthScreen();
+    try{
+      var _m=document.getElementById('auth-msg');
+      if(_m){_m.className='auth-msg info';_m.innerHTML='&#128274; Please enter your PIN once to reconnect.';}
+      var _sel=document.getElementById('lo_name');
+      if(_sel&&session.name)_sel.value=session.name;
+    }catch(_e){}
+    return;
+  }
+}catch(_e){}
 currentUser=Object.assign({id:session.id},u);
 document.getElementById('auth-screen').classList.add('hidden'); // may be visible if we showed the waiting screen
 applyRoleUI();return}

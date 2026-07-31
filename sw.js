@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v12'; // 2026-07-31 - build 77: la FIRMA del cliente sale del cache de localStorage. Se captura con canvas.toDataURL('image/png') = un PNG del canvas entero, y medido en produccion pesaba 176 KB UNA sola; cinco de ellas eran ~900 KB de los 1295 KB que ocupaba `added`. _stripB64PhotosRec solo filtraba photos/tech_photos/info_photos, nunca signature. Ahora se quita el dibujo y se conserva el rastro (quien firmo, cuando, nombre del cliente); la firma completa sigue en Firebase. Contexto: localStorage es un almacen de ~5MB COMPARTIDO por todas las apps de Aspen (mismo origen), y esto ahogaba al propio app y a las demas.
+const CACHE_VERSION = 'aspen-delivery-v13'; // 2026-07-31 - build 78 (Fase D): el arranque ya NO pisa la sesion de personal. La linea 2189 hacia signInAnonymously() sin condicion en cada arranque, y como Firebase restaura la sesion guardada de forma ASINCRONA, esa llamada se adelantaba y reemplazaba la sesion con claim staff:true por una anonima nueva; el claim solo duraba hasta la siguiente recarga. Con las reglas en auth!=null no se notaba, pero al cerrarlas a staff===true habria dejado a TODO EL EQUIPO sin datos. Ahora se espera al primer onAuthStateChanged y solo se entra en anonimo si NO hay usuario (red de 8s por si ese evento no llega). Ademas bootAuth comprueba el claim antes de dar por buena una sesion guardada: si falta, pide el PIN una vez en vez de abrir la app sin datos. Verificado con 13 escenarios.
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 
