@@ -2176,8 +2176,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026073001;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.30 (build 76) — LOGIN EN SERVIDOR: el PIN se verifica en Cloud Function, con respaldo al metodo anterior'; // human-readable label (shown in console)
+const APP_BUILD   = 2026073101;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.07.31 (build 77) — CACHE: la firma del cliente (176 KB en PNG) ya no se guarda en localStorage'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 // === ANONYMOUS AUTH GATE ===
@@ -4244,6 +4244,22 @@ if(Array.isArray(o[f])){o[f]=o[f].filter(function(p){
 if(typeof p==='string')return p.indexOf('data:')!==0;
 if(p&&typeof p==='object')return !(typeof p.url==='string'&&p.url.indexOf('data:')===0)&&!(typeof p.b64==='string');
 return true});if(!o[f].length)delete o[f]}});
+/* 31 jul 2026 — LA FIRMA TAMBIEN ES BASE64, y pesa mas que todas las fotos juntas.
+   Se captura con _sigPad.canvas.toDataURL('image/png') (linea ~3453): un PNG del
+   canvas ENTERO, no del garabato. Medido en produccion: 176 KB una sola firma, y
+   cinco de ellas eran ~900 KB de los 1295 KB que ocupaba `added` en el cache.
+   Como localStorage es un almacen de ~5 MB COMPARTIDO por todas las apps de
+   Aspen (mismo origen aspenservices.github.io), eso ahogaba al propio app y a
+   las demas.
+   La firma vive completa en Firebase, asi que el cache local no la necesita: se
+   deja el rastro (quien firmo, cuando, nombre del cliente) y se quita solo el
+   dibujo. Mismo criterio que ya se aplicaba a las fotos aqui arriba.
+   NOTA APARTE: 176 KB por una firma es absurdo en si mismo — deberian ser 5-15 KB.
+   Recortar el canvas a los limites del trazo y guardar en JPEG reduciria tambien
+   lo que viaja a Firebase y al PDF de la factura. Eso es otro cambio, no este. */
+if(o.signature&&typeof o.signature==='object'&&typeof o.signature.data==='string'&&o.signature.data.indexOf('data:')===0){
+  o.signature=Object.assign({},o.signature,{data:null,_sigStripped:true});
+}
 return o}
 function buildBackupSnapshot(light){
 var _ed=EDITS,_ad=Array.isArray(ADDED)?ADDED:[];

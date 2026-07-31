@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v11'; // 2026-07-30 - build 76: LOGIN EN SERVIDOR (Fase B). El PIN ya no se compara en el navegador contra el pinHash que viene dentro de users: va a la Cloud Function deliveryLogin, que compara con scrypt y sal por persona contra staff_auth y devuelve un custom token con claim staff:true. Ese claim es lo que en la Fase D permitira que las reglas distingan al equipo de un cliente (hoy los dos son sesiones anonimas identicas). RESPALDO: si el servidor no responde, o responde error, se usa el metodo anterior -- un fallo de red no puede dejar a nadie fuera. El respaldo se quita en la Fase E. Verificado con 20 pruebas: servidor caido, error 500, credenciales rechazadas, bloqueo, token que no se canjea y respuesta basura; en todos los casos quien sabe su PIN entra.
+const CACHE_VERSION = 'aspen-delivery-v12'; // 2026-07-31 - build 77: la FIRMA del cliente sale del cache de localStorage. Se captura con canvas.toDataURL('image/png') = un PNG del canvas entero, y medido en produccion pesaba 176 KB UNA sola; cinco de ellas eran ~900 KB de los 1295 KB que ocupaba `added`. _stripB64PhotosRec solo filtraba photos/tech_photos/info_photos, nunca signature. Ahora se quita el dibujo y se conserva el rastro (quien firmo, cuando, nombre del cliente); la firma completa sigue en Firebase. Contexto: localStorage es un almacen de ~5MB COMPARTIDO por todas las apps de Aspen (mismo origen), y esto ahogaba al propio app y a las demas.
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 
