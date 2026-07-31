@@ -1,19 +1,47 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ASPEN DELIVERY TRACKER — REGLAS DE LA REALTIME DATABASE       Fase D · 31 jul 2026
+// ═══════════════════════════════════════════════════════════════════════════
+// ANTES: .read/.write = "auth != null" en la raiz.
+// Eso no distinguia al equipo de un cliente: los dos usaban la MISMA sesion
+// anonima, y la clave de Firebase iba dentro de prep.html — o sea, en el
+// navegador de cada cliente al que se le mando un link. Cualquiera que se
+// molestara en abrir una sesion anonima podia leer y escribir toda la base.
+//
+// AHORA: el login pasa por la Cloud Function deliveryLogin, que devuelve un
+// custom token con el claim staff:true. Eso es lo que se exige aqui.
+// El portal del cliente ya no toca la base: prep.html habla con portalGet y
+// portalSubmit, que escriben con Admin SDK y no pasan por estas reglas.
+//
+// POR QUE "users" SIGUE ABIERTO A SESION ANONIMA:
+// el desplegable de nombres de la pantalla de login se pinta ANTES de tener
+// token. Sin lectura ahi, no hay forma de iniciar sesion. Escribir sigue
+// siendo solo del personal.
+//
+// PENDIENTE (Fase E): vaciar "pinHash" de users. Hasta entonces esos hashes
+// siguen al alcance de una sesion anonima — son PIN de 4 digitos con sal fija.
+// El respaldo del login viejo los necesita, por eso no se pueden quitar aun.
+//
+// PARA REVERTIR: dejar solo .read/.write = "auth != null" en la raiz.
+// Un clic en la consola, efecto inmediato.
+// ═══════════════════════════════════════════════════════════════════════════
 {
-  "_comment_1": "Aspen Delivery Tracker - reglas de la Realtime Database.",
-  "_comment_2": "29 jul 2026: este archivo NO coincidia con lo publicado. Decia '.read': true y",
-  "_comment_3": "'.write': true en la RAIZ, o sea la base abierta a cualquiera sin ninguna sesion.",
-  "_comment_4": "Lo publicado siempre fue auth != null. Se corrige el archivo para que coincida:",
-  "_comment_5": "si algun dia se corre 'firebase deploy' desde este repo, la version vieja habria",
-  "_comment_6": "pisado las reglas buenas y abierto la base sin que nadie se entere.",
-  "_comment_7": "",
-  "_comment_8": "PENDIENTE (no se arregla solo con reglas): tecnicos y clientes usan la MISMA",
-  "_comment_9": "sesion anonima, asi que auth != null no los distingue. Quien tenga prep.html",
-  "_comment_10": "tiene la clave para autenticarse. El cierre de verdad es el mismo movimiento",
-  "_comment_11": "que se hizo en TECH-TICKETS: login por Cloud Function que emite un token con",
-  "_comment_12": "claim de personal, y los hashes de PIN en un nodo que nadie pueda leer.",
-
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null"
+    ".read": false,
+    ".write": false,
+
+    // La lista de nombres del login. Sin pinHash a partir de la Fase E.
+    "users": {
+      ".read": "auth != null",
+      ".write": "auth.token.staff === true"
+    },
+
+    // Todo lo demas: intake, base, edits, added, presence, gcal_map,
+    // invoice_pdfs, deleted_tickets, staff_auth, auth_attempts, etc.
+    // En RTDB el hijo con nombre manda sobre el comodin, asi que "users"
+    // conserva su regla propia y este $rest cubre el resto.
+    "$rest": {
+      ".read":  "auth.token.staff === true",
+      ".write": "auth.token.staff === true"
+    }
   }
 }
