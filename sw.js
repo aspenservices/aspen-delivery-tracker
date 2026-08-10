@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v14'; // 2026-07-31 - build 79: ACTUALIZACION FORZADA que no depende de las reglas. La app ya tenia auto-update via el nodo app_meta/build, pero la Fase D lo cerro a staff===true: un equipo con build viejo y sesion anonima no podia leerlo, asi que no se enteraba de que habia version nueva y se quedaba con la app abierta y sin datos, sin salida. Ahora el build tambien se pregunta a la Cloud Function deliveryVersion, que responde SIN sesion: al arrancar, al volver a primer plano y cada 10 min. El listener de RTDB sigue como via rapida para los conectados, y ambos usan el mismo _forceUpdateTo (guarda borradores, avisa, y recarga con ?v= anti-cache; guard de sessionStorage contra bucles). Verificado con 13 escenarios: sin red, respuesta vacia, build no numerico y consulta duplicada NO recargan.
+const CACHE_VERSION = 'aspen-delivery-v15'; // 2026-08-07 - build 80: prep.html YA NO se guarda como si fuera el app (ver el comentario del manejador fetch). // Historico de v14, 2026-07-31 - build 79: ACTUALIZACION FORZADA que no depende de las reglas. La app ya tenia auto-update via el nodo app_meta/build, pero la Fase D lo cerro a staff===true: un equipo con build viejo y sesion anonima no podia leerlo, asi que no se enteraba de que habia version nueva y se quedaba con la app abierta y sin datos, sin salida. Ahora el build tambien se pregunta a la Cloud Function deliveryVersion, que responde SIN sesion: al arrancar, al volver a primer plano y cada 10 min. El listener de RTDB sigue como via rapida para los conectados, y ambos usan el mismo _forceUpdateTo (guarda borradores, avisa, y recarga con ?v= anti-cache; guard de sessionStorage contra bucles). Verificado con 13 escenarios: sin red, respuesta vacia, build no numerico y consulta duplicada NO recargan.
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 
@@ -47,18 +47,38 @@ self.addEventListener('fetch', (e) => {
                 url.pathname.endsWith('/') ||
                 url.pathname.endsWith('index.html');
 
+  /* BUILD 80 - BUG ARREGLADO: antes CUALQUIER navegacion que saliera bien se
+     guardaba bajo la clave APP_SHELL ('./index.html'). Como register('sw.js') da
+     alcance a toda la carpeta, prep.html cae dentro: bastaba con que un empleado
+     abriera UNA vez el link del cliente para que la copia offline del app pasara
+     a ser el formulario del cliente, y a la siguiente apertura sin senal el
+     service worker le servia ese formulario en lugar del app.
+     Ahora solo se guarda como shell lo que ES el shell, y el respaldo offline
+     solo se sirve a quien pidio el shell. */
+  const esShell = url.origin === self.location.origin &&
+                  (url.pathname === new URL(APP_SHELL, self.location.href).pathname ||
+                   url.pathname.endsWith('/'));
+
   if (isDoc) {
     // NETWORK-FIRST: try the network, fall back to the cached shell when offline.
     e.respondWith(
       fetch(req)
         .then((res) => {
-          if (res && res.ok) {
+          if (res && res.ok && esShell) {
             const copy = res.clone();
             caches.open(CACHE_VERSION).then((c) => c.put(APP_SHELL, copy)).catch(() => {});
           }
           return res;
         })
-        .catch(() => caches.match(APP_SHELL).then((r) => r || caches.match(req)))
+        .catch(() =>
+          caches.match(req).then((r) => r || (esShell ? caches.match(APP_SHELL) : undefined))
+             .then((r) => r || new Response(
+               '<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">' +
+               '<div style="font:16px/1.5 system-ui;padding:40px;text-align:center;color:#334155">' +
+               '<div style="font-size:38px">&#128246;</div><h2 style="margin:10px 0 6px">No connection</h2>' +
+               '<p>This page needs internet. Check your signal and reload.</p></div>',
+               { headers: { 'Content-Type': 'text/html; charset=utf-8' }, status: 503 }))
+        )
     );
     return;
   }

@@ -2177,7 +2177,7 @@ const db=firebase.database();
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
 const APP_BUILD   = 2026073103;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.07.31 (build 79) — ACTUALIZACION FORZADA que no depende de las reglas de Firebase'; // human-readable label (shown in console)
+const APP_VERSION = 'v2026.08.07 (build 80) — el link del cliente no se entrega hasta que Firebase lo confirma, y viaja entero en el SMS'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -5775,15 +5775,45 @@ if(/^(Mr\.?|Mrs\.?|Ms\.?|Miss|Dr\.?|Sir|Madam)$/i.test(first)){
 let parts=raw.split(/[\s&\/]+/);first=parts[1]||''}
 return first}
 
-function buildPreDeliverySMS(r){
+/* =====================================================================================
+   BUILD 80 — EL LINK VA SIEMPRE ENTERO Y AL FINAL DEL MENSAJE
+   -------------------------------------------------------------------------------------
+   Un SMS largo no viaja de una pieza: se parte en trozos de 153 caracteres que el
+   telefono del cliente vuelve a juntar. El mensaje anterior media 531 caracteres
+   (4 trozos) y, por llevar la URL en MEDIO seguida de un parrafo, el link quedaba
+   partido entre el trozo 2 y el 3. Si un trozo se pierde o llega tarde — y ahi es
+   donde Android y iOS no se portan igual — al cliente le llega un link roto.
+   Ahora: la URL es lo ULTIMO del mensaje y se comprueba que quepa ENTERA dentro de
+   un solo trozo; si no cabe, se recorta el texto hasta que quepa.
+   ===================================================================================== */
+const SMS_SEG=153; // caracteres utiles por trozo en un SMS concatenado GSM-7
+
+function _smsUrlEntera(texto,url){
+var a=texto.length,b=a+url.length-1;
+if(b<SMS_SEG)return true;                                  // el mensaje entero cabe en un SMS suelto
+return Math.floor(a/SMS_SEG)===Math.floor(b/SMS_SEG)}      // la URL vive dentro de un solo trozo
+
+function buildPreDeliverySMS(r,url){
 let first=getCustomerFirstName(r.n);
-let spaName=r.sp||'spa';
-let dateStr=r.dd?' on '+fmtDate(r.dd):'';
-let lines=[];
-lines.push(first?'Hi '+first+',':'Hi,');
-lines.push('');
-lines.push('This is Aspen Spas Service. To prepare for your '+spaName+' delivery'+dateStr+', please complete our secure form below. It has everything we need (a few photos + quick confirmations) and takes about 2 minutes:');
-return lines.join('\n')}
+/* Fecha amable para el cliente: "Thu Aug 20" en vez de "2026-08-20".
+   Mismo largo, y solo caracteres GSM-7 para no doblar el coste del SMS. */
+let dateStr=(function(){try{var d=parseDate(r.dd);if(!d||isNaN(d.getTime()))return r.dd?(' on '+fmtDate(r.dd)):'';
+var D=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+return ' on '+D[d.getDay()]+' '+M[d.getMonth()]+' '+d.getDate()}catch(e){return ''}})();
+let saludo=(first?('Hi '+first+', '):'Hi, ')+'this is Aspen Spas Service.';
+let pide='Before your delivery'+dateStr+' we need a few photos and 3 quick answers - about 2 minutes.';
+let tel='Questions? Call 314-776-5050 ext 2.';
+let cierre='Your private form (it closes once you send it):';
+if(!url)return saludo+' '+pide+' '+tel;
+/* De mas completo a mas corto. Se toma la PRIMERA version en la que la URL
+   viaja entera. La ultima siempre cabe en un solo SMS, asi que nunca falla. */
+let opciones=[
+saludo+' '+pide+' '+tel+' '+cierre+'\n',
+saludo+' '+pide+' '+cierre+'\n',
+saludo+' '+cierre+'\n',
+'Aspen Spas — your delivery form:\n'];
+for(let i=0;i<opciones.length;i++){if(_smsUrlEntera(opciones[i],url))return opciones[i]+url}
+return opciones[opciones.length-1]+url}
 
 // Soft cap on outgoing SMS per customer. After 5 we still ALLOW sending (with a
 // confirmation prompt) so the rep isn't blocked in genuine emergencies — but the
@@ -5824,10 +5854,18 @@ phone=phones[idx]}
 let label=phoneLabel(phone);
 let digits=phoneDigits(label.num||phone);
 if(!digits||digits.length<7){alert('That phone number does not look valid: '+phone);return}
-let msg=buildPreDeliverySMS(r);
-// Attach the customer's private upload link (create one if needed), then a short secure-note + who to call.
-try{let _it=INTAKE[r.i];let _ok=_it&&_it.token&&!_it.submitted&&!(_it.expires&&Date.now()>_it.expires);let _url=_ok?intakeUrl(r.i,_it.token):createIntakeLink(r.i);
-if(_url)msg+='\n\n'+_url+'\n\nThis link is private and secure, and it closes once you submit. To reconfirm anything, call Aspen Spas at 314-776-5050 and ask for Celia at extension 2.\n\nThank you,\nAspen Spas Service'}catch(e){console.warn('intake link attach',e)}
+/* BUILD 80: el link se consigue ANTES de tocar el contador y ANTES de abrir
+   Mensajes, y solo si el servidor confirma que el token quedo guardado. Mandar
+   un link muerto es peor que no mandar nada: el cliente lo intenta, no funciona,
+   y en la oficina nadie se entera. _intakeLinkFor reutiliza el link vivo si lo
+   hay (nunca mata uno ya enviado) y renueva su caducidad. */
+let _url;
+try{ _url=(await _intakeLinkFor(r.i)).url }
+catch(e){
+console.error('[INTAKE] no se pudo confirmar el link, no se manda nada',e);
+alert('The private link could NOT be saved on the server, so the customer would get a dead link.\n\nNOTHING was sent and the message count was not touched. Check your signal and try again.');
+return}
+let msg=buildPreDeliverySMS(r,_url);
 
 // Increment counter and append to history BEFORE opening Messages — once the
 // browser navigates to the sms: URL, focus leaves the page and any code after
@@ -8275,7 +8313,7 @@ let max=n>=SMS_LIMIT_PER_CUSTOMER;
 let cls='presms-btn'+(max?' limit-reached':(near?' limit-near':''));
 let lastTxt='';
 if(r.sms_last){let d=new Date(r.sms_last);lastTxt=' &middot; Last: '+d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
-return '<button type="button" class="'+cls+'" data-rec-id="'+r.i+'" onclick="sendPreDeliverySMS('+r.i+')" title="Send a text message to the customer requesting the missing pre-delivery items'+(n>0?' — '+n+' already sent'+lastTxt.replace(/&middot;/g,'·').replace(/&[^;]+;/g,'')+'.':'')+'">&#128241; Send Pre-Delivery SMS<span class="sms-count-badge">'+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span></button>';
+return '<button type="button" class="'+cls+'" data-rec-id="'+r.i+'" onclick="sendPreDeliverySMS('+_ijsv(r.i)+')" title="Send a text message to the customer requesting the missing pre-delivery items'+(n>0?' — '+n+' already sent'+lastTxt.replace(/&middot;/g,'·').replace(/&[^;]+;/g,'')+'.':'')+'">&#128241; Send Pre-Delivery SMS<span class="sms-count-badge">'+n+'/'+SMS_LIMIT_PER_CUSTOMER+'</span></button>';
 })()
 +'</div><div class="cg">';
 PRE.forEach(c=>{let on=r[c.k];h+='<div class="ci '+(on?"on":"off")+'" onclick="toggleCk('+r.i+',\''+c.k+'\',this)"><div class="cd '+(on?"on":"off")+'"></div>'+c.l+'</div>'});
@@ -12656,7 +12694,7 @@ let INTAKE={};let _intakeLoaded=false;let _intakeOne={};
 // (a few KB) so the customer box renders in milliseconds; the global listener keeps the
 // automatic reflection working in the background exactly as before.
 function _intakeFetchOne(id){var k=String(id);
-if(_intakeOne[k]==='pending'||_intakeOne[k]===true)return;
+if(_intakeOne[k]==='pending'||_intakeOne[k]===true||_intakeOne[k]==='error')return; /* BUILD 80: 'error' se limpia solo a los 4 s, ver el catch */
 _intakeOne[k]='pending';
 AUTH_READY.then(function(){return db.ref('intake/'+k).once('value')}).then(function(snap){
 var v=snap&&snap.val?snap.val():null;
@@ -12664,17 +12702,34 @@ if(v)INTAKE[k]=v;
 _intakeOne[k]=true;
 try{if(v)reflectIntakeSubmissions()}catch(e){}
 try{refreshIntakeBox(k)}catch(e){}
-}).catch(function(e){console.warn('[INTAKE] one-shot fetch failed',e);_intakeOne[k]=true;try{refreshIntakeBox(k)}catch(_e){}})}
+}).catch(function(e){console.warn('[INTAKE] one-shot fetch failed',e);
+/* BUILD 80: antes se marcaba TRUE y no se reintentaba nunca. Con eso la caja
+   decia "no hay link" aunque si lo hubiera, y el siguiente envio acunaba un
+   token nuevo que mataba el que ya tenia el cliente. Ahora se reintenta. */
+_intakeOne[k]='error';setTimeout(function(){if(_intakeOne[k]==='error')delete _intakeOne[k]},4000);
+try{refreshIntakeBox(k)}catch(_e){}})}
 let _intakeListenerOn=false;
 let _PORTAL=null;
 
 function getIntakeParams(){
 function parse(str){let o={};(str||'').replace(/^[#?]/,'').split('&').forEach(p=>{let i=p.indexOf('=');if(i>0)o[decodeURIComponent(p.slice(0,i))]=decodeURIComponent(p.slice(i+1))});return o}
 let h=parse(location.hash),q=parse(location.search);
-let id=h.intake||q.intake,t=h.t||q.t;
+let id=h.intake||q.intake||h.i||q.i,t=h.t||q.t; /* BUILD 80: 'i' es el formato nuevo, 'intake' el de los links ya enviados */
 return id?{id:String(id),token:t||''}:null}
 
-function intakeUrl(id,token){return location.origin+location.pathname.replace(/[^/]*$/,'prep.html')+'#intake='+encodeURIComponent(id)+'&t='+encodeURIComponent(token)}
+/* BUILD 80 \u2014 URL mas corta y base robusta.
+   1) '#intake=' paso a '#i=': cada caracter de menos es un caracter que no
+      empuja la URL al borde de un trozo de SMS. prep.html acepta LOS DOS, asi
+      que los links ya enviados siguen funcionando.
+   2) Antes la base salia de location.pathname a secas: si el app quedaba abierta
+      SIN barra final ('/aspen-delivery-tracker'), la URL nacia apuntando a la
+      raiz del dominio ('/prep.html') y el link estaba muerto desde el origen. */
+function _intakeBase(){
+var p=String(location.pathname||'/');
+if(p.charAt(0)!=='/')p='/'+p;
+if(/\.[a-z0-9]+$/i.test(p))return p.replace(/[^/]*$/,'');
+return /\/$/.test(p)?p:(p+'/')}
+function intakeUrl(id,token){return location.origin+_intakeBase()+'prep.html#i='+encodeURIComponent(id)+'&t='+encodeURIComponent(token)}
 
 function intakeDefaultRequested(r){return{access:!r.pt,level:!r.lv,wip:!r.wp,electricity:!r.el,payment:!r.pf}}
 
@@ -12704,28 +12759,93 @@ if(!currentUser||currentUser.role==='tech')return;
 Object.keys(INTAKE||{}).forEach(function(k){syncPortalInfo(k)});
 if(!window._aspenPinfoTimer){window._aspenPinfoTimer=true;setInterval(function(){try{Object.keys(INTAKE||{}).forEach(function(k){syncPortalInfo(k)})}catch(e){}},30*60*1000)}
 }catch(e){}}
-function createIntakeLink(id,opts){
-let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showToast('Ticket not found','err');return null}
-let token=(function(){try{let a=new Uint8Array(16);crypto.getRandomValues(a);return Array.from(a,b=>b.toString(16).padStart(2,'0')).join('')}catch(e){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}})(); // CRIT FIX (build 62): crypto-strength token (was Math.random — guessable)
-let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
-let node={token:token,created:Date.now(),expires:Date.now()+21*24*60*60*1000,submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested,pinfo:_buildPinfo(r)};
-db.ref('intake/'+id).update(node).catch(e=>console.warn('[FB] intake link write failed',e));INTAKE[id]=node;
-return intakeUrl(id,token)}
+/* =====================================================================================
+   BUILD 80 — EL LINK NO SE ENTREGA HASTA QUE FIREBASE LO CONFIRMA
+   -------------------------------------------------------------------------------------
+   Antes createIntakeLink devolvia la URL de forma SINCRONA mientras la escritura
+   iba con .catch(console.warn). Si la escritura fallaba (sin senal, regla, permiso),
+   el empleado copiaba y mandaba un link cuyo token NUNCA llego al servidor — y como
+   ademas se hacia INTAKE[id]=node, la app se seguia viendo sana. El cliente recibia
+   'This link is invalid or has expired' y nadie en la oficina se enteraba.
+   Ahora devuelve una PROMESA que solo resuelve cuando el token esta guardado.
+   ===================================================================================== */
 
-function _icopy(t){try{navigator.clipboard.writeText(t)}catch(e){let ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(_){}ta.remove()}}
+/* Token de 16 caracteres (96 bits) en vez de 32 hex. Mismo nivel de seguridad
+   sobrado para un link de 21 dias, y 16 caracteres menos que empujan la URL. */
+function _intakeToken(){
+try{let a=new Uint8Array(12);crypto.getRandomValues(a);
+return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+catch(e){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}}
+
+/* Caduca a los 21 dias, pero NUNCA antes de una semana despues de la entrega:
+   una entrega agendada a 30 dias dejaba el link muerto antes de que hiciera falta. */
+function _intakeExpiry(r){
+var base=Date.now()+21*24*60*60*1000;
+try{var d=(typeof parseDate==='function')?parseDate(r&&r.dd):null;
+if(d&&!isNaN(d.getTime())){var post=d.getTime()+7*24*60*60*1000;if(post>base)base=post}}catch(e){}
+return base}
+
+function _intakeAlive(it){return !!(it&&it.token&&!it.submitted&&!(it.expires&&Date.now()>it.expires))}
+
+/* Lee el nodo del SERVIDOR. La decision de acunar o no un token nuevo no puede
+   depender de si INTAKE ya cargo en memoria: ese era el camino por el que se
+   mataba un link que ya se le habia mandado al cliente. */
+function _intakeFromServer(id){
+return AUTH_READY.then(function(){return db.ref('intake/'+id).once('value')})
+.then(function(s){var v=(s&&s.val)?s.val():null;if(v){INTAKE[id]=v;_intakeOne[String(id)]=true}return v})}
+
+/* UNICA puerta para obtener un link bueno. Acuna uno nuevo solo si de verdad no
+   hay ninguno vivo, y de paso renueva la caducidad: los 21 dias cuentan desde el
+   ULTIMO envio, no desde que se creo. */
+function _intakeLinkFor(id){
+return _intakeFromServer(id).then(function(it){
+if(_intakeAlive(it)){
+var r=AD().find(function(x){return sameId(x.i,id)});
+var exp=_intakeExpiry(r);
+if(exp>(+it.expires||0)){it.expires=exp;db.ref('intake/'+id+'/expires').set(exp).catch(function(e){console.warn('[INTAKE] no se pudo renovar la caducidad',e)})}
+return {url:intakeUrl(id,it.token),nuevo:false}}
+return createIntakeLink(id).then(function(u){return {url:u,nuevo:true}})})}
+
+function createIntakeLink(id,opts){
+let r=AD().find(x=>sameId(x.i,id));if(!r){if(typeof showToast==='function')showToast('Ticket not found','err');return Promise.reject(new Error('ticket-not-found'))}
+let token=_intakeToken();
+let requested=(opts&&opts.requested)||intakeDefaultRequested(r);
+let node={token:token,created:Date.now(),expires:_intakeExpiry(r),submitted:false,reflected:false,cust:r.n||'',spa:r.sp||'',date:r.dd||'',sn:r.sn||'',addr:r.st||'',requested:requested,pinfo:_buildPinfo(r)};
+return db.ref('intake/'+id).update(node).then(function(){
+INTAKE[id]=node;_intakeOne[String(id)]=true;
+console.log('[INTAKE] link confirmado en el servidor para #'+id);
+return intakeUrl(id,token)})}
+
+/* BUILD 80: devuelve una promesa que dice si el copiado funciono de verdad.
+   Tras un await, Safari puede negar el portapapeles; si pasa, se ensena el link
+   en un cuadro para que se pueda copiar a mano en vez de creer que se copio. */
+function _icopyNow(t){
+try{let ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}catch(e){return false}}
+function _icopy(t){
+try{if(navigator.clipboard&&navigator.clipboard.writeText)
+return navigator.clipboard.writeText(t).then(function(){return true}).catch(function(){return _icopyNow(t)})}catch(e){}
+return Promise.resolve(_icopyNow(t))}
 
 function intakeCreateAndCopy(id){
-let it=INTAKE[id];
-let url=(it&&it.token&&!it.submitted&&!(it.expires&&Date.now()>it.expires))?intakeUrl(id,it.token):createIntakeLink(id); /* BUGFIX 2026-07-21: don't re-copy an expired link */
-if(!url)return;
-_icopy(url);
-showToast('&#128279; Customer upload link copied — paste into a text/email, or it is added automatically when you Send Pre-Delivery SMS');
-if(curRec&&sameId(curRec.i,id))setTimeout(()=>refreshIntakeBox(id),60)}
+if(typeof showToast==='function')showToast('&#8987; Checking the link with the server\u2026');
+return _intakeLinkFor(id).then(function(res){
+return _icopy(res.url).then(function(ok){
+if(ok)showToast('&#128279; Link copied and CONFIRMED saved — paste it into a text or email');
+else{try{window.prompt('Copy this link (already saved and confirmed):',res.url)}catch(e){}}
+if(curRec&&sameId(curRec.i,id))setTimeout(function(){refreshIntakeBox(id)},60)})})
+.catch(function(e){console.error('[INTAKE] el link no se pudo guardar',e);
+alert('The link could NOT be saved, so it would not work for the customer.\n\nNOTHING was copied — do not send anything yet. Check your signal and press Copy link again.\n\n('+((e&&e.message)||'unknown')+')')})}
 
 function intakeRegenerate(id){
 if(!confirm('Create a NEW upload link?\n\nThe old link will stop working (use this to re-request info after the customer already submitted).'))return;
-let url=createIntakeLink(id);
-if(url){_icopy(url);showToast('&#128279; New link created and copied');if(curRec&&sameId(curRec.i,id))setTimeout(()=>refreshIntakeBox(id),60)}}
+if(typeof showToast==='function')showToast('&#8987; Creating a new link\u2026');
+return createIntakeLink(id).then(function(url){
+return _icopy(url).then(function(ok){
+if(ok)showToast('&#128279; New link created, saved and copied');
+else{try{window.prompt('Copy the new link:',url)}catch(e){}}
+if(curRec&&sameId(curRec.i,id))setTimeout(function(){refreshIntakeBox(id)},60)})})
+.catch(function(e){console.error('[INTAKE] no se pudo crear el link nuevo',e);
+alert('The new link could NOT be saved, so nothing changed: the previous link is still the valid one.\n\nCheck your signal and try again.')})}
 
 // Re-apply a customer's existing submission to the ticket. Used to recover when the original
 // reflection ran with old logic (e.g. before the photo-merge or payment-status-mapping fixes
@@ -12754,7 +12874,10 @@ return h+'</div>'}
 
 function intakeBoxHtml(r){
 let it=INTAKE[r.i],inner;
-if(!_intakeLoaded&&_intakeOne[String(r.i)]!==true){
+if(_intakeOne[String(r.i)]==='error'&&!_intakeLoaded){
+/* BUILD 80: no decir "no hay link" cuando lo que pasa es que no se pudo comprobar. */
+inner='<div style="font-size:13px;color:var(--st-danger);padding:6px 0">&#9888; Could not check this link with the server. Do not send anything yet \u2014 reopen this ticket in a moment.</div>';
+}else if(!_intakeLoaded&&_intakeOne[String(r.i)]!==true){
 inner='<div style="font-size:13px;color:var(--ink-mid);padding:6px 0">&#8987; '+_L('Cargando datos del cliente\u2026','Loading customer data\u2026')+'</div>';
 _intakeFetchOne(r.i);
 }else if(!it||!it.token){

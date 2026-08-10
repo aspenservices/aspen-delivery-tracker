@@ -67,7 +67,7 @@ input,textarea{font-size:16px}   /* 16px = iOS no hace zoom al enfocar */
 
 <!-- Sin SDK de Firebase, a proposito. Ver la nota de la cabecera. -->
 <script>
-var PORTAL_BUILD='77-portalC';
+var PORTAL_BUILD='80-linkfix';
 console.log('%c[PORTAL] Aspen Delivery Prep build '+PORTAL_BUILD,'color:#fff;background:#0f766e;padding:2px 6px;border-radius:3px');
 
 var PORTAL_GET_FN  ="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/portalGet";
@@ -102,7 +102,7 @@ var _PORTAL=null;
 function getIntakeParams(){
 function parse(str){let o={};(str||'').replace(/^[#?]/,'').split('&').forEach(p=>{let i=p.indexOf('=');if(i>0)o[decodeURIComponent(p.slice(0,i))]=decodeURIComponent(p.slice(i+1))});return o}
 let h=parse(location.hash),q=parse(location.search);
-let id=h.intake||q.intake,t=h.t||q.t;
+let id=h.intake||q.intake||h.i||q.i,t=h.t||q.t; /* BUILD 80: 'i' es el formato corto nuevo; 'intake' se mantiene para los links ya enviados */
 return id?{id:String(id),token:t||''}:null}
 
 function parseDate(dd){if(!dd)return null;let s=String(dd).trim();
