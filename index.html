@@ -2176,8 +2176,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026081001;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.08.10 (build 80) — el link del cliente no se entrega hasta que Firebase lo confirma, y viaja entero en el SMS'; // human-readable label (shown in console)
+const APP_BUILD   = 2026081301;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.08.13 (build 81) — el cache de arranque solo lleva el trabajo vivo: 977 KB a ~490 KB'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -4793,16 +4793,47 @@ function _cacheSave(){
 if(_cacheT)return; // a write is already scheduled — coalesce
 let wait=Math.max(300,10000-(Date.now()-_cacheLastW));
 _cacheT=setTimeout(function(){_cacheT=null;_cacheLastW=Date.now();_cacheSaveNow()},wait)}
+/* BUILD 81 (13 ago 2026) — EL CACHE DE ARRANQUE SOLO LLEVA EL TRABAJO VIVO.
+   Medido en el equipo de Alberto: aspen_dt_cache_v1 pesaba 977 KB y `added`
+   eran 769 de esos, repartidos asi -> delivered 54 reg/542 KB · upcoming 53/129
+   · complete 6/66 · hold 5/30 · action 1/2. O sea el 70% de `added` eran
+   entregas YA CERRADAS. Una entrega cerrada pesa ~10 KB y una viva ~2,4 KB:
+   al cerrarse acumula notas del tecnico, marcas de email, rastro de firma e
+   historial. Nada de eso hace falta para que la app pinte rapido y arranque sin
+   senal, que es el unico trabajo de este cache.
+   Ahora se guardan todas las vivas + las CACHE_KEEP_FINISHED cerradas mas
+   recientes (por id, que es un Date.now()), asi que "Delivered" y "Follow-Up"
+   siguen teniendo algo que mostrar sin conexion en vez de salir vacias.
+   ES SEGURO PARA EL SERVIDOR, verificado en el propio codigo: saveA() no
+   escribe nada mientras no haya llegado el primer snapshot (`if(!_syncA)return`),
+   y _wholeNodeWriteSafe bloquea cualquier escritura del nodo entero que
+   encogiera el servidor mas de un 50%. Un cache parcial no puede borrar nada.
+   Y el listener de `added` reemplaza ADDED con lo del servidor en cuanto llega,
+   asi que lo podado vuelve solo. */
+const CACHE_KEEP_FINISHED=12;
+function _cacheAddedSlice(){
+try{
+let arr=Array.isArray(ADDED)?ADDED:[],vivas=[],cerradas=[];
+arr.forEach(function(r){ if(r&&(r.dl||r.co))cerradas.push(r); else vivas.push(r) });
+cerradas.sort(function(a,b){ return (Number(b&&b.i)||0)-(Number(a&&a.i)||0) });
+return vivas.concat(cerradas.slice(0,CACHE_KEEP_FINISHED)).map(_stripB64PhotosRec);
+}catch(e){ console.warn('[CACHE] slice failed:',e&&e.message); return (Array.isArray(ADDED)?ADDED:[]).map(_stripB64PhotosRec) }}
 function _cacheSaveNow(){
 try{
 if(!currentUser)return; // never cache the login screen state
 let payload={ts:Date.now(),by:currentUser.id||'',role:currentUser.role||'',
 base:(Array.isArray(BASE_LIVE)&&BASE_LIVE.length)?BASE_LIVE:null,
 edits:(function(){let o={};Object.keys(EDITS).forEach(function(k){o[k]=_stripB64PhotosRec(EDITS[k])});return o})(),
-added:(Array.isArray(ADDED)?ADDED:[]).map(_stripB64PhotosRec),
+added:_cacheAddedSlice(),
 users:USERS||{}};
 let json=JSON.stringify(payload);
-if(json.length>4.2*1024*1024){ // localStorage safety margin: drop edits first, keep base+users
+/* BUILD 81 — el margen era 4,2 MB de CARACTERES = 8,4 MB en bytes UTF-16, un
+   tope pensado para una app duena de toda la cuota. Pero localStorage es POR
+   ORIGEN (~10 MB) y en aspenservices.github.io viven cinco apps: TECH-TICKETS,
+   Chemical, Warehouse, el Invoice Tracker y esta. Con la poda de arriba el
+   payload ronda los 250.000 caracteres, asi que 1,2 M deja muchisimo aire y
+   por fin es un guardarrail de verdad y no un adorno. */
+if(json.length>1.2*1024*1024){ // localStorage safety margin: drop edits first, keep base+users
 payload.edits={};payload.added=[];json=JSON.stringify(payload);
 console.warn('[CACHE] payload too big — cached base+users only')}
 localStorage.setItem(_CACHE_KEY,json);
