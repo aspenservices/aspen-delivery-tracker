@@ -2101,8 +2101,13 @@ navigator.serviceWorker.register('sw.js').then(reg=>{console.log('[PWA] SW regis
 
 <script>
 const BASE=[]; // build 67+: customer data lives in Firebase node `base` (auth-protected).
-const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"];
-const SPA_SERIES=["ES","GS","GS +","VS","Holiday","COLD PLUNGE"];
+const SPA_BASES=["13 PARTY","16 SWIM","Alpine","Arcadia","Avalanche","Cassian","COLD PLUNGE","Colorado","Eldorado","Monarch","Pinnacle","Pioneer","Quattro","SAUNA"]; // BUILD 82: + Avalanche, Cassian (Luxe line)
+const SPA_SERIES=["ES","GS","GS +","VS","Holiday","Luxe","COLD PLUNGE"]; // BUILD 82: + Luxe
+// BUILD 82: ONE list of the model names the invoice reader looks for. It used to live in two
+// separate regexes inside parseInvoiceText (plus SPA_BASES), and new models had to be added in
+// three places — Cassian/Avalanche invoices fell back to "SERIAL #" and lost the spa line.
+const INVOICE_MODEL_RX='Quattro|Eldorado|Pinnacle|Arcadia|Alpine|Monarch|Pioneer|Colorado|Cassian|Avalanche|13\\s*PARTY|16\\s*SWIM';
+const INVOICE_SERIES_RX='VS|GS|ES|VR|XL|Holiday|Luxe';
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
 let OPT_SS=["NONE","Basic","A&B [SPECIAL]","A&B [STOCK 36]","A&B [STOCK 48]","A&B [STOCK 60-69]","ModStep 2XL with Safe-T-Rail","Other"];
 let OPT_LF=["NONE","TS - 07","TS - 11","Vanish XL","Boomerang","13' Roll","16' Roll"];
@@ -2176,8 +2181,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026081301;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.08.13 (build 81) — el cache de arranque solo lleva el trabajo vivo: 977 KB a ~490 KB'; // human-readable label (shown in console)
+const APP_BUILD   = 2026102601;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.10.26 (build 82) — tech ve los tickets del calendario sin nombre, Google sin ventanas repetidas, el PDF de la invoice se guarda de verdad, Cassian/Avalanche Luxe'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -2768,7 +2773,11 @@ let dateKey=techDate.getFullYear()+'-'+String(techDate.getMonth()+1).padStart(2,
 // Deliveries on this date. Now INCLUDES delivered tickets (so the segmented control can show
 // the day's progress); only fully 'complete' tickets are hidden.
 let dayItems=AD().filter(r=>{
-if(!r.n||!r.dd)return false;
+/* BUILD 82 — BUG FIX: "the tech doesn't see the tickets I see". Calendar imports are created
+   with n:'' and cal:<event title> until someone types the customer name. The admin calendar
+   (calEvents) already accepts n||cal; this filter only accepted n, so every not-yet-named
+   delivery vanished from the tech's day (Oct 27 McAllister: admin 1, tech 0). Same rule now. */
+if(!(r.n||r.cal)||!r.dd)return false;
 if(st(r)==='complete')return false;
 let d=parseDate(r.dd);if(!d||isNaN(d))return false;
 let k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -2949,7 +2958,7 @@ let _slotTxt=_slot?' &middot; '+_slot[0].toUpperCase().replace(/\s+/,' '):'';
 let h='<div class="td2-imm">';
 h+='<button class="td2-back" onclick="techCloseDetail()" aria-label="Back">&#9664;</button>';
 h+='<div class="td2-ib">&#128197; '+escHtml(fmtDate(r.dd))+escHtml(dateNote(r.dd))+_slotTxt+'</div>';
-h+='<h2>'+escHtml(r.n)+'</h2>';
+h+='<h2>'+escHtml(dispName(r))+'</h2>'; /* BUILD 82: calendar title when the name isn't typed yet (was blank) */
 if(r.sp||r.sn)h+='<div class="td2-sp">&#129716; '+escHtml(r.sp||'\u2014')+(r.sn?' &middot; SN '+escHtml(r.sn):'')+'</div>';
 // chips: payment status + balance + special requirements
 let _chips='';
@@ -6065,7 +6074,11 @@ return sortDir==="desc"?-v:v});
 return list}
 function pH(items,r){let d=items.filter(c=>r[c.k]).length,p=items.length?(d/items.length)*100:0,col=p===100?"var(--st-success)":p>50?"var(--st-info)":"var(--st-warning)";
 return'<div class="pbar"><div class="ptrk"><div class="pfil" style="width:'+p+'%;background:'+col+'"></div></div><span class="pcnt">'+d+'/'+items.length+'</span></div>'}
-function opt(arr,sel){return'<option value="">—</option>'+arr.map(v=>'<option'+(v===sel?' selected':'')+'>'+v+'</option>').join('')}
+/* BUILD 82 — DATA-LOSS FIX: if the ticket's current value isn't in the list (a model typed
+   elsewhere, "GS+" vs "GS +", a model added later), it used to render as "—" and the next
+   Save wrote sp:null / dropped the series without anyone touching the field. Now the current
+   value is kept as an extra selected option. */
+function opt(arr,sel){let extra=(sel&&arr.indexOf(sel)<0)?'<option selected>'+String(sel).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</option>':'';return'<option value="">—</option>'+arr.map(v=>'<option'+(v===sel?' selected':'')+'>'+v+'</option>').join('')+extra}
 
 // === KPI DRILLDOWN ===
 // Status meta: order, label, color, accent bg, accent border
@@ -7317,9 +7330,11 @@ if(document.visibilityState&&document.visibilityState!=='visible')return;
 if(Date.now()-_lastResumeSync<15000)return;
 _lastResumeSync=Date.now();
 if(typeof gcalToken==='undefined'||!gcalToken||typeof gcalCalendarId==='undefined'||!gcalCalendarId)return;
-console.log('[RESUME] Tab active again — refreshing token + catch-up sync');
+console.log('[RESUME] Tab active again — catch-up sync (token renewed only if it is about to expire)');
 try{
-let ok=(typeof gcalRefreshTokenNow==='function')?await gcalRefreshTokenNow():true;
+/* BUILD 82: was gcalRefreshTokenNow() on EVERY focus/tab switch = a Google window each time.
+   Now Google is only asked when the token has <5 min left (e.g. the laptop slept past the hour). */
+let ok=(typeof _gcalRenewIfNeeded==='function')?await _gcalRenewIfNeeded('resume'):true;
 if(ok&&typeof gcalSync==='function')gcalSync();
 }catch(e){console.warn('[RESUME] recovery failed',e)}
 }
@@ -7334,21 +7349,69 @@ function ensurePdfWorker(){
 if(typeof pdfjsLib!=='undefined'&&pdfjsLib.GlobalWorkerOptions&&!pdfjsLib.GlobalWorkerOptions.workerSrc){
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}}
 
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 82 — THE INVOICE PDF IS NOW REALLY SAVED
+   Symptom: "I always asked for the PDF to stay saved so the tech and we can
+   preview it" — the form auto-filled and the screen said "PDF saved", but
+   nothing was stored.
+   Root cause, measured in Chromium with pdf.js 3.11.174 (the version this
+   app loads): getDocument({data:buf}) TRANSFERS the bytes to pdf.js' worker
+   and leaves `buf` empty (2123 → 0 bytes). The save ran AFTER parsing, on
+   that same `buf`: `new Uint8Array(buf)` threw "Cannot perform Construct on
+   a detached ArrayBuffer", the catch only logged it, and the success
+   message was shown anyway.
+   Now: the bytes are turned into the saved copy BEFORE pdf.js sees them,
+   and pdf.js reads its own copy. The PDF is kept even when the reader finds
+   no spa data (fields are left alone), it is saved to the ticket that was
+   open when it was attached even if another one is opened mid-read, and the
+   message only says "saved" when it really was.
+   ═══════════════════════════════════════════════════════════════════════ */
+async function _saveInvoicePdfToTicket(id,buf,file){
+// Build the base64 copy synchronously, before any await (pdf.js may take `buf` later).
+let bytes=new Uint8Array(buf);
+let CHUNK=8192,binary='';
+for(let i=0;i<bytes.length;i+=CHUNK){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+CHUNK))}
+let b64='data:application/pdf;base64,'+btoa(binary);
+if(b64.length>15*1024*1024)throw new Error('PDF is too large ('+Math.round(b64.length/1048576)+' MB). Compress it and try again.');
+// ARCHITECTURE (2026-06-12): the payload lives in its own side node (invoice_pdfs/<id>); the
+// ticket keeps lightweight metadata only ({stored:1}) so PDFs don't ride every added/edits
+// snapshot to every device. Legacy inline pdf_invoice.data stays readable everywhere.
+let meta={name:file.name||'invoice.pdf',size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null,stored:1};
+let node={data:b64,name:meta.name,size:meta.size,uploaded_at:meta.uploaded_at,uploaded_by:meta.uploaded_by};
+try{
+await db.ref('invoice_pdfs/'+String(id)).set(node);
+_pdfNodeCache[String(id)]=node;
+}catch(nodeErr){
+console.error('[PDF] side-node write failed — falling back to inline storage:',nodeErr);
+meta={data:b64,name:meta.name,size:meta.size,uploaded_at:meta.uploaded_at,uploaded_by:meta.uploaded_by};
+}
+// A replaced invoice invalidates any previous signed copy (the signature was on the OLD file).
+let ai=ADDED.findIndex(x=>String(x.i)===String(id));
+if(ai>=0){ADDED[ai].pdf_invoice=meta;delete ADDED[ai].pdf_invoice_signed;rememberAddedEdit(ADDED[ai]);saveA()}
+else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=meta;EDITS[id].pdf_invoice_signed=null;rememberEditsEdit(id,EDITS[id]);saveE()}
+if(curRec&&String(curRec.i)===String(id)){curRec.pdf_invoice=meta;delete curRec.pdf_invoice_signed}
+return meta}
+
 async function handleInvoicePDF(file){
-let stat=document.getElementById('pdf_status');
 let setStat=function(cls,txt){let s=document.getElementById('pdf_status');if(s){s.className=cls;s.textContent=txt}};
 if(!file){return}
-if(typeof pdfjsLib==='undefined'){
-setStat('err','\u2715 PDF reader not loaded yet. Try again in a moment.');return}
-ensurePdfWorker();
-setStat('loading','\u23F3 Reading invoice...');
-/* BUGFIX 2026-07-21 (race): capture WHICH ticket was open when the upload started. Parsing
-   a big PDF takes seconds; if the user closes this ticket and opens another mid-parse, the
-   PDF + parsed fields used to land on the wrong ticket. */
+/* BUGFIX 2026-07-21 (race): capture WHICH ticket was open when the upload started. */
 let _pdfTicketId=curRec?curRec.i:null;
+if(_pdfTicketId==null){setStat('err','✕ Open the delivery first, then attach its invoice.');return}
+let buf;
+try{buf=await file.arrayBuffer()}catch(e){setStat('err','✕ Could not read that file: '+(e.message||e));return}
+// Only real PDFs ("%PDF" in the first KB) — a photo dropped by mistake must not replace the invoice.
+let _head=String.fromCharCode.apply(null,new Uint8Array(buf,0,Math.min(1024,buf.byteLength)));
+if(_head.indexOf('%PDF')<0){setStat('err','✕ That file is not a PDF.');return}
+setStat('loading','⏳ Saving and reading invoice...');
+// 1) Save — the copy is taken synchronously inside, before pdf.js can take the bytes.
+let savePromise=_saveInvoicePdfToTicket(_pdfTicketId,buf,file);
+// 2) Read the text (best effort) from pdf.js' OWN copy.
+let extracted=null,parseErr=null;
 try{
-let buf=await file.arrayBuffer();
-let pdf=await pdfjsLib.getDocument({data:buf}).promise;
+if(typeof pdfjsLib==='undefined')throw new Error('PDF reader not loaded yet');
+ensurePdfWorker();
+let pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
 let fullText='';
 for(let i=1;i<=pdf.numPages;i++){
 let page=await pdf.getPage(i);
@@ -7358,79 +7421,38 @@ let lines={};
 tc.items.forEach(it=>{let y=Math.round(it.transform[5]);if(!lines[y])lines[y]=[];lines[y].push(it.str)});
 let ys=Object.keys(lines).map(Number).sort((a,b)=>b-a);
 fullText+=ys.map(y=>lines[y].join(' ')).join('\n')+'\n'}
-let extracted=parseInvoiceText(fullText);
+extracted=parseInvoiceText(fullText);
 extracted._fullText=fullText; // 2026-06-12: description now carries EVERYTHING the PDF says
-// Detect whether the PDF had any usable spa data at all (independent of whether the form already had values).
-// This is the real "is this a valid Aspen Spas invoice?" check.
-let extractedAny=!!(extracted._customerName||extracted._serial||extracted._spaDescription||extracted._cover||extracted._lift||extracted._model||extracted._price);
-// BUGFIX 2026-07-21 (order): the "could not detect" bail-out now runs BEFORE
-// applyExtractedToForm. Previously a wrong/random PDF overwrote the Spa Description
-// (applyExtractedToForm always overwrites it with _fullText) and the 5s autosave
-// persisted the junk even though the user saw an error saying nothing happened.
-if(!extractedAny){
-setStat('err','\u2715 Could not detect any spa specs. Is this a QuickBooks invoice from Aspen Spas?');return}
-// BUGFIX 2026-07-21 (race): if the modal was closed or another ticket opened while the
-// PDF was parsing, do NOT apply the parsed fields to the currently-open form.
-if(_pdfTicketId==null||!curRec||String(curRec.i)!==String(_pdfTicketId)){
-setStat('err','\u2715 Ticket changed while the PDF was being read \u2014 please re-upload with the right ticket open.');return}
-let res=applyExtractedToForm(extracted);
-let filled=res.filled,upgraded=res.upgraded;
-// Save the PDF so admin AND tech can preview/download it later.
-// Convert ArrayBuffer to base64 (chunked to avoid call-stack overflow on large files).
-try{
-let bytes=new Uint8Array(buf);
-let CHUNK=8192,binary='';
-for(let i=0;i<bytes.length;i+=CHUNK){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+CHUNK))}
-let b64='data:application/pdf;base64,'+btoa(binary);
-let sizeKB=Math.round(b64.length/1024);
-if(sizeKB>4000){
-setStat('warn','&#9888; PDF is large ('+sizeKB+' KB) — saved, but consider compressing next time.');
-}
-// ARCHITECTURE (2026-06-12): the base64 payload now lives in its own side node
-// (invoice_pdfs/<id>) instead of inside the ticket record. Records travel inside the
-// `added`/`edits` listeners, so embedding multi-MB PDFs there shipped EVERY PDF to EVERY
-// device on EVERY snapshot. The record keeps lightweight metadata only ({stored:1}); the
-// payload is fetched on demand when someone previews it. Legacy tickets that still carry
-// pdf_invoice.data inline remain fully readable (viewers check both places). Re-uploading
-// a PDF on an old ticket migrates it to the slim format automatically.
-let pdfMeta={name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null,stored:1};
-if(curRec&&String(curRec.i)===String(_pdfTicketId)){
-let id=curRec.i;
-try{
-await db.ref('invoice_pdfs/'+String(id)).set({data:b64,name:pdfMeta.name,size:pdfMeta.size,uploaded_at:pdfMeta.uploaded_at,uploaded_by:pdfMeta.uploaded_by});
-_pdfNodeCache[String(id)]={data:b64,name:pdfMeta.name,size:pdfMeta.size,uploaded_at:pdfMeta.uploaded_at,uploaded_by:pdfMeta.uploaded_by};
-}catch(nodeErr){
-console.error('[PDF] side-node write failed — falling back to inline storage:',nodeErr);
-pdfMeta={data:b64,name:file.name,size:b64.length,uploaded_at:Date.now(),uploaded_by:currentUser?currentUser.id:null};
-}
-let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
-if(ai>=0){ADDED[ai].pdf_invoice=pdfMeta;delete ADDED[ai].pdf_invoice_signed;rememberAddedEdit(ADDED[ai]);saveA()}
-else{if(!EDITS[id])EDITS[id]={};EDITS[id].pdf_invoice=pdfMeta;EDITS[id].pdf_invoice_signed=null;rememberEditsEdit(id,EDITS[id]);saveE()}
-// Update curRec so the modal re-renders with the View button. A replaced invoice
-// invalidates any previous signed copy (the signature was on the OLD file).
-curRec.pdf_invoice=pdfMeta;delete curRec.pdf_invoice_signed;
-}
-}catch(saveErr){console.error('PDF save err:',saveErr)}
-// Build a contextual success message:
-// - If filled fields: "Auto-filled N fields"
-// - If only upgrades: "Upgraded N existing values"
-// - If filled=0 and upgraded=0 but extractedAny=true: "PDF saved (form already had values)"
-let msg;
-if(filled>0||upgraded>0){
-let parts=[];
-if(filled>0)parts.push(filled+' field'+(filled===1?'':'s')+' filled');
-if(upgraded>0)parts.push(upgraded+' replaced with longer values');
-msg='\u2713 '+parts.join(', ')+' from invoice. PDF saved.';
+}catch(e){parseErr=e;console.error('PDF parse error:',e)}
+// "Is this an Aspen invoice with spa data?" (independent of what the form already has)
+let extractedAny=!!(extracted&&(extracted._customerName||extracted._serial||extracted._spaDescription||extracted._cover||extracted._lift||extracted._model||extracted._price));
+let sameTicket=!!(curRec&&String(curRec.i)===String(_pdfTicketId));
+// 3) Apply fields ONLY when there is spa data AND the same ticket is still open
+//    (BUGFIX 2026-07-21: a random PDF must not overwrite the Spa Description).
+let filled=0,upgraded=0;
+if(extractedAny&&sameTicket){let res=applyExtractedToForm(extracted);filled=res.filled;upgraded=res.upgraded}
+// 4) Wait for the save and tell the truth about it.
+let meta=null,saveErr=null;
+try{meta=await savePromise}catch(e){saveErr=e;console.error('PDF save err:',e)}
+if(saveErr){
+setStat('err','✕ The invoice PDF was NOT saved: '+(saveErr.message||saveErr)+(filled?' (form fields were filled — they are saved with the ticket).':''));
+showToast('&#9888; Invoice PDF not saved — '+escHtml(saveErr.message||String(saveErr)),'warn');
 }else{
-msg='\u2713 PDF saved. Form already had values — kept your existing data. (Spa Description was updated.)';
-}
+let kb=Math.round((meta.size||0)/1024);
+let msg;
+if(!extractedAny)msg='✓ PDF saved to the ticket ('+kb+' KB). '+(parseErr?'Its text could not be read':'No spa specs found in it')+' — form left unchanged.';
+else if(!sameTicket)msg='✓ PDF saved to the ticket you attached it to. Fields were not filled because another ticket was opened meanwhile.';
+else if(filled>0||upgraded>0){let parts=[];if(filled>0)parts.push(filled+' field'+(filled===1?'':'s')+' filled');if(upgraded>0)parts.push(upgraded+' replaced with longer values');msg='✓ '+parts.join(', ')+' from invoice. PDF saved ('+kb+' KB).'}
+else msg='✓ PDF saved ('+kb+' KB). Form already had values — kept your existing data. (Spa Description was updated.)';
+if(kb>4000)msg+=' ⚠ Large file — consider compressing next time.';
 setStat('ok',msg);
-let toastMsg=filled>0?'&#10003; Invoice parsed and saved: '+filled+' field'+(filled===1?'':'s')+' filled':'&#10003; Invoice PDF saved to ticket';
-showToast(toastMsg);
+showToast(filled>0?'&#10003; Invoice parsed and saved: '+filled+' field'+(filled===1?'':'s')+' filled':'&#10003; Invoice PDF saved to ticket');
+}
 // CRITICAL: persist the values applied by applyExtractedToForm to Firebase BEFORE re-rendering.
 // Otherwise renderModal() rebuilds the form from curRec (which has the OLD data) and the
 // extracted values are lost. We capture all current form values via gatherEdits() and merge.
-if(curRec&&String(curRec.i)===String(_pdfTicketId)){
+if(sameTicket&&curRec&&String(curRec.i)===String(_pdfTicketId)){
+if(extractedAny){
 try{
 let updates=gatherEdits();
 let id=curRec.i;
@@ -7439,11 +7461,11 @@ if(ai>=0){Object.assign(ADDED[ai],updates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],updates);rememberEditsEdit(id,EDITS[id]);saveE()}
 // Also update curRec in-memory so the immediate re-render sees the new values
 Object.assign(curRec,updates);
-}catch(persistErr){console.error('PDF auto-save err:',persistErr)}
+}catch(persistErr){console.error('PDF auto-save err:',persistErr)}}
+let _keep=document.getElementById('pdf_status');let _kc=_keep?_keep.className:'',_kt=_keep?_keep.textContent:'';
 renderModal();
-}
-}
-catch(e){console.error('PDF parse error:',e);setStat('err','\u2715 Could not read PDF: '+(e.message||'Unknown error'))}}
+let _s2=document.getElementById('pdf_status');if(_s2&&_kt){_s2.className=_kc;_s2.textContent=_kt} // keep the result visible after the re-render
+}}
 
 // ===== On-demand PDF payload store (2026-06-12) =====
 // invoice_pdfs/<ticketId> = {data,name,size,uploaded_at,uploaded_by,signed:{data,name,signed_at,signed_by}}
@@ -7474,28 +7496,135 @@ if(!el)return;
 try{el.style.height='auto';el.style.height=Math.min(el.scrollHeight+4,600)+'px'}catch(e){}}
 // Open the saved invoice PDF in a new tab. Dual-source: legacy inline base64 on the
 // record (old tickets) or the invoice_pdfs/<id> side node (new slim format).
+/* BUILD 82 — one reader for "the bytes of this ticket's invoice" (inline legacy OR side node),
+   used by the viewer, the Drive sync and the email. The per-session cache is refreshed when it
+   is older than the ticket (invoice replaced or signed on ANOTHER device), which used to make
+   "View Signed Invoice" fail with "Could not load the signed PDF payload". */
+async function _invoicePdfData(r,signed){
+if(!r)return null;
+let m=signed?r.pdf_invoice_signed:r.pdf_invoice;
+if(!m)return null;
+if(m.data)return m.data;
+let id=String(r.i);
+let c=_pdfNodeCache[id];
+let stale=!c||(signed
+?!(c.signed&&c.signed.data)||(m.signed_at&&c.signed.signed_at&&m.signed_at!==c.signed.signed_at)
+:!c.data||(m.uploaded_at&&c.uploaded_at&&m.uploaded_at!==c.uploaded_at));
+if(stale)delete _pdfNodeCache[id];
+let node=await fetchInvoicePdfNode(id);
+if(!node)return null;
+return signed?((node.signed&&node.signed.data)||null):(node.data||null)}
+
+/* BUILD 82 — IN-APP PDF VIEWER (tech and office).
+   Before: window.open(blob) AFTER waiting for the download from Firebase. Browsers only allow a
+   new window right after a tap, so the first open of a big invoice was blocked ("Pop-up
+   blocked"), and in the iPhone home-screen app a blob window often opens blank. Now the viewer
+   opens instantly inside the app, pages are drawn with pdf.js (already loaded), and Download /
+   Open-in-tab are buttons the user taps (so they are never blocked). */
+function openPdfViewer(source,title,fileName){
+if(!document.getElementById('pdfViewerCss')){
+let st=document.createElement('style');st.id='pdfViewerCss';
+st.textContent='#pdfViewerOv{position:fixed;inset:0;z-index:100050;background:rgba(26,20,16,.97);display:flex;flex-direction:column;font-family:var(--font-body,system-ui)}'+
+'#pdfViewerOv .pv-bar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;background:var(--aspen-black,#1a1410);color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}'+
+'#pdfViewerOv .pv-t{flex:1;min-width:0;font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+'#pdfViewerOv .pv-t small{display:block;font-weight:600;font-size:11.5px;opacity:.6}'+
+'#pdfViewerOv button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;min-height:40px}'+
+'#pdfViewerOv .pv-x{width:40px;background:rgba(255,255,255,.1);color:#fff;font-size:17px}'+
+'#pdfViewerOv .pv-b{padding:0 14px;background:rgba(255,255,255,.1);color:#fff;font-weight:800;font-size:13px}'+
+'#pdfViewerOv .pv-b.pri{background:var(--aspen-orange,#e67e2e)}'+
+'#pdfViewerOv .pv-b:disabled{opacity:.4;cursor:default}'+
+'#pdfViewerOv .pv-pages{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 10px calc(env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;align-items:center;gap:12px}'+
+'#pdfViewerOv canvas{display:block;width:100%;max-width:900px;height:auto;background:#fff;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.35)}'+
+'#pdfViewerOv .pv-msg{color:#f3ede4;text-align:center;margin-top:18vh;font-size:15px;font-weight:700;line-height:1.5;max-width:420px}'+
+'#pdfViewerOv .pv-sp{width:34px;height:34px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--aspen-orange,#e67e2e);border-radius:50%;margin:0 auto 12px;animation:pvspin .8s linear infinite}'+
+'@keyframes pvspin{to{transform:rotate(360deg)}}'+
+'#pdfViewerOv iframe{width:100%;max-width:900px;flex:1;min-height:70vh;border:0;background:#fff;border-radius:6px}'+
+'@media (max-width:520px){#pdfViewerOv .pv-b .lbl{display:none}}';
+document.head.appendChild(st)}
+let old=document.getElementById('pdfViewerOv');if(old&&old._close)old._close();
+let ov=document.createElement('div');ov.id='pdfViewerOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label',title||'Invoice');
+ov.innerHTML='<div class="pv-bar"><button class="pv-x" aria-label="Close">&#10005;</button>'+
+'<div class="pv-t">'+escHtml(title||'Invoice')+'<small class="pv-sub">Loading…</small></div>'+
+'<button class="pv-b pv-tab" disabled title="Open in a new tab">&#8599;<span class="lbl"> Open</span></button>'+
+'<button class="pv-b pri pv-dl" disabled title="Download">&#11015;<span class="lbl"> Download</span></button></div>'+
+'<div class="pv-pages"><div class="pv-msg"><div class="pv-sp"></div>Loading invoice…</div></div>';
+document.body.appendChild(ov);
+let url=null,closed=false;
+let pages=ov.querySelector('.pv-pages'),sub=ov.querySelector('.pv-sub');
+let onKey=function(e){if(e.key==='Escape')ov._close()};
+ov._close=function(){closed=true;try{ov.remove()}catch(e){}document.removeEventListener('keydown',onKey);if(url)setTimeout(function(){try{URL.revokeObjectURL(url)}catch(e){}},1000)};
+ov.querySelector('.pv-x').onclick=ov._close;
+document.addEventListener('keydown',onKey);
+let fail=function(msg){if(closed)return;sub.textContent='Not available';pages.innerHTML='<div class="pv-msg">&#9888;&#65039; '+escHtml(msg)+'</div>'};
+Promise.resolve(source).then(async function(dataUri){
+if(closed)return;
+let m=String(dataUri||'').match(/^data:application\/pdf;base64,(.+)$/);
+if(!m){fail(dataUri?'This file is not a PDF.':'Could not load the PDF. Check your connection and try again.');return}
+let bin=atob(m[1]);let bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+let dl=ov.querySelector('.pv-dl'),tab=ov.querySelector('.pv-tab');
+dl.disabled=false;tab.disabled=false;
+dl.onclick=function(){let a=document.createElement('a');a.href=url;a.download=fileName||'invoice.pdf';document.body.appendChild(a);a.click();a.remove()};
+tab.onclick=function(){let w=window.open(url,'_blank');if(!w)showToast('&#9888; Allow pop-ups for this site to open the PDF in a tab','warn')};
+let kb=Math.round(bytes.length/1024);
+if(typeof pdfjsLib==='undefined'){sub.textContent=kb+' KB';pages.innerHTML='<iframe src="'+url+'" title="'+escHtml(title||'Invoice')+'"></iframe>';return}
+ensurePdfWorker();
+let pdf=await pdfjsLib.getDocument({data:bytes.slice(0)}).promise; // a copy: pdf.js keeps what it is given
+if(closed)return;
+sub.textContent=pdf.numPages+' page'+(pdf.numPages===1?'':'s')+' · '+kb+' KB';
+pages.innerHTML='';
+let cssW=Math.min(900,(pages.clientWidth||window.innerWidth||360)-20);
+let dpr=Math.min(2,window.devicePixelRatio||1);
+for(let p=1;p<=pdf.numPages;p++){
+if(closed)return;
+let page=await pdf.getPage(p);
+let base=page.getViewport({scale:1});
+let vp=page.getViewport({scale:(cssW/base.width)*dpr});
+let cv=document.createElement('canvas');cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
+cv.setAttribute('aria-label','Page '+p);
+pages.appendChild(cv);
+await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise}
+}).catch(function(e){console.error('[PDF viewer]',e);
+if(url&&!closed){sub.textContent='Preview unavailable';pages.innerHTML='<div class="pv-msg">This PDF can’t be previewed here.<br>Use <b>Download</b> or <b>Open</b> above.</div>'}
+else fail('Could not open the PDF: '+(e&&e.message||e))})}
+
+// Open the saved invoice PDF. Dual-source: legacy inline base64 on the record (old tickets)
+// or the invoice_pdfs/<id> side node (new slim format).
 async function viewInvoicePDF(id){
 let r=AD().find(x=>String(x.i)===String(id));
 if(!r||!r.pdf_invoice){alert('No PDF saved for this ticket.');return}
-let dataUri=r.pdf_invoice.data;
-if(!dataUri){
-let node=await fetchInvoicePdfNode(id);
-dataUri=node&&node.data;
-}
-if(!dataUri){alert('Could not load the PDF payload. Check your connection and try again.');return}
-openPdfDataUri(dataUri,'PDF')}
+openPdfViewer(_invoicePdfData(r,false),'Invoice — '+dispName(r),r.pdf_invoice.name||'invoice.pdf')}
 
-// Open the signed invoice PDF (with embedded customer signature) in a new tab.
+// Open the signed invoice PDF (with embedded customer signature).
 async function viewSignedPDF(id){
 let r=AD().find(x=>String(x.i)===String(id));
 if(!r||!r.pdf_invoice_signed){alert('No signed PDF saved for this ticket.');return}
-let dataUri=r.pdf_invoice_signed.data;
-if(!dataUri){
-let node=await fetchInvoicePdfNode(id);
-dataUri=node&&node.signed&&node.signed.data;
-}
-if(!dataUri){alert('Could not load the signed PDF payload. Check your connection and try again.');return}
-openPdfDataUri(dataUri,'signed PDF')}
+openPdfViewer(_invoicePdfData(r,true),'Signed invoice — '+dispName(r),r.pdf_invoice_signed.name||'signed_invoice.pdf')}
+
+/* BUILD 82 — DRAG & DROP the invoice onto the open ticket. There was no drop target: a PDF
+   dragged onto the page made the browser open the file itself (leaving the app) and nothing
+   was saved. Only FILE drags are handled here, so the calendar's drag-to-reschedule
+   (text/plain) is untouched. */
+(function(){
+function hasFiles(e){try{return Array.prototype.indexOf.call(e.dataTransfer.types||[],'Files')>=0}catch(_){return false}}
+function zone(){return document.getElementById('e_pdf_input')?document.getElementById('md'):null}
+try{let st=document.createElement('style');st.textContent='#md.pdf-drop-on{outline:3px dashed var(--aspen-orange,#e67e2e);outline-offset:-6px}#md.pdf-drop-on::after{content:"\\1F4C4  Drop the invoice PDF to attach it";position:sticky;bottom:12px;display:block;margin:0 auto;width:max-content;background:var(--aspen-orange,#e67e2e);color:#fff;font-weight:800;font-size:14px;padding:10px 18px;border-radius:999px;box-shadow:0 8px 20px rgba(26,20,16,.25);pointer-events:none}';document.head.appendChild(st)}catch(_){}
+document.addEventListener('dragover',function(e){
+if(!hasFiles(e))return;
+e.preventDefault(); // never let the browser navigate away to a dropped file
+let z=zone(),inside=!!(z&&z.contains(e.target));
+try{e.dataTransfer.dropEffect=inside?'copy':'none'}catch(_){}
+if(z)z.classList.toggle('pdf-drop-on',inside)});
+document.addEventListener('dragleave',function(e){if(!e.relatedTarget){let z=zone();if(z)z.classList.remove('pdf-drop-on')}});
+document.addEventListener('drop',function(e){
+if(!hasFiles(e))return;
+e.preventDefault();
+let z=zone();if(z)z.classList.remove('pdf-drop-on');
+if(!z||!z.contains(e.target)){showToast('&#128196; Open the delivery first, then drop its invoice PDF on it','warn');return}
+let f=Array.prototype.find.call(e.dataTransfer.files||[],function(x){return /pdf$/i.test(x.type||'')||/\.pdf$/i.test(x.name||'')});
+if(!f){showToast('&#9888; That is not a PDF — drop the invoice PDF','warn');return}
+handleInvoicePDF(f)});
+})();
 
 // Remove the saved PDF from a ticket (admin only)
 function deleteInvoicePDF(id){
@@ -7551,15 +7680,22 @@ let snMatch=text.match(/(?:SERIAL\s*#?|S\/?N)\s*[:\#]?\s*(\d{4,7})/i);
 if(snMatch)result._serial=snMatch[1];
 
 // === MODEL + SERIES (for dropdowns) ===
-let modelKeys=['Quattro','Eldorado','Pinnacle','Arcadia','Alpine','Monarch','Pioneer','Colorado','13\\s*PARTY','16\\s*SWIM'];
-let yMSrx=new RegExp('\\b(20\\d{2})\\s+('+modelKeys.join('|')+')\\s+(VS|GS|ES|VR|XL|Holiday)\\b','i');
+// BUILD 82: model/series names come back spelled like the dropdown ("AVALANCHE"→"Avalanche").
+let _canon=function(v,list,dflt){let s=String(v).replace(/\s+/g,' ').trim();let hit=list.find(x=>x.toLowerCase()===s.toLowerCase());return hit||dflt(s)};
+let _canonModel=function(v){return _canon(v,SPA_BASES,s=>s.replace(/^13\s*PARTY$/i,'13 PARTY').replace(/^16\s*SWIM$/i,'16 SWIM'))};
+let _canonSeries=function(v){return _canon(v,SPA_SERIES,s=>s.toUpperCase())};
+let yMSrx=new RegExp('\\b(20\\d{2})\\s+('+INVOICE_MODEL_RX+')\\s+('+INVOICE_SERIES_RX+')\\b','i');
 let ymsMatch=text.match(yMSrx);
 if(ymsMatch){
-result._model=ymsMatch[2].replace(/\s+/g,' ').replace(/^13\s*PARTY$/i,'13 PARTY').replace(/^16\s*SWIM$/i,'16 SWIM');
-result._series=ymsMatch[3].toUpperCase()}
+result._model=_canonModel(ymsMatch[2]);
+result._series=_canonSeries(ymsMatch[3])}
 else{
-let mMatch=text.match(new RegExp('\\b('+modelKeys.join('|')+')\\b','i'));
-if(mMatch)result._model=mMatch[1].replace(/\s+/g,' ')}
+// No "<year> <model> <series>" line: try "<model> <series>" (e.g. "AVALANCHE LUXE"), then the model alone.
+let msMatch=text.match(new RegExp('\\b('+INVOICE_MODEL_RX+')\\s+('+INVOICE_SERIES_RX+')\\b','i'));
+if(msMatch){result._model=_canonModel(msMatch[1]);result._series=_canonSeries(msMatch[2])}
+else{
+let mMatch=text.match(new RegExp('\\b('+INVOICE_MODEL_RX+')\\b','i'));
+if(mMatch)result._model=_canonModel(mMatch[1])}}
 
 // === COVER, LIFT, STEPS, TABLE, START-UP — match against ALL dropdown options (built-in + custom)
 // The user can add custom options through the "+" button next to each dropdown, and those should
@@ -7733,7 +7869,8 @@ result._tableCustomLabel=lbl;
 // === FULL SPA DESCRIPTION ===
 // Take everything from the start of the spa item (e.g. "2025 Pinnacle ES") up to (but excluding)
 // any pricing/discount/tax/footer. Filter out item codes, pure number lines (qty/prices), and footers.
-let startIdx=text.search(/20\d{2}\s+(?:Quattro|Eldorado|Pinnacle|Arcadia|Alpine|Monarch|Pioneer|Colorado|13\s*PARTY|16\s*SWIM)/i);
+let startIdx=text.search(new RegExp('20\\d{2}\\s+(?:'+INVOICE_MODEL_RX+')','i'));
+if(startIdx<0)startIdx=text.search(new RegExp('\\b(?:'+INVOICE_MODEL_RX+')\\s+(?:'+INVOICE_SERIES_RX+')\\b','i')); // BUILD 82: "AVALANCHE LUXE …" without a year
 if(startIdx<0)startIdx=text.search(/SERIAL\s*#/i);
 if(startIdx>=0){
 let endRe=/(Spa\s+Discount\b|Sales\s+Tax\b|Total\s*\$|Total\s+Due|Subtotal|Balance\s+Due|QUOTES\s+VALID|We\s+appreciate|SIGNATURE|Discount-Spas|^Discount\s|^Discount$)/im;
@@ -8177,7 +8314,7 @@ h+='<div class="ib" style="margin-bottom:16px"><label>Assigned Technician</label
 h+='<details class="spa-specs" '+((r.spd||r.di||spaSpecsHasData(r))?'open':'')+'><summary><span class="ct" style="margin:0">&#129716; Spa Description</span><span class="spec-hint">Upload PDF to auto-fill the full spa description</span></summary>';
 // PDF uploader + saved PDF preview
 let pdfBtnLabel=r.pdf_invoice?'&#128206; Replace Invoice PDF':'&#128206; Auto-fill from Invoice PDF';
-let pdfBtnHelp=r.pdf_invoice?'A PDF is already saved on this ticket — uploading a new one will replace it and re-parse spa specs.':'Upload your QuickBooks invoice and we&#39;ll copy the FULL text of the invoice into the Spa Description';
+let pdfBtnHelp=r.pdf_invoice?'A PDF is already saved on this ticket — uploading a new one will replace it and re-parse spa specs.':'Upload (or drag &amp; drop) your QuickBooks invoice — it is saved on the ticket for the tech and the office, and its full text goes into the Spa Description';
 h+='<div class="pdf-uploader"><input type="file" id="e_pdf_input" accept="application/pdf" style="display:none" onchange="handleInvoicePDF(this.files[0])"><button type="button" class="pdf-btn" onclick="document.getElementById(\'e_pdf_input\').click()">'+pdfBtnLabel+'</button>';
 // If a PDF is already saved on this ticket, show a "View" button + metadata
 if(r.pdf_invoice){
@@ -8185,7 +8322,7 @@ let p=r.pdf_invoice;
 let kb=Math.round((p.size||0)/1024);
 let when=p.uploaded_at?new Date(p.uploaded_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';
 let who=p.uploaded_by&&USERS[p.uploaded_by]?USERS[p.uploaded_by].name:'';
-h+='<button type="button" class="pdf-btn" style="background:var(--st-success);border-color:var(--st-success)" onclick="viewInvoicePDF('+r.i+')" title="Open the saved invoice PDF in a new tab">&#128065; View Invoice</button>';
+h+='<button type="button" class="pdf-btn" style="background:var(--st-success);border-color:var(--st-success);color:#fff" onclick="viewInvoicePDF('+r.i+')" title="Open the saved invoice PDF in a new tab">&#128065; View Invoice</button>';
 h+='<button type="button" class="pdf-btn" style="background:transparent;border:1px solid var(--st-danger);color:var(--st-danger)" onclick="deleteInvoicePDF('+r.i+')" title="Remove the saved PDF">&#10005; Remove</button>';
 h+='<span class="pdf-help">&#128196; '+escHtml(p.name||'invoice.pdf')+(kb?' &middot; '+kb+' KB':'')+(when?' &middot; saved '+when:'')+(who?' by '+escHtml(who):'')+'</span>';
 }else{
@@ -8277,8 +8414,8 @@ h+='<div style="flex:1;min-width:200px;font-size:13px;color:#0c4a6e">';
 h+='<div style="font-weight:700;margin-bottom:4px">Signed by: '+escHtml(sig.customer_name||r.n||'Customer')+'</div>';
 if(when)h+='<div style="color:#0369a1">&#128197; '+escHtml(when)+'</div>';
 h+='<div style="color:#0369a1;font-size:11px;margin-top:4px">Captured by '+escHtml(by)+' on tech device</div>';
-if(r.pdf_invoice_signed&&r.pdf_invoice_signed.data){
-h+='<button type="button" class="pdf-btn" style="background:var(--st-success);border-color:var(--st-success);margin-top:10px;font-size:12px;padding:7px 12px" onclick="viewSignedPDF('+r.i+')">&#128065; View Signed Invoice PDF</button>';
+if(r.pdf_invoice_signed){ /* BUILD 82: was &&.data — signed PDFs stored in the side node (stored:1, no inline data) never showed this button */
+h+='<button type="button" class="pdf-btn" style="background:var(--st-success);border-color:var(--st-success);color:#fff;margin-top:10px;font-size:12px;padding:7px 12px" onclick="viewSignedPDF('+r.i+')">&#128065; View Signed Invoice PDF</button>';
 }
 h+='</div></div></div>';
 }
@@ -10270,57 +10407,160 @@ if(suppressed||preserved)console.log('[GCAL-MAP] Listener fired: '+suppressed+' 
 gcalMap=serverState;
 });
 
-function gapiLoaded(){gapi.load('client',async()=>{
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 82 — GOOGLE SIGN-IN THAT STAYS PUT
+   Symptom: "it keeps asking me to sign in to Google all the time".
+   Root cause, measured with the real code (harness test_gcal_token.js):
+   with the Google Identity token model EVERY requestAccessToken() opens
+   Google's window, and Google documents it must come from a click. This
+   file asked for a token with no click: on every page load (TWICE — the
+   load-poll ran gapi init twice), every 50 min, and on EVERY focus /
+   tab switch (_onResume: 5 windows in 10 minutes). No login_hint, so with
+   more than one Google account in Chrome each window stopped on the
+   "Sign in – Google Accounts" chooser. No error_callback, so a closed
+   window left the sync waiting forever. And Connect forced the full
+   consent screen whenever the token was gone.
+   Now:
+   • one token request at a time (_gcalAskToken), always with login_hint
+     (learned from the primary calendar) so Google skips the chooser;
+   • the token and its real expiry are kept for this tab
+     (sessionStorage) — reloads and auto-updates reuse it, no window;
+   • renewal only shortly before it expires, and only with the app on
+     screen; focus/tab switches never ask Google when the token is fresh;
+   • a closed/blocked window resolves (no hang), pauses automatic tries
+     for 20 min and shows a one-tap "Reconnect Google Calendar" chip;
+   • Connect after a previous connect uses prompt:'' (no consent screen).
+   ═══════════════════════════════════════════════════════════════════════ */
+let gcalTokenExp=0;                       // ms epoch when the current token expires
+const GCAL_TOK_KEY='aspen_gcal_tok_v1';   // sessionStorage: {t,exp,scope} — this tab only
+const GCAL_AUTO_COOLDOWN=20*60*1000;      // after a failed AUTOMATIC attempt
+let _gcalAsk=null;                        // the one in-flight token request
+let _gcalAutoFailAt=0;
+let _gcalAutoTried=false;
+let _gapiLoading=false;
+
+function _gcalReqOpts(prompt){
+let o={prompt:prompt==null?'':prompt};
+try{let h=localStorage.getItem('gcalLoginHint');if(h)o.login_hint=h}catch(e){}
+return o}
+function _gcalTokenFresh(marginMs){
+if(!gcalToken)return false;
+if(!gcalTokenExp)return true; // expiry unknown: let the 401 handler decide
+return Date.now()<gcalTokenExp-(marginMs==null?120000:marginMs)}
+function _gcalClearStoredToken(){try{sessionStorage.removeItem(GCAL_TOK_KEY)}catch(e){}}
+// Every place that receives a token goes through here (keeps expiry, storage and gapi in step).
+function _gcalAcceptToken(resp){
+gcalToken=resp.access_token;
+gcalTokenExp=Date.now()+(Number(resp.expires_in)||3599)*1000;
+try{sessionStorage.setItem(GCAL_TOK_KEY,JSON.stringify({t:gcalToken,exp:gcalTokenExp,scope:resp.scope||''}))}catch(e){}
+try{if(typeof gapi!=='undefined'&&gapi.client&&gapi.client.setToken)gapi.client.setToken({access_token:gcalToken})}catch(e){}
+_gcalAutoFailAt=0;
+scheduleGcalRefresh();
+_gcalShowReconnect(false);
+if(_gcalAsk)_gcalFinish(_gcalAsk,true); // a consent flow answered while an automatic request was waiting
+return gcalToken}
+function _gcalRestoreToken(){
+try{
+let s=JSON.parse(sessionStorage.getItem(GCAL_TOK_KEY)||'null');
+if(!s||!s.t||!s.exp)return false;
+if(Date.now()>s.exp-120000){_gcalClearStoredToken();return false}
+gcalToken=s.t;gcalTokenExp=s.exp;
+try{gapi.client.setToken({access_token:s.t})}catch(e){}
+_checkDriveScope({scope:s.scope||''});
+scheduleGcalRefresh();
+return true}catch(e){return false}}
+function _gcalShowReconnect(show){
+try{
+let c=document.getElementById('gcalReconnectChip');
+if(!show){if(c)c.remove();return}
+if(c)return;
+if(typeof currentUser!=='undefined'&&currentUser&&currentUser.role==='tech')return;
+c=document.createElement('button');c.id='gcalReconnectChip';c.type='button';
+c.innerHTML='&#128197; Reconnect Google Calendar';
+c.title='Google needs one tap to renew the calendar connection';
+c.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);z-index:9998;background:var(--aspen-orange,#E54B25);color:#fff;border:none;border-radius:999px;padding:10px 18px;font:800 13px/1 inherit;font-family:inherit;box-shadow:0 8px 22px rgba(26,20,16,.28);cursor:pointer';
+if((window.innerWidth||0)>=900){c.style.left='auto';c.style.transform='none';c.style.right='calc(env(safe-area-inset-right,0px) + 24px)';c.style.bottom='calc(env(safe-area-inset-bottom,0px) + 24px)'} // desktop: corner, not over the calendar
+c.onclick=function(){gcalConnect()};
+document.body.appendChild(c)}catch(e){}}
+function _gcalFinish(a,ok){
+if(_gcalAsk!==a)return;_gcalAsk=null;clearTimeout(a.timer);
+if(!ok&&a.why!=='user'){_gcalAutoFailAt=Date.now();_gcalShowReconnect(true)}
+a.resolve(!!ok)}
+function _gcalOnTokenError(err){
+console.warn('[GCAL] Google window: '+((err&&err.type)||'error'));
+if(_gcalAsk)_gcalFinish(_gcalAsk,false)}
+// The ONLY automatic way to ask Google for a token. Resolves true/false, never hangs.
+// why: 'user' (a click — may open a window, no cooldown) | anything else (automatic).
+function _gcalAskToken(prompt,why){
+why=why||'auto';
+if(!gcalTokenClient)return Promise.resolve(false);
+if(_gcalAsk){
+if(why==='user'&&_gcalAsk.why!=='user'){let old=_gcalAsk;_gcalAsk=null;clearTimeout(old.timer);old.resolve(false)}
+else return _gcalAsk.p}
+if(why!=='user'&&_gcalAutoFailAt&&Date.now()-_gcalAutoFailAt<GCAL_AUTO_COOLDOWN){_gcalShowReconnect(true);return Promise.resolve(false)}
+let a={why:why};
+a.p=new Promise(function(res){a.resolve=res});
+a.timer=setTimeout(function(){console.warn('[GCAL] no answer from Google in 120 s ('+why+')');_gcalFinish(a,false)},120000);
+_gcalAsk=a;
+gcalTokenClient.callback=function(resp){
+if(resp&&!resp.error&&resp.access_token){_gcalAcceptToken(resp);_checkDriveScope(resp);_gcalFinish(a,true)}
+else{console.log('[GCAL] token request failed ('+why+'):',resp&&resp.error);_gcalFinish(a,false)}};
+try{gcalTokenClient.requestAccessToken(_gcalReqOpts(prompt))}
+catch(e){console.log('[GCAL] requestAccessToken threw ('+why+'):',e);_gcalFinish(a,false)}
+return a.p}
+// Renew only when it's actually needed AND the app is on screen (a window from a hidden tab is
+// either blocked or lands behind everything). _onResume picks it up when the tab comes back.
+function _gcalRenewIfNeeded(why){
+if(!gcalTokenClient||!gcalToken)return Promise.resolve(!!gcalToken);
+if(_gcalTokenFresh(5*60*1000))return Promise.resolve(true);
+if(document.hidden)return Promise.resolve(false);
+return _gcalAskToken('',why||'renew')}
+async function _gcalAfterConnect(why){
+console.log('[GCAL] connected ('+why+')');
+await gcalLoadCalendars();updateGcalUI();
+// Restore auto-sync state if it was on (only once — gcalToggleAuto doesn't clear an old timer)
+if(localStorage.getItem('gcalAutoSync')==='true'){
+let chk=document.getElementById('gcalAuto');if(chk&&!gcalAutoTimer){chk.checked=true;gcalToggleAuto()}else if(gcalAutoTimer&&gcalCalendarId){gcalSync()}}
+else if(gcalCalendarId){gcalSync()}}
+
+function gapiLoaded(){
+if(_gapiLoading||gcalGapiReady)return; // BUILD 82: the 400 ms load-poll used to start a 2nd init → 2 Google windows per load
+_gapiLoading=true;
+gapi.load('client',async()=>{
 try{await gapi.client.init({discoveryDocs:[GCAL_DISCOVERY]});gcalGapiReady=true;tryGcalInit()}
-catch(e){console.error('gapi init err:',e)}})}
+catch(e){console.error('gapi init err:',e)}
+finally{_gapiLoading=false}})}
 function gisLoaded(){
 if(typeof google==='undefined'||!google.accounts){return}
 if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0){console.warn('Google Calendar disabled: set GCAL_CLIENT_ID');return}
-try{gcalTokenClient=google.accounts.oauth2.initTokenClient({client_id:GCAL_CLIENT_ID,scope:GCAL_SCOPES,callback:''});gcalGisReady=true;tryGcalInit()}
+try{gcalTokenClient=google.accounts.oauth2.initTokenClient({client_id:GCAL_CLIENT_ID,scope:GCAL_SCOPES,callback:'',error_callback:_gcalOnTokenError});gcalGisReady=true;tryGcalInit()}
 catch(e){console.error('gis init err:',e)}}
 function tryGcalInit(){if(gcalGapiReady&&gcalGisReady){updateGcalUI();tryGcalAutoReconnect()}}
 
-// Silent reconnect on page load if previously connected (token expires every 1h)
+// Reconnect on page load if previously connected: reuse this tab's token when it's still valid,
+// otherwise ONE request with login_hint (Google closes its window by itself when consent exists).
 function tryGcalAutoReconnect(){
 if(GCAL_CLIENT_ID.indexOf('PASTE_YOUR')===0)return;
-if(!gcalTokenClient||gcalToken)return;
+if(!gcalTokenClient||gcalToken||_gcalAutoTried)return;
 if(localStorage.getItem('gcalConnectedBefore')!=='true')return;
-gcalTokenClient.callback=async(resp)=>{
-if(resp.error){console.log('Silent reconnect failed:',resp.error);return}
-gcalToken=resp.access_token;
-_checkDriveScope(resp);
-await gcalLoadCalendars();updateGcalUI();
-scheduleGcalRefresh();
-// Restore auto-sync state if it was on
-if(localStorage.getItem('gcalAutoSync')==='true'){
-let chk=document.getElementById('gcalAuto');if(chk){chk.checked=true;gcalToggleAuto()}}
-else if(gcalCalendarId){gcalSync()}};
-try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){console.log('Silent reconnect error:',e)}}
+if(_gcalRestoreToken()){_gcalAutoTried=true;console.log('[GCAL] reusing this tab’s token ('+Math.round((gcalTokenExp-Date.now())/60000)+' min left) — no Google window');_gcalAfterConnect('restored');return}
+if(document.hidden){ // opened/reloaded in the background: wait until it's on screen
+document.addEventListener('visibilitychange',function _w(){if(document.hidden)return;try{document.removeEventListener('visibilitychange',_w)}catch(e){}tryGcalAutoReconnect()});return}
+_gcalAutoTried=true;
+_gcalAskToken('','load').then(function(ok){if(ok)_gcalAfterConnect('load')})}
 
-// Refresh token every 50 min (tokens expire at 60 min)
+// Renew shortly before the token expires (exp − 5 min), not on a fixed 50-min interval.
 let gcalRefreshTimer=null;
 function scheduleGcalRefresh(){
-clearInterval(gcalRefreshTimer);
-gcalRefreshTimer=setInterval(()=>{
-if(!gcalTokenClient||!gcalToken)return;
-gcalTokenClient.callback=(resp)=>{
-if(resp.error){console.log('Token refresh failed:',resp.error);return}
-gcalToken=resp.access_token;
-_checkDriveScope(resp);
-console.log('Token refreshed silently')};
-try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){console.log('Refresh error:',e)}
-},50*60*1000)}
+clearTimeout(gcalRefreshTimer);gcalRefreshTimer=null;
+if(!gcalToken)return;
+let wait=gcalTokenExp?Math.max(30000,gcalTokenExp-Date.now()-5*60*1000):50*60*1000;
+gcalRefreshTimer=setTimeout(function(){gcalRefreshTimer=null;_gcalRenewIfNeeded('timer')},wait)}
 
-// Returns Promise<bool> — refreshes token silently
+// Returns Promise<bool>. Used after a 401: the token was rejected, so the saved copy is useless.
 function gcalRefreshTokenNow(){
-return new Promise(resolve=>{
-if(!gcalTokenClient){resolve(false);return}
-gcalTokenClient.callback=resp=>{
-if(resp.error){resolve(false);return}
-gcalToken=resp.access_token;
-_checkDriveScope(resp);
-resolve(true)};
-try{gcalTokenClient.requestAccessToken({prompt:''})}catch(e){resolve(false)}})}
+_gcalClearStoredToken();gcalTokenExp=0;
+return _gcalAskToken('','401')}
 // Wait for scripts (loaded async) — poll until they appear. Extracted into a function so the
 // Connect button can RESTART it if the user taps before the Google scripts finished loading (or
 // after this initial poll already gave up). Runs ~30s before backing off.
@@ -10356,30 +10596,32 @@ if(!gcalTokenClient){
 _gcalPendingMsg=true;_startGcalLoadPoll();
 showToast('&#9888; Cargando Google\u2026 vuelve a tocar Conectar en unos segundos. Si persiste: recarga la app, o en iPhone desactiva Ajustes \u203a Safari \u203a Evitar rastreo entre sitios','warn');
 return}
-gcalTokenClient.callback=async(resp)=>{
-if(resp.error){showToast('&#10005; Google sign-in failed: '+resp.error,'err');return}
-gcalToken=resp.access_token;
-_checkDriveScope(resp);
+// BUILD 82: the consent screen only the very first time; afterwards prompt:'' + login_hint.
+// Called synchronously inside the click, so the browser treats Google's window as user-opened.
+let _before=localStorage.getItem('gcalConnectedBefore')==='true';
+_gcalAskToken((gcalToken||_before)?'':'consent','user').then(async function(ok){
+if(!ok){showToast('&#10005; Google sign-in was closed or blocked — tap Connect to try again','err');return}
 localStorage.setItem('gcalConnectedBefore','true');
-scheduleGcalRefresh();
 showToast('&#10003; Connected to Google Calendar'+(gdriveScopeOk?' + Drive':''));
-await gcalLoadCalendars();updateGcalUI();
-// Auto-sync after connect if a calendar is already chosen
-if(gcalCalendarId)gcalSync()};
-gcalTokenClient.requestAccessToken({prompt:gcalToken?'':'consent'})}
+await _gcalAfterConnect('user')})}
 
 function gcalDisconnect(){
 if(gcalToken&&google&&google.accounts&&google.accounts.oauth2){google.accounts.oauth2.revoke(gcalToken,()=>{})}
-gcalToken=null;clearInterval(gcalAutoTimer);gcalAutoTimer=null;
-clearInterval(gcalRefreshTimer);gcalRefreshTimer=null;
+gcalToken=null;gcalTokenExp=0;clearInterval(gcalAutoTimer);gcalAutoTimer=null;
+clearTimeout(gcalRefreshTimer);gcalRefreshTimer=null;
+_gcalClearStoredToken();_gcalShowReconnect(false);
 let chk=document.getElementById('gcalAuto');if(chk)chk.checked=false;
 localStorage.removeItem('gcalConnectedBefore');
 localStorage.removeItem('gcalAutoSync');
+localStorage.removeItem('gcalLoginHint');
 showToast('Disconnected from Google Calendar');updateGcalUI()}
 
 async function gcalLoadCalendars(){
 try{let res=await gapi.client.calendar.calendarList.list({maxResults:250,showHidden:true,minAccessRole:'reader'});
 gcalCalendars=res.result.items||[];
+// BUILD 82: the primary calendar's id IS the signed-in account's email — remember it as the
+// login_hint so future token requests skip Google's "choose an account" screen.
+try{let _pc=gcalCalendars.find(c=>c.primary);if(_pc&&/@/.test(String(_pc.id||'')))localStorage.setItem('gcalLoginHint',_pc.id)}catch(_e){}
 let sel=document.getElementById('gcalSelect');
 // Sort: primary first, then by summary; mark shared calendars
 gcalCalendars.sort((a,b)=>{if(a.primary&&!b.primary)return -1;if(!a.primary&&b.primary)return 1;return (a.summary||'').localeCompare(b.summary||'')});
@@ -11448,8 +11690,8 @@ showToast('&#10003; Two-way sync ON — changes here will push to Google Calenda
 // the scopes defined in GCAL_SCOPES (which now includes calendar.events). Re-running with
 // prompt:'consent' forces Google to show the permission screen.
 if(gcalToken&&gcalTokenClient){
-try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){gcalToken=resp.access_token;showToast('&#10003; Write permission granted','success')}};
-gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(e){console.warn('Could not request write scope:',e)}
+try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){_gcalAcceptToken(resp);showToast('&#10003; Write permission granted','success')}};
+gcalTokenClient.requestAccessToken(_gcalReqOpts('consent'))}catch(e){console.warn('Could not request write scope:',e)}
 }
 }else{
 showToast('Two-way sync OFF — calendar changes won\'t be pushed','warn')}}
@@ -11465,13 +11707,13 @@ showToast('Opening Google permission screen…');
 try{
 gcalTokenClient.callback=(resp)=>{
 if(resp&&resp.access_token){
-gcalToken=resp.access_token;
+_gcalAcceptToken(resp);
 showToast('&#10003; Write access granted — your edits will now sync to the calendar','success')
 }else if(resp&&resp.error){
 showToast('&#9888; '+(resp.error_description||resp.error),'warn')
 }
 };
-gcalTokenClient.requestAccessToken({prompt:'consent'});
+gcalTokenClient.requestAccessToken(_gcalReqOpts('consent'));
 }catch(e){console.error('gcalRequestWriteScope err:',e);showToast('&#9888; Could not open permission screen — see console','err')}}
 
 // Has the user added ANY real info to this ticket beyond the bare calendar seed (name/SN/date/city)?
@@ -11858,8 +12100,8 @@ if(r2){try{let res=await gapi.client.calendar.events.insert({calendarId:gcalCale
 if(e.status===403){
 showToast('&#9888; Calendar needs write permission — please grant access in the popup','warn');
 if(gcalTokenClient){
-try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){gcalToken=resp.access_token;showToast('&#10003; Permission granted — please save the ticket again','success')}};
-gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(er){console.warn('Could not request consent:',er)}
+try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){_gcalAcceptToken(resp);showToast('&#10003; Permission granted — please save the ticket again','success')}};
+gcalTokenClient.requestAccessToken(_gcalReqOpts('consent'))}catch(er){console.warn('Could not request consent:',er)}
 }
 }
 return null;
@@ -11885,8 +12127,8 @@ if(r2){try{await gapi.client.calendar.events.patch({calendarId:gcalCalendarId,ev
 if(e.status===403){
 showToast('&#9888; Calendar needs write permission — please grant access in the popup','warn');
 if(gcalTokenClient){
-try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){gcalToken=resp.access_token;showToast('&#10003; Permission granted — please save the ticket again','success')}};
-gcalTokenClient.requestAccessToken({prompt:'consent'})}catch(er){console.warn('Could not request consent:',er)}
+try{gcalTokenClient.callback=(resp)=>{if(resp&&resp.access_token){_gcalAcceptToken(resp);showToast('&#10003; Permission granted — please save the ticket again','success')}};
+gcalTokenClient.requestAccessToken(_gcalReqOpts('consent'))}catch(er){console.warn('Could not request consent:',er)}
 }
 return false;
 }
@@ -12094,12 +12336,12 @@ return new Promise((res,rej)=>{
 if(!gcalTokenClient){rej(new Error('Google sign-in not loaded'));return}
 gcalTokenClient.callback=(resp)=>{
 if(resp.error){rej(new Error(resp.error));return}
-gcalToken=resp.access_token;
+_gcalAcceptToken(resp);
 _checkDriveScope(resp);
 if(!gdriveScopeOk){rej(new Error('Drive scope was not granted. Please tick the Drive permission box on the Google consent screen.'));return}
 res(gcalToken)};
 // Always force consent screen — silent token requests don't expand scope grants reliably
-try{gcalTokenClient.requestAccessToken({prompt:'consent'})}
+try{gcalTokenClient.requestAccessToken(_gcalReqOpts('consent'))}
 catch(e){rej(e)}})}
 
 // List all folder children of the parent Drive folder. Cached for 5min.
@@ -12272,8 +12514,10 @@ if(!r)throw new Error('Ticket not found');
 let allPhotos=[];
 (r.photos||[]).forEach((p,i)=>allPhotos.push({src:'admin',idx:i,b64:p,ext:'jpg'}));
 (r.tech_photos||[]).forEach((p,i)=>allPhotos.push({src:'tech',idx:i,b64:p,ext:'jpg'}));
-if(r.pdf_invoice&&r.pdf_invoice.data)allPhotos.push({src:'pdf',idx:0,b64:r.pdf_invoice.data,ext:'pdf'});
-if(r.pdf_invoice_signed&&r.pdf_invoice_signed.data)allPhotos.push({src:'pdf-signed',idx:0,b64:r.pdf_invoice_signed.data,ext:'pdf'});
+// BUILD 82: invoices saved since June live in the invoice_pdfs side node (no inline .data), so
+// they were silently left out of the customer's Drive folder. Read them through _invoicePdfData.
+if(r.pdf_invoice){let _pd=null;try{_pd=await _invoicePdfData(r,false)}catch(_e){}if(_pd)allPhotos.push({src:'pdf',idx:0,b64:_pd,ext:'pdf'})}
+if(r.pdf_invoice_signed){let _ps=null;try{_ps=await _invoicePdfData(r,true)}catch(_e){}if(_ps)allPhotos.push({src:'pdf-signed',idx:0,b64:_ps,ext:'pdf'})}
 if(r.signature&&r.signature.data)allPhotos.push({src:'signature',idx:0,b64:r.signature.data,ext:'png'});
 if(!allPhotos.length){return{uploaded:0,skipped:0,folder:null,reason:'Nothing to sync'}}
 // Proactive scope check — fail fast and clearly if Drive auth is missing
