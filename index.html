@@ -2183,8 +2183,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026102602;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.10.26 (build 83) — las 40 mejoras: fotos por paso con cola sin señal, cobro y problemas del técnico, bandeja de facturas, panel Falta completar, calendario con cupo, gift boxes, salud de la app; portal del cliente arreglado (fotos)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026102603;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.10.26 (build 83.1) — calendario a todo el ancho otra vez; las 40 mejoras: fotos por paso con cola sin señal, cobro y problemas del técnico, bandeja de facturas, panel Falta completar, calendario con cupo, gift boxes, salud de la app; portal del cliente arreglado (fotos)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -14444,7 +14444,9 @@ wrap('renderCalendar',function(){
 var body=document.getElementById('calBody');if(!body)return;
 if(!document.getElementById('dt83legend')){var lg=document.createElement('div');lg.id='dt83legend';lg.className='dt83-legend';
 lg.innerHTML='<span><i class="s8"></i>8\' '+_L('est\u00e1ndar','standard')+'</span><span><i class="s7"></i>7\' '+_L('o menos','or smaller')+'</span><span><i class="sns"></i>'+_L('No est\u00e1ndar','Non-standard')+'</span><span><i class="inc"></i>'+_L('Faltan datos','Info missing')+'</span><span class="cap">'+_L('Cupo por d\u00eda: ','Daily capacity: ')+(D.cfg().capDay||4)+'</span>';
-body.parentNode.insertBefore(lg,body)}
+/* BUILD 83.1: above the calendar, NOT inside #calSplit — that row is display:flex, and as a flex
+   child the legend took ~550 px on the left and squeezed the calendar from 1418 to 873 px. */
+var split=document.getElementById('calSplit')||body;split.parentNode.insertBefore(lg,split)}
 else{var cp=document.querySelector('#dt83legend .cap');if(cp)cp.textContent=_L('Cupo por d\u00eda: ','Daily capacity: ')+(D.cfg().capDay||4)}
 body.querySelectorAll('.cal-ev[onclick*="openDet("]').forEach(function(ev){var m=String(ev.getAttribute('onclick')).match(/openDet\(([^)]+)\)/);if(!m)return;var r=findRecById(String(m[1]).replace(/['"]/g,''));if(!r)return;
 var nm=ev.querySelector('.ce-name');if(nm&&!r.n)nm.textContent=D.niceName(r);
