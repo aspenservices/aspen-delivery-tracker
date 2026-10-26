@@ -2108,6 +2108,8 @@ const SPA_SERIES=["ES","GS","GS +","VS","Holiday","Luxe","COLD PLUNGE"]; // BUIL
 // three places — Cassian/Avalanche invoices fell back to "SERIAL #" and lost the spa line.
 const INVOICE_MODEL_RX='Quattro|Eldorado|Pinnacle|Arcadia|Alpine|Monarch|Pioneer|Colorado|Cassian|Avalanche|13\\s*PARTY|16\\s*SWIM';
 const INVOICE_SERIES_RX='VS|GS|ES|VR|XL|Holiday|Luxe';
+// BUILD 83: models added in Settings (custom_opts/__dt83__.models) are recognised too.
+function _invoiceModelRx(){var x=[];try{x=((window.dt83&&dt83.cfg().models)||[]).map(function(m){return String(m).trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s*')}).filter(Boolean)}catch(e){}return INVOICE_MODEL_RX+(x.length?'|'+x.join('|'):'')}
 let OPT_TB=["NO","YES","Spa Side Table - Aqua Tray Gray"];
 let OPT_SS=["NONE","Basic","A&B [SPECIAL]","A&B [STOCK 36]","A&B [STOCK 48]","A&B [STOCK 60-69]","ModStep 2XL with Safe-T-Rail","Other"];
 let OPT_LF=["NONE","TS - 07","TS - 11","Vanish XL","Boomerang","13' Roll","16' Roll"];
@@ -2181,8 +2183,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026102601;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.10.26 (build 82) — tech ve los tickets del calendario sin nombre, Google sin ventanas repetidas, el PDF de la invoice se guarda de verdad, Cassian/Avalanche Luxe'; // human-readable label (shown in console)
+const APP_BUILD   = 2026102602;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.10.26 (build 83) — las 40 mejoras: fotos por paso con cola sin señal, cobro y problemas del técnico, bandeja de facturas, panel Falta completar, calendario con cupo, gift boxes, salud de la app; portal del cliente arreglado (fotos)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -7609,17 +7611,29 @@ openPdfViewer(_invoicePdfData(r,true),'Signed invoice — '+dispName(r),r.pdf_in
 function hasFiles(e){try{return Array.prototype.indexOf.call(e.dataTransfer.types||[],'Files')>=0}catch(_){return false}}
 function zone(){return document.getElementById('e_pdf_input')?document.getElementById('md'):null}
 try{let st=document.createElement('style');st.textContent='#md.pdf-drop-on{outline:3px dashed var(--aspen-orange,#e67e2e);outline-offset:-6px}#md.pdf-drop-on::after{content:"\\1F4C4  Drop the invoice PDF to attach it";position:sticky;bottom:12px;display:block;margin:0 auto;width:max-content;background:var(--aspen-orange,#e67e2e);color:#fff;font-weight:800;font-size:14px;padding:10px 18px;border-radius:999px;box-shadow:0 8px 20px rgba(26,20,16,.25);pointer-events:none}';document.head.appendChild(st)}catch(_){}
+/* BUILD 83 — with no ticket open, office users can drop SEVERAL invoices at once on the page:
+   the invoice inbox matches each one to its delivery by serial number (dt83Office). */
+function isPdf(x){return /pdf$/i.test(x.type||'')||/\.pdf$/i.test(x.name||'')}
+function inboxOn(z){try{let ov=document.getElementById('ov');let ticketOpen=!!(z&&ov&&!ov.classList.contains('hidden'));return !ticketOpen&&!!(window.dt83&&dt83.invoiceInbox&&dt83.isOffice())}catch(_){return false}}
 document.addEventListener('dragover',function(e){
 if(!hasFiles(e))return;
 e.preventDefault(); // never let the browser navigate away to a dropped file
-let z=zone(),inside=!!(z&&z.contains(e.target));
-try{e.dataTransfer.dropEffect=inside?'copy':'none'}catch(_){}
-if(z)z.classList.toggle('pdf-drop-on',inside)});
-document.addEventListener('dragleave',function(e){if(!e.relatedTarget){let z=zone();if(z)z.classList.remove('pdf-drop-on')}});
+let z=zone(),inside=!!(z&&z.contains(e.target)),inbox=inboxOn(z);
+try{e.dataTransfer.dropEffect=(inside||inbox)?'copy':'none'}catch(_){}
+if(z)z.classList.toggle('pdf-drop-on',inside);
+document.body.classList.toggle('dt83-inbox-on',inbox)});
+document.addEventListener('dragleave',function(e){if(!e.relatedTarget){let z=zone();if(z)z.classList.remove('pdf-drop-on');document.body.classList.remove('dt83-inbox-on')}});
 document.addEventListener('drop',function(e){
 if(!hasFiles(e))return;
 e.preventDefault();
-let z=zone();if(z)z.classList.remove('pdf-drop-on');
+let z=zone();if(z)z.classList.remove('pdf-drop-on');document.body.classList.remove('dt83-inbox-on');
+let pdfs=Array.prototype.filter.call(e.dataTransfer.files||[],isPdf);
+if(inboxOn(z)){
+if(!pdfs.length){showToast('&#9888; That is not a PDF — drop the invoice PDF','warn');return}
+dt83.invoiceInbox(pdfs);return}
+/* Several PDFs on an OPEN ticket: attach none (the open form would later save over what the inbox
+   fills in). One PDF on an open ticket keeps working exactly as in build 82. */
+if(pdfs.length>1&&z&&z.contains(e.target)){showToast('&#128196; One invoice per ticket here — close the ticket and drop them all on the page','warn');return}
 if(!z||!z.contains(e.target)){showToast('&#128196; Open the delivery first, then drop its invoice PDF on it','warn');return}
 let f=Array.prototype.find.call(e.dataTransfer.files||[],function(x){return /pdf$/i.test(x.type||'')||/\.pdf$/i.test(x.name||'')});
 if(!f){showToast('&#9888; That is not a PDF — drop the invoice PDF','warn');return}
@@ -7684,17 +7698,17 @@ if(snMatch)result._serial=snMatch[1];
 let _canon=function(v,list,dflt){let s=String(v).replace(/\s+/g,' ').trim();let hit=list.find(x=>x.toLowerCase()===s.toLowerCase());return hit||dflt(s)};
 let _canonModel=function(v){return _canon(v,SPA_BASES,s=>s.replace(/^13\s*PARTY$/i,'13 PARTY').replace(/^16\s*SWIM$/i,'16 SWIM'))};
 let _canonSeries=function(v){return _canon(v,SPA_SERIES,s=>s.toUpperCase())};
-let yMSrx=new RegExp('\\b(20\\d{2})\\s+('+INVOICE_MODEL_RX+')\\s+('+INVOICE_SERIES_RX+')\\b','i');
+let yMSrx=new RegExp('\\b(20\\d{2})\\s+('+_invoiceModelRx()+')\\s+('+INVOICE_SERIES_RX+')\\b','i');
 let ymsMatch=text.match(yMSrx);
 if(ymsMatch){
 result._model=_canonModel(ymsMatch[2]);
 result._series=_canonSeries(ymsMatch[3])}
 else{
 // No "<year> <model> <series>" line: try "<model> <series>" (e.g. "AVALANCHE LUXE"), then the model alone.
-let msMatch=text.match(new RegExp('\\b('+INVOICE_MODEL_RX+')\\s+('+INVOICE_SERIES_RX+')\\b','i'));
+let msMatch=text.match(new RegExp('\\b('+_invoiceModelRx()+')\\s+('+INVOICE_SERIES_RX+')\\b','i'));
 if(msMatch){result._model=_canonModel(msMatch[1]);result._series=_canonSeries(msMatch[2])}
 else{
-let mMatch=text.match(new RegExp('\\b('+INVOICE_MODEL_RX+')\\b','i'));
+let mMatch=text.match(new RegExp('\\b('+_invoiceModelRx()+')\\b','i'));
 if(mMatch)result._model=_canonModel(mMatch[1])}}
 
 // === COVER, LIFT, STEPS, TABLE, START-UP — match against ALL dropdown options (built-in + custom)
@@ -7869,8 +7883,8 @@ result._tableCustomLabel=lbl;
 // === FULL SPA DESCRIPTION ===
 // Take everything from the start of the spa item (e.g. "2025 Pinnacle ES") up to (but excluding)
 // any pricing/discount/tax/footer. Filter out item codes, pure number lines (qty/prices), and footers.
-let startIdx=text.search(new RegExp('20\\d{2}\\s+(?:'+INVOICE_MODEL_RX+')','i'));
-if(startIdx<0)startIdx=text.search(new RegExp('\\b(?:'+INVOICE_MODEL_RX+')\\s+(?:'+INVOICE_SERIES_RX+')\\b','i')); // BUILD 82: "AVALANCHE LUXE …" without a year
+let startIdx=text.search(new RegExp('20\\d{2}\\s+(?:'+_invoiceModelRx()+')','i'));
+if(startIdx<0)startIdx=text.search(new RegExp('\\b(?:'+_invoiceModelRx()+')\\s+(?:'+INVOICE_SERIES_RX+')\\b','i')); // BUILD 82: "AVALANCHE LUXE …" without a year
 if(startIdx<0)startIdx=text.search(/SERIAL\s*#/i);
 if(startIdx>=0){
 let endRe=/(Spa\s+Discount\b|Sales\s+Tax\b|Total\s*\$|Total\s+Due|Subtotal|Balance\s+Due|QUOTES\s+VALID|We\s+appreciate|SIGNATURE|Discount-Spas|^Discount\s|^Discount$)/im;
@@ -13484,4 +13498,1091 @@ if(window.ResizeObserver){new ResizeObserver(apply).observe(bar)}
 else{window.addEventListener('resize',apply)}
 }catch(e){}})();
 </script>
+<!-- ════════ BUILD 83 BLOCKS ════════ -->
+<!-- The 40 improvements. Each block only ADDS to the app: delete these 4 blocks to go back to build 82. -->
+<style id="dt83Style">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 83 · dt83Style — everything the 40 improvements need.
+   Uses the brand tokens from :root (dark mode redefines them), no new blues.
+   Delete this block (and the 3 dt83 scripts) to return to build 82.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{--dt83-info-dark:#157A90;--dt83-ok:var(--st-success);--dt83-r:12px}
+
+/* ---------- sheet (bottom sheet on phones, card on desktop) ---------- */
+.dt83-sheet-bg{position:fixed;inset:0;z-index:100010;background:rgba(26,20,16,.45);display:flex;align-items:flex-end;justify-content:center;animation:dt83fade .15s ease-out}
+.dt83-sheet{background:var(--surface);color:var(--text-primary);width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:dt83up .2s ease-out;padding-bottom:env(safe-area-inset-bottom,0px)}
+.dt83-sheet.wide{max-width:760px}
+.dt83-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 10px;border-bottom:1px solid var(--border-soft)}
+.dt83-sheet-h b{font-size:17px;font-weight:800;letter-spacing:-.01em}
+.dt83-x{width:36px;height:36px;border-radius:50%;border:1px solid var(--border-soft);background:var(--surf-soft);color:var(--text-secondary);font-size:15px;cursor:pointer;flex-shrink:0}
+.dt83-sheet-b{padding:14px 18px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+@media(min-width:700px){.dt83-sheet-bg{align-items:center;padding:24px}.dt83-sheet{border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.3)}}
+@keyframes dt83fade{from{opacity:0}to{opacity:1}}
+@keyframes dt83up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+
+/* ---------- shared controls ---------- */
+.dt83-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin-top:10px;border-radius:12px;border:1px solid transparent;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.dt83-btn.pri{background:var(--aspen-orange);color:#fff;box-shadow:0 6px 16px rgba(230,126,46,.28)}
+.dt83-btn.pri:active{background:var(--aspen-orange-dark)}
+.dt83-btn.ghost{background:var(--surf-soft);color:var(--text-primary);border-color:var(--border-soft)}
+.dt83-act{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:6px 12px;margin:3px 4px 3px 0;border-radius:999px;border:1px solid var(--aspen-orange);background:var(--surface);color:var(--aspen-orange-dark);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+.dt83-act:hover{background:var(--st-action-soft)}
+.dt83-act.ghost{border-color:var(--border-mid);color:var(--text-secondary)}
+.dt83-sheet-b input:not([type=checkbox]),.dt83-sheet-b textarea,.dt83-sheet-b select{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-mid);background:var(--surface);color:var(--text-primary);font-family:inherit;font-size:16px}
+.dt83-sheet-b textarea{min-height:84px;resize:vertical}
+.dt83-l{display:block;margin:14px 0 6px;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary)}
+.dt83-sub{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:10px;line-height:1.35}
+.dt83-hint{font-size:12px;color:var(--text-tertiary);margin-top:6px;line-height:1.4}
+.dt83-need{font-size:12.5px;font-weight:700;color:var(--st-danger);margin-right:6px}
+.dt83-empty{padding:26px 10px;text-align:center;color:var(--st-success);font-weight:700}
+.dt83-cats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.dt83-cats button{min-height:46px;padding:8px 10px;border-radius:11px;border:1px solid var(--border-mid);background:var(--surface);color:var(--text-primary);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;text-align:center}
+.dt83-cats button.on{border-color:var(--aspen-orange);background:var(--st-action-soft);color:var(--aspen-orange-dark);box-shadow:inset 0 0 0 1px var(--aspen-orange)}
+.dt83-chk{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 2px;border-bottom:1px solid var(--border-soft);font-weight:700;cursor:pointer}
+.dt83-chk input{width:20px;height:20px;accent-color:var(--aspen-orange)}
+.dt83-due{font-size:14px;color:var(--text-secondary);margin-bottom:12px}.dt83-due b{font-size:22px;color:var(--text-primary);margin-left:6px}
+.dt83-tags{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.dt83-tags span{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--surf-soft);border:1px solid var(--border-soft);font-size:12.5px;font-weight:700}
+.dt83-tags span button{border:none;background:none;color:var(--st-danger);font-size:13px;cursor:pointer;padding:0 2px}
+.dt83-tags i{color:var(--text-tertiary);font-size:12.5px}
+.dt83-add{display:flex;gap:6px;align-items:center;margin:6px 0}.dt83-add input,.dt83-add select{flex:1;min-width:0}
+.dt83-add .dt83-act{margin:0;min-height:44px}
+.dt83-hrow{display:flex;justify-content:space-between;gap:12px;padding:10px 2px;border-bottom:1px solid var(--border-soft);font-size:13.5px}
+.dt83-hrow span{color:var(--text-secondary)}.dt83-hrow b{text-align:right;font-weight:800}
+.dt83-hrow b.ok{color:var(--st-success)}.dt83-hrow b.bad{color:var(--st-danger)}
+.dt83-tblw{overflow-x:auto;margin:6px 0 10px;border:1px solid var(--border-soft);border-radius:10px}
+.dt83-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.dt83-tbl th{position:static;top:auto;z-index:auto;background:var(--surf-soft);text-align:left;padding:8px 10px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-secondary)}
+.dt83-tbl td{padding:8px 10px;border-top:1px solid var(--border-soft)}.dt83-tbl .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:800}
+.dt83-pend{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:var(--st-warning-soft);color:#8a5a0c;border:1px dashed var(--st-warning);font-size:10.5px;font-weight:800;letter-spacing:.02em;white-space:nowrap;vertical-align:middle}
+html[data-theme="dark"] .dt83-pend{color:var(--st-warning)}
+
+/* ---------- tech list ---------- */
+.dt83-top{padding:10px 12px 0}
+.dt83-week{display:grid;grid-template-columns:30px repeat(6,1fr) 30px;gap:4px;align-items:stretch;margin-bottom:10px}
+.dt83-wk-nav{border:none;background:none;color:var(--text-tertiary);font-size:22px;cursor:pointer;border-radius:10px}
+.dt83-wk-d{display:flex;flex-direction:column;align-items:center;gap:1px;min-height:58px;padding:6px 0 5px;border-radius:12px;border:1px solid var(--border-soft);background:var(--surface);color:var(--text-secondary);font-family:inherit;cursor:pointer}
+.dt83-wk-d .wd{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.dt83-wk-d .dn{font-size:18px;font-weight:800;color:var(--text-primary);line-height:1.1}
+.dt83-wk-d .dots{display:flex;gap:3px;height:6px;margin-top:2px}
+.dt83-wk-d .dots i{width:6px;height:6px;border-radius:50%;background:var(--aspen-orange)}
+.dt83-wk-d .dots i.d{background:var(--st-success)}
+.dt83-wk-d.today{border-color:var(--aspen-orange)}
+.dt83-wk-d.on{background:var(--aspen-black);border-color:var(--aspen-black);color:rgba(255,255,255,.75)}
+.dt83-wk-d.on .dn{color:#fff}
+html[data-theme="dark"] .dt83-wk-d.on{background:var(--aspen-orange);border-color:var(--aspen-orange)}
+.dt83-chg{background:var(--st-warning-soft);border:1px solid var(--st-warning);border-radius:var(--dt83-r);padding:10px 12px;margin-bottom:10px}
+.dt83-chg .t{font-weight:800;font-size:13.5px;margin-bottom:4px}
+.dt83-chg .r{font-size:13px;padding:6px 0;border-top:1px solid rgba(217,154,43,.25);cursor:pointer}
+.dt83-chg .r.more{cursor:default;color:var(--text-secondary)}
+.dt83-chg button{margin-top:6px;min-height:36px;padding:6px 16px;border-radius:999px;border:none;background:var(--aspen-black);color:#fff;font-family:inherit;font-weight:800;cursor:pointer}
+html[data-theme="dark"] .dt83-chg button{background:var(--st-warning);color:#1a1410}
+.dt83-toprow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dt83-toprow:empty{display:none}
+.dt83-route{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border-radius:12px;border:none;background:var(--st-info);color:#fff;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(28,143,168,.25)}
+.dt83-route span{font-weight:700;opacity:.85;font-size:12.5px}
+.dt83-qbadge{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:var(--st-warning-soft);color:#8a5a0c;border:1px solid var(--st-warning);font-size:12px;font-weight:800}
+html[data-theme="dark"] .dt83-qbadge{color:var(--st-warning)}
+.dt83-chips{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 9px}
+.dt83-c,.dt83-sz{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--surf-soft);color:var(--text-secondary);border:1px solid var(--border-soft);white-space:nowrap}
+.dt83-c.req{background:var(--st-hold-soft);color:var(--st-hold);border-color:transparent}
+.dt83-c.pay{background:var(--st-danger-soft);color:var(--st-danger);border-color:transparent}
+.dt83-c.q{background:var(--st-warning-soft);color:#8a5a0c;border-color:transparent}
+.dt83-sz.s8{background:#E54B25;color:#fff;border-color:#E54B25}
+.dt83-sz.s7{background:#2F7D52;color:#fff;border-color:#2F7D52}
+.dt83-sz.sns{background:#D99A2B;color:#1a1410;border-color:#D99A2B}
+.dt83-noaddr{background:var(--st-warning-soft)!important;color:#8a5a0c!important;font-size:12px!important}
+.dt83-next{display:inline-flex;align-items:center;gap:6px;margin-top:16px;min-height:46px;padding:10px 18px;border-radius:999px;border:1px solid var(--aspen-orange);background:var(--surface);color:var(--aspen-orange-dark);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.dt83-skel{height:132px;margin:12px;border-radius:16px;background:linear-gradient(90deg,var(--surf-soft) 0%,var(--border-soft) 40%,var(--surf-soft) 80%);background-size:300% 100%;animation:dt83shim 1.3s linear infinite}
+@keyframes dt83shim{from{background-position:100% 0}to{background-position:-100% 0}}
+
+/* ---------- tech detail ---------- */
+.dt83-rawt{font-size:12px;color:rgba(255,255,255,.7);margin-top:4px;line-height:1.35;word-break:break-word}
+.td2-chip.dt83-szchip.s8{background:#E54B25}.td2-chip.dt83-szchip.s7{background:#2F7D52}.td2-chip.dt83-szchip.sns{background:#D99A2B;color:#1a1410}
+.dt83-sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:14px;margin-bottom:10px}
+.dt83-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dt83-slot{position:relative;aspect-ratio:1/1;min-height:92px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;padding:6px 4px;border-radius:12px;border:1.5px dashed var(--border-mid);background:var(--surf-soft);color:var(--text-secondary);font-family:inherit;cursor:pointer;overflow:hidden}
+.dt83-slot .plus{position:absolute;top:50%;left:50%;transform:translate(-50%,-62%);font-size:26px;color:var(--text-tertiary)}
+.dt83-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dt83-slot .lb{position:relative;z-index:1;font-size:11px;font-weight:800;text-align:center;line-height:1.15;padding:2px 6px;border-radius:6px}
+.dt83-slot .stt{position:absolute;top:5px;right:5px;z-index:1;min-width:20px;height:20px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.dt83-slot .stt:empty{display:none}
+.dt83-slot.req{border-color:var(--aspen-orange);background:var(--st-action-soft)}
+.dt83-slot.req .lb{color:var(--aspen-orange-dark)}
+.dt83-slot.done,.dt83-slot.queued{border-style:solid}
+.dt83-slot.done{border-color:var(--st-success)}.dt83-slot.done .stt{background:var(--st-success);color:#fff}
+.dt83-slot.queued{border-color:var(--st-warning)}.dt83-slot.queued .stt{background:var(--st-warning);color:#1a1410}
+.dt83-slot.done .lb,.dt83-slot.queued .lb{background:rgba(26,20,16,.62);color:#fff}
+.dt83-slot.extra{border-style:solid}
+.dt83-coll{background:var(--st-success-soft)!important;border-color:var(--st-success)!important;font-size:14px}
+.dt83-invcard{display:flex!important;align-items:center;gap:12px}
+.dt83-thumb{width:64px;height:auto;max-height:84px;object-fit:cover;object-position:top;border-radius:6px;border:1px solid var(--border-mid);background:#fff;box-shadow:var(--shadow-card);flex-shrink:0}
+.td2-mini-row.dt83-wrap{flex-wrap:wrap}
+.td2-mini-row.dt83-wrap .td2-mini{min-width:calc(25% - 6px)}
+.td2-mini.dt83-prob{color:var(--st-danger);border-color:rgba(192,73,47,.35)}
+.td2-mini.dt83-collbtn{color:var(--st-success);border-color:rgba(46,139,87,.35)}
+.td2-mini.dt83-collbtn.on{background:var(--st-success-soft)}
+
+/* ---------- deliver gate + celebration ---------- */
+.dt83-gate{margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:var(--surf-soft);border:1px solid var(--border-soft);text-align:left}
+.dt83-gate .gh{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:4px}
+.dt83-gate .gi{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px;font-size:13.5px;font-weight:700;border-top:1px solid var(--border-soft)}
+.dt83-gate .gh+.gi{border-top:none}
+.dt83-gate .gi.ok{color:var(--st-success)}.dt83-gate .gi.no{color:var(--st-danger)}.dt83-gate .gi.warn{color:#8a5a0c}
+html[data-theme="dark"] .dt83-gate .gi.warn{color:var(--st-warning)}
+.dt83-gate .gi button{min-height:34px;padding:4px 14px;border-radius:999px;border:none;background:var(--aspen-orange);color:#fff;font-family:inherit;font-weight:800;cursor:pointer}
+.dt83-gate .gov{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-mid);font-size:13px;font-weight:700}
+.dt83-gate .gov label{display:flex;align-items:center;gap:8px;min-height:36px}
+.dt83-gate .gov input[type=checkbox]{width:20px;height:20px;accent-color:var(--aspen-orange)}
+.dt83-gate .gov input:not([type=checkbox]){width:100%;box-sizing:border-box;min-height:42px;margin-top:6px;padding:8px 10px;border-radius:10px;border:1px solid var(--aspen-orange);font-family:inherit;font-size:16px;background:var(--surface);color:var(--text-primary)}
+.dt83-gate.shake{animation:dt83shake .4s}
+@keyframes dt83shake{0%,100%{transform:none}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.dt83-cel{position:fixed;inset:0;z-index:100020;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(26,20,16,.35);pointer-events:none;transition:opacity .35s}
+.dt83-cel .ck{width:110px;height:110px;border-radius:50%;background:var(--st-success);color:#fff;font-size:60px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 18px 50px rgba(46,139,87,.45);animation:dt83pop .45s cubic-bezier(.2,1.4,.4,1)}
+.dt83-cel .tx{color:#fff;font-size:22px;font-weight:800;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+.dt83-cel.out{opacity:0}
+@keyframes dt83pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.dt83-cel .ck,.dt83-sheet,.dt83-sheet-bg,.dt83-gate.shake,.dt83-skel{animation:none}}
+
+/* ---------- office: ticket modal ---------- */
+.dt83-hint#dt83techhint:empty{display:none}
+.dt83-steps{padding:12px 18px 10px;border-bottom:1px solid var(--border-soft);background:var(--surface)}
+.dt83-steprow{display:flex;align-items:flex-start;gap:0;overflow-x:auto;scrollbar-width:none}
+.dt83-steprow::-webkit-scrollbar{display:none}
+.dt83-step{flex:1;min-width:76px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;text-align:center}
+.dt83-step::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:3px;background:var(--border-mid);z-index:0}
+.dt83-step:first-child::before{display:none}
+.dt83-step.done::before,.dt83-step.cur::before{background:var(--st-success)}
+.dt83-step .dot{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;background:var(--surface);border:2px solid var(--border-mid);color:var(--text-tertiary)}
+.dt83-step.done .dot{background:var(--st-success);border-color:var(--st-success);color:#fff}
+.dt83-step.cur .dot{border-color:var(--aspen-orange);color:var(--aspen-orange-dark);box-shadow:0 0 0 4px rgba(230,126,46,.18)}
+.dt83-step .l{font-size:11.5px;font-weight:800;color:var(--text-primary)}
+.dt83-step .s{font-size:10.5px;color:var(--text-tertiary);max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dt83-next-acts{margin-top:10px;font-size:12.5px;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.dt83-next-acts>b{margin-right:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary)}
+.dt83-collbar{margin:10px 18px 0;padding:10px 12px;border-radius:11px;background:var(--st-warning-soft);border:1px solid var(--st-warning);font-size:13px;line-height:1.5}
+.dt83-collbar.ok{background:var(--st-success-soft);border-color:var(--st-success)}
+.dt83-collbar.warn{background:var(--st-danger-soft);border-color:var(--st-danger)}
+.dt83-collbar .dt83-act{margin-left:6px}
+.dt83-namechip{display:inline-flex;align-items:center;margin-top:6px;min-height:32px;padding:5px 12px;border-radius:999px;border:1px dashed var(--aspen-orange);background:var(--st-action-soft);color:var(--aspen-orange-dark);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.dt83-galbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 36px);margin:8px 18px;min-height:42px;border-radius:11px;border:1px solid var(--border-mid);background:var(--surf-soft);color:var(--text-primary);font-family:inherit;font-weight:800;cursor:pointer}
+.dt83-thumbbtn{border:none;background:none;padding:0;margin-right:10px;cursor:zoom-in;vertical-align:middle}
+.dt83-thumbbtn:empty{display:none}
+
+/* ---------- photo lightbox ---------- */
+.dt83-lb{position:fixed;inset:0;z-index:100030;background:rgba(12,9,7,.94);color:#fff;display:flex;flex-direction:column}
+.dt83-lb .lb-top{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 8px}
+.dt83-lb .lb-top b{flex:1;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dt83-lb .lb-n{font-size:12.5px;opacity:.7;font-variant-numeric:tabular-nums}
+.dt83-lb .lb-x{width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:17px;cursor:pointer}
+.dt83-lb .lb-tabs{display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none}
+.dt83-lb .lb-tabs button{flex-shrink:0;min-height:32px;padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.8);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.dt83-lb .lb-tabs button.on{background:var(--aspen-orange);border-color:var(--aspen-orange);color:#fff}
+.dt83-lb .lb-stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:0 8px}
+.dt83-lb .lb-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;touch-action:pan-y}
+.dt83-lb .lb-p,.dt83-lb .lb-nx{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:28px;cursor:pointer;z-index:1}
+.dt83-lb .lb-p{left:10px}.dt83-lb .lb-nx{right:10px}
+.dt83-lb .lb-cap{text-align:center;font-size:12.5px;opacity:.8;padding:8px 16px 4px}
+.dt83-lb .lb-strip{display:flex;gap:6px;padding:8px 16px calc(env(safe-area-inset-bottom,0px) + 12px);overflow-x:auto}
+.dt83-lb .lb-strip img{width:58px;height:58px;object-fit:cover;border-radius:8px;opacity:.55;cursor:pointer;flex-shrink:0;border:2px solid transparent}
+.dt83-lb .lb-strip img.on{opacity:1;border-color:var(--aspen-orange)}
+
+/* ---------- "to complete", invoice inbox, lists ---------- */
+.dt83-todo-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;font-weight:700;color:var(--text-secondary)}
+.dt83-day{margin-bottom:14px}
+.dt83-dayh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:2px solid var(--aspen-black);margin-bottom:4px}
+html[data-theme="dark"] .dt83-dayh{border-bottom-color:var(--aspen-orange)}
+.dt83-dayh b{font-size:14px;text-transform:capitalize}
+.dt83-assign{font-size:12px;font-weight:700;color:var(--text-secondary);display:inline-flex;align-items:center;gap:6px}
+.dt83-assign select{width:auto!important;min-height:34px!important;padding:4px 8px!important;font-size:13px!important}
+.dt83-row{display:grid;grid-template-columns:1fr;gap:4px;padding:10px 2px;border-bottom:1px solid var(--border-soft);cursor:pointer}
+.dt83-row-n b{font-size:14.5px}
+.dt83-row-n .sub{display:block;font-size:12px;color:var(--text-tertiary);margin-top:1px}
+.dt83-miss{display:flex;flex-wrap:wrap;gap:4px}
+.dt83-miss span{padding:2px 8px;border-radius:999px;background:var(--st-danger-soft);color:var(--st-danger);font-size:11px;font-weight:800}
+.dt83-miss span.m-tech,.dt83-miss span.m-pay{background:var(--st-warning-soft);color:#8a5a0c}
+.dt83-miss span.m-link,.dt83-miss span.m-form{background:var(--st-info-soft);color:var(--aspen-deep)}
+html[data-theme="dark"] .dt83-miss span.m-link,html[data-theme="dark"] .dt83-miss span.m-form{color:var(--st-info)}
+.dt83-row-a{display:flex;flex-wrap:wrap}
+@media(min-width:700px){.dt83-row{grid-template-columns:minmax(180px,1.1fr) 1.4fr auto;align-items:center}.dt83-row-a{justify-content:flex-end}}
+.dt83-inrow{padding:10px 12px;margin-bottom:6px;border-radius:10px;background:var(--surf-soft);border:1px solid var(--border-soft);font-size:13px}
+.dt83-inrow .sub{display:block;font-size:12px;color:var(--text-secondary);margin-top:3px}
+.dt83-inrow.ok{background:var(--st-success-soft);border-color:var(--st-success)}
+.dt83-inrow.warn{background:var(--st-warning-soft);border-color:var(--st-warning)}
+.dt83-inrow.no{background:var(--st-danger-soft);border-color:var(--st-danger)}
+.dt83-manual{display:flex;gap:6px;align-items:center;margin-top:8px;font-weight:700;font-size:12.5px}
+.dt83-manual select{flex:1;min-width:0;min-height:38px!important}
+.dt83-manual .dt83-act{margin:0}
+body.dt83-inbox-on::after{content:"\1F4E5  Drop the invoices \2014  each one goes to its delivery by serial number";position:fixed;inset:14px;z-index:100040;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;border:3px dashed var(--aspen-orange);border-radius:24px;background:rgba(26,20,16,.55);color:#fff;font-size:20px;font-weight:800;pointer-events:none}
+
+/* ---------- KPIs / greet ---------- */
+.cmd-metric.dt83-click{cursor:pointer;transition:transform .12s,box-shadow .12s}
+.cmd-metric.dt83-click:hover{transform:translateY(-1px);box-shadow:var(--shadow-card-hover)}
+.cmd-metric.dt83-click:focus-visible{outline:2px solid var(--aspen-orange);outline-offset:2px}
+.dt83-todochip{display:inline-flex;align-items:center;gap:6px;margin-top:8px;min-height:34px;padding:6px 14px;border-radius:999px;border:none;background:var(--aspen-orange);color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(230,126,46,.28)}
+
+/* ---------- calendar ---------- */
+.dt83-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:8px 4px 10px;font-size:12px;font-weight:700;color:var(--text-secondary)}
+.dt83-legend span{display:inline-flex;align-items:center;gap:6px}
+.dt83-legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.dt83-legend i.s8{background:#E54B25}.dt83-legend i.s7{background:#2F7D52}.dt83-legend i.sns{background:#D99A2B}
+.dt83-legend i.inc{background:transparent;border:2px dashed var(--st-danger)}
+.dt83-legend .cap{margin-left:auto;color:var(--text-tertiary)}
+.cal-ev.dt83-inc{outline:2px dashed rgba(255,255,255,.9);outline-offset:-3px;box-shadow:0 0 0 1px var(--st-danger)}
+.dt83-load{display:inline-block;margin-left:4px;padding:0 5px;border-radius:6px;background:var(--surf-soft);color:var(--text-secondary);font-size:10px;font-weight:800;vertical-align:middle;border:1px solid var(--border-soft)}
+.dt83-load.full{background:var(--st-danger);color:#fff;border-color:var(--st-danger)}
+
+/* ---------- V17 line icons (sidebar + dock) ---------- */
+.dt83-ic{width:18px;height:18px;flex-shrink:0;opacity:.85}
+#glassSide .gs-nav button.on .dt83-ic{opacity:1}
+#glassDock .gi .dt83-ic{width:22px;height:22px;display:block;margin:0 auto}
+#gs_todo .gs-bell-n{margin-left:auto}
+
+/* ---------- V13 compact status tabs ---------- */
+@media(max-width:899px){
+.aspen-tabs{scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.aspen-tab{scroll-snap-align:start;margin-right:12px}
+.aspen-tab .tab-count{min-width:18px;text-align:center}
+}
+
+@media(min-width:900px) and (max-width:1599px){
+/* build 82 cut the last tab ("All") off at laptop widths — tighter spacing makes all 7 fit */
+.aspen-tab{margin-right:16px;letter-spacing:.05em;gap:7px}
+.aspen-tab .tab-icon{margin-right:0}
+}
+
+/* ---------- V18 brand: last generic blues → Aspen teal / deep ---------- */
+th.act-sort{color:var(--st-info)}
+.mbtn-e:hover,.nbtn-save:hover{background:var(--dt83-info-dark)}
+.dsort.active{color:var(--aspen-deep);border-color:var(--st-info)}
+.cal-vbtn.act{background:var(--aspen-black);border-color:var(--aspen-black)}
+html[data-theme="dark"] .cal-vbtn.act{background:var(--aspen-orange);border-color:var(--aspen-orange);color:#fff}
+.cal-ev.delivered{background:var(--st-info-soft);color:var(--aspen-deep)}
+html[data-theme="dark"] .cal-ev.delivered{color:var(--st-info)}
+.cal-wk-label.today .cw-day{color:var(--aspen-orange)}
+.tech-addr-card .lbl{color:var(--aspen-deep)!important}
+html[data-theme="dark"] .tech-addr-card .lbl{color:var(--st-info)!important}
+.tech-addr-card:hover{background:var(--st-info-soft);filter:brightness(.97)}
+.badge.delivered{background:var(--st-info-soft)}
+.svc-tag.svc-asg{background:var(--st-info-soft);color:var(--aspen-deep)}
+.tech-action-btn.photo{border-color:var(--st-hold)}
+
+/* V18 · dark mode: --aspen-black turns light there (it doubles as text colour), which left the
+   black brand bars light grey with white text on top. Keep the bars espresso-dark. */
+html[data-theme="dark"] .aspen-hdr,html[data-theme="dark"] .tech-hdr,html[data-theme="dark"] .tech-detail .back-bar,html[data-theme="dark"] .auth-screen,html[data-theme="dark"] .route-stop.depot .rs-num{background:#15110d}
+html[data-theme="dark"] .aspen-tab .tab-count{color:#15110d}
+html[data-theme="dark"] .dt83-noaddr{color:var(--st-warning)!important;background:rgba(232,180,92,.12)!important}
+
+</style>
+<script id="dt83Core">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 83 · dt83Core — shared helpers for the 40 improvements
+   Reversible: delete the four blocks dt83Style / dt83Core / dt83Tech /
+   dt83Office and the app is build 82 again. Nothing here changes how
+   tickets sync, save, claim calendar events or protect against wipes:
+   every write goes through the existing saveTicketFields() (field-level).
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83={};
+D.isTech=function(){return !!(currentUser&&currentUser.role==='tech')};
+D.isOffice=function(){return !!(currentUser&&(currentUser.role==='admin'||currentUser.role==='organizer'))};
+D.esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
+D.OFFICE_TEL='3147765050';
+
+/* ---------- shared config: custom_opts/__dt83__ (staff-only, like custom_opts) ---------- */
+var DEF={reqSlots:['placed','serial'],capDay:4,craneDay:1,models:[],series:[],gift:{}};
+var CFG=JSON.parse(JSON.stringify(DEF));
+D.cfg=function(){return CFG};
+D.saveCfg=function(patch){
+Object.keys(patch).forEach(function(k){CFG[k]=patch[k]});
+D._applyCatalog();
+return db.ref('custom_opts/__dt83__').update(patch)};
+D._applyCatalog=function(){
+(CFG.models||[]).forEach(function(m){m=String(m||'').trim();if(m&&SPA_BASES.indexOf(m)<0)SPA_BASES.push(m)});
+(CFG.series||[]).forEach(function(s){s=String(s||'').trim();if(s&&SPA_SERIES.indexOf(s)<0)SPA_SERIES.splice(Math.max(0,SPA_SERIES.length-1),0,s)})};
+try{AUTH_READY.then(function(){
+db.ref('custom_opts/__dt83__').on('value',function(snap){
+var v=(snap&&snap.val&&snap.val())||{};
+CFG=JSON.parse(JSON.stringify(DEF));Object.keys(v).forEach(function(k){CFG[k]=v[k]});
+if(!Array.isArray(CFG.reqSlots))CFG.reqSlots=DEF.reqSlots.slice();
+D._applyCatalog();
+},function(e){console.warn('[dt83] config read',e&&e.code)})})}catch(e){}
+
+/* ---------- photo slots the tech fills on every delivery ---------- */
+D.SLOTS=[
+{k:'before',es:'Antes de bajar',en:'Before'},
+{k:'placed',es:'Spa colocado',en:'Spa placed'},
+{k:'serial',es:'Placa de serie',en:'Serial plate'},
+{k:'breaker',es:'Breaker / eléctrico',en:'Breaker / electrical'},
+{k:'final',es:'Final con cover',en:'Final with cover'}];
+D.slotLabel=function(k){var s=D.SLOTS.find(function(x){return x.k===k});return s?_L(s.es,s.en):(k==='payment'?_L('Cheque / pago','Check / payment'):k)};
+D.slotDone=function(r,k){var u=r&&r.tech_photo_slots&&r.tech_photo_slots[k];if(!u)return false;
+if(u==='inline')return true;return Array.isArray(r.tech_photos)&&r.tech_photos.indexOf(u)>=0};
+D.missingSlots=function(r){return (CFG.reqSlots||[]).filter(function(k){return !D.slotDone(r,k)&&!D.queuedSlot(r.i,k)})};
+
+/* ---------- a readable name for tickets that only have the calendar title ---------- */
+var PRODUCT=/^(swim\s*spas?|spas?|hot\s*tubs?|tubs?|sauna|cold\s*plunge|plunge|roll[\s-]*off|haul|delivery|del|swap|return|pick\s*-?\s*up|crane|tbd|new|used|demo|floor\s*model|relocat\w*|move)$/i;
+D.titleName=function(title){
+var t=String(title||'').trim();if(!t)return '';
+t=t.replace(/^(ALL\s*DAY(\s*\+\s*Haul)?|AM|PM)(?![A-Za-z])[\s\-+]*/i,'');
+var mrx=null;try{mrx=new RegExp('^(?:'+_invoiceModelRx()+')(?:\\s+(?:'+INVOICE_SERIES_RX+'))?$','i')}catch(e){}
+var parts=t.split(/\s*[-|]\s*/).map(function(s){return s.trim()}).filter(Boolean);
+for(var i=0;i<parts.length;i++){var p=parts[i];
+if(/^\d/.test(p))continue;                      // serial, ZIP
+if(PRODUCT.test(p))continue;                    // Swim Spa, Roll Off…
+if(mrx&&mrx.test(p))continue;                   // Cassian, Pinnacle ES…
+if(/^[A-Z]{1,3}(\s+\d{3,6})?$/.test(p))continue; // "CL 63021"
+return p.replace(/\s+\d{4,6}\b.*$/,'').trim()}
+return ''};
+D.niceName=function(r){if(!r)return '';if(r.n)return r.n;var n=D.titleName(r.cal);return n||r.cal||_L('(sin nombre)','(no name yet)')};
+D.namePending=function(r){return !!(r&&!r.n&&r.cal)};
+D.titleBits=function(r){var out={};try{var p=parseGcalTitle(r.cal||'');out.serial=p.serial||null;out.zip=(p.sns||[]).find(function(n){return /^6\d{4}$/.test(n)})||null;out.slot=p.slot}catch(e){}return out};
+
+/* ---------- spa size from the Google Calendar color (Alberto's rule) ---------- */
+D.size=function(r){var c=String(r&&r.gcalColorId||'');
+return {'11':{cls:'s8',es:"8' estándar",en:"8' standard",short:"8'"},
+'10':{cls:'s7',es:"7' o menos",en:"7' or smaller",short:"7'"},
+'6':{cls:'sns',es:'No estándar',en:'Non-standard',short:'Non-std'}}[c]||null};
+
+/* ---------- dates ---------- */
+D.dayKey=function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+D.recDay=function(r){if(!r||!r.dd)return null;var d=parseDate(r.dd);if(!d||isNaN(d))return null;return D.dayKey(d)};
+D.live=function(r){return r&&!r._deleted&&!r.co&&!r.hold&&(r.n||r.cal)};
+D.dayLoad=function(k,exceptId){var n=0,crane=0;AD().forEach(function(r){if(!D.live(r)||r.dl)return;if(exceptId!=null&&sameId(r.i,exceptId))return;if(D.recDay(r)===k){n++;if(r.crane)crane++}});return {n:n,crane:crane}};
+
+/* ---------- what a delivery still needs before the truck leaves ---------- */
+D.missing=function(r){var m=[];
+if(!r.n)m.push(['name',_L('Nombre','Name')]);
+if(!r.ph)m.push(['phone',_L('Teléfono','Phone')]);
+if(!r.st)m.push(['address',_L('Dirección','Address')]);
+if(!r.pdf_invoice)m.push(['invoice',_L('Factura','Invoice')]);
+if(!r.sp)m.push(['model',_L('Modelo','Model')]);
+if(!r.assigned_to)m.push(['tech',_L('Técnico','Tech')]);
+var it=(typeof INTAKE!=='undefined'&&INTAKE)?INTAKE[r.i]:null;
+if(!it)m.push(['link',_L('Link del cliente','Customer link')]);
+else if(!it.submitted)m.push(['form',_L('Cliente no ha respondido','Customer hasn’t replied')]);
+if(+r.bl>0&&!r.pst)m.push(['pay',_L('Forma de pago','Payment method')]);
+return m};
+
+/* ---------- offline-safe photo queue (IndexedDB, memory fallback) ---------- */
+var MEM=[],_db=null,_dbTried=false;
+function idb(){return new Promise(function(res){
+if(_db)return res(_db);if(_dbTried||typeof indexedDB==='undefined')return res(null);_dbTried=true;
+try{var rq=indexedDB.open('dt83',1);
+rq.onupgradeneeded=function(){try{rq.result.createObjectStore('photoq',{keyPath:'qid'})}catch(e){}};
+rq.onsuccess=function(){_db=rq.result;res(_db)};rq.onerror=function(){res(null)}}catch(e){res(null)}})}
+function store(mode,fn){return idb().then(function(dbi){
+if(!dbi)return fn(null);
+return new Promise(function(res){try{var t=dbi.transaction('photoq',mode),s=t.objectStore('photoq'),out=fn(s);
+t.oncomplete=function(){res(out&&out._v!==undefined?out._v:out)};t.onerror=function(){res(null)}}catch(e){res(fn(null))}})})}
+var QCACHE=[];
+D.qAll=function(){return store('readonly',function(s){if(!s)return MEM.slice();var box={_v:[]};var rq=s.getAll();rq.onsuccess=function(){box._v=rq.result||[]};return box}).then(function(a){QCACHE=a||[];return QCACHE})};
+D.qPut=function(it){return store('readwrite',function(s){if(!s){MEM=MEM.filter(function(x){return x.qid!==it.qid});MEM.push(it);return}s.put(it)})};
+D.qDel=function(qid){return store('readwrite',function(s){if(!s){MEM=MEM.filter(function(x){return x.qid!==qid});return}s.delete(qid)})};
+D.queued=function(id){return QCACHE.filter(function(x){return sameId(x.id,id)})};
+D.queuedSlot=function(id,k){return QCACHE.some(function(x){return sameId(x.id,id)&&x.slot===k})};
+D.addPhoto=async function(id,file,slot){
+var b64=await compressImage(file,1200,0.7);
+if(typeof b64!=='string'||b64.indexOf('data:image')!==0)throw new Error('bad image');
+var it={qid:'q'+Date.now()+Math.random().toString(36).slice(2,6),id:String(id),slot:slot||null,b64:b64,ts:Date.now(),fails:0};
+await D.qPut(it);await D.qAll();D.onQueue();
+D.flush();return it};
+async function commit(it,stored){
+var r=findRecById(it.id);if(!r)return false;
+var base=await _freshPhotoMerge(it.id,'tech_photos',r.tech_photos||[]);
+if(base.indexOf(stored)<0)base=base.concat([stored]);
+var f={tech_photos:base};
+if(it.slot){var sl=Object.assign({},r.tech_photo_slots||{});sl[it.slot]=/^https?:/.test(stored)?stored:'inline';f.tech_photo_slots=sl}
+saveTicketFields(it.id,f);
+try{if(typeof scheduleAutoSync==='function')scheduleAutoSync(it.id)}catch(e){}
+return true}
+var _fl=false;
+D.flush=async function(){
+if(_fl)return;_fl=true;
+try{var items=await D.qAll();
+for(var i=0;i<items.length;i++){var it=items[i];
+if(typeof navigator!=='undefined'&&navigator.onLine===false)break;
+var stored=await uploadPhotoToStorage(it.id,it.b64);
+if(/^https?:/.test(stored)){if(await commit(it,stored))await D.qDel(it.qid);continue}
+it.fails=(it.fails||0)+1;
+/* Online and Firebase connected but Storage keeps refusing: do what the app always did and
+   keep the photo inline in the ticket, so it is never stuck on the phone forever. */
+var noStorage=false;try{noStorage=(typeof fbStorage!=='undefined')&&!fbStorage}catch(e){}
+if((it.fails>=3||noStorage)&&(typeof _fbConn==='undefined'||_fbConn)){if(await commit(it,stored))await D.qDel(it.qid)}
+else await D.qPut(it)}
+}catch(e){console.warn('[dt83] photo flush',e)}
+finally{_fl=false;await D.qAll();D.onQueue()}};
+D.badges=function(){try{document.querySelectorAll('[data-dt83q]').forEach(function(el){var n=QCACHE.length;el.textContent=n?('⏳ '+n+' '+_L(n===1?'foto pendiente':'fotos pendientes',n===1?'photo pending':'photos pending')):'';el.style.display=n?'':'none'});}catch(e){}};
+/* queue changed: refresh counters, then the open tech detail's photo tiles (never the other way round) */
+D.onQueue=function(){D.badges();try{if(typeof _currentTechDetailId!=='undefined'&&_currentTechDetailId!=null&&D.isTech()&&document.getElementById('dt83slots')&&D._paintSlots)D._paintSlots(_currentTechDetailId)}catch(e){}};
+try{window.addEventListener('online',function(){D.flush()})}catch(e){}
+setInterval(function(){if(QCACHE.length)D.flush()},60000);
+setTimeout(function(){D.qAll().then(function(a){if(a.length)D.flush();D.onQueue()})},6000);
+
+/* ---------- small UI helpers ---------- */
+D.sheet=function(title,bodyHtml,opts){opts=opts||{};
+var old=document.getElementById('dt83sheet');if(old)old.remove();
+var o=document.createElement('div');o.id='dt83sheet';o.className='dt83-sheet-bg';
+o.innerHTML='<div class="dt83-sheet'+(opts.wide?' wide':'')+'" role="dialog" aria-label="'+D.esc(title)+'"><div class="dt83-sheet-h"><b>'+D.esc(title)+'</b><button type="button" class="dt83-x" aria-label="Close">✕</button></div><div class="dt83-sheet-b">'+bodyHtml+'</div></div>';
+o.addEventListener('click',function(e){if(e.target===o)D.closeSheet()});
+o.querySelector('.dt83-x').onclick=D.closeSheet;
+document.body.appendChild(o);return o.querySelector('.dt83-sheet-b')};
+D.closeSheet=function(){var o=document.getElementById('dt83sheet');if(o)o.remove()};
+D.vibrate=function(ms){try{if(navigator.vibrate)navigator.vibrate(ms||30)}catch(e){}};
+D.fmtDay=function(k){try{var p=k.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'})}catch(e){return k}};
+D.techName=function(id){return (id&&USERS&&USERS[id]&&USERS[id].name)||''};
+
+/* ---------- English for the Spanish "islands" of the tech screens ---------- */
+try{Object.assign(I18N_ES2EN,{
+"Desliza":"Swipe","para entregar":"to deliver","Entregar":"Deliver","listo":"done","Desliza para entregar":"Swipe to deliver",
+"En camino":"On my way","Avisado ✓":"Notified ✓","Fotos":"Photos","Firma":"Signature","Firmado ✓":"Signed ✓","Nota":"Note","Reseña":"Review",
+"Sin entregas marcadas como listas":"No deliveries marked done","Control de calidad":"Quality check",
+"Spa nivelado y en posición":"Spa level and in position","Eléctrico conectado y probado":"Electrical connected and tested",
+"Cover instalado":"Cover installed","Químicos / arranque explicado":"Chemicals / start-up explained",
+"Pagado":"Paid","Cobrar cheque":"Collect check","Financiado":"Financed","Cobrar efectivo":"Collect cash","Agua":"Water",
+"Fotos e info del cliente":"Customer photos & info","Acceso / camino":"Access / path","Piso / nivel":"Pad / level","Caja de breakers":"Breaker box",
+"WIP / eléctrico":"WIP / electrical","Pago":"Payment","Piso nivelado":"Pad level","WIP listo":"WIP ready","Nota del cliente":"Customer note",
+"Sí":"Yes","Pagó en tienda":"Paid at store","Pagará con tarjeta":"Will pay by card","Paga con cheque en entrega":"Pays by check at delivery",
+"Entregado":"Delivered","Pendientes":"Pending",
+"Sin conexión — recónectate para guardar cambios":"Offline — reconnect to save changes",
+"Sin fotos de la instalación —":"No installation photos —","agregar foto":"add a photo","(recomendado)":"(recommended)"})}catch(e){}
+
+console.log('%c[BUILD 83] dt83Core ready','color:#fff;background:#e67e2e;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt83Core] failed to start — the app keeps working without the build 83 extras',e)}})();
+
+</script>
+<script id="dt83Tech">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 83 · dt83Tech — the technician's phone
+   Wraps renderTechList / techOpenDetail / techMarkDelivered /
+   techConfirmDelivered. The original always runs first; this only adds.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83;if(!D)return;
+var E=D.esc;
+
+function wrap(name,after,before){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var a=arguments;
+if(before){try{if(before.apply(this,a)===false)return}catch(e){console.warn('[dt83] before '+name,e)}}
+var r=o.apply(this,a);try{after&&after.apply(this,a)}catch(e){console.warn('[dt83] '+name,e)}return r}}
+
+/* ===================== LIST ===================== */
+function itemsFor(k){return AD().filter(function(r){if(!(r.n||r.cal)||!r.dd)return false;if(st(r)==='complete')return false;return D.recDay(r)===k})}
+function weekStrip(){
+var base=new Date(techDate);base.setHours(0,0,0,0);
+var sun=new Date(base);sun.setDate(base.getDate()-base.getDay());
+var today=D.dayKey(new Date());var sel=D.dayKey(base);
+var h='<div class="dt83-week" role="tablist" aria-label="'+_L('Semana','Week')+'">';
+h+='<button type="button" class="dt83-wk-nav" onclick="techDateNav(-7)" aria-label="'+_L('Semana anterior','Previous week')+'">‹</button>';
+for(var i=1;i<=6;i++){var d=new Date(sun);d.setDate(sun.getDate()+i);var k=D.dayKey(d);
+var it=itemsFor(k),pend=it.filter(function(r){return !r.dl}).length,done=it.length-pend;
+h+='<button type="button" role="tab" aria-selected="'+(k===sel)+'" class="dt83-wk-d'+(k===sel?' on':'')+(k===today?' today':'')+'" data-k="'+k+'">'+
+'<span class="wd">'+d.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'short'}).replace('.','')+'</span><span class="dn">'+d.getDate()+'</span>'+
+'<span class="dots">'+(it.length?('<i class="p"></i>'.repeat(Math.min(pend,4))+'<i class="d"></i>'.repeat(Math.min(done,4-Math.min(pend,4)))):'')+'</span></button>'}
+h+='<button type="button" class="dt83-wk-nav" onclick="techDateNav(7)" aria-label="'+_L('Semana siguiente','Next week')+'">›</button></div>';
+return h}
+function routeBtn(k){
+var stops=itemsFor(k).filter(function(r){return !r.dl&&r.st});
+if(!stops.length)return '';
+return '<button type="button" class="dt83-route" onclick="dt83.startRoute(\''+k+'\')">\u{1F5FA}️ '+_L('Iniciar ruta','Start route')+' <span>'+stops.length+' '+_L(stops.length===1?'parada':'paradas',stops.length===1?'stop':'stops')+'</span></button>'}
+D.startRoute=function(k){
+var ids=Array.prototype.map.call(document.querySelectorAll('#tech-list .tlswipe[data-state="pend"]'),function(w){return w.getAttribute('data-id')});
+var stops=ids.map(findRecById).filter(function(r){return r&&r.st&&!r.dl});
+if(!stops.length)stops=itemsFor(k).filter(function(r){return !r.dl&&r.st});
+if(!stops.length)return;
+var enc=function(r){return encodeURIComponent(String(r.st).replace(/\n/g,', '))};
+var dest=stops[stops.length-1],way=stops.slice(0,-1).slice(0,9);
+var url='https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+enc(dest)+(way.length?'&waypoints='+way.map(enc).join('%7C'):'');
+window.open(url,'_blank')};
+
+/* --- changes since the tech last looked (in-app notice; a closed app needs push, see notes) --- */
+function snapKey(){return 'dt83_snap_'+(currentUser&&currentUser.id||'x')}
+function snapshot(){var now=new Date();now.setHours(0,0,0,0);var lim=new Date(now);lim.setDate(lim.getDate()+21);var m={};
+AD().forEach(function(r){if(!(r.n||r.cal)||r.co||r.dl)return;var d=parseDate(r.dd);if(!d||isNaN(d)||d<now||d>lim)return;m[String(r.i)]={dd:String(r.dd||''),a:String(r.assigned_to||''),h:r.hold?1:0}});return m}
+function changes(){
+if(typeof _dataSynced==='function'&&!_dataSynced())return null;
+var cur=snapshot(),prev=null;try{prev=JSON.parse(localStorage.getItem(snapKey())||'null')}catch(e){}
+if(!prev){try{localStorage.setItem(snapKey(),JSON.stringify(cur))}catch(e){}return null}
+var me=String(currentUser&&currentUser.id||''),out=[];
+var fd=function(dd){var d=parseDate(dd),m=String(dd||'').match(/\b(am|pm|all\s*day)\b/i);return (d&&!isNaN(d)?D.fmtDay(D.dayKey(d)):String(dd||''))+(m?' '+m[1].toUpperCase():'')};
+Object.keys(cur).forEach(function(id){var c=cur[id],p=prev[id],r=findRecById(id);if(!r)return;var nm=D.niceName(r);
+if(!p){out.push({id:id,t:_L('Nueva: ','New: ')+nm+' · '+fd(c.dd)});return}
+if(p.dd!==c.dd)out.push({id:id,t:nm+': '+fd(p.dd)+' → '+fd(c.dd)});
+if(p.a!==c.a&&(c.a===me||p.a===me))out.push({id:id,t:nm+': '+(c.a===me?_L('asignada a ti','assigned to you'):_L('ya no está asignada a ti','no longer assigned to you'))});
+if(!p.h&&c.h)out.push({id:id,t:nm+': '+_L('en hold','put on hold')})});
+Object.keys(prev).forEach(function(id){if(!cur[id]){var r=findRecById(id);if(r&&(r.hold||r._deleted))out.push({id:id,t:D.niceName(r)+': '+_L('cancelada / en hold','cancelled / on hold')})}});
+return out}
+D.ackChanges=function(){try{localStorage.setItem(snapKey(),JSON.stringify(snapshot()))}catch(e){}var b=document.getElementById('dt83chg');if(b)b.remove()};
+function changesBanner(){var ch=changes();if(!ch||!ch.length)return '';
+return '<div class="dt83-chg" id="dt83chg" role="status"><div class="t">\u{1F514} '+_L('Cambios en tus entregas','Changes to your deliveries')+'</div>'+
+ch.slice(0,6).map(function(c){return '<div class="r" onclick="techOpenDetail(\''+E(c.id)+'\')">'+E(c.t)+'</div>'}).join('')+
+(ch.length>6?'<div class="r more">+'+(ch.length-6)+'</div>':'')+
+'<button type="button" onclick="dt83.ackChanges()">'+_L('Entendido','Got it')+'</button></div>'}
+
+function chipRow(r){var c='';
+var sz=D.size(r);if(sz)c+='<span class="dt83-sz '+sz.cls+'" title="'+E(_L(sz.es,sz.en))+'">'+E(sz.short)+'</span>';
+if(!r.sn){var b=D.titleBits(r);if(b.serial)c+='<span class="dt83-c">SN '+E(b.serial)+'</span>';if(b.zip&&!r.st)c+='<span class="dt83-c">'+E(b.zip)+'</span>'}
+if(r.crane)c+='<span class="dt83-c req" title="'+_L('Grúa','Crane')+'">\u{1F3D7}️ '+_L('Grúa','Crane')+'</span>';
+if(r.extra_person)c+='<span class="dt83-c req">\u{1F465} +1</span>';
+if(r.water_truck)c+='<span class="dt83-c req">\u{1F69B} '+_L('Agua','Water')+'</span>';
+if(+r.bl>0&&r.pst!=='paid'&&!r.dl)c+='<span class="dt83-c pay">\u{1F4B5} '+E(fmt(r.bl))+'</span>';
+if(D.queued(r.i).length)c+='<span class="dt83-c q">⏳ '+D.queued(r.i).length+'</span>';
+return c?'<div class="dt83-chips">'+c+'</div>':''}
+
+function enhanceList(){
+if(!D.isTech())return;
+var list=document.getElementById('tech-list');if(!list)return;
+var k=D.dayKey(techDate);
+// top: week strip + changes + route + photo queue
+var top=document.createElement('div');top.className='dt83-top';
+top.innerHTML=weekStrip()+changesBanner()+'<div class="dt83-toprow">'+routeBtn(k)+'<span class="dt83-qbadge" data-dt83q style="display:none"></span></div>';
+list.insertBefore(top,list.firstChild);
+top.querySelectorAll('.dt83-wk-d').forEach(function(b){b.onclick=function(){var p=b.getAttribute('data-k').split('-').map(Number);techDate=new Date(p[0],p[1]-1,p[2]);techDate.setHours(0,0,0,0);renderTechList()}});
+D.badges();
+// cards
+list.querySelectorAll('.tlswipe[data-id]').forEach(function(w){
+var r=findRecById(w.getAttribute('data-id'));if(!r)return;
+var nm=w.querySelector('.tlname');
+if(nm){nm.textContent=D.niceName(r);nm.title=r.cal||r.n||'';
+if(D.namePending(r)&&!w.querySelector('.dt83-pend')){var s=document.createElement('span');s.className='dt83-pend';s.textContent=_L('Nombre pendiente','Name pending');var band=w.querySelector('.tlband');if(band)band.appendChild(s)}}
+var cust=w.querySelector('.tlcust');
+if(cust&&!w.querySelector('.dt83-chips')){cust.insertAdjacentHTML('afterend',chipRow(r))}
+var seq=w.querySelector('.tlrail .seq');if(seq&&APP_LANG!=='es'&&/ª$/.test(seq.textContent))seq.textContent='#'+seq.textContent.replace('ª','');
+var mb=w.querySelector('.tlbtn.map');
+if(mb&&!r.st){var a=document.createElement('a');a.className='tlbtn map dt83-noaddr';a.href='tel:'+D.OFFICE_TEL;
+a.innerHTML='\u{1F4CD} '+_L('Sin dirección · llamar a oficina','Address pending · call office');
+a.setAttribute('onpointerdown','event.stopPropagation()');a.onclick=function(e){e.stopPropagation()};mb.replaceWith(a)}});
+// empty day → point at the next one
+var empty=list.querySelector('.tech-empty');
+if(empty&&!list.querySelector('#syncDiag')){
+var nx=null;for(var i=1;i<=60&&!nx;i++){var d=new Date(techDate);d.setDate(d.getDate()+i);var kk=D.dayKey(d);var n=itemsFor(kk).filter(function(r){return !r.dl}).length;if(n)nx={k:kk,n:n,d:d}}
+if(nx){var b=document.createElement('button');b.type='button';b.className='dt83-next';
+b.innerHTML=_L('Siguiente: ','Next: ')+'<b>'+E(D.fmtDay(nx.k))+'</b> · '+nx.n+' '+_L(nx.n===1?'entrega':'entregas',nx.n===1?'delivery':'deliveries')+' →';
+b.onclick=function(){techDate=new Date(nx.d);techDate.setHours(0,0,0,0);renderTechList()};empty.appendChild(b)}}
+// connecting → skeleton cards so the screen never looks empty
+if(list.querySelector('#syncDiag')&&!list.querySelector('.dt83-skel')){list.insertAdjacentHTML('beforeend','<div class="dt83-skel"></div><div class="dt83-skel"></div><div class="dt83-skel"></div>')}}
+wrap('renderTechList',enhanceList);
+
+/* ===================== DETAIL ===================== */
+function pickPhoto(id,slot,multi,cb){
+var inp=document.createElement('input');inp.type='file';inp.accept='image/*';if(multi)inp.multiple=true;else inp.setAttribute('capture','environment');
+inp.onchange=async function(){var fs=Array.from(inp.files||[]);if(!fs.length)return;
+showToast('\u{1F4F8} '+_L('Guardando foto…','Saving photo…'));
+var ok=0,bad=0;for(var i=0;i<fs.length;i++){try{await D.addPhoto(id,fs[i],multi?null:slot);ok++}catch(e){bad++}}
+if(bad)showToast('⚠️ '+bad+' '+_L('foto(s) no se pudieron leer (HEIC: Ajustes › Cámara › Formatos › Más compatible)','photo(s) couldn’t be read (HEIC: Settings › Camera › Formats › Most Compatible)'),'warn');
+else showToast('✓ '+ok+' '+_L(ok===1?'foto guardada':'fotos guardadas',ok===1?'photo saved':'photos saved')+(navigator.onLine===false?_L(' — se sube al volver la señal',' — uploads when signal returns'):''));
+D.vibrate(25);if(cb)cb();else D._paintSlots(id)};
+inp.click()}
+D.pickPhoto=pickPhoto;
+D._paintSlots=function(id){
+var host=document.getElementById('dt83slots');var r=findRecById(id);if(!host||!r)return;
+var req=D.cfg().reqSlots||[],q=D.queued(id);
+var h='<div class="dt83-sec-h">\u{1F4F7} '+_L('Fotos de la entrega','Delivery photos')+'<span class="dt83-qbadge" data-dt83q style="display:none"></span></div><div class="dt83-slots">';
+D.SLOTS.forEach(function(s){var done=D.slotDone(r,s.k),qd=q.some(function(x){return x.slot===s.k}),isReq=req.indexOf(s.k)>=0;
+var u=r.tech_photo_slots&&r.tech_photo_slots[s.k];var img=(done&&u&&u!=='inline')?u:null;
+if(!img&&qd){var qi=q.find(function(x){return x.slot===s.k});img=qi&&qi.b64}
+h+='<button type="button" class="dt83-slot'+(done?' done':qd?' queued':isReq?' req':'')+'" onclick="dt83.pickPhoto(\''+E(r.i)+'\',\''+s.k+'\')">'+
+(img?'<img src="'+(safeUrl(img)||'')+'" alt="">':'<span class="plus">＋</span>')+
+'<span class="lb">'+E(_L(s.es,s.en))+(isReq?' *':'')+'</span>'+
+'<span class="stt">'+(done?'✓':qd?'⏳':'')+'</span></button>'});
+h+='<button type="button" class="dt83-slot extra" onclick="dt83.pickPhoto(\''+E(r.i)+'\',null,true)"><span class="plus">\u{1F5BC}️</span><span class="lb">'+_L('Más fotos','More photos')+'</span></button></div>';
+if(req.length)h+='<div class="dt83-hint">* '+_L('Obligatorias para entregar','Required to deliver')+'</div>';
+host.innerHTML=h;D.badges()};
+function thumbInvoice(r,host){
+if(!r.pdf_invoice||!host||typeof pdfjsLib==='undefined'||typeof _invoicePdfData!=='function')return;
+var key=String(r.i)+'|'+(r.pdf_invoice.uploaded_at||'');
+D._thumbs=D._thumbs||{};
+var put=function(src){if(!src)return;var im=document.createElement('img');im.className='dt83-thumb';im.alt='Invoice page 1';im.src=src;host.insertBefore(im,host.firstChild)};
+if(D._thumbs[key]){put(D._thumbs[key]);return}
+_invoicePdfData(r,false).then(async function(uri){
+var m=String(uri||'').match(/^data:application\/pdf;base64,(.+)$/);if(!m)return;
+var bin=atob(m[1]),u8=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+ensurePdfWorker();var pdf=await pdfjsLib.getDocument({data:u8}).promise;var pg=await pdf.getPage(1);
+var vp0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:180/vp0.width});
+var cv=document.createElement('canvas');cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
+await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+D._thumbs[key]=cv.toDataURL('image/jpeg',0.7);if(document.body.contains(host))put(D._thumbs[key])}).catch(function(e){console.warn('[dt83] thumb',e)})}
+D.thumbInvoice=thumbInvoice;
+function enhanceDetail(id){
+if(!D.isTech())return;
+var det=document.getElementById('tech-detail');var r=findRecById(id);if(!det||!r)return;
+var h2=det.querySelector('.td2-imm h2');
+if(h2){h2.textContent=D.niceName(r);if(D.namePending(r))h2.insertAdjacentHTML('afterend','<div class="dt83-rawt">'+E(r.cal)+' · <b>'+_L('nombre pendiente','name pending')+'</b></div>')}
+var sz=D.size(r);
+if(sz){var chips=det.querySelector('.td2-chips');if(!chips){chips=document.createElement('div');chips.className='td2-chips';var imm=det.querySelector('.td2-imm');if(imm)imm.appendChild(chips)}
+chips.insertAdjacentHTML('afterbegin','<div class="td2-chip dt83-szchip '+sz.cls+'">'+E(_L(sz.es,sz.en))+'</div>')}
+var inner=det.querySelector('.td2-inner');
+if(inner&&!r.dl){var s=document.createElement('div');s.className='tech-section dt83-slotsec';s.id='dt83slots';inner.insertBefore(s,inner.firstChild);D._paintSlots(id)}
+else if(inner&&r.dl&&r.tech_photo_slots){var s2=document.createElement('div');s2.className='tech-section dt83-slotsec';s2.id='dt83slots';inner.insertBefore(s2,inner.firstChild);D._paintSlots(id)}
+if(r.collected&&inner){inner.insertAdjacentHTML('afterbegin','<div class="tech-section dt83-coll">\u{1F4B5} '+_L('Cobro registrado: ','Collection recorded: ')+'<b>'+E(fmt(r.collected.amt))+'</b> · '+E(collLabel(r.collected.method))+'</div>')}
+var inv=det.querySelector('a.tech-addr-card[onclick*="viewInvoicePDF"],a.tech-addr-card[onclick*="viewSignedPDF"]');
+if(inv){inv.classList.add('dt83-invcard');thumbInvoice(r,inv)}
+var row=det.querySelector('.td2-mini-row');
+if(row&&!row.querySelector('.dt83-prob')){
+if(!r.dl&&+r.bl>0&&r.pst!=='paid')row.insertAdjacentHTML('beforeend','<button class="td2-mini dt83-collbtn'+(r.collected?' on':'')+'" onclick="dt83.collect(\''+E(r.i)+'\')"><span class="ic">\u{1F4B5}</span>'+(r.collected?_L('Cobrado ✓','Collected ✓'):_L('Cobro','Collect'))+'</button>');
+row.insertAdjacentHTML('beforeend','<button class="td2-mini dt83-prob" onclick="dt83.problem(\''+E(r.i)+'\')"><span class="ic">⚠️</span>'+_L('Problema','Problem')+'</button>');
+row.classList.add('dt83-wrap')}}
+wrap('techOpenDetail',enhanceDetail);
+
+/* ===================== PROBLEM ===================== */
+var CATS=[['access',_L('Sin acceso','No access')],['pad',_L('Base desnivelada','Pad not level')],['elec',_L('Eléctrico no listo','Electrical not ready')],['damage',_L('Daño','Damage')],['away',_L('Cliente no está','Customer not home')],['other',_L('Otro','Other')]];
+D.problem=function(id){var r=findRecById(id);if(!r)return;
+var b=D.sheet(_L('Problema en esta entrega','Problem with this delivery'),
+'<div class="dt83-sub">'+E(D.niceName(r))+'</div><div class="dt83-cats">'+CATS.map(function(c){return '<button type="button" data-c="'+c[0]+'">'+E(c[1])+'</button>'}).join('')+'</div>'+
+'<label class="dt83-l" for="dt83pnote">'+_L('Qué pasó','What happened')+'</label><textarea id="dt83pnote" rows="3" placeholder="'+E(_L('Ej. la reja mide 32 pulgadas, no pasa el spa','e.g. gate is 32 in wide, spa won’t fit'))+'"></textarea>'+
+'<button type="button" class="dt83-btn ghost" id="dt83pph">\u{1F4F7} '+_L('Agregar foto','Add photo')+'</button>'+
+'<button type="button" class="dt83-btn pri" id="dt83psend">'+_L('Avisar a la oficina','Notify the office')+'</button>');
+var cat=null;b.querySelectorAll('.dt83-cats button').forEach(function(x){x.onclick=function(){cat=x.getAttribute('data-c');b.querySelectorAll('.dt83-cats button').forEach(function(y){y.classList.toggle('on',y===x)})}});
+b.querySelector('#dt83pph').onclick=function(){pickPhoto(id,null,true,function(){var e=b.querySelector('#dt83pph');if(e)e.textContent='✓ '+_L('Foto agregada','Photo added')})};
+b.querySelector('#dt83psend').onclick=function(){
+var note=(b.querySelector('#dt83pnote').value||'').trim();
+if(!cat&&!note){showToast('⚠️ '+_L('Elige qué pasó o escribe una nota','Pick what happened or type a note'),'warn');return}
+var lbl=cat?CATS.find(function(c){return c[0]===cat})[1]:_L('Otro','Other');
+var who=(currentUser&&currentUser.name)||'Tech',now=new Date();
+var _h=now.getHours(),_ap=_h>=12?'PM':'AM';_h=_h%12||12; /* same stamp format the Tech Notes panel parses */
+var stamp=(now.getMonth()+1)+'/'+now.getDate()+'/'+now.getFullYear()+' '+_h+':'+String(now.getMinutes()).padStart(2,'0')+' '+_ap;
+var cur=findRecById(id)||r;
+var entry='['+stamp+' — '+who+'] ⚠ '+lbl+(note?': '+note:'');
+var dn=String(cur.dn||'').trim();dn=dn?dn+'\n\n'+entry:entry;
+var issues=(Array.isArray(cur.issues)?cur.issues:[]).concat([{t:Date.now(),cat:cat||'other',note:note||null,by:who}]);
+saveTicketFields(id,{dn:dn,issues:issues,needs_attention:true,attention_at:Date.now()});
+try{pushActivity(id,'Problem reported by '+who+': '+lbl)}catch(e){}
+D.closeSheet();D.vibrate(40);showToast('✓ '+_L('La oficina ya lo sabe','The office has been notified'));
+try{techOpenDetail(id)}catch(e){}}};
+
+/* ===================== COLLECTION ===================== */
+function collLabel(m){return {check:_L('Cheque','Check'),cash:_L('Efectivo','Cash'),card:_L('Tarjeta (la oficina llama)','Card (office will call)'),none:_L('No se cobró','Not collected')}[m]||m}
+D.collLabel=collLabel;
+D.collect=function(id,onDone){var r=findRecById(id);if(!r)return;
+var b=D.sheet(_L('Cobro en la entrega','Collect at delivery'),
+'<div class="dt83-due">'+_L('Saldo','Balance due')+' <b>'+E(fmt(r.bl))+'</b></div>'+
+'<div class="dt83-cats" id="dt83cm">'+['check','cash','card','none'].map(function(m){return '<button type="button" data-m="'+m+'">'+E(collLabel(m))+'</button>'}).join('')+'</div>'+
+'<label class="dt83-l" for="dt83camt">'+_L('Monto recibido','Amount received')+'</label><input id="dt83camt" type="text" inputmode="decimal" value="'+(+r.bl||0)+'">'+
+'<button type="button" class="dt83-btn ghost" id="dt83cph">\u{1F4F7} '+_L('Foto del cheque','Photo of the check')+'</button>'+
+'<button type="button" class="dt83-btn pri" id="dt83csave">'+_L('Guardar cobro','Save collection')+'</button>');
+var m=null;b.querySelectorAll('#dt83cm button').forEach(function(x){x.onclick=function(){m=x.getAttribute('data-m');b.querySelectorAll('#dt83cm button').forEach(function(y){y.classList.toggle('on',y===x)});var a=b.querySelector('#dt83camt');if(m==='none'||m==='card')a.value='0';else if(+a.value===0)a.value=+r.bl||0}});
+b.querySelector('#dt83cph').onclick=function(){pickPhoto(id,'payment',false,function(){var e=b.querySelector('#dt83cph');if(e)e.textContent='✓ '+_L('Foto del cheque guardada','Check photo saved')})};
+b.querySelector('#dt83csave').onclick=function(){
+if(!m){showToast('⚠️ '+_L('Elige cómo pagó','Pick how they paid'),'warn');return}
+var amt=parseFloat(String(b.querySelector('#dt83camt').value||'').replace(/[^0-9.\-]/g,''))||0;
+var who=(currentUser&&currentUser.name)||'Tech';
+saveTicketFields(id,{collected:{amt:amt,method:m,by:who,at:Date.now(),applied:false}});
+try{pushActivity(id,'Collection recorded by '+who+': '+collLabel(m)+' '+fmt(amt))}catch(e){}
+D.closeSheet();D.vibrate(30);showToast('✓ '+_L('Cobro guardado — la oficina lo verá','Collection saved — the office will see it'));
+if(onDone)onDone();else{try{techOpenDetail(id)}catch(e){}}}};
+
+/* ===================== DELIVER (gate + celebration + next customer) ===================== */
+var _override={};
+function gateHtml(r){
+var miss=D.missingSlots(r),req=D.cfg().reqSlots||[];
+var h='<div class="dt83-gate" id="dt83gate">';
+if(req.length){h+='<div class="gh">'+_L('Fotos obligatorias','Required photos')+'</div>';
+req.forEach(function(k){var ok=miss.indexOf(k)<0;h+='<div class="gi '+(ok?'ok':'no')+'"><span>'+(ok?'✓':'✕')+' '+E(D.slotLabel(k))+'</span>'+(ok?'':'<button type="button" onclick="dt83.gatePhoto(\''+E(r.i)+'\',\''+k+'\')">'+_L('Tomar','Take')+'</button>')+'</div>'})}
+if(+r.bl>0&&r.pst!=='paid'){var c=r.collected;h+='<div class="gi '+(c?'ok':'warn')+'"><span>\u{1F4B5} '+(c?_L('Cobro: ','Collected: ')+E(fmt(c.amt))+' · '+E(collLabel(c.method)):_L('Saldo ','Balance ')+E(fmt(r.bl)))+'</span>'+(c?'':'<button type="button" onclick="dt83.collect(\''+E(r.i)+'\',function(){dt83.refreshGate(\''+E(r.i)+'\')})">'+_L('Registrar','Record')+'</button>')+'</div>'}
+var sig=!!r.signature;
+h+='<div class="gi '+(sig?'ok':'warn')+'"><span>✍️ '+(sig?_L('Firma del cliente ✓','Customer signature ✓'):_L('Sin firma del cliente','No customer signature'))+'</span></div>';
+if(miss.length){h+='<div class="gov"><label><input type="checkbox" id="dt83ovr"> '+_L('Entregar sin esas fotos','Deliver without those photos')+'</label><input id="dt83ovrw" placeholder="'+E(_L('¿Por qué? (obligatorio)','Why? (required)'))+'" style="display:none"></div>'}
+return h+'</div>'}
+D.refreshGate=function(id){var r=findRecById(id),g=document.getElementById('dt83gate');if(!r||!g)return;g.outerHTML=gateHtml(r);bindGate()};
+D.gatePhoto=function(id,k){pickPhoto(id,k,false,function(){D.refreshGate(id)})};
+function bindGate(){var c=document.getElementById('dt83ovr'),w=document.getElementById('dt83ovrw');if(c&&w)c.onchange=function(){w.style.display=c.checked?'':'none';if(c.checked)w.focus()}}
+wrap('techMarkDelivered',function(id){
+var r=findRecById(id),m=document.getElementById('tech-deliver-modal');if(!r||!m||r.dl)return;
+var sub=m.querySelector('.sub');if(sub)sub.textContent=D.niceName(r);
+var btns=m.querySelector('.btns');if(btns)btns.insertAdjacentHTML('beforebegin',gateHtml(r));bindGate()});
+wrap('techConfirmDelivered',function(id){
+var reason=_override[String(id)];delete _override[String(id)];
+if(reason){saveTicketFields(id,{photo_override:{reason:reason,by:(currentUser&&currentUser.name)||'',at:Date.now()}});try{pushActivity(id,'Delivered without required photos: '+reason)}catch(e){}}
+celebrate();setTimeout(function(){offerNext(id)},900)},function(id){
+var r=findRecById(id);if(!r)return true;
+var miss=D.missingSlots(r);if(!miss.length)return true;
+var c=document.getElementById('dt83ovr'),w=document.getElementById('dt83ovrw');
+var why=w&&c&&c.checked?(w.value||'').trim():'';
+if(why){_override[String(id)]=why;return true}
+showToast('\u{1F4F7} '+_L('Faltan fotos: ','Missing photos: ')+miss.map(D.slotLabel).join(', '),'warn');
+var g=document.getElementById('dt83gate');if(g){g.classList.remove('shake');void g.offsetWidth;g.classList.add('shake')}
+D.vibrate([20,40,20]);return false});
+function celebrate(){D.vibrate([30,30,60]);var o=document.createElement('div');o.className='dt83-cel';o.innerHTML='<div class="ck">✓</div><div class="tx">'+_L('¡Entregada!','Delivered!')+'</div>';document.body.appendChild(o);setTimeout(function(){o.classList.add('out')},900);setTimeout(function(){o.remove()},1300)}
+function offerNext(id){
+var k=D.dayKey(new Date());
+var nx=itemsFor(k).filter(function(r){return !r.dl&&!sameId(r.i,id)&&r.ph&&!r.onway});
+if(!nx.length)return;
+var ids=Array.prototype.map.call(document.querySelectorAll('#tech-list .tlswipe[data-state="pend"]'),function(w){return w.getAttribute('data-id')});
+nx.sort(function(a,b){var ia=ids.indexOf(String(a.i)),ib=ids.indexOf(String(b.i));return (ia<0?99:ia)-(ib<0?99:ib)});
+var n=nx[0];
+var b=D.sheet(_L('Siguiente entrega','Next delivery'),'<div class="dt83-sub">'+E(D.niceName(n))+(n.st?'<br><span style="font-weight:600;color:var(--text-secondary)">'+E(String(n.st).split('\n')[0])+'</span>':'')+'</div>'+
+'<button type="button" class="dt83-btn pri" id="dt83nx">\u{1F69A} '+_L('Avisar que vamos en camino','Text them we’re on the way')+'</button><button type="button" class="dt83-btn ghost" onclick="dt83.closeSheet()">'+_L('Ahora no','Not now')+'</button>');
+b.querySelector('#dt83nx').onclick=function(){D.closeSheet();techOnMyWay(n.i)}}
+
+console.log('%c[BUILD 83] dt83Tech ready','color:#fff;background:#2F7D52;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt83Tech] failed to start — the tech view keeps working without the extras',e)}})();
+
+</script>
+<script id="dt83Office">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 83 · dt83Office — Alberto, Celia and Nela
+   Wraps renderModal / populateTechDropdown / renderGlassGreet /
+   renderCalendar / calCellDrop / openGlassSettings. Originals run first.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83;if(!D)return;
+var E=D.esc;
+function wrap(name,after,before){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var a=arguments;
+if(before){try{if(before.apply(this,a)===false)return}catch(e){console.warn('[dt83] before '+name,e)}}
+var r=o.apply(this,a);try{after&&after.apply(this,a)}catch(e){console.warn('[dt83] '+name,e)}return r}}
+function upcoming(days){var now=new Date();now.setHours(0,0,0,0);var lim=new Date(now);lim.setDate(lim.getDate()+(days||7));
+return AD().filter(function(r){if(!D.live(r)||r.dl)return false;var d=parseDate(r.dd);return d&&!isNaN(d)&&d>=now&&d<=lim})
+.sort(function(a,b){return parseDate(a.dd)-parseDate(b.dd)})}
+D.upcoming=upcoming;
+
+/* ===================== F7 · default technician ===================== */
+wrap('populateTechDropdown',function(){
+var sel=document.getElementById('e_assigned');if(!sel||!curRec)return;
+if(!sel.dataset.dt83){sel.dataset.dt83='1';sel.addEventListener('change',function(){if(sel.value&&USERS[sel.value])try{localStorage.setItem('dt83_lastTech',sel.value)}catch(e){}})}
+if(curRec.assigned_to)return;
+var k=D.recDay(curRec),cnt={};
+if(k)AD().forEach(function(r){if(r.assigned_to&&!sameId(r.i,curRec.i)&&D.recDay(r)===k&&USERS[r.assigned_to])cnt[r.assigned_to]=(cnt[r.assigned_to]||0)+1});
+var best=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]})[0];
+var why='';
+if(best){why=_L('Mismo t\u00e9cnico que las otras entregas de ese d\u00eda','Same tech as the other deliveries that day')}
+else{var last=null;try{last=localStorage.getItem('dt83_lastTech')}catch(e){}if(last&&USERS[last]&&USERS[last].role==='tech'){best=last;why=_L('El \u00faltimo que elegiste','The last one you picked')}}
+if(best&&Array.prototype.some.call(sel.options,function(o){return o.value===best})){sel.value=best}
+var hint=document.getElementById('dt83techhint');if(!hint){hint=document.createElement('div');hint.id='dt83techhint';hint.className='dt83-hint';sel.parentNode.appendChild(hint)}
+hint.textContent=why?('\u2139\uFE0F '+why+' \u2014 '+_L('rev\u00edsalo antes de guardar','check it before saving')):'';});
+
+/* ===================== modal extras ===================== */
+var _knownNames=null,_knownAt=0;
+function known(){if(_knownNames&&Date.now()-_knownAt<60000)return _knownNames;var m={};
+AD().forEach(function(r){if(!r.n)return;var k=r.n.trim().toLowerCase();var e=m[k]||(m[k]={n:r.n.trim(),ph:'',em:'',st:'',ids:[]});e.ids.push(String(r.i));if(r.ph&&!e.ph)e.ph=r.ph;if(r.em&&!e.em)e.em=r.em;if(r.st&&!e.st)e.st=r.st});
+_knownNames=m;_knownAt=Date.now();return m}
+function stepper(r){
+var s=st(r),pre=PRE.filter(function(p){return r[p.k]}).length;
+var postKeys=['ep','po','cl','pk'],postDone=postKeys.filter(function(k){return r[k]}).length+((r.gb||r.ngb)?1:0),postTot=postKeys.length+1;
+var steps=[
+{k:'prep',l:_L('Preparaci\u00f3n','Prep'),done:pre===PRE.length,sub:pre+'/'+PRE.length},
+{k:'sched',l:_L('Agendada','Scheduled'),done:!!(r.dd&&r.assigned_to),sub:r.assigned_to?D.techName(r.assigned_to):_L('sin t\u00e9cnico','no tech')},
+{k:'deliv',l:_L('Entregada','Delivered'),done:!!r.dl,sub:r.dl?'\u2713':(r.dd?fmtDate(r.dd):'')},
+{k:'paper',l:_L('Papeleo','Paperwork'),done:postDone===postTot,sub:postDone+'/'+postTot},
+{k:'done',l:_L('Completa','Complete'),done:s==='complete',sub:''}];
+var cur=steps.findIndex(function(x){return !x.done});if(cur<0)cur=steps.length-1;
+var acts='';
+var btn=function(lbl,js){return '<button type="button" class="dt83-act" onclick="'+js+'">'+lbl+'</button>'};
+if(cur===0){var miss=PRE.filter(function(p){return !r[p.k]}).map(function(p){return p.l});
+acts='<span class="dt83-need">'+_L('Falta: ','Missing: ')+E(miss.join(', '))+'</span>'+btn('\u{1F4F2} '+_L('Mandar link al cliente','Text the customer link'),'sendPreDeliverySMS('+_ijsv(r.i)+')')+(r.pdf_invoice?'':btn('\u{1F4CE} '+_L('Adjuntar factura','Attach invoice'),"var i=document.getElementById('e_pdf_input');if(i)i.click()"))}
+else if(cur===1){acts=btn('\u{1F477} '+_L('Asignar t\u00e9cnico','Assign tech'),"var s=document.getElementById('e_assigned');if(s){s.scrollIntoView({block:'center'});s.focus()}")}
+else if(cur===2){acts='<span class="dt83-need">'+_L('Esperando al t\u00e9cnico','Waiting for the tech')+(r.collected?' \u00b7 '+_L('cobro registrado','collection recorded'):'')+'</span>'}
+else if(cur===3){var lab={ep:'Email PW',po:'Portal',cl:'Call',pk:'Packets'};
+postKeys.filter(function(k){return !r[k]}).forEach(function(k){acts+=btn((k==='ep'?'\u2709\uFE0F ':'\u2713 ')+lab[k],"dt83.ck('"+E(r.i)+"','"+k+"')")});
+if(!r.gb&&!r.ngb)acts+=btn('\u2713 G.B.',"dt83.ck('"+E(r.i)+"','gb')")+btn('\u2713 N.G.B.',"dt83.ck('"+E(r.i)+"','ngb')")}
+else if(cur===4&&s!=='complete'&&r.cl&&(r.gb||r.ngb)){acts=btn('\u2713 '+_L('Completar','Complete'),'completeTicket('+_ijsv(r.i)+')')}
+return '<div class="dt83-steps"><div class="dt83-steprow">'+steps.map(function(x,i){return '<div class="dt83-step'+(x.done?' done':'')+(i===cur?' cur':'')+'"><span class="dot">'+(x.done?'\u2713':(i+1))+'</span><span class="l">'+E(x.l)+'</span><span class="s">'+E(x.sub||'')+'</span></div>'}).join('')+'</div>'+
+(acts?'<div class="dt83-next-acts"><b>'+_L('Siguiente:','Next:')+'</b> '+acts+'</div>':'')+'</div>'}
+D.ck=function(id,key){var el=document.querySelector('#md .ci[onclick*="\''+key+'\'"]');if(key==='ep'){var r=findRecById(id);if(r&&!r.ep){openEmailPwModal(r);return}}if(el)el.click();setTimeout(function(){var h=document.querySelector('#md .dt83-steps');if(h&&curRec&&sameId(curRec.i,id))h.outerHTML=stepper(findRecById(id)||curRec)},250)};
+D.useName=function(id,name){var i=document.getElementById('e_n');if(!i)return;i.value=name;i.dispatchEvent(new Event('input',{bubbles:true}));
+try{if(typeof autosaveModal==='function')autosaveModal()}catch(e){}var c=document.getElementById('dt83namechip');if(c)c.remove();showToast('\u2713 '+_L('Nombre: ','Name: ')+E(name))};
+D.applyCollected=function(id){var r=findRecById(id);if(!r||!r.collected||r.collected.applied)return;
+try{if(typeof autosaveModal==='function')autosaveModal()}catch(e){}
+r=findRecById(id)||r;
+var amt=+r.collected.amt||0,py=Math.round(((+r.py||0)+amt)*100)/100,bl=Math.round(((+r.pr||0)-py)*100)/100;
+if(!confirm(_L('\u00bfSumar ','Add ')+fmt(amt)+_L(' al pago? El saldo queda en ',' to Payment? Balance becomes ')+fmt(bl)))return;
+saveTicketFields(id,{py:py,bl:bl,collected:Object.assign({},r.collected,{applied:true,applied_by:(currentUser&&currentUser.name)||'',applied_at:Date.now()})});
+try{pushActivity(id,'Collection applied to payment: '+fmt(amt))}catch(e){}
+setTimeout(function(){curRec=findRecById(id);if(curRec)renderModal()},150)};
+wrap('renderModal',function(){
+var r=curRec,md=document.getElementById('md');if(!r||!md||!md.querySelector('.tkt-hero'))return;
+// hero name
+var h2=md.querySelector('.tkt-hero-id h2');
+if(h2&&!r.n){var tn=h2.firstChild;if(tn&&tn.nodeType===3)tn.nodeValue=D.niceName(r)+' ';h2.insertAdjacentHTML('beforeend',' <span class="dt83-pend">'+_L('Nombre pendiente','Name pending')+'</span>')}
+var ini=md.querySelector('.tkt-av');if(ini&&(!ini.textContent||ini.textContent==='?')){var nn=D.niceName(r);ini.textContent=(nn.charAt(0)||'?').toUpperCase()}
+// stepper
+var hero=md.querySelector('.tkt-hero');if(hero&&!md.querySelector('.dt83-steps'))hero.insertAdjacentHTML('afterend',stepper(r));
+var cb=md.querySelector('.mbtn-complete.disabled');if(cb)cb.title=_L('Para completar: Call en verde y G.B. o N.G.B. en verde','To complete: Call green and either G.B. or N.G.B. green');
+// collected at delivery
+if(r.collected){var c=r.collected;var steps=md.querySelector('.dt83-steps');var html='<div class="dt83-collbar'+(c.applied?' ok':'')+'">\u{1F4B5} '+_L('Cobrado en la entrega: ','Collected at delivery: ')+'<b>'+E(fmt(c.amt))+'</b> \u00b7 '+E(D.collLabel?D.collLabel(c.method):c.method)+(c.by?' \u00b7 '+E(c.by):'')+(c.at?' \u00b7 '+new Date(c.at).toLocaleDateString():'')+
+(c.applied?' \u00b7 \u2713 '+_L('aplicado al pago','applied to payment'):(c.amt>0?' <button type="button" class="dt83-act" onclick="dt83.applyCollected(\''+E(r.i)+'\')">'+_L('Sumar al pago','Apply to payment')+'</button>':''))+'</div>';
+if(steps)steps.insertAdjacentHTML('afterend',html)}
+if(r.photo_override){var steps2=md.querySelector('.dt83-steps');if(steps2)steps2.insertAdjacentHTML('afterend','<div class="dt83-collbar warn">\u{1F4F7} '+_L('Entregada sin fotos obligatorias: ','Delivered without required photos: ')+E(r.photo_override.reason)+' \u00b7 '+E(r.photo_override.by||'')+'</div>')}
+// name suggestion + autocomplete
+var inp=document.getElementById('e_n');
+if(inp){
+if(!r.n){var sug=D.titleName(r.cal);if(sug&&!document.getElementById('dt83namechip'))inp.insertAdjacentHTML('afterend','<button type="button" id="dt83namechip" class="dt83-namechip" onclick="dt83.useName(\''+E(r.i)+'\',\''+E(sug).replace(/'/g,"\\'")+'\')">'+_L('Usar \u201c','Use \u201c')+E(sug)+_L('\u201d como nombre','\u201d as the name')+'</button>')}
+var kn=known();var dl=document.getElementById('dt83names');if(!dl){dl=document.createElement('datalist');dl.id='dt83names';document.body.appendChild(dl)}
+dl.innerHTML=Object.keys(kn).slice(0,800).map(function(k){var e=kn[k];return '<option value="'+E(e.n)+'">'+E([e.ph?String(e.ph).split('\n')[0]:'',e.st?String(e.st).split('\n')[0]:''].filter(Boolean).join(' \u00b7 '))+'</option>'}).join('');
+inp.setAttribute('list','dt83names');inp.setAttribute('autocomplete','off');
+if(!inp.dataset.dt83){inp.dataset.dt83='1';inp.addEventListener('change',function(){var e=known()[String(inp.value||'').trim().toLowerCase()];if(!e||!curRec||e.ids.indexOf(String(curRec.i))>=0&&e.ids.length===1)return;
+var f=[];[['e_ph','ph'],['e_em','em'],['e_st','st']].forEach(function(p){var el=document.getElementById(p[0]);if(el&&!String(el.value||'').trim()&&e[p[1]]){el.value=e[p[1]];f.push(p[1])}});
+if(f.length)showToast('\u2713 '+_L('Llen\u00e9 ','Filled ')+f.map(function(x){return {ph:_L('tel\u00e9fono','phone'),em:'email',st:_L('direcci\u00f3n','address')}[x]}).join(', ')+_L(' de una entrega anterior',' from a previous delivery'))})}}
+// gallery button
+var ps=document.getElementById('tksec_photos');var tot=gallery(r).length;
+if(ps&&tot&&!md.querySelector('.dt83-galbtn'))ps.insertAdjacentHTML('afterend','<button type="button" class="dt83-galbtn" onclick="dt83.gallery(\''+E(r.i)+'\')">\u{1F5BC}\uFE0F '+_L('Ver todas las fotos','View all photos')+' ('+tot+')</button>');
+// invoice thumbnail
+var vb=md.querySelector('button[onclick^="viewInvoicePDF"]');if(vb&&D.thumbInvoice){var up=vb.closest('.pdf-uploader');if(up&&!up.querySelector('.dt83-thumb')){var wrapEl=document.createElement('button');wrapEl.type='button';wrapEl.className='dt83-thumbbtn';wrapEl.title=_L('Ver factura','View invoice');wrapEl.onclick=function(){viewInvoicePDF(r.i)};up.insertBefore(wrapEl,up.firstChild);D.thumbInvoice(r,wrapEl)}}});
+
+/* ===================== V15 · photo gallery ===================== */
+function gallery(r){var out=[],seen={};function add(u,g,cap){if(!u||typeof u!=='string'||seen[u])return;var s=safeUrl(u);if(!s)return;seen[u]=1;out.push({u:u,g:g,cap:cap||''})}
+var slotOf={};if(r.tech_photo_slots)Object.keys(r.tech_photo_slots).forEach(function(k){slotOf[r.tech_photo_slots[k]]=k});
+(Array.isArray(r.tech_photos)?r.tech_photos:[]).forEach(function(u){add(u,_L('T\u00e9cnico','Tech'),slotOf[u]?D.slotLabel(slotOf[u]):'')});
+(Array.isArray(r.photos)?r.photos:[]).forEach(function(u){add(u,_L('Oficina','Office'),'')});
+var it=(typeof INTAKE!=='undefined'&&INTAKE)?INTAKE[r.i]:null;
+if(it&&it.resp){[['access',_L('Acceso','Access')],['levelPhotos',_L('Base','Pad')],['electricity',_L('Breakers','Breakers')],['wipPhotos','WIP']].forEach(function(g){_intakeArr(it.resp[g[0]]).forEach(function(u){add(u,_L('Cliente','Customer'),g[1])})})}
+return out}
+D.gallery=function(id){var r=findRecById(id);if(!r)return;var items=gallery(r);if(!items.length)return;
+var i=0,o=document.createElement('div');o.className='dt83-lb';o.setAttribute('role','dialog');
+var groups=[];items.forEach(function(x){if(groups.indexOf(x.g)<0)groups.push(x.g)});
+o.innerHTML='<div class="lb-top"><b>'+E(D.niceName(r))+'</b><span class="lb-n"></span><button type="button" class="lb-x" aria-label="Close">\u2715</button></div>'+
+'<div class="lb-tabs">'+groups.map(function(g){return '<button type="button" data-g="'+E(g)+'">'+E(g)+' ('+items.filter(function(x){return x.g===g}).length+')</button>'}).join('')+'</div>'+
+'<div class="lb-stage"><button type="button" class="lb-p" aria-label="Previous">\u2039</button><img alt=""><button type="button" class="lb-nx" aria-label="Next">\u203A</button></div><div class="lb-cap"></div>'+
+'<div class="lb-strip">'+items.map(function(x,k){return '<img data-k="'+k+'" src="'+safeUrl(x.u)+'" alt="" loading="lazy">'}).join('')+'</div>';
+document.body.appendChild(o);
+var img=o.querySelector('.lb-stage img'),cap=o.querySelector('.lb-cap'),num=o.querySelector('.lb-n');
+function show(k){i=(k+items.length)%items.length;var x=items[i];img.src=safeUrl(x.u);cap.textContent=x.g+(x.cap?' \u00b7 '+x.cap:'');num.textContent=(i+1)+' / '+items.length;
+o.querySelectorAll('.lb-strip img').forEach(function(t){t.classList.toggle('on',+t.getAttribute('data-k')===i)});
+o.querySelectorAll('.lb-tabs button').forEach(function(t){t.classList.toggle('on',t.getAttribute('data-g')===x.g)})}
+function close(){o.remove();document.removeEventListener('keydown',key)}
+function key(e){if(e.key==='Escape')close();else if(e.key==='ArrowRight')show(i+1);else if(e.key==='ArrowLeft')show(i-1)}
+o.querySelector('.lb-x').onclick=close;o.querySelector('.lb-p').onclick=function(){show(i-1)};o.querySelector('.lb-nx').onclick=function(){show(i+1)};
+o.querySelectorAll('.lb-strip img').forEach(function(t){t.onclick=function(){show(+t.getAttribute('data-k'))}});
+o.querySelectorAll('.lb-tabs button').forEach(function(t){t.onclick=function(){show(items.findIndex(function(x){return x.g===t.getAttribute('data-g')}))}});
+var sx=null;img.addEventListener('touchstart',function(e){sx=e.touches[0].clientX},{passive:true});img.addEventListener('touchend',function(e){if(sx==null)return;var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>40)show(i+(dx<0?1:-1));sx=null});
+document.addEventListener('keydown',key);show(0)};
+
+/* ===================== F4 / F5 / F7 · "To complete" ===================== */
+D.todo=function(){
+var list=upcoming(7);list.forEach(function(r){try{_intakeFetchOne(r.i)}catch(e){}});
+var paint=function(){
+var rows=upcoming(7).map(function(r){return {r:r,m:D.missing(r)}}).filter(function(x){return x.m.length});
+var days={};rows.forEach(function(x){var k=D.recDay(x.r);(days[k]=days[k]||[]).push(x)});
+var techs=Object.keys(USERS||{}).filter(function(id){return USERS[id].role==='tech'});
+var h='<div class="dt83-todo-top"><span>'+rows.length+' '+_L(rows.length===1?'entrega con datos pendientes':'entregas con datos pendientes',rows.length===1?'delivery missing info':'deliveries missing info')+' \u00b7 '+_L('pr\u00f3ximos 7 d\u00edas','next 7 days')+'</span>'+
+'<span>'+(function(){var q=rows.filter(function(x){return x.r.ph&&x.m.some(function(m){return m[0]==='link'})}).map(function(x){return String(x.r.i)}).filter(function(id){return (D._linkDone||[]).indexOf(id)<0});D._linkQ=q;
+return q.length?'<button type="button" class="dt83-act" id="dt83linkq" onclick="dt83.nextLink()">\u{1F4F2} '+_L('Mandar links uno por uno','Text the links one by one')+' ('+q.length+')</button>':''})()+
+'<button type="button" class="dt83-act" onclick="dt83.inboxPick()">\u{1F4E5} '+_L('Subir varias facturas','Upload several invoices')+'</button></span></div>';
+if(!rows.length)h+='<div class="dt83-empty">\u2713 '+_L('Todo completo para los pr\u00f3ximos 7 d\u00edas','Everything is complete for the next 7 days')+'</div>';
+Object.keys(days).sort().forEach(function(k){
+var unas=days[k].filter(function(x){return !x.r.assigned_to}).length;
+h+='<div class="dt83-day"><div class="dt83-dayh"><b>'+E(D.fmtDay(k))+'</b>'+(unas&&techs.length?'<span class="dt83-assign">'+_L('Asignar ','Assign ')+unas+' '+_L('sin t\u00e9cnico a','unassigned to')+' <select data-k="'+k+'"><option value="">\u2014</option>'+techs.map(function(id){return '<option value="'+E(id)+'">'+E(USERS[id].name)+'</option>'}).join('')+'</select></span>':'')+'</div>';
+days[k].forEach(function(x){var r=x.r,sug=!r.n?D.titleName(r.cal):'';
+h+='<div class="dt83-row"><div class="dt83-row-n" onclick="closeOv&&closeOv();dt83.closeSheet();openDet('+_ijsv(r.i)+')"><b>'+E(D.niceName(r))+'</b>'+(D.namePending(r)?' <span class="dt83-pend">'+_L('nombre pendiente','name pending')+'</span>':'')+'<span class="sub">'+E(dateNote(r.dd).replace(/^\s*[\u2014\u2022]?\s*/,''))+(r.assigned_to?' \u00b7 '+E(D.techName(r.assigned_to)):'')+'</span></div>'+
+'<div class="dt83-miss">'+x.m.map(function(m){return '<span class="m-'+m[0]+'">'+E(m[1])+'</span>'}).join('')+'</div>'+
+'<div class="dt83-row-a">'+(sug?'<button type="button" class="dt83-act" onclick="dt83.quickName(\''+E(r.i)+'\',\''+E(sug).replace(/\'/g,"\\'")+'\')">'+_L('Nombre: ','Name: ')+E(sug)+'</button>':'')+
+(r.ph&&x.m.some(function(m){return m[0]==='link'||m[0]==='form'})?'<button type="button" class="dt83-act" onclick="sendPreDeliverySMS('+_ijsv(r.i)+')">\u{1F4F2} '+_L('Mandar link','Text link')+'</button>':'')+
+'<button type="button" class="dt83-act ghost" onclick="dt83.closeSheet();openDet('+_ijsv(r.i)+')">'+_L('Abrir','Open')+'</button></div></div>'});
+h+='</div>'});
+var b=D.sheet(_L('Falta completar','To complete'),h,{wide:true});
+b.querySelectorAll('.dt83-assign select').forEach(function(s){s.onchange=function(){var t=s.value;if(!t)return;var k=s.getAttribute('data-k');var n=0;
+upcoming(7).forEach(function(r){if(D.recDay(r)===k&&!r.assigned_to){saveTicketFields(r.i,{assigned_to:t});n++}});
+showToast('\u2713 '+n+' '+_L('entregas asignadas a ','deliveries assigned to ')+E(USERS[t].name));try{localStorage.setItem('dt83_lastTech',t)}catch(e){}setTimeout(paint,300)}})};
+paint();setTimeout(function(){if(document.getElementById('dt83sheet'))paint()},1800)};
+/* F5 · links in a row: Messages can only open one text at a time, so this walks the list —
+   each tap opens the next customer's text (same sendPreDeliverySMS, same anti-spam limit). */
+D.nextLink=function(){var q=D._linkQ||[];var id=q.shift();if(!id)return;D._linkDone=(D._linkDone||[]).concat([id]);
+var b=document.getElementById('dt83linkq');if(b){if(q.length)b.innerHTML='\u{1F4F2} '+_L('Siguiente link','Next link')+' ('+q.length+')';else b.remove()}
+try{sendPreDeliverySMS(id)}catch(e){console.warn('[dt83] link',e)}};
+D.quickName=function(id,name){var r=findRecById(id);if(!r||r.n)return;saveTicketFields(id,{n:name});try{pushActivity(id,'Name set from calendar title: '+name)}catch(e){}showToast('\u2713 '+E(name));setTimeout(D.todo,250)};
+D.todoCount=function(){return upcoming(7).filter(function(r){return D.missing(r).some(function(m){return m[0]!=='form'&&m[0]!=='link'})}).length};
+
+/* ===================== F1 · invoice inbox ===================== */
+D.inboxPick=function(){var inp=document.createElement('input');inp.type='file';inp.accept='application/pdf';inp.multiple=true;inp.onchange=function(){D.invoiceInbox(Array.from(inp.files||[]))};inp.click()};
+async function readPdf(file){var buf=await file.arrayBuffer();var head=String.fromCharCode.apply(null,new Uint8Array(buf,0,Math.min(1024,buf.byteLength)));if(head.indexOf('%PDF')<0)throw new Error(_L('no es PDF','not a PDF'));
+ensurePdfWorker();var pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;var full='';
+for(var i=1;i<=pdf.numPages;i++){var tc=await (await pdf.getPage(i)).getTextContent();var lines={};tc.items.forEach(function(it){var y=Math.round(it.transform[5]);(lines[y]=lines[y]||[]).push(it.str)});full+=Object.keys(lines).map(Number).sort(function(a,b){return b-a}).map(function(y){return lines[y].join(' ')}).join('\n')+'\n'}
+var ex=parseInvoiceText(full);ex._fullText=full;return {buf:buf,ex:ex}}
+D.matchSerial=function(serial){if(!serial)return [];serial=String(serial);return AD().filter(function(r){if(!r||r._deleted||r.co)return false;
+if(String(r.sn||'').replace(/\.0$/,'')===serial)return true;try{return (parseGcalTitle(r.cal||'').sns||[]).indexOf(serial)>=0}catch(e){return false}})};
+D.fieldsFromInvoice=function(r,ex){var f={};
+var canon=function(arr,v){if(!v||!Array.isArray(arr))return null;v=String(v).trim().toLowerCase();return arr.find(function(o){return o&&String(o).toLowerCase()===v})||null};
+if(!r.n&&ex._customerName)f.n=ex._customerName;
+if(!r.ph&&ex._phone)f.ph=ex._phone;
+if(!r.st&&ex._address)f.st=ex._address;
+if(!r.sn&&ex._serial)f.sn=ex._serial;
+if(!r.sp&&ex._model){var mb=canon(SPA_BASES,ex._model)||SPA_BASES.find(function(o){return String(o).toLowerCase().indexOf(String(ex._model).toLowerCase())>=0});
+var ms=ex._series?(canon(SPA_SERIES,ex._series)||SPA_SERIES.find(function(o){return String(o).toLowerCase().indexOf(String(ex._series).toLowerCase())>=0})):null;
+if(mb)f.sp=ms?mb+', '+ms:mb}
+var lists={cv:typeof OPT_CV!=='undefined'?OPT_CV:[],lf:typeof OPT_LF!=='undefined'?OPT_LF:[],ss:typeof OPT_SS!=='undefined'?OPT_SS:[],tb:typeof OPT_TB!=='undefined'?OPT_TB:[],su:typeof OPT_SU!=='undefined'?OPT_SU:[]};
+[['cv','_cover'],['lf','_lift'],['ss','_steps'],['tb','_table'],['su','_startup']].forEach(function(p){if(r[p[0]]||!ex[p[1]])return;var c=canon(lists[p[0]],ex[p[1]]);if(c)f[p[0]]=c});
+[['ss','_stepsCustomLabel'],['tb','_tableCustomLabel']].forEach(function(p){if(r[p[0]]||f[p[0]]||!ex[p[1]])return;var lbl=String(ex[p[1]]).trim();if(!lbl)return;var arr=lists[p[0]];
+var c=canon(arr,lbl);if(!c){arr.push(lbl);c=lbl;try{saveOpts()}catch(e){}}f[p[0]]=c});
+if(!r.spd){var parts=[];if(ex._specialNotes)parts.push('** '+ex._specialNotes+' **');var full=String(ex._fullText||'').replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim();if(full)parts.push(full);else if(ex._spaDescription)parts.push(ex._spaDescription);if(parts.length)f.spd=parts.join('\n\n')}
+return f};
+var FN={n:_L('nombre','name'),ph:_L('tel\u00e9fono','phone'),st:_L('direcci\u00f3n','address'),sn:'SN',sp:_L('modelo','model'),cv:'cover',lf:'lift',ss:_L('escalones','steps'),tb:_L('mesa','table'),su:'start-up',spd:_L('descripci\u00f3n','description')};
+D.invoiceInbox=async function(files){
+files=(files||[]).filter(function(f){return /pdf$/i.test(f.type||'')||/\.pdf$/i.test(f.name||'')});if(!files.length)return;
+if(typeof pdfjsLib==='undefined'){showToast('\u26A0\uFE0F PDF reader not loaded yet','warn');return}
+var b=D.sheet(_L('Facturas','Invoices'),'<div class="dt83-sub" id="dt83inbst">'+_L('Leyendo ','Reading ')+files.length+' PDF\u2026</div><div id="dt83inb"></div>',{wide:true});
+var out=b.querySelector('#dt83inb'),stEl=b.querySelector('#dt83inbst'),done=0,ok=0;
+for(var i=0;i<files.length;i++){var f=files[i],row=document.createElement('div');row.className='dt83-inrow';row.innerHTML='<b>'+E(f.name)+'</b> <span class="sub">\u2026</span>';out.appendChild(row);
+try{var res=await readPdf(f),ex=res.ex,ser=ex._serial;var m=D.matchSerial(ser);
+if(m.length===1){var r=m[0];await _saveInvoicePdfToTicket(r.i,res.buf,f);var flds=D.fieldsFromInvoice(r,ex);if(Object.keys(flds).length)saveTicketFields(r.i,flds);try{pushActivity(r.i,'Invoice attached from the invoice inbox')}catch(e){}ok++;
+row.className='dt83-inrow ok';row.innerHTML='\u2713 <b>'+E(f.name)+'</b> \u2192 '+E(D.niceName(findRecById(r.i)||r))+' (SN '+E(ser)+')<span class="sub">'+(Object.keys(flds).length?_L('Llen\u00e9: ','Filled: ')+Object.keys(flds).map(function(k){return FN[k]||k}).join(', '):_L('PDF guardado; los campos ya ten\u00edan datos','PDF saved; fields already had data'))+'</span>'}
+else{row.className='dt83-inrow '+(m.length?'warn':'no');
+var why=!ser?_L('la factura no trae n\u00famero de serie','no serial number found in the invoice'):m.length?_L('hay ','there are ')+m.length+_L(' entregas con SN ',' deliveries with SN ')+ser:_L('ninguna entrega tiene el SN ','no delivery has SN ')+ser;
+var opts=(m.length?m:upcoming(30)).map(function(x){return '<option value="'+E(x.i)+'">'+E(D.niceName(x))+' \u00b7 '+E(fmtDate(x.dd))+'</option>'}).join('');
+row.innerHTML=(m.length?'\u26A0\uFE0F':'\u2715')+' <b>'+E(f.name)+'</b><span class="sub">'+E(why)+'</span><span class="dt83-manual">'+_L('Pegar a: ','Attach to: ')+'<select>'+'<option value="">\u2014</option>'+opts+'</select><button type="button" class="dt83-act">'+_L('Pegar','Attach')+'</button></span>';
+(function(row,res,f){row.querySelector('.dt83-manual button').onclick=async function(){var id=row.querySelector('select').value;if(!id)return;var r=findRecById(id);if(!r)return;await _saveInvoicePdfToTicket(r.i,res.buf,f);var fl=D.fieldsFromInvoice(r,res.ex);if(Object.keys(fl).length)saveTicketFields(r.i,fl);try{pushActivity(r.i,'Invoice attached from the invoice inbox (manual)')}catch(e){}row.className='dt83-inrow ok';row.innerHTML='\u2713 <b>'+E(f.name)+'</b> \u2192 '+E(D.niceName(r))}})(row,res,f)}
+}catch(e){row.className='dt83-inrow no';row.innerHTML='\u2715 <b>'+E(f.name)+'</b><span class="sub">'+E(e&&e.message||e)+'</span>'}
+done++;stEl.textContent=done+' / '+files.length+' \u00b7 '+ok+' '+_L('pegadas solas','attached automatically')}
+try{renderAll()}catch(e){}};
+
+/* ===================== V14 · KPIs you can click + to-complete chip ===================== */
+function listSheet(title,rows){D.sheet(title,rows.length?rows.map(function(r){return '<div class="dt83-row" onclick="dt83.closeSheet();openDet('+_ijsv(r.i)+')"><div class="dt83-row-n"><b>'+E(D.niceName(r))+'</b><span class="sub">'+E(dateNote(r.dd).replace(/^\s*[\u2014\u2022]?\s*/,''))+(r.assigned_to?' \u00b7 '+E(D.techName(r.assigned_to)):' \u00b7 '+_L('sin t\u00e9cnico','no tech'))+(+r.bl>0?' \u00b7 '+E(fmt(r.bl)):'')+'</span></div></div>'}).join(''):'<div class="dt83-empty">'+_L('Nada por aqu\u00ed','Nothing here')+'</div>',{wide:true})}
+wrap('renderGlassGreet',function(){
+var g=document.getElementById('glassGreet');if(!g||!D.isOffice())return;
+var today=new Date();today.setHours(0,0,0,0);
+var todays=AD().filter(function(r){var d=parseDate(r.dd);if(!d||isNaN(d))return false;d.setHours(0,0,0,0);return d.getTime()===today.getTime()&&!r.co&&!r.hold});
+var ms=g.querySelectorAll('.cmd-metric');
+var sets=[[_L('En operaci\u00f3n hoy','In operation today'),todays],
+[_L('Necesitan acci\u00f3n','Need attention'),todays.filter(function(r){return r.needs_attention||(!r.assigned_to&&!r.co)||(+r.bl>0&&r.pst!=='paid')})],
+[_L('Por cobrar hoy','To collect today'),todays.filter(function(r){return +r.bl>0&&r.pst!=='paid'})]];
+ms.forEach(function(m,ix){if(!sets[ix])return;m.classList.add('dt83-click');m.setAttribute('role','button');m.tabIndex=0;m.onclick=function(){listSheet(sets[ix][0],sets[ix][1])};m.onkeydown=function(e){if(e.key==='Enter')m.onclick()}});
+var n=D.todoCount();var head=g.querySelector('.cmd-head > div');
+if(head&&!g.querySelector('.dt83-todochip')&&n)head.insertAdjacentHTML('beforeend','<button type="button" class="dt83-todochip" onclick="dt83.todo()">\u{1F4CB} '+n+' '+_L(n===1?'entrega con datos pendientes':'entregas con datos pendientes',n===1?'delivery missing info':'deliveries missing info')+' \u2192</button>');
+var b=document.getElementById('dt83todoN');if(b){b.textContent=n||'';b.style.display=n?'':'none'}});
+
+/* ===================== calendar: legend, missing info, day load, capacity ===================== */
+wrap('renderCalendar',function(){
+var body=document.getElementById('calBody');if(!body)return;
+if(!document.getElementById('dt83legend')){var lg=document.createElement('div');lg.id='dt83legend';lg.className='dt83-legend';
+lg.innerHTML='<span><i class="s8"></i>8\' '+_L('est\u00e1ndar','standard')+'</span><span><i class="s7"></i>7\' '+_L('o menos','or smaller')+'</span><span><i class="sns"></i>'+_L('No est\u00e1ndar','Non-standard')+'</span><span><i class="inc"></i>'+_L('Faltan datos','Info missing')+'</span><span class="cap">'+_L('Cupo por d\u00eda: ','Daily capacity: ')+(D.cfg().capDay||4)+'</span>';
+body.parentNode.insertBefore(lg,body)}
+else{var cp=document.querySelector('#dt83legend .cap');if(cp)cp.textContent=_L('Cupo por d\u00eda: ','Daily capacity: ')+(D.cfg().capDay||4)}
+body.querySelectorAll('.cal-ev[onclick*="openDet("]').forEach(function(ev){var m=String(ev.getAttribute('onclick')).match(/openDet\(([^)]+)\)/);if(!m)return;var r=findRecById(String(m[1]).replace(/['"]/g,''));if(!r)return;
+var nm=ev.querySelector('.ce-name');if(nm&&!r.n)nm.textContent=D.niceName(r);
+if(r.dl||r.co)return;var miss=D.missing(r).filter(function(x){return ['name','phone','address','invoice'].indexOf(x[0])>=0});
+if(miss.length){ev.classList.add('dt83-inc');ev.title=(ev.title||'')+' \u2014 '+_L('Falta: ','Missing: ')+miss.map(function(x){return x[1]}).join(', ')}});
+var cap=+D.cfg().capDay||4;
+body.querySelectorAll('.cal-cell[ondrop]').forEach(function(c){var m=String(c.getAttribute('ondrop')).match(/'(\d{4}-\d{2}-\d{2})'/);if(!m)return;var ld=D.dayLoad(m[1]);if(!ld.n)return;
+var dn=c.querySelector('.cal-dn');if(dn&&!dn.querySelector('.dt83-load'))dn.insertAdjacentHTML('beforeend',' <span class="dt83-load'+(ld.n>=cap?' full':'')+'" title="'+E(_L('Entregas del d\u00eda / cupo','Deliveries / capacity'))+'">'+ld.n+'/'+cap+'</span>')})});
+wrap('calCellDrop',null,function(ev,k){
+try{var id=ev.dataTransfer.getData('text/plain');var r=findRecById(id);if(!r||!k||D.recDay(r)===k)return true;
+var ld=D.dayLoad(k,id),cfg=D.cfg(),cap=+cfg.capDay||4,cr=+cfg.craneDay||1,msg=[];
+if(ld.n>=cap)msg.push(D.fmtDay(k)+_L(' ya tiene ',' already has ')+ld.n+' '+(ld.n===1?_L('entrega','delivery'):_L('entregas','deliveries'))+' ('+_L('cupo ','capacity ')+cap+')');
+if(r.crane&&ld.crane>=cr)msg.push(_L('Ese d\u00eda ya hay ','That day already has ')+ld.crane+' '+(ld.crane===1?_L('entrega con gr\u00faa','crane delivery'):_L('entregas con gr\u00faa','crane deliveries'))+' ('+_L('m\u00e1x. ','max ')+cr+')');
+if(!msg.length)return true;
+if(confirm(msg.join('\n')+'\n\n'+_L('\u00bfMoverla de todos modos?','Move it anyway?')))return true;
+ev.preventDefault();try{ev.currentTarget.style.background=''}catch(e){}return false}catch(e){return true}});
+
+/* ===================== Settings: health, photos, capacity, catalog, gift boxes ===================== */
+wrap('openGlassSettings',function(){
+if(!D.isOffice())return;var md=document.getElementById('md');if(!md)return;
+var grp=document.createElement('div');grp.className='set-grp';
+grp.innerHTML='<div class="set-h">'+_L('Operaci\u00f3n','Operations')+'</div>'+
+_setRow('\u{1F4CB}','#E54B25',_L('Falta completar','To complete'),_L('Entregas de los pr\u00f3ximos 7 d\u00edas con datos pendientes','Next 7 days with missing info'),'dt83.todo()')+
+_setRow('\u{1F4E5}','#B5733A',_L('Subir varias facturas','Upload several invoices'),_L('Se pegan solas por n\u00famero de serie','Matched to deliveries by serial number'),'dt83.inboxPick()')+
+_setRow('\u{1F381}','#2F7D52','Gift boxes',_L('Conteo del mes por serie','Monthly count by series'),'dt83.giftBoxes()')+
+_setRow('\u{1F4F7}','#5B5E8A',_L('Fotos obligatorias','Required photos'),_L('Las que el t\u00e9cnico debe tomar para entregar','What the tech must shoot before delivering'),'dt83.setPhotos()')+
+_setRow('\u{1F4C6}','#1C8FA8',_L('Cupo por d\u00eda','Daily capacity'),_L('Aviso al mover una entrega a un d\u00eda lleno','Warns when moving a delivery onto a full day'),'dt83.setCapacity()')+
+_setRow('\u{1F6C1}','#134A63',_L('Modelos y series','Spa models & series'),_L('Agregar modelos sin tocar el c\u00f3digo','Add models without touching code'),'dt83.setCatalog()')+
+_setRow('\u{1FA7A}','#2C221C',_L('Salud de la app','App health'),_L('Versi\u00f3n, sincronizaci\u00f3n, Google, permisos','Version, sync, Google, permissions'),'dt83.health()');
+var groups=md.querySelectorAll('.set-grp');var last=groups[groups.length-1];if(last)last.parentNode.insertBefore(grp,last);else md.appendChild(grp)});
+D.setPhotos=function(){var cur=D.cfg().reqSlots||[];
+var b=D.sheet(_L('Fotos obligatorias','Required photos'),'<div class="dt83-sub">'+_L('El t\u00e9cnico no puede deslizar \u201centregado\u201d sin estas fotos (puede saltarlas explicando por qu\u00e9).','The tech can\u2019t swipe \u201cdelivered\u201d without these photos (they can skip them by explaining why).')+'</div>'+
+D.SLOTS.map(function(s){return '<label class="dt83-chk"><input type="checkbox" value="'+s.k+'"'+(cur.indexOf(s.k)>=0?' checked':'')+'> '+E(_L(s.es,s.en))+'</label>'}).join('')+'<button type="button" class="dt83-btn pri" id="dt83sv">'+_L('Guardar','Save')+'</button>');
+b.querySelector('#dt83sv').onclick=function(){var v=Array.prototype.filter.call(b.querySelectorAll('input:checked'),function(){return 1}).map(function(x){return x.value});D.saveCfg({reqSlots:v}).then(function(){showToast('\u2713 '+_L('Guardado','Saved'))});D.closeSheet()}};
+D.setCapacity=function(){var c=D.cfg();
+var b=D.sheet(_L('Cupo por d\u00eda','Daily capacity'),'<label class="dt83-l" for="dt83cap">'+_L('Entregas m\u00e1ximas por d\u00eda','Max deliveries per day')+'</label><input id="dt83cap" type="text" inputmode="numeric" value="'+(c.capDay||4)+'">'+
+'<label class="dt83-l" for="dt83cr">'+_L('Entregas con gr\u00faa por d\u00eda','Crane deliveries per day')+'</label><input id="dt83cr" type="text" inputmode="numeric" value="'+(c.craneDay||1)+'"><button type="button" class="dt83-btn pri" id="dt83sv">'+_L('Guardar','Save')+'</button>');
+b.querySelector('#dt83sv').onclick=function(){var cap=Math.max(1,parseInt(b.querySelector('#dt83cap').value,10)||4),cr=Math.max(0,parseInt(b.querySelector('#dt83cr').value,10)||0);D.saveCfg({capDay:cap,craneDay:cr}).then(function(){showToast('\u2713 '+_L('Guardado','Saved'))});D.closeSheet();try{if(tab==='cal')renderCalendar()}catch(e){}}};
+D.setCatalog=function(){var c=D.cfg();
+var paint=function(){var c2=D.cfg();return '<div class="dt83-sub">'+_L('Los modelos de f\u00e1brica no se pueden quitar. Lo que agregues sale en el formulario y lo reconoce el lector de facturas.','Built-in models can\u2019t be removed. What you add shows in the form and the invoice reader recognises it.')+'</div>'+
+'<div class="dt83-l">'+_L('Modelos agregados','Added models')+'</div><div class="dt83-tags">'+((c2.models||[]).map(function(m,i){return '<span>'+E(m)+' <button type="button" data-rm-m="'+i+'" aria-label="Remove">\u2715</button></span>'}).join('')||'<i>'+_L('ninguno','none')+'</i>')+'</div><div class="dt83-add"><input id="dt83addm" placeholder="'+E(_L('Ej. Summit','e.g. Summit'))+'"><button type="button" class="dt83-act" id="dt83addmb">'+_L('Agregar','Add')+'</button></div>'+
+'<div class="dt83-l">'+_L('Series agregadas','Added series')+'</div><div class="dt83-tags">'+((c2.series||[]).map(function(m,i){return '<span>'+E(m)+' <button type="button" data-rm-s="'+i+'" aria-label="Remove">\u2715</button></span>'}).join('')||'<i>'+_L('ninguna','none')+'</i>')+'</div><div class="dt83-add"><input id="dt83adds" placeholder="'+E(_L('Ej. Elite','e.g. Elite'))+'"><button type="button" class="dt83-act" id="dt83addsb">'+_L('Agregar','Add')+'</button></div>'+
+'<div class="dt83-hint">'+_L('De f\u00e1brica: ','Built in: ')+E(SPA_BASES.filter(function(x){return (c2.models||[]).indexOf(x)<0}).join(', '))+' \u00b7 '+E(SPA_SERIES.filter(function(x){return (c2.series||[]).indexOf(x)<0}).join(', '))+'</div>'};
+var b=D.sheet(_L('Modelos y series','Spa models & series'),paint());
+var bind=function(){b.innerHTML=paint();
+var add=function(key,inpId){var v=String(b.querySelector('#'+inpId).value||'').trim();if(!v)return;var arr=(D.cfg()[key]||[]).slice();if(arr.indexOf(v)<0&&(key!=='models'||SPA_BASES.indexOf(v)<0)&&(key!=='series'||SPA_SERIES.indexOf(v)<0))arr.push(v);var p={};p[key]=arr;D.saveCfg(p);bind()};
+b.querySelector('#dt83addmb').onclick=function(){add('models','dt83addm')};b.querySelector('#dt83addsb').onclick=function(){add('series','dt83adds')};
+b.querySelectorAll('[data-rm-m]').forEach(function(x){x.onclick=function(){var arr=(D.cfg().models||[]).slice(),rm=arr.splice(+x.getAttribute('data-rm-m'),1)[0];var ix=SPA_BASES.indexOf(rm);if(ix>=0)SPA_BASES.splice(ix,1);D.saveCfg({models:arr});bind()}});
+b.querySelectorAll('[data-rm-s]').forEach(function(x){x.onclick=function(){var arr=(D.cfg().series||[]).slice(),rm=arr.splice(+x.getAttribute('data-rm-s'),1)[0];var ix=SPA_SERIES.indexOf(rm);if(ix>=0)SPA_SERIES.splice(ix,1);D.saveCfg({series:arr});bind()}})};bind()};
+
+/* gift boxes — contents as Alberto defined them; swim spa / cold plunge / Luxe still to define */
+var GIFT={'ES':['A','1 robe \u00b7 1 towel \u00b7 2 wine glasses'],'GS +':['A','1 robe \u00b7 1 towel \u00b7 2 wine glasses'],'GS':['B','2 towels \u00b7 2 wine glasses'],'VS':['C','1 towel \u00b7 2 wine glasses'],'SAUNA':['D','1 robe \u00b7 2 wine glasses']};
+function seriesOf(r){var sp=String(r.sp||'').toUpperCase(),base=sp.split(',')[0].trim(),ser=(sp.split(',')[1]||'').trim();
+if(/SAUNA/.test(base))return 'SAUNA';if(/COLD\s*PLUNGE/.test(sp))return 'COLD PLUNGE';if(/13\s*PARTY|16\s*SWIM|SWIM/.test(base))return 'SWIM SPA';
+if(/^GS\s*\+$/.test(ser)||ser==='GS+')return 'GS +';if(ser)return ser==='LUXE'?'Luxe':ser==='HOLIDAY'?'Holiday':ser;return base?'('+_L('sin serie','no series')+')':'('+_L('sin modelo','no model')+')'}
+D.seriesOf=seriesOf;
+D.giftBoxes=function(off){off=off||0;var now=new Date(),y=now.getFullYear(),m=now.getMonth()+off;var d0=new Date(y,m,1),d1=new Date(y,m+1,1);
+var rows=AD().filter(function(r){if(!r.dl||r._deleted)return false;var d=parseDateFor?parseDateFor(r):parseDate(r.dd);return d&&!isNaN(d)&&d>=d0&&d<d1});
+var by={};rows.forEach(function(r){var s=seriesOf(r);(by[s]=by[s]||{n:0,gb:0,list:[]});by[s].n++;if(r.gb)by[s].gb++;by[s].list.push(D.niceName(r))});
+var custom=D.cfg().gift||{};
+var mapFor=function(s){return custom[s]?[custom[s].box||'?',custom[s].items||'']:GIFT[s]||null};
+var boxes={};Object.keys(by).forEach(function(s){var mp=mapFor(s);var k=mp?mp[0]:'?';(boxes[k]=boxes[k]||{n:0,items:mp?mp[1]:''}).n+=by[s].n});
+var mlabel=d0.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{month:'long',year:'numeric'});
+var h='<div class="dt83-todo-top"><button type="button" class="dt83-act ghost" onclick="dt83.giftBoxes('+(off-1)+')">\u2039</button><b style="text-transform:capitalize">'+E(mlabel)+'</b><button type="button" class="dt83-act ghost" onclick="dt83.giftBoxes('+(off+1)+')">\u203A</button><span>'+rows.length+' '+_L('entregadas','delivered')+'</span></div>';
+h+='<div class="dt83-tblw"><table class="dt83-tbl"><thead><tr><th>'+_L('Serie','Series')+'</th><th>'+_L('Entregas','Deliveries')+'</th><th>'+_L('Caja','Box')+'</th><th>'+_L('Contenido','Contents')+'</th><th>G.B. \u2713</th></tr></thead><tbody>'+
+Object.keys(by).sort().map(function(s){var mp=mapFor(s);return '<tr><td>'+E(s)+'</td><td class="num">'+by[s].n+'</td><td>'+(mp?E(mp[0]):'<span class="dt83-need">'+_L('definir','to define')+'</span>')+'</td><td>'+(mp?E(mp[1]):'\u2014')+'</td><td class="num">'+by[s].gb+'</td></tr>'}).join('')+'</tbody></table></div>';
+h+='<div class="dt83-l">'+_L('Total por caja','Total per box')+'</div><div class="dt83-tags">'+Object.keys(boxes).sort().map(function(k){return '<span><b>'+(k==='?'?_L('Sin definir','Undefined'):_L('Caja ','Box ')+E(k))+'</b> \u00d7 '+boxes[k].n+(boxes[k].items?' \u00b7 '+E(boxes[k].items):'')+'</span>'}).join('')+'</div>';
+h+='<div class="dt83-hint">'+_L('Faltan por definir: swim spa, Cold Plunge y Luxe. Toca \u201cdefinir caja\u201d para asignarlas.','Still to define: swim spa, Cold Plunge and Luxe. Tap \u201cdefine box\u201d to assign them.')+'</div>'+
+'<div class="dt83-add"><select id="dt83gs">'+['SWIM SPA','COLD PLUNGE','Luxe','Holiday'].concat(Object.keys(by)).filter(function(v,i,a){return a.indexOf(v)===i}).map(function(s){return '<option>'+E(s)+'</option>'}).join('')+'</select><input id="dt83gbx" placeholder="'+E(_L('Caja','Box'))+'" style="max-width:90px"><input id="dt83git" placeholder="'+E(_L('Contenido','Contents'))+'"><button type="button" class="dt83-act" id="dt83gsv">'+_L('Definir caja','Define box')+'</button></div>'+
+'<button type="button" class="dt83-btn ghost" id="dt83gcsv">\u2B07\uFE0F CSV</button>';
+var b=D.sheet('Gift boxes',h,{wide:true});
+b.querySelector('#dt83gsv').onclick=function(){var s=b.querySelector('#dt83gs').value,bx=String(b.querySelector('#dt83gbx').value||'').trim(),it=String(b.querySelector('#dt83git').value||'').trim();if(!bx)return;var g=Object.assign({},D.cfg().gift||{});g[s]={box:bx,items:it};D.saveCfg({gift:g}).then(function(){D.giftBoxes(off)})};
+b.querySelector('#dt83gcsv').onclick=function(){var lines=[['Delivery date','Customer','Model','Series','Box','Contents','G.B.']];rows.forEach(function(r){var s=seriesOf(r),mp=mapFor(s);lines.push([fmtDate(r.dd),D.niceName(r),r.sp||'',s,mp?mp[0]:'',mp?mp[1]:'',r.gb?'yes':''])});
+var csv=lines.map(function(l){return l.map(function(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')}).join('\n');
+var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='gift-boxes-'+D.dayKey(d0).slice(0,7)+'.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000)}};
+
+D.health=async function(){
+var row=function(k,v,ok){return '<div class="dt83-hrow"><span>'+E(k)+'</span><b class="'+(ok===true?'ok':ok===false?'bad':'')+'">'+v+'</b></div>'};
+var staff=null;try{staff=await _hasStaffClaim()}catch(e){}
+var last=null;try{last=(await db.ref('gcal_config/lastSync').once('value')).val()}catch(e){}
+var mins=(typeof gcalTokenExp!=='undefined'&&gcalTokenExp)?Math.round((gcalTokenExp-Date.now())/60000):null;
+var cache=0;try{cache=Math.round(((localStorage.getItem('aspen_dt_cache_v1')||'').length)/1024)}catch(e){}
+var sw='\u2014';try{if(window.caches){var ks=await caches.keys();sw=ks.filter(function(k){return /aspen-delivery-/.test(k)}).join(', ')||'\u2014'}}catch(e){}
+var q=(await D.qAll()).length;var nameless=upcoming(30).filter(function(r){return !r.n}).length;
+var ago=function(t){if(!t)return '\u2014';var m=Math.round((Date.now()-t)/60000);return m<1?_L('hace segundos','seconds ago'):m<60?_L('hace ','')+m+' min'+_L('',' ago'):new Date(t).toLocaleString()};
+var html=row(_L('Versi\u00f3n','Version'),E(String(APP_VERSION).split(' \u2014')[0])+' \u00b7 '+APP_BUILD)+
+row(_L('Datos sincronizados','Data synced'),(typeof _dataSynced==='function'&&_dataSynced())?'\u2713 '+ago(_lastSyncTs):'\u2715',typeof _dataSynced==='function'&&_dataSynced())+
+row(_L('Conexi\u00f3n con Firebase','Firebase connection'),(typeof _fbConn==='undefined'||_fbConn)?'\u2713':'\u2715',(typeof _fbConn==='undefined'||_fbConn))+
+row(_L('Permiso del servidor (staff)','Server permission (staff)'),staff?'\u2713':_L('\u2715 sesi\u00f3n sin permiso \u2014 vuelve a entrar con tu PIN','\u2715 session without permission \u2014 sign in again with your PIN'),!!staff)+
+row('Google Calendar',(typeof gcalToken!=='undefined'&&gcalToken)?('\u2713 '+(mins!=null?mins+' min':'')):_L('desconectado','not connected'),!!(typeof gcalToken!=='undefined'&&gcalToken))+
+row(_L('\u00daltimo sync del calendario','Last calendar sync'),ago(last),last?(Date.now()-last<3*3600000):null)+
+row(_L('Entregas sin nombre (30 d\u00edas)','Deliveries without a name (30 days)'),String(nameless),nameless===0)+
+row(_L('Fotos esperando se\u00f1al','Photos waiting for signal'),String(q),q===0)+
+row(_L('Cach\u00e9 local','Local cache'),cache+' KB')+row('Service worker',E(sw));
+var b=D.sheet(_L('Salud de la app','App health'),html+'<button type="button" class="dt83-btn ghost" id="dt83hc">'+_L('Copiar reporte','Copy report')+'</button>');
+b.querySelector('#dt83hc').onclick=function(){var t=Array.prototype.map.call(b.querySelectorAll('.dt83-hrow'),function(x){return x.children[0].textContent+': '+x.children[1].textContent}).join('\n');
+try{navigator.clipboard.writeText(t).then(function(){showToast('\u2713 '+_L('Copiado','Copied'))},function(){prompt('Copy:',t)})}catch(e){prompt('Copy:',t)}}};
+
+/* ===================== sidebar: line icons + "To complete" ===================== */
+var IC={board:'<path d="M4 12a8 8 0 0 1 16 0"/><path d="M12 12l4-3"/><circle cx="12" cy="12" r="1.6"/><path d="M4 16h16"/>',
+route:'<path d="M3 7h11v8H3z"/><path d="M14 10h4l3 3v2h-7"/><circle cx="7" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/>',
+cal:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+dash:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+digest:'<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
+alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+notes:'<path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 12h8M8 16h6"/>',
+settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+todo:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/>',
+map:'<path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6z"/><path d="M9 4v14M15 6v14"/>'};
+function svg(k){return '<svg class="dt83-ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[k]+'</svg>'}
+function iconify(btn,k){if(!btn||btn.dataset.dt83i)return;btn.dataset.dt83i='1';
+var tn=Array.prototype.find.call(btn.childNodes,function(n){return n.nodeType===3&&n.nodeValue.trim()});
+if(tn)tn.nodeValue=' '+tn.nodeValue.replace(/^[^A-Za-z\u00C0-\u017F]+/,'').trim()+' ';
+btn.insertAdjacentHTML('afterbegin',svg(k))}
+function sidebar(){var side=document.getElementById('glassSide');if(!side||!D.isOffice())return false;
+iconify(document.getElementById('gs_board'),'board');iconify(document.getElementById('gs_route'),'route');iconify(document.getElementById('gs_cal'),'cal');iconify(document.getElementById('gs_dash'),'dash');
+side.querySelectorAll('.gs-nav button').forEach(function(b){var oc=b.getAttribute('onclick')||'';if(/openDigest/.test(oc))iconify(b,'digest');else if(/openGlassNotifs/.test(oc))iconify(b,'alerts');else if(/openTechNotesPanel/.test(oc))iconify(b,'notes');else if(/openGlassSettings/.test(oc))iconify(b,'settings')});
+if(!document.getElementById('gs_todo')){var cal=document.getElementById('gs_cal');if(cal){var b=document.createElement('button');b.id='gs_todo';b.onclick=function(){D.todo()};b.innerHTML=_L('Falta completar','To complete')+' <span class="gs-bell-n" id="dt83todoN" style="display:none"></span>';cal.parentNode.insertBefore(b,cal.nextSibling);iconify(b,'todo')}}
+var n=D.todoCount(),bn=document.getElementById('dt83todoN');if(bn){bn.textContent=n||'';bn.style.display=n?'':'none'}
+var dmap={gd_board:'route',gd_route:'map',gd_cal:'cal',gd_notes:'notes',gd_dash:'dash'};
+Object.keys(dmap).forEach(function(id){var b=document.getElementById(id);if(!b||b.dataset.dt83i)return;var gi=b.querySelector('.gi');if(gi){gi.innerHTML=svg(dmap[id]);b.dataset.dt83i='1'}});
+document.body.classList.add('dt83-icons');return true}
+var tries=0,iv=setInterval(function(){tries++;if(sidebar()||tries>60)clearInterval(iv)},1000);
+wrap('renderAll',function(){try{sidebar()}catch(e){}});
+
+/* ===================== F6 · "Invoice" ticks itself when the PDF is attached =====================
+   Once per ticket (ck_auto.iv): if someone unticks it afterwards, it stays unticked. Office devices only. */
+D.autoIv=function(id){if(!D.isOffice())return false;var r=findRecById(id);if(!r||!r.pdf_invoice||r.iv||(r.ck_auto&&r.ck_auto.iv))return false;
+var ca=Object.assign({},r.ck_auto||{});ca.iv=Date.now();saveTicketFields(id,{iv:true,ck_auto:ca});
+try{pushActivity(id,'Invoice ✓ ticked automatically (PDF attached)')}catch(e){}
+if(curRec&&sameId(curRec.i,id)){curRec=findRecById(id)||curRec;var el=document.querySelector('#md .ci[onclick*="\'iv\'"]');if(el){el.className='ci on';var dd=el.querySelector('.cd');if(dd)dd.className='cd on'}}
+return true};
+(function(){var o=window._saveInvoicePdfToTicket;if(typeof o!=='function')return;
+window._saveInvoicePdfToTicket=async function(id){var res=await o.apply(this,arguments);try{D.autoIv(id)}catch(e){console.warn('[dt83] autoIv',e)}return res}})();
+
+console.log('%c[BUILD 83] dt83Office ready','color:#fff;background:#134A63;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt83Office] failed to start — the office view keeps working without the extras',e)}})();
+
+</script>
+<!-- ════════ /BUILD 83 BLOCKS ════════ -->
 </body></html>
