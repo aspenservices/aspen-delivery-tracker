@@ -2183,8 +2183,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026102703;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.10.27 (build 86.1) — las 20 ideas, parte 3: seguimiento en vivo, el cliente escoge fecha, kit de bienvenida, visita de 2 semanas, avisos al técnico; la página del cliente usa solo portalGet/portalSubmit (trae el arreglo de hold del 85.1)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026102704;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.10.27 (build 86.2) — 86.1 + arreglo: el ticket vuelve a hacer scroll en la computadora (roto desde el 84)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -14827,6 +14827,12 @@ body.dt84-tvon{overflow:hidden}
    6 · the delivery file (3 columns)
    ===================================================================== */
 body.dt84 #md.dt84-wide{width:min(1560px,96vw);max-width:none}
+/* BUGFIX 27 oct (86.2): the 3-column file replaced .tkt-main, which was the ticket's ONLY scroll box on desktop
+   (#md is overflow:hidden there) — the lower cards could not be reached. The modal becomes a column: header,
+   steps and the Save bar stay put, the file scrolls. Phones keep their own whole-modal scroll (≤760px). */
+@media (min-width:761px){body.dt84 #md.dt84-wide{display:flex!important;flex-direction:column}
+body.dt84 #md.dt84-wide>*{flex-shrink:0}
+body.dt84 #md.dt84-wide>.dt84-file{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}}
 .dt84-file{display:grid;grid-template-columns:minmax(300px,0.95fr) minmax(0,1.25fr) minmax(320px,1fr);gap:16px;padding:16px 18px 6px;align-items:start;background:var(--bg-cream)}
 .dt84-file .col{display:flex;flex-direction:column;gap:14px;min-width:0}
 .dt84-fc{background:var(--dt84-card);border:1px solid var(--dt84-line);border-radius:var(--dt84-r);padding:12px 14px 14px;box-shadow:var(--dt84-shadow);min-width:0}
