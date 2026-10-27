@@ -98,7 +98,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--aspen-orange)}
 
 <!-- Sin SDK de Firebase, a proposito. Ver la nota de la cabecera. -->
 <script>
-var PORTAL_BUILD='83-brand';
+var PORTAL_BUILD='86.1-live';
 console.log('%c[PORTAL] Aspen Delivery Prep build '+PORTAL_BUILD,'color:#fff;background:#e67e2e;padding:2px 6px;border-radius:3px');
 
 var PORTAL_GET_FN  ="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/portalGet";
@@ -498,5 +498,142 @@ _PORTAL.it.resp=resp;_PORTAL.it.submitted=true;_PORTAL.it.submittedAt=Date.now()
   renderIntakePortal(p.id,p.token);
 })();
 </script>
+<!-- ════════ BUILD 86 PORTAL ════════ -->
+<!-- Live map, arrived, pick your day, welcome kit. Delete this block to go back to the build-83 page. -->
+<style id="p86css">
+/* BUILD 86 · customer page additions (light only, like the rest of the page) */
+.p86-live{background:var(--aspen-black);color:#fff;border-radius:16px;overflow:hidden;margin-bottom:14px;box-shadow:0 8px 24px rgba(26,20,16,.18)}
+.p86-live .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}
+.p86-live .top b{display:block;font-size:19px;font-weight:800}
+.p86-live .top span{display:block;font-size:13px;opacity:.8;margin-top:2px}
+.p86-live .truck{font-size:30px}
+.p86-live .map{height:220px;background:#e9e4da}
+.p86-pin{background:none;border:none}
+.p86-pin span{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3);font-size:18px}
+.p86-pin.home span{background:var(--aspen-orange)}
+.p86-arrived{display:flex;gap:12px;align-items:center;background:#e7f8f0;border:1px solid #a7e3c6;border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#166534}
+.p86-arrived .i{font-size:28px}
+.p86-arrived b{display:block;font-size:16px}
+.p86-arrived span{display:block;font-size:13px}
+.p86-pick{background:var(--surface);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:2px solid var(--aspen-orange)}
+.p86-pick.done{border:1px solid #a7e3c6;background:#e7f8f0;color:#166534;font-size:14px}
+.p86-pick .h{font-weight:800;font-size:16px}
+.p86-pick .s{font-size:13px;color:var(--ink-slate);margin:4px 0 10px;line-height:1.45}
+.p86-pick .days,.p86-pick .slots{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.p86-pick .days button,.p86-pick .slots button{min-height:44px;padding:0 14px;border-radius:12px;border:1.5px solid var(--border-soft);background:var(--bg-cream);color:var(--ink-strong);font-size:14.5px;font-weight:700;cursor:pointer}
+.p86-pick .slots button{min-height:38px;font-size:13.5px;border-radius:999px}
+.p86-pick button.on{border-color:var(--aspen-orange);background:var(--aspen-orange);color:#fff}
+.p86-pick .msg{font-size:13px;margin-top:8px;color:var(--ink-slate)}
+.p86-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border-radius:12px;border:none;background:var(--aspen-orange);color:#fff;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer;margin-top:6px}
+.p86-btn[disabled]{opacity:.45;cursor:default}
+.p86-kit{background:var(--surface);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.p86-kit .h{font-weight:800;font-size:16px;margin-bottom:8px}
+.p86-kit .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-soft);font-size:14px}
+.p86-kit .kv span{color:var(--ink-mid)}
+.p86-kit .kv b{text-align:right}
+.p86-kit .visit{margin:12px 0;background:var(--bg-cream);border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.45}
+.p86-kit .care{font-size:14px;line-height:1.5}
+.p86-kit .care ul{margin:6px 0 10px;padding-left:20px}
+.p86-kit .call{text-align:center;font-size:13px;color:var(--ink-mid);margin-top:10px}
+
+</style>
+<script id="p86js">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 86 · the customer page (prep.html) — reads ONLY pinfo, like before
+   · live map + ETA while the crew is on the way (pinfo.live), refreshes every 30 s
+   · "Your crew has arrived" (pinfo.arrived)
+   · pick your delivery day (pinfo.slots) → sent with the form (resp.datePref) or alone (portalSubmit kind:"datePref")
+   · welcome kit after delivery (pinfo.kit): receipt facts, care guide, warranty, 2-week visit
+   It talks ONLY to portalGet / portalSubmit (the same two functions as before; build 86.1).
+   Everything degrades to the build-83 page when a field is missing or the server is older.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var P86=window.P86={};
+/* fresh copy from portalGet (the first paint already has everything: portalGet passes the build-86 fields) */
+P86.refresh=function(){if(!_PORTAL||!_PORTAL.it)return Promise.resolve(false);
+return fetch(PORTAL_GET_FN+'?id='+encodeURIComponent(_PID)+'&t='+encodeURIComponent(_PTOK),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
+if(!j||j.ok!==true||!j.intake)return false;var it=_PORTAL.it,before=JSON.stringify([it.pinfo,it.datePref,it.review]);
+it.pinfo=j.intake.pinfo||{};if(j.intake.datePref)it.datePref=j.intake.datePref;if(j.intake.review)it.review=j.intake.review;
+return JSON.stringify([it.pinfo,it.datePref,it.review])!==before}).catch(function(){return false})};
+function esc(s){return typeof _iesc==='function'?_iesc(s):String(s==null?'':s)}
+function nice(k,long){try{var p=String(k).split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-US',long?{weekday:'long',month:'long',day:'numeric'}:{weekday:'short',month:'short',day:'numeric'})}catch(e){return k}}
+P86.fresh=function(live,now){now=now||Date.now();return !!(live&&live.lat&&live.lng&&live.at&&now-live.at<10*60*1000)};
+P86.ago=function(at,now){var m=Math.round(((now||Date.now())-at)/60000);return m<=0?'just now':m===1?'1 min ago':m+' min ago'};
+P86.etaText=function(live){if(!live||live.eta==null)return 'On the way';var m=+live.eta;return m<=2?'Almost there':m<60?'About '+m+' min away':'About '+Math.round(m/60*10)/10+' h away'};
+
+/* ---------- status: arrived / live map / kit ---------- */
+var _status=window._portalStatusHtml;
+window._portalStatusHtml=function(it){var p=(it&&it.pinfo)||{},h='';
+try{
+if(!p.dl&&!p.co){
+if(p.arrived&&p.onway&&Date.now()-p.arrived<12*36e5){h+='<div class="p86-arrived"><div class="i">\u{1F44B}</div><div><b>Your crew has arrived!</b><span>'+(p.tech?esc(String(p.tech).split(' ')[0])+' and the team are at your home.':'The team is at your home.')+'</span></div></div>';
+var q=Object.assign({},it,{pinfo:Object.assign({},p,{onway:0})});return '<div id="pStatus">'+h+_status(q)+'</div>'}
+if(p.onway&&Date.now()-p.onway<12*36e5&&P86.fresh(p.live)){var L=p.live;
+h+='<div class="p86-live"><div class="top"><div><b>'+esc(P86.etaText(L))+'</b><span>'+esc((L.tech||(p.tech||'').split(' ')[0]||'Your crew')+' is driving your spa to you · updated '+P86.ago(L.at))+'</span></div><div class="truck" aria-hidden="true">\u{1F69A}</div></div><div class="map" id="p86map" role="img" aria-label="Map with the delivery truck"></div></div>';
+setTimeout(function(){P86.map(L)},0);
+var q2=Object.assign({},it,{pinfo:Object.assign({},p,{onway:0})});return '<div id="pStatus">'+h+_status(q2)+'</div>'}}
+}catch(e){console.warn('[P86] status',e)}
+var base=_status(it);
+try{if((p.dl||p.co)&&p.kit)base=base.replace(/(<div id="pRevCard"|<div style="background:var\(--surface\);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;box-shadow:0 1px 4px rgba\(0,0,0,\.06\)"><div style="font-size:20px">)/,function(m){return P86.kitHtml(p.kit)+m});if((p.dl||p.co)&&p.kit&&base.indexOf('p86-kit')<0)base+=P86.kitHtml(p.kit)}catch(e){console.warn('[P86] kit',e)}
+return '<div id="pStatus">'+base+'</div>'};
+P86.kitHtml=function(k){var rows=[];if(k.model)rows.push(['Your spa',esc(k.model)+(k.sn?' · Serial '+esc(k.sn):'')]);if(k.date)rows.push(['Delivered',esc(nice(k.date,true))+(k.tech?' by '+esc(k.tech):'')]);if(k.paid)rows.push(['Paid at delivery',esc((typeof fmt==='function'?fmt(k.paid.amt):'$'+k.paid.amt)+' · '+k.paid.m)]);
+return '<div class="p86-kit"><div class="h">\u{1F381} Your welcome kit</div>'+rows.map(function(r){return '<div class="kv"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>'}).join('')+
+(k.visit?'<div class="visit">\u{1F5D3}️ <b>Your 2-week visit:</b> around '+esc(nice(k.visit,true))+'. We will call you to confirm the time.</div>':'')+
+(k.care&&k.care.length?'<div class="care"><b>Caring for your spa</b><ul>'+k.care.map(function(c){return '<li>'+esc(c)+'</li>'}).join('')+'</ul></div>':'')+
+(k.warranty&&/^https:\/\//.test(k.warranty)?'<a class="p86-btn" href="'+esc(k.warranty)+'" target="_blank" rel="noopener">\u{1F6E1}️ Register your warranty</a>':'')+
+'<div class="call">Questions? Call us at <a href="tel:3147765050">(314) 776-5050</a></div></div>'};
+
+/* ---------- the map (Leaflet from cdnjs, loaded only when there is a live position) ---------- */
+var _lf=null;
+function leaflet(){if(window.L&&window.L.map)return Promise.resolve(true);if(_lf)return _lf;
+_lf=new Promise(function(res){var c=document.createElement('link');c.rel='stylesheet';c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(c);
+var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=function(){res(true)};s.onerror=function(){_lf=null;res(false)};document.head.appendChild(s)});return _lf}
+var _map=null,_truck=null;
+P86.map=function(L){var el=document.getElementById('p86map');if(!el)return;leaflet().then(function(ok){if(!ok||!document.getElementById('p86map')){if(el)el.style.display='none';return}
+try{if(_map&&_map.getContainer()!==el){_map.remove();_map=null}
+if(!_map){_map=window.L.map(el,{zoomControl:false,attributionControl:true,dragging:true,scrollWheelZoom:false});
+window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(_map)}
+var ic=window.L.divIcon({className:'p86-pin',html:'<span>\u{1F69A}</span>',iconSize:[34,34],iconAnchor:[17,17]});
+_truck=window.L.marker([L.lat,L.lng],{icon:ic}).addTo(_map);var pts=[[L.lat,L.lng]];
+if(L.home&&L.home.lat){window.L.marker([L.home.lat,L.home.lng],{icon:window.L.divIcon({className:'p86-pin home',html:'<span>\u{1F3E0}</span>',iconSize:[34,34],iconAnchor:[17,17]})}).addTo(_map);pts.push([L.home.lat,L.home.lng])}
+if(pts.length>1)_map.fitBounds(pts,{padding:[30,30],maxZoom:15});else _map.setView(pts[0],13)}catch(e){console.warn('[P86] map',e);el.style.display='none'}})};
+
+/* ---------- refresh every 30 s while the crew is on the way ---------- */
+var _poll=null,_pollStart=0;
+P86.poll=function(){if(_poll)return;_pollStart=Date.now();_poll=setInterval(function(){
+if(!_PORTAL||!_PORTAL.it||Date.now()-_pollStart>5*36e5){clearInterval(_poll);_poll=null;return}
+var op=JSON.parse(JSON.stringify(_PORTAL.it.pinfo||{}));
+P86.refresh().then(function(){
+var np=_PORTAL.it.pinfo||{};
+var st=document.getElementById('pStatus');if(st){var tmp=document.createElement('div');tmp.innerHTML=window._portalStatusHtml(_PORTAL.it);var nw=tmp.firstChild;
+if(_map&&np.live&&op.live&&P86.fresh(np.live)&&document.getElementById('p86map')&&nw.querySelector('.p86-live')){if(np.live.at!==op.live.at)_truck&&_truck.setLatLng([np.live.lat,np.live.lng]);var t=st.querySelector('.p86-live .top');var nt=nw.querySelector('.p86-live .top');if(t&&nt)t.innerHTML=nt.innerHTML}
+else{_map&&_map.remove();_map=null;st.replaceWith(nw)}}
+if(np.dl||np.co){clearInterval(_poll);_poll=null}}).catch(function(){})},30000)};
+function needsPoll(it){var p=(it&&it.pinfo)||{};return !!(p.onway&&!p.dl&&!p.co&&Date.now()-p.onway<12*36e5)}
+var _sub=window._portalSubmittedHtml;window._portalSubmittedHtml=function(it){var h=_sub(it);try{if(needsPoll(it))setTimeout(P86.poll,0);h=h.replace('<div id="pStatus">',P86.pickHtml(it,true)+'<div id="pStatus">')}catch(e){}return h};
+
+/* ---------- pick your day ---------- */
+P86.pick={k:'',slot:'any'};
+P86.pickHtml=function(it,after){var p=(it&&it.pinfo)||{};var sl=Array.isArray(p.slots)?p.slots.slice(0,6):[];if(!sl.length||p.dl||p.co)return '';
+var chosen=(it.resp&&it.resp.datePref)||it.datePref;if(after&&chosen&&chosen.k)return '<div class="p86-pick done">\u{1F4C5} You asked for <b>'+esc(nice(chosen.k,true))+(chosen.slot&&chosen.slot!=='any'?' ('+esc(String(chosen.slot).toUpperCase())+')':'')+'</b>. We will confirm it with you.</div>';
+var h='<div class="p86-pick" id="p86pick"><div class="h">\u{1F4C5} Pick your delivery day</div><div class="s">These days are open right now. Pick the one that works best and we will confirm it.</div><div class="days" role="radiogroup" aria-label="Delivery day">'+
+sl.map(function(s){return '<button type="button" role="radio" aria-checked="'+(P86.pick.k===s.k)+'" class="'+(P86.pick.k===s.k?'on':'')+'" onclick="P86.choose(\''+esc(s.k)+'\')">'+esc(s.l||nice(s.k))+'</button>'}).join('')+'</div>'+
+'<div class="slots" role="radiogroup" aria-label="Time of day">'+[['any','Any time'],['am','Morning'],['pm','Afternoon']].map(function(o){return '<button type="button" role="radio" aria-checked="'+(P86.pick.slot===o[0])+'" class="'+(P86.pick.slot===o[0]?'on':'')+'" onclick="P86.slot(\''+o[0]+'\')">'+o[1]+'</button>'}).join('')+'</div>'+
+(after?'<button type="button" class="p86-btn" onclick="P86.sendPick()"'+(P86.pick.k?'':' disabled')+'>Send my choice</button><div class="msg" id="p86msg" aria-live="polite"></div>':'<div class="s">Your choice goes with the form when you tap <b>Send Information</b>.</div>')+'</div>';
+return h};
+function repaintPick(){var el=document.getElementById('p86pick');if(!el||!_PORTAL)return;var t=document.createElement('div');t.innerHTML=P86.pickHtml(_PORTAL.it,!!_PORTAL.it.submitted);el.replaceWith(t.firstChild||document.createTextNode(''))}
+P86.choose=function(k){P86.pick.k=(P86.pick.k===k?'':k);repaintPick()};
+P86.slot=function(s){P86.pick.slot=s;repaintPick()};
+P86.sendPick=function(){if(!P86.pick.k)return;var m=document.getElementById('p86msg');if(m)m.textContent='Sending…';var pref={k:P86.pick.k,slot:P86.pick.slot,at:Date.now()};
+pPost({kind:'datePref',datePref:{k:pref.k,slot:pref.slot}},2).then(function(){_PORTAL.it.datePref=pref;repaintPick()}).catch(function(){if(m)m.innerHTML='We could not send it from here. Please call us at <a href="tel:3147765050">(314) 776-5050</a> and tell us <b>'+esc(nice(pref.k,true))+'</b>.'})};
+var _form=window._portalFormHtml;window._portalFormHtml=function(it){var h=_form(it);try{var pk=P86.pickHtml(it,false);if(pk){var at=h.indexOf('<div class="p-card"');h=at>=0?h.slice(0,at)+pk+h.slice(at):h+pk}}catch(e){}return h};
+/* the day travels inside the normal final submission */
+var _post=window.pPost;window.pPost=function(body,tries){try{if(body&&body.kind==='final'&&body.resp&&P86.pick.k){body.resp.datePref={k:P86.pick.k,slot:P86.pick.slot}}}catch(e){}return _post(body,tries)};
+var _sum=window._irespSummary;if(typeof _sum==='function')window._irespSummary=function(it){var h=_sum(it);try{var d=it.resp&&it.resp.datePref;if(d&&d.k)h=h.replace(/<\/div>$/,'<div style="margin-top:6px">\u{1F4C5} Preferred day: <b>'+esc(nice(d.k,true))+(d.slot&&d.slot!=='any'?' ('+esc(String(d.slot).toUpperCase())+')':'')+'</b></div></div>')}catch(e){}return h};
+console.log('[PORTAL] build 86 additions ready');
+}catch(e){console.error('[P86] failed to start — the page keeps working without the build 86 additions',e)}})();
+
+</script>
+<!-- ════════ /BUILD 86 PORTAL ════════ -->
 </body>
 </html>

@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v19'; // 2026-10-26 - build 83.1: el calendario vuelve a todo el ancho (la leyenda lo encogia)
+const CACHE_VERSION = 'aspen-delivery-v24'; // 2026-10-27 - build 86.1
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 
@@ -99,3 +99,22 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
+/* ════════ BUILD 86 PUSH ════════ */
+/* BUILD 86 · push alerts for the techs (only used once the office sets the push key) */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { notification: { title: 'Aspen Deliveries', body: e.data ? e.data.text() : '' } }; }
+  const n = d.notification || {}, data = d.data || {};
+  e.waitUntil(self.registration.showNotification(n.title || 'Aspen Deliveries', {
+    body: n.body || '', tag: data.id ? 'dt-' + data.id : undefined, renotify: !!data.id, data: data, icon: './icon-192.png', badge: './icon-192.png'
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cs) => {
+    for (const c of cs) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow('./');
+  }));
+});
+/* ════════ /BUILD 86 PUSH ════════ */
