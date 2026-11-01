@@ -2183,8 +2183,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026102704;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.10.27 (build 86.2) — 86.1 + arreglo: el ticket vuelve a hacer scroll en la computadora (roto desde el 84)'; // human-readable label (shown in console)
+const APP_BUILD   = 2026110102;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.11.01 (build 87) — el nuevo look: pestañas por etapa, Atención, tarjetas, ticket, calendario y técnico (trae el 86.3)'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -5904,6 +5904,7 @@ if(!digits||digits.length<7){alert('That phone number does not look valid: '+pho
 let _url;
 try{ _url=(await _intakeLinkFor(r.i)).url }
 catch(e){
+if(e&&e.cancelled)return; /* BUGFIX 86.3: the office chose not to send after the link check */
 console.error('[INTAKE] no se pudo confirmar el link, no se manda nada',e);
 alert('The private link could NOT be saved on the server, so the customer would get a dead link.\n\nNOTHING was sent and the message count was not touched. Check your signal and try again.');
 return}
@@ -13149,7 +13150,7 @@ return _icopy(res.url).then(function(ok){
 if(ok)showToast('&#128279; Link copied and CONFIRMED saved — paste it into a text or email');
 else{try{window.prompt('Copy this link (already saved and confirmed):',res.url)}catch(e){}}
 if(curRec&&sameId(curRec.i,id))setTimeout(function(){refreshIntakeBox(id)},60)})})
-.catch(function(e){console.error('[INTAKE] el link no se pudo guardar',e);
+.catch(function(e){if(e&&e.cancelled)return; /* BUGFIX 86.3 */console.error('[INTAKE] el link no se pudo guardar',e);
 alert('The link could NOT be saved, so it would not work for the customer.\n\nNOTHING was copied — do not send anything yet. Check your signal and press Copy link again.\n\n('+((e&&e.message)||'unknown')+')')})}
 
 function intakeRegenerate(id){
@@ -15183,6 +15184,262 @@ html[data-theme="dark"] .dt86-cust .pref{background:rgba(245,166,35,.12);border-
 .dt86-chk .t{grid-column:1;font-size:12px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em}
 .dt86-chk b{grid-column:1}.dt86-chk .w{grid-column:1;font-size:13px;color:var(--text-secondary)}
 .dt86-chk i{grid-column:2;grid-row:1/4;align-self:center;font-style:normal;font-size:20px;color:var(--text-secondary)}
+.dt86-lnk{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--dt84-soft,var(--surface-2));font-size:12.5px}
+.dt86-lnk .st{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dt86-lnk .ok{color:var(--st-success,#2F7D52);font-weight:700}.dt86-lnk .bad{color:var(--st-danger,#C0392B);font-weight:800}.dt86-lnk .wait{color:var(--text-secondary);font-weight:600}
+.dt86-lnk .b{display:flex;gap:6px;flex-wrap:wrap}
+.dt86-lnk-acts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+
+/* ═══════ BUILD 87 · the visual refresh — every rule lives under body.dt87 ═══════ */
+body.dt87{--t87-xs:12px;--t87-s:13px;--t87-b:15px;--t87-m:18px;--t87-l:24px;--t87-xl:32px;--r87:12px;--r87s:8px;
+--sh87:0 1px 2px rgba(26,20,16,.06),0 4px 14px rgba(26,20,16,.06);--sh87h:0 2px 4px rgba(26,20,16,.08),0 10px 26px rgba(26,20,16,.10);
+--line87:var(--border-soft);--ink87:var(--text-primary);--mute87:var(--text-secondary);--faint87:var(--text-tertiary);--card87:var(--surface);--soft87:var(--surf-soft);
+--or87:var(--aspen-orange);--ok87:var(--st-success);--bad87:var(--st-danger);--warn87:var(--st-warning);--hold87:#9A8F80;--ease87:cubic-bezier(.2,.8,.2,1)}
+html[data-theme="dark"] body.dt87{--sh87:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);--sh87h:0 2px 4px rgba(0,0,0,.5),0 10px 26px rgba(0,0,0,.45);--hold87:#8c8478}
+body.dt87 .i87{flex-shrink:0;vertical-align:-3px}
+body.dt87 .i87w{display:inline-flex;vertical-align:-2px;margin-right:2px}
+body.dt87 button,body.dt87 .dt84-bc,body.dt87 .dt84-ev{transition:background-color .16s var(--ease87),border-color .16s var(--ease87),box-shadow .16s var(--ease87),transform .16s var(--ease87),color .16s var(--ease87)}
+body.dt87 :focus-visible{outline:2px solid var(--or87);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){body.dt87 *{transition:none!important;animation:none!important}}
+
+/* ---------- 1 · status bar in two parts ---------- */
+body.dt87 .aspen-tabs.t87{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;-webkit-mask-image:none;mask-image:none;overflow:visible;padding:8px 0}
+body.dt87 .t87-flow{display:flex;align-items:stretch;gap:2px;background:var(--soft87);border:1px solid var(--line87);border-radius:14px;padding:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+body.dt87 .t87-flow::-webkit-scrollbar{display:none}
+body.dt87 .t87-st{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 10px;border:0;border-radius:10px;background:transparent;color:var(--mute87);font:inherit;cursor:pointer;white-space:nowrap;text-align:left}
+body.dt87 .t87-st:hover{background:var(--card87);color:var(--ink87)}
+body.dt87 .t87-st .t87-tx{display:flex;flex-direction:column;line-height:1.15}
+body.dt87 .t87-st .t87-l{font-size:var(--t87-s);font-weight:800;color:inherit}
+body.dt87 .t87-st .t87-h{font-size:11.5px;font-weight:600;color:var(--faint87)}
+body.dt87 .t87-st .t87-c{min-width:26px;padding:2px 8px;border-radius:999px;background:var(--card87);border:1px solid var(--line87);font-size:var(--t87-s);font-weight:800;color:var(--ink87);text-align:center}
+body.dt87 .t87-st.zero .t87-c{color:var(--faint87)}
+body.dt87 .t87-st.on{background:var(--card87);color:var(--ink87);box-shadow:var(--sh87)}
+body.dt87 .t87-st.on .i87{color:var(--or87)}
+body.dt87 .t87-st.on .t87-c{background:var(--or87);border-color:var(--or87);color:#fff}
+body.dt87 .t87-arr{display:flex;align-items:center;color:var(--faint87);opacity:.7}
+body.dt87 .t87-ex{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+body.dt87 .t87-x{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid var(--line87);background:var(--card87);color:var(--mute87);font:inherit;font-size:var(--t87-s);font-weight:700;cursor:pointer}
+body.dt87 .t87-x b{font-weight:800;color:var(--ink87)}
+body.dt87 .t87-x.danger:not(.zero){border-color:color-mix(in srgb,var(--bad87) 45%,transparent);background:color-mix(in srgb,var(--bad87) 9%,var(--card87));color:var(--bad87)}
+body.dt87 .t87-x.danger:not(.zero) b{color:var(--bad87)}
+body.dt87 .t87-x.on{box-shadow:0 0 0 2px var(--or87)}
+body.dt87 .t87-x.zero{opacity:.72}
+body.dt87 .t87-all{border:0;background:none;color:var(--mute87);font:inherit;font-size:var(--t87-s);font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 4px}
+body.dt87 .t87-all.on{color:var(--or87)}
+@media (max-width:760px){body.dt87 .t87-st .t87-h{display:none}body.dt87 .t87-st{padding:7px 9px}body.dt87 .t87-flow{width:100%}body.dt87 .aspen-tabs.t87{gap:8px}}
+
+/* ---------- 2 · Attention ---------- */
+body.dt87 .a87-chip{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:8px 14px;border-radius:999px;border:0;background:var(--or87);color:#fff;font:inherit;font-size:var(--t87-s);font-weight:800;cursor:pointer;box-shadow:var(--sh87)}
+body.dt87 .a87-chip:hover{box-shadow:var(--sh87h);transform:translateY(-1px)}
+body.dt87 .a87-chip.ok{background:color-mix(in srgb,var(--ok87) 12%,var(--card87));color:var(--ok87);box-shadow:none;cursor:default}
+body.dt87 .a87-top{font-size:var(--t87-b);font-weight:700;color:var(--mute87);margin-bottom:6px}
+body.dt87 .a87-sec{margin-top:16px}
+body.dt87 .a87-sec h3{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:var(--t87-b);font-weight:800;color:var(--ink87)}
+body.dt87 .a87-sec h3 .a87-n{padding:1px 8px;border-radius:999px;background:var(--soft87);border:1px solid var(--line87);font-size:var(--t87-xs)}
+body.dt87 .a87-more{margin-left:auto;border:0;background:none;color:var(--or87);font:inherit;font-size:var(--t87-s);font-weight:700;cursor:pointer}
+body.dt87 .a87-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line87);border-radius:var(--r87);background:var(--card87);margin-bottom:6px;cursor:pointer}
+body.dt87 .a87-row:hover{border-color:var(--border-mid);box-shadow:var(--sh87)}
+body.dt87 .a87-row .sz{width:6px;align-self:stretch;border-radius:3px;background:var(--sz)}
+body.dt87 .a87-row .a87-m{display:flex;flex-direction:column;min-width:0;flex:1}
+body.dt87 .a87-row .a87-m b{font-size:var(--t87-b);font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dt87 .a87-row .a87-m span{font-size:var(--t87-s);color:var(--mute87)}
+body.dt87 .a87-row .why{font-size:var(--t87-s);font-weight:700;color:var(--mute87);max-width:42%;text-align:right}
+body.dt87 .e87{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 12px;color:var(--mute87);text-align:center}
+body.dt87 .e87 .i87{color:var(--ok87)}
+body.dt87 .e87 b{font-size:var(--t87-m);color:var(--ink87)}
+
+/* ---------- 3 · each screen its own header ---------- */
+body.dt87.dt87-t-cal #glassGreet,body.dt87.dt87-t-cal #ctxHdr,body.dt87.dt87-t-dash #glassGreet,body.dt87.dt87-t-dash #ctxHdr,body.dt87.dt87-t-route #glassGreet,body.dt87.dt87-t-route #ctxHdr{display:none!important}
+body.dt87.dt87-t-cal .aspen-tabs-bar,body.dt87.dt87-t-dash .aspen-tabs-bar,body.dt87.dt87-t-route .aspen-tabs-bar{display:none!important}
+body.dt87.dt87-t-cal .filters{position:static!important;box-shadow:none!important;padding-top:14px!important;padding-bottom:6px!important}
+
+/* ---------- 4 · sidebar ---------- */
+body.dt87 .gs87-fold{display:flex;align-items:center;gap:10px;width:calc(100% - 24px);margin:0 12px 8px;padding:9px 12px;border-radius:10px;border:0;background:transparent;color:inherit;opacity:.75;font:inherit;font-size:var(--t87-s);font-weight:700;cursor:pointer}
+body.dt87 .gs87-fold:hover{opacity:1;background:rgba(255,255,255,.06)}
+@media (min-width:761px){
+body.dt87.dt87-side-min #glassSide{width:68px!important}
+body.dt87.dt87-side-min #glassSide .gs-brand b,body.dt87.dt87-side-min #glassSide .gs-srch,body.dt87.dt87-side-min #glassSide .gs-sep,body.dt87.dt87-side-min #glassSide .gs-me>div:not(.gs-av),body.dt87.dt87-side-min .gs87-fold span{display:none!important}
+body.dt87.dt87-side-min #glassSide .gs-nav button{font-size:0!important;justify-content:center;padding-left:0!important;padding-right:0!important;position:relative}
+body.dt87.dt87-side-min #glassSide .gs-nav button svg{margin:0!important}
+body.dt87.dt87-side-min #glassSide .gs-nav .gs-bell-n{position:absolute;top:4px;right:8px;font-size:10px!important}
+body.dt87.dt87-side-min .gs87-fold{justify-content:center;width:44px;margin:0 auto 8px;padding:9px 0}
+body.dt87.dt87-side-min.has-glass-side{padding-left:92px!important}}
+
+/* ---------- 5 · ⌘K actions ---------- */
+body.dt87 .gk87 .gi87{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--or87) 12%,transparent);color:var(--or87);flex-shrink:0}
+body.dt87 .gk87 .s{font-weight:700;color:var(--or87)!important}
+body.dt87 .aspen-tabs-bar .aspen-tabs.t87{min-height:64px}
+
+/* ---------- 6–8 · cards, by day, one meaning per color ---------- */
+body.dt87 #board.d87{display:block!important;padding-bottom:40px}
+body.dt87 #board.d87.hidden{display:none!important}
+body.dt87 .b87{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+body.dt87 .g87{margin:0 0 22px}
+body.dt87 .g87h{position:sticky;top:64px;z-index:5;display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 2px;font-size:var(--t87-b);font-weight:800;color:var(--ink87);background:color-mix(in srgb,var(--bg-cream) 92%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+body.dt87 .g87h span{padding:1px 9px;border-radius:999px;background:var(--card87);border:1px solid var(--line87);font-size:var(--t87-xs);color:var(--mute87)}
+body.dt87 .g87h.b-today{color:var(--or87)}
+body.dt87 .c87{position:relative;display:flex;flex-direction:column;gap:9px;padding:14px 14px 12px 18px;border-radius:14px;background:var(--card87);border:1px solid var(--line87);box-shadow:var(--sh87);cursor:pointer;overflow:hidden;min-width:0}
+body.dt87 .c87::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--sz)}
+body.dt87 .c87:hover{box-shadow:var(--sh87h);transform:translateY(-1px);border-color:var(--border-mid)}
+body.dt87 .c87 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+body.dt87 .c87 .when{display:inline-flex;align-items:center;gap:5px;font-size:var(--t87-s);font-weight:800;color:var(--mute87)}
+body.dt87 .c87 .when.today{color:var(--or87)}
+body.dt87 .c87 .when.late{color:var(--bad87)}
+body.dt87 .c87 .stg{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:var(--soft87);border:1px solid var(--line87);color:var(--mute87);white-space:nowrap}
+body.dt87 .c87 .stg.s-overdue{background:color-mix(in srgb,var(--bad87) 10%,var(--card87));border-color:color-mix(in srgb,var(--bad87) 35%,transparent);color:var(--bad87)}
+body.dt87 .c87 .stg.s-hold{color:var(--hold87)}
+body.dt87 .c87 .stg.s-complete{color:var(--ok87)}
+body.dt87 .c87 .att{display:flex;align-items:center;gap:6px;font-size:var(--t87-s);font-weight:800;color:var(--bad87)}
+body.dt87 .c87 .nm{display:flex;flex-direction:column;min-width:0}
+body.dt87 .c87 .nm b{font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--ink87);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dt87 .c87 .nm b.pend{font-style:italic}
+body.dt87 .c87 .nm span{font-size:var(--t87-s);color:var(--mute87);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dt87 .c87 .ks{display:flex;flex-wrap:wrap;gap:6px}
+body.dt87 .c87 .k{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:8px;background:var(--soft87);font-size:12px;font-weight:700;color:var(--mute87)}
+body.dt87 .c87 .k.sz i{width:9px;height:9px;border-radius:50%}
+body.dt87 .c87 .k.due{color:var(--ink87)}
+body.dt87 .c87 .rd{display:flex;flex-direction:column;gap:5px}
+body.dt87 .c87 .rd .bar{height:6px;border-radius:999px;background:var(--soft87);overflow:hidden}
+body.dt87 .c87 .rd .bar i{display:block;height:100%;border-radius:999px;background:var(--ok87)}
+body.dt87 .c87 .rd span{font-size:12px;color:var(--mute87);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dt87 .c87 .rd span b{color:var(--ink87)}
+body.dt87 .c87 .ft{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;border-top:1px solid var(--line87)}
+body.dt87 .c87 .tech{display:inline-flex;align-items:center;gap:7px;font-size:var(--t87-s);font-weight:700;color:var(--ink87);min-width:0}
+body.dt87 .c87 .tech .av{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--tc);color:#fff;font-size:11px;font-weight:800}
+body.dt87 .c87 .tech.none{color:var(--faint87);font-weight:600}
+body.dt87 .c87 .nx{display:inline-flex;align-items:center;gap:2px;font-size:12.5px;font-weight:800;color:var(--or87);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+body.dt87 .c87.hold{opacity:.85}
+body.dt87 .c87.s-complete .nm b{color:var(--mute87)}
+body.dt87 .d87-grp{display:inline-flex;align-items:center;gap:6px;padding:0 12px;height:40px;border-radius:10px;border:1px solid var(--line87);background:var(--card87);color:var(--mute87);font:inherit;font-size:var(--t87-s);font-weight:700;cursor:pointer}
+body.dt87 .d87-grp.on{color:var(--or87);border-color:color-mix(in srgb,var(--or87) 40%,transparent)}
+@media (max-width:760px){body.dt87 .b87{grid-template-columns:1fr}body.dt87 .g87h{top:0}}
+
+/* ---------- 9–11 · the ticket ---------- */
+body.dt87 #md.t87 .tkt-hero-sub{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px;font-size:var(--t87-s);font-weight:700;opacity:.92}
+body.dt87 #md.t87 .tkt-hero-sub span{display:inline-flex;align-items:center;gap:5px}
+body.dt87 #md.t87 .tkt-hero-acts .m87h,body.dt87 #md.t87 .tkt-hero-acts .m87h-hide{display:none!important}
+body.dt87 #md.t87 .tkt-hero-acts .t87-hold,body.dt87 #md.t87 .tkt-hero-acts .t87-more,body.dt87 #md.t87 .tkt-hero-acts .t87-cmp-off{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 13px!important;border-radius:10px!important;border:1px solid rgba(255,255,255,.22)!important;background:rgba(255,255,255,.08)!important;color:#fff!important;font-size:13px!important;font-weight:700!important;cursor:pointer}
+body.dt87 #md.t87 .tkt-hero-acts .t87-more{padding:0 9px!important}
+body.dt87 #md.t87 .tkt-hero-acts .t87-cmp-off{opacity:.7}
+body.dt87 #md.t87 .tkt-hero-acts .t87-cmp{display:inline-flex;align-items:center;gap:6px}
+body.dt87 .t87-menu{position:fixed;z-index:9990;min-width:220px;padding:6px;border-radius:12px;background:var(--card87);border:1px solid var(--line87);box-shadow:var(--sh87h)}
+body.dt87 .t87-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:10px 12px;border:0;border-radius:8px;background:none;color:var(--ink87);font:inherit;font-size:var(--t87-s);font-weight:700;text-align:left;cursor:pointer}
+body.dt87 .t87-menu button:hover{background:var(--soft87)}
+body.dt87 #md.t87 .dt83-next-acts.t87-miss{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 0;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--or87) 7%,var(--card87));border:1px solid color-mix(in srgb,var(--or87) 22%,transparent)}
+body.dt87 #md.t87 .t87-miss>b{display:inline-flex;align-items:center;gap:6px;font-size:var(--t87-s);font-weight:800;color:var(--or87);text-transform:none;letter-spacing:0}
+body.dt87 #md.t87 .t87-miss .dt83-need{display:flex;flex-wrap:wrap;gap:5px;color:inherit;font-weight:600}
+body.dt87 #md.t87 .t87-miss .mk{padding:3px 9px;border-radius:999px;background:var(--card87);border:1px solid var(--line87);font-size:12px;font-weight:700;color:var(--ink87)}
+body.dt87 #md.t87 .t87-miss .dt83-act{margin-left:0}
+body.dt87 #md.t87 .dt84-fc.ready.t87-sum>.dt84-act{display:none}
+body.dt87 #md.t87 .dt84-file .ib input:not([type=checkbox]):not([type=file]),body.dt87 #md.t87 .dt84-file .ib textarea,body.dt87 #md.t87 .dt84-file .ib select,body.dt87 #md.t87 .dt84-file .nb textarea{background:transparent!important;border-color:transparent!important;padding-left:8px!important}
+body.dt87 #md.t87 .dt84-file .ib input:not([type=checkbox]):not([type=file]):hover,body.dt87 #md.t87 .dt84-file .ib textarea:hover,body.dt87 #md.t87 .dt84-file .ib select:hover,body.dt87 #md.t87 .dt84-file .nb textarea:hover{background:var(--soft87)!important;border-color:var(--line87)!important}
+body.dt87 #md.t87 .dt84-file .ib input:not([type=checkbox]):not([type=file]):focus,body.dt87 #md.t87 .dt84-file .ib textarea:focus,body.dt87 #md.t87 .dt84-file .ib select:focus,body.dt87 #md.t87 .dt84-file .nb textarea:focus{background:var(--card87)!important;border-color:var(--or87)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--or87) 16%,transparent)!important}
+body.dt87 #md.t87 .dt84-file ::placeholder{color:var(--faint87);opacity:.8;font-weight:600}
+body.dt87 #md.t87 .dt84-fc{border-radius:14px;box-shadow:var(--sh87)}
+body.dt87 #md.t87 .dt84-fc h4 .ic{display:inline-flex;color:var(--or87)}
+
+/* ---------- 12–15 · calendar ---------- */
+body.dt87 .c87-bar{display:inline-flex;align-items:center;gap:8px;margin-left:8px;flex-wrap:wrap}
+body.dt87 .c87-seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--soft87);border:1px solid var(--line87)}
+body.dt87 .c87-seg button{border:0;background:none;padding:6px 11px;border-radius:8px;font:inherit;font-size:var(--t87-s);font-weight:700;color:var(--mute87);cursor:pointer}
+body.dt87 .c87-seg button.on{background:var(--card87);color:var(--ink87);box-shadow:var(--sh87)}
+body.dt87 .c87-dr{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line87);background:var(--card87);font:inherit;font-size:var(--t87-s);font-weight:700;color:var(--mute87);cursor:pointer}
+body.dt87 .c87-dr b{color:var(--ink87)}
+body.dt87 .c87-dr.on{border-color:var(--or87);color:var(--or87)}
+body.dt87 #calWrap.c87{max-width:none}
+body.dt87 #calWrap.c87-open .cal-split{display:grid!important;grid-template-columns:260px minmax(0,1fr) auto;gap:14px;align-items:start}
+body.dt87 #calWrap.c87-open #c87drawer{position:sticky;top:12px}
+@media (max-width:900px){body.dt87 #calWrap.c87-open .cal-split{grid-template-columns:1fr}body.dt87 #calWrap.c87-open #c87drawer{position:static}}
+body.dt87 .c87-drawer{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:14px;background:var(--card87);border:1px solid var(--line87);box-shadow:var(--sh87);max-height:calc(100vh - 40px);overflow:auto}
+body.dt87 .c87-dh{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 2px;font-size:var(--t87-s);font-weight:800;color:var(--ink87)}
+body.dt87 .c87-dh span{font-size:12px;color:var(--mute87)}
+body.dt87 .c87-p{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;border:1px solid var(--line87);background:var(--soft87);cursor:pointer}
+body.dt87 .c87-p[draggable=true]{cursor:grab}
+body.dt87 .c87-p .sz{width:4px;align-self:stretch;border-radius:2px}
+body.dt87 .c87-p div{display:flex;flex-direction:column;min-width:0;flex:1}
+body.dt87 .c87-p b{font-size:var(--t87-s);font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dt87 .c87-p span{font-size:12px;color:var(--mute87);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dt87 .c87-p.hold{opacity:.8}
+body.dt87 .c87-e{font-size:12.5px;color:var(--faint87);padding:4px 2px 8px}
+body.dt87 .c87-tip{display:flex;gap:6px;margin-top:8px;font-size:12px;color:var(--mute87);line-height:1.4}
+body.dt87 .dt84-month.m87 .dc{min-height:132px}
+body.dt87 .dt84-month.m87 .dc.today{box-shadow:inset 0 0 0 2px var(--or87);background:color-mix(in srgb,var(--or87) 4%,var(--card87))}
+body.dt87 .dt84-month.m87 .dc .dn{display:inline-flex;align-items:center;gap:6px;font-weight:800}
+body.dt87 .dt84-month.m87 .dc .dn em{font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--or87);padding:1px 7px;border-radius:999px}
+body.dt87 .dt84-month.m87 .dc.sun{background:color-mix(in srgb,var(--soft87) 70%,var(--card87))}
+body.dt87 .wx87{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;color:var(--mute87)}
+body.dt87 .al87{border:0;border-radius:6px;padding:1px 6px;font:inherit;font-size:10.5px;font-weight:800;cursor:pointer;background:color-mix(in srgb,var(--warn87) 18%,transparent);color:color-mix(in srgb,var(--warn87) 70%,#3a2a00)}
+body.dt87 .al87.storm,body.dt87 .al87.freeze{background:color-mix(in srgb,var(--bad87) 14%,transparent);color:var(--bad87)}
+body.dt87 .ld87{display:inline-flex;align-items:center;gap:5px;margin-left:auto}
+body.dt87 .ld87 .bar{display:inline-flex;gap:2px}
+body.dt87 .ld87 .bar i{width:7px;height:7px;border-radius:2px;background:var(--line87)}
+body.dt87 .ld87 .bar i.f{background:var(--ok87)}
+body.dt87 .ld87.full .bar i.f{background:var(--warn87)}
+body.dt87 .ld87.over .bar i.f{background:var(--bad87)}
+body.dt87 .ld87 b{font-size:11px;font-weight:800;color:var(--mute87)}
+body.dt87 .dt84-month.m87 .hd{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+body.dt87 .dt84-month.m87 .dt84-ev{border-radius:10px}
+body.dt87 .dt84-month.m87 .dt84-ev .t b{font-size:13px}
+body.dt87 .dt84-lanes{font-size:13.5px}
+body.dt87 .dt84-lanes .lh{padding:10px 8px}
+
+/* ---------- 16–19 · the technician ---------- */
+body.dt87-tech .tech-date-bar{display:none!important}
+body.dt87-tech .t87-date{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 2px 8px}
+body.dt87-tech .t87-date{flex-wrap:nowrap}
+body.dt87-tech .t87-date b{font-size:18px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;letter-spacing:-.01em;color:var(--text-primary);margin-right:auto}
+body.dt87-tech .t87-date .td{padding:3px 10px;border-radius:999px;background:var(--aspen-orange);color:#fff;font-size:12px;font-weight:800}
+body.dt87-tech .t87-date button{height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--border-soft);background:var(--surface);font:inherit;font-size:13px;font-weight:700;color:var(--text-primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+body.dt87-tech .t87-date .t87-sun{width:38px;padding:0;justify-content:center}
+body.dt87-tech .t87-date .t87-sun.on{background:#1a1410;color:#fff;border-color:#1a1410}
+body.dt87-tech .n87{margin:12px 0 12px;padding:16px;border-radius:18px;background:var(--surface);border:2px solid var(--aspen-orange);box-shadow:0 6px 20px rgba(229,75,37,.14)}
+body.dt87-tech .n87 .n87-k{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--aspen-orange)}
+body.dt87-tech .n87 .n87-k span{margin-left:auto;color:var(--text-secondary);text-transform:none;letter-spacing:0}
+body.dt87-tech .n87 .n87-nm{display:flex;flex-direction:column;margin:8px 0 10px;cursor:pointer}
+body.dt87-tech .n87 .n87-nm b{font-size:24px;font-weight:800;letter-spacing:-.01em;color:var(--text-primary);line-height:1.15}
+body.dt87-tech .n87 .n87-nm span{font-size:14.5px;font-weight:600;color:var(--text-secondary);margin-top:3px}
+body.dt87-tech .n87 .n87-ad{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--surf-soft);cursor:pointer}
+body.dt87-tech .n87 .n87-ad div{display:flex;flex-direction:column}
+body.dt87-tech .n87 .n87-ad b{font-size:16.5px;font-weight:800;color:var(--text-primary)}
+body.dt87-tech .n87 .n87-ad span{font-size:14px;color:var(--text-secondary)}
+body.dt87-tech .n87 .n87-ad.none{color:var(--st-warning);font-weight:700;cursor:default}
+body.dt87-tech .n87 .n87-bt{display:flex;gap:8px;margin-top:12px}
+body.dt87-tech .n87 .n87-bt button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;font:inherit;font-size:16px;font-weight:800;cursor:pointer}
+body.dt87-tech .n87 .b1{border:0;background:var(--aspen-orange);color:#fff}
+body.dt87-tech .n87 .b2{border:1.5px solid var(--border-mid);background:var(--surface);color:var(--text-primary)}
+body.dt87-tech .t87-hide{display:none!important}
+body.dt87-tech .t87-spec{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:15px;font-weight:700;opacity:.95}
+body.dt87-tech .t87-steps{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding:8px;border-radius:14px;background:var(--surface);border:1px solid var(--border-soft)}
+body.dt87-tech .t87-steps::-webkit-scrollbar{display:none}
+body.dt87-tech .t87-steps button{flex:1 0 58px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;border:0;background:none;font:inherit;cursor:pointer;color:var(--text-tertiary)}
+body.dt87-tech .t87-steps .t87-d{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--border-mid);background:var(--surface)}
+body.dt87-tech .t87-steps .t87-sl{font-size:11.5px;font-weight:700;white-space:nowrap}
+body.dt87-tech .t87-steps .t87-done{color:var(--st-success)}
+body.dt87-tech .t87-steps .t87-done .d{background:var(--st-success);border-color:var(--st-success);color:#fff}
+body.dt87-tech .t87-steps .cur{color:var(--aspen-orange)}
+body.dt87-tech .t87-steps .cur .t87-d{border-color:var(--aspen-orange);background:color-mix(in srgb,var(--aspen-orange) 12%,var(--surface));color:var(--aspen-orange)}
+body.dt87-tech .t87-steps .cur .t87-sl{font-weight:800}
+body.dt87-tech .t87-next{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--aspen-orange);background:color-mix(in srgb,var(--aspen-orange) 8%,var(--surface));color:var(--text-primary);font:inherit;cursor:pointer;text-align:left}
+body.dt87-tech .t87-next .k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--aspen-orange)}
+body.dt87-tech .t87-next b{flex:1;font-size:15px;font-weight:800}
+body.dt87-tech .t87-addr .val{font-size:17px!important;font-weight:800!important}
+body.dt87-tech .t87-pulse{animation:t87pulse 1.4s ease-out 1}
+@keyframes t87pulse{0%{box-shadow:0 0 0 0 rgba(46,139,87,.55)}100%{box-shadow:0 0 0 18px rgba(46,139,87,0)}}
+body.dt87-sun{--text-primary:#000;--text-secondary:#2a2520;--text-tertiary:#3d362f;--border-soft:#8a7f70;--border-mid:#5d5449;--surface:#fff;--surf-soft:#f2efe9;--bg-cream:#fff}
+body.dt87-sun #tech-view{font-size:110%}
+body.dt87-sun .tlname,body.dt87-sun .n87 .n87-nm b{font-size:26px!important}
+body.dt87-sun .tlcard,body.dt87-sun .n87,body.dt87-sun .tech-section{border-width:2px!important}
+body.dt87 .gs-bell-n.d87-off{display:none!important}
+body.dt87 .c87-bar{margin:0}
+body.dt87 #c87bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+body.dt87 #ctxHdr h2{color:var(--text-primary)!important}
+
+/* 87 · chrome icons: search keeps icon + text together; toggle icons sit centered */
+body.dt87-office #glassSide .gs-srch .g87s{display:inline-flex;align-items:center;gap:8px;font-style:normal}
+body.dt87-office .aspen-view-toggle .vt-btn svg{display:block;margin:0 auto}
+body.dt87 .a87-row .why small{display:block;font-size:12px;font-weight:600;color:var(--mute87);opacity:.85;margin-top:2px;line-height:1.3}
+/* 87 · "By day" only groups the Today cards, so it shows only there */
+body.dt87-office:not(.dt87-t-board) #d87grp{display:none!important}
 
 </style>
 <script id="dt84Core">
@@ -15586,6 +15843,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.ge
 wrap('renderAll',function(){var el=document.getElementById('dt84tv');if(el)try{el.innerHTML=tvHtml()}catch(e){}});
 try{if(/[?&]tv=1\b/.test(location.search)){var tries=0,iv=setInterval(function(){tries++;if(typeof fbReady!=='undefined'&&fbReady&&X.isOffice()){clearInterval(iv);X.tv(true)}else if(tries>120)clearInterval(iv)},1000)}}catch(e){}
 
+/* build 87 reuses these (read-only helpers) */
+X._cal={card:card,dayHead:dayHead,events:events,byDay:byDay,canDrag:canDrag,month:month,todayK:todayK,isPast:isPast};
 console.log('%c[BUILD 84] dt84Cal ready','color:#fff;background:#C25E1B;padding:2px 6px;border-radius:3px');
 }catch(e){console.error('[dt84Cal] failed to start — the calendar keeps its build 83 look',e)}})();
 
@@ -15629,7 +15888,7 @@ return c}
 X.askCustomer=function(id){var r=findRecById(id);if(!r)return;var rd=X.ready(r);var fn=firstName(r);
 var send=function(url){var body='Hi'+(fn?' '+fn:'')+', this is Aspen Spas getting ready for your delivery'+(r.dd?' on '+new Date(X.recDay(r)+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}):'')+'. We still need: '+rd.custMissing.join('; ')+'.'+(url?' You can send it here:\n'+url:' Please reply here or call 314-776-5050.');
 if(smsTo(r,body))try{pushActivity(id,'Asked the customer for: '+rd.custMissing.join(', ').slice(0,100))}catch(e){}};
-if(typeof _intakeLinkFor==='function')_intakeLinkFor(id).then(function(res){send(res&&res.url)}).catch(function(){send(null)});else send(null)};
+if(typeof _intakeLinkFor==='function')_intakeLinkFor(id).then(function(res){send(res&&res.url)}).catch(function(e){if(e&&e.cancelled)return;send(null)});else send(null)};
 
 /* site map: satellite thumbnail, geocoded once and cached on the ticket (same _geo field the Route tab uses) */
 function siteCard(r){var c=card(_L('El sitio','The site'),'\u{1F4CD}','site');
@@ -16438,6 +16697,605 @@ D.sheet(_L('Revisión del calendario (servidor)','Calendar check (server)'),h,{w
 
 console.log('%c[BUILD 86] dt86Portal ready','color:#fff;background:#1C8FA8;padding:2px 6px;border-radius:3px');
 }catch(e){console.error('[dt86Portal] failed to start — the app keeps its build 85 behavior',e)}})();
+
+</script>
+<script id="dt86Link">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 86.3 · dt86Link — the customer link, checked end to end (1 nov 2026)
+   Customers said "the link never came" / "the link does not work". Causes found:
+   1 the server (portalGet) refused tokens with - or _ (≈4 of 10 links since build 80)
+   2 iMessage greys out links from unknown senders until the customer replies
+   3 a text sent from a computer goes through Messages on the Mac: Android
+     customers only get it if the Mac relays SMS from an iPhone
+   4 a few SMS apps cut a link that ends in - or _
+   This block:
+   · new tokens are letters and digits only (any server accepts them, no app cuts them)
+   · before a link goes out the app opens it the way the customer will (portalGet);
+     a link the server refuses is replaced, a server that does not answer is said out loud
+   · the text tells iPhone customers what to do if the link is grey (reply OK)
+   · on a computer, the text button first offers e-mail / copy instead of Messages
+   · "Email the link" (EmailJS, already set up for the digest) as a second way in
+   · the ticket shows: link checked · customer opened it (with the build-86.3 server)
+   Delete this block to go back to build 86.2.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83;if(!D)return;var E=D.esc;
+var Z=window.dt86=window.dt86||{};var L=Z.link={};
+var IDJ=function(id){return typeof _ijsv==='function'?_ijsv(id):JSON.stringify(String(id))};
+var FN=String(typeof DELIVERY_LOGIN_FN==='string'?DELIVERY_LOGIN_FN:'https://us-central1-aspen-delivery-tracker.cloudfunctions.net/deliveryLogin').replace(/[^/]+$/,'portalGet');
+L.FN=FN;
+
+/* ---------- 1 · tokens: 16 letters/digits (95 bits), unbiased ---------- */
+var AL='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+L.token=function(){var o='';try{var a=new Uint8Array(32);while(o.length<16){crypto.getRandomValues(a);for(var i=0;i<a.length&&o.length<16;i++){if(a[i]<248)o+=AL.charAt(a[i]%62)}}}
+catch(e){while(o.length<16)o+=AL.charAt(Math.floor(Math.random()*62))}return o};
+L.safe=function(t){return /^[0-9A-Za-z]{8,80}$/.test(String(t||''))};
+window._intakeToken=L.token;
+function tokOf(url){var m=String(url||'').match(/[#&?]t=([^&]+)/);return m?decodeURIComponent(m[1]):''}
+L.tokOf=tokOf;
+
+/* ---------- 2 · open the link the way the customer will ---------- */
+L.last={};
+L.check=function(id,token){
+var ctl=(typeof AbortController!=='undefined')?new AbortController():null,timer=setTimeout(function(){try{ctl&&ctl.abort()}catch(e){}},9000);
+return fetch(FN+'?id='+encodeURIComponent(String(id))+'&t='+encodeURIComponent(token)+'&probe=1',{cache:'no-store',signal:ctl?ctl.signal:undefined})
+.then(function(r){clearTimeout(timer);return r.text().then(function(tx){var j=null;try{j=JSON.parse(tx)}catch(e){}
+if(r.status===200&&j&&j.ok===true)return {state:'ok'};
+if(r.status===404&&j&&j.error)return {state:'rejected'};
+if(r.status===410)return {state:'expired'};
+return {state:'down',detail:'HTTP '+r.status}})})
+.catch(function(e){clearTimeout(timer);return {state:'down',detail:String(e&&e.message||e)}})
+.then(function(c){c.at=Date.now();c.token=token;L.last[String(id)]=c;try{paintRow(id)}catch(e){}return c})};
+
+var MSG={
+down:_L('La página del cliente no está contestando (el servidor de los links). Si mandas el link ahora, el cliente verá "We could not open your form".\n\nAvísale a Alberto, o llama al cliente.',
+'The customer page is not answering (the link server). If you send the link now the customer will see "We could not open your form".\n\nTell Alberto, or call the customer.'),
+bad:_L('El servidor no acepta este link ni uno nuevo. El cliente verá "Link not valid".\n\nAvísale a Alberto, o llama al cliente.',
+'The server does not accept this link, not even a new one. The customer would see "Link not valid".\n\nTell Alberto, or call the customer.')};
+
+/* Every link the app hands out passes through _intakeLinkFor: check it there, once. */
+L.gate=function(id,res,again){var t=tokOf(res&&res.url);if(!t)return Promise.resolve(res);
+return L.check(id,t).then(function(c){
+if(c.state==='expired'&&!again){var r=findRecById(id);var exp=typeof _intakeExpiry==='function'?_intakeExpiry(r):Date.now()+21*864e5;
+return db.ref('intake/'+id+'/expires').set(exp).then(function(){if(INTAKE[id])INTAKE[id].expires=exp;return L.gate(id,res,true)},function(){return L.gate(id,res,true)})}
+if(c.state==='rejected'&&!again){
+console.warn('[LINK] the server refused the link of #'+id+' — making a new one');
+return createIntakeLink(id).then(function(u){try{pushActivity(id,'Customer link replaced: the server did not accept the old one')}catch(e){}
+return L.gate(id,{url:u,nuevo:true,reissued:true},true)})}
+res.check=c.state;
+if(c.state==='ok')return res;
+var m=c.state==='down'?MSG.down:MSG.bad;
+if(window.confirm(m+'\n\n'+_L('¿Mandarlo de todos modos?','Send it anyway?'))){try{pushActivity(id,'Customer link sent although the check failed ('+c.state+')')}catch(e){}return res}
+var err=new Error('cancelled');err.cancelled=true;throw err})};
+var _lf=window._intakeLinkFor;
+if(typeof _lf==='function')window._intakeLinkFor=function(id){return _lf.apply(this,arguments).then(function(res){return L.gate(id,res)})};
+/* a new token starts with a clean "opened" mark */
+var _cl=window.createIntakeLink;
+if(typeof _cl==='function')window.createIntakeLink=function(id){return _cl.apply(this,arguments).then(function(u){try{db.ref('intake/'+id+'/opened').remove().catch(function(){});if(INTAKE[id])delete INTAKE[id].opened}catch(e){}return u})};
+
+/* ---------- 3 · the text: URL last and whole, GSM-7 only, a line for iPhones ---------- */
+L.gsm=function(s){return /^[A-Za-z0-9 \n\r@£$¥èéùìòÇØøÅå_ÆæßÉ!"#%&'()*+,\-.\/:;<=>?¡ÄÖÑÜ§¿äöñüà]*$/.test(String(s))};
+window.buildPreDeliverySMS=function(r,url){
+var first=typeof getCustomerFirstName==='function'?getCustomerFirstName(r.n):'';
+var dateStr='';try{var d=parseDate(r.dd);if(d&&!isNaN(d.getTime())){var DD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];dateStr=' on '+DD[d.getDay()]+' '+M[d.getMonth()]+' '+d.getDate()}}catch(e){}
+var hi=(first?'Hi '+first+', ':'Hi, ')+'this is Aspen Spas Service.';
+var ask='Before your delivery'+dateStr+' we need a few photos and 3 quick answers - about 2 minutes.';
+var tel='Questions? Call 314-776-5050 ext 2.';
+var ios='If the link is not blue, reply OK.';
+if(!url)return hi+' '+ask+' '+tel;
+var opts=[hi+' '+ask+' '+tel+' '+ios+' Your private form:\n',hi+' '+ask+' '+ios+' Your private form:\n',hi+' '+ios+' Your form:\n','Aspen Spas - your delivery form:\n'];
+for(var i=0;i<opts.length;i++){if(typeof _smsUrlEntera!=='function'||_smsUrlEntera(opts[i],url))return opts[i]+url}
+return opts[opts.length-1]+url};
+
+/* ---------- 4 · on a computer: e-mail or copy, before Messages ---------- */
+L.desktop=function(){var ua=navigator.userAgent||'';if(/iPhone|iPad|iPod|Android|Mobile/i.test(ua))return false;if(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)return false;return true};
+var _skip=false;
+var _send=window.sendPreDeliverySMS;
+if(typeof _send==='function')window.sendPreDeliverySMS=function(id){
+if(_skip||!L.desktop()){_skip=false;return _send.apply(this,arguments)}
+var r=findRecById(id);if(!r)return _send.apply(this,arguments);
+var b=D.sheet(_L('Mandar el link desde la computadora','Sending the link from a computer'),
+'<div class="dt83-sub">'+E(_L('El mensaje sale por Mensajes de esta computadora. A los clientes con Android solo les llega si esta Mac reenvía los SMS de un iPhone (iPhone → Ajustes → Mensajes → Reenvío de mensajes de texto). Desde el teléfono o por correo siempre llega.','The text goes out through Messages on this computer. Android customers only get it if this Mac relays SMS from an iPhone (iPhone → Settings → Messages → Text Message Forwarding). From the phone, or by e-mail, it always arrives.'))+'</div>'+
+'<div class="dt86-lnk-acts">'+(r.em?'<button type="button" class="dt83-btn pri" id="dt86lkE">✉️ '+E(_L('Mandarlo por correo a ','Email it to ')+r.em)+'</button>':'')+
+'<button type="button" class="dt83-btn" id="dt86lkC">\u{1F517} '+E(_L('Copiar el link','Copy the link'))+'</button>'+
+'<button type="button" class="dt83-btn" id="dt86lkM">\u{1F4AC} '+E(_L('Abrir Mensajes de todos modos','Open Messages anyway'))+'</button></div>');
+var go=function(fn){D.closeSheet();fn()};
+var e1=b.querySelector('#dt86lkE');if(e1)e1.onclick=function(){go(function(){L.email(id)})};
+b.querySelector('#dt86lkC').onclick=function(){go(function(){intakeCreateAndCopy(id)})};
+b.querySelector('#dt86lkM').onclick=function(){go(function(){_skip=true;window.sendPreDeliverySMS(id)})}};
+
+/* ---------- 5 · e-mail the link ---------- */
+L.email=function(id){var r=findRecById(id),c=(typeof DIGEST_CFG!=='undefined'&&DIGEST_CFG)||{};
+if(!r)return Promise.resolve(false);
+if(!r.em){showToast('⚠ '+_L('El ticket no tiene correo','No e-mail on this ticket'),'warn');return Promise.resolve(false)}
+if(!c.svc||!c.tpl||!c.pub){showToast('⚠ '+_L('Correo sin configurar (Settings → Digest)','E-mail not set up (Settings → Digest)'),'warn');return Promise.resolve(false)}
+showToast('⌛ '+_L('Revisando el link…','Checking the link…'));
+return _intakeLinkFor(id).then(function(res){var u=res&&res.url;if(!u)throw new Error('no link');
+return (typeof ensureEmailJs==='function'?ensureEmailJs():Promise.resolve()).then(function(){try{emailjs.init({publicKey:c.pub})}catch(e){}
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]})};
+var first=typeof getCustomerFirstName==='function'?getCustomerFirstName(r.n):'';
+var when='';try{var d=parseDate(r.dd);if(d&&!isNaN(d.getTime()))when=' on '+d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}catch(e){}
+var html='<div style="font-family:Arial,sans-serif;max-width:560px;color:#1a1410;line-height:1.5"><p>Hi '+esc(first||'there')+',</p><p>This is Aspen Spas Service. Before your delivery'+esc(when)+' we need a few photos and 3 quick answers. It takes about 2 minutes.</p>'+
+'<p style="margin:22px 0"><a href="'+esc(u)+'" style="background:#E54B25;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px;display:inline-block">Open your delivery form</a></p>'+
+'<p style="font-size:13px;color:#5d5449">If the button does not work, copy this link into your browser:<br>'+esc(u)+'</p><p>Questions? Call us at (314) 776-5050 ext 2.</p></div>';
+return emailjs.send(c.svc,c.tpl,{to_email:r.em,subject:'Aspen Spas — your delivery form',message:html})}).then(function(){
+try{pushActivity(id,'Customer link emailed to '+r.em)}catch(e){}showToast('✓ '+_L('Link mandado por correo a ','Link e-mailed to ')+r.em);try{paintRow(id)}catch(e){}return true})})
+.catch(function(e){if(e&&e.cancelled)return false;console.warn('[LINK] email',e);showToast('⚠ '+_L('No se pudo mandar el correo: ','Could not send the e-mail: ')+(e&&(e.text||e.message)||e),'warn');return false})};
+
+/* ---------- 6 · on the ticket: link checked · opened by the customer ---------- */
+function ago(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return _L('ahora','just now');if(m<60)return m+' min';var h=Math.round(m/60);if(h<48)return h+' h';return Math.round(h/24)+' '+_L('días','days')}
+function when(t){try{return new Date(t).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}}
+L.rowHtml=function(id){var r=findRecById(id)||{},it=(typeof INTAKE!=='undefined'&&INTAKE[id])||{},c=L.last[String(id)],h=[];
+if(it.submitted)h.push('<span class="ok">✓ '+E(_L('El cliente ya mandó su información','The customer already sent their info'))+'</span>');
+else if(it.opened&&it.opened.last)h.push('<span class="ok">\u{1F440} '+E(_L('El cliente lo abrió · ','Customer opened it · ')+when(it.opened.last)+(it.opened.n>1?' ('+it.opened.n+'×)':''))+'</span>');
+else{var sms=(r.sms_history||[]).slice(-1)[0];if(sms&&sms.ts&&it.token)h.push('<span class="wait">'+E(_L('Sin abrir todavía · texto de hace ','Not opened yet · texted ')+ago(sms.ts))+'</span>')}
+if(c&&c.token===it.token){h.push(c.state==='ok'?'<span class="ok">✓ '+E(_L('Link revisado: abre · ','Link checked: it opens · ')+ago(c.at))+'</span>':'<span class="bad">✕ '+E(c.state==='down'?_L('La página del cliente no contesta','The customer page is not answering'):_L('El servidor no acepta el link','The server refuses the link'))+'</span>')}
+return '<div class="dt86-lnk" id="dt86lnk_'+E(String(id))+'"><div class="st">'+h.join('')+'</div><div class="b">'+
+'<button type="button" class="dt86-act" onclick="dt86.link.checkNow('+IDJ(id)+')">\u{1F50E} '+E(_L('Revisar link','Check link'))+'</button>'+
+(r.em&&!r.dl&&!r.co?'<button type="button" class="dt86-act" onclick="dt86.link.email('+IDJ(id)+')">✉️ '+E(_L('Mandar link por correo','Email the link'))+'</button>':'')+'</div></div>'};
+function paintRow(id){var el=document.getElementById('dt86lnk_'+String(id));if(el){var t=document.createElement('div');t.innerHTML=L.rowHtml(id);el.replaceWith(t.firstChild)}}
+L.checkNow=function(id){var it=(typeof INTAKE!=='undefined'&&INTAKE[id])||null;
+if(!it||!it.token){showToast(_L('Todavía no hay link','No link yet'),'warn');return Promise.resolve(null)}
+showToast('⌛ '+_L('Abriendo el link como el cliente…','Opening the link like the customer…'));
+return L.check(id,it.token).then(function(c){
+if(c.state==='rejected'&&!it.submitted){return L.gate(id,{url:intakeUrl(id,it.token)}).then(function(res){showToast('✓ '+_L('El link viejo no servía: hay uno nuevo. Mándaselo al cliente.','The old link did not work: a new one is ready. Send it to the customer.'));try{if(typeof refreshIntakeBox==='function')refreshIntakeBox(id)}catch(e){}paintRow(id);return res}).catch(function(){return null})}
+showToast(c.state==='ok'?'✓ '+_L('El link abre bien','The link opens fine'):'⚠ '+(c.state==='down'?_L('La página del cliente no contesta','The customer page is not answering'):_L('El link no abre','The link does not open')),c.state==='ok'?undefined:'warn');return c})};
+var _rm=window.renderModal;
+if(typeof _rm==='function')window.renderModal=function(){var out=_rm.apply(this,arguments);
+try{if(D.isOffice()&&typeof curRec!=='undefined'&&curRec){var r=findRecById(curRec.i)||curRec;var it=INTAKE&&INTAKE[r.i];var box=document.getElementById('intakeBox_'+r.i);
+if(box&&it&&it.token&&!document.getElementById('dt86lnk_'+r.i)){var anchor=document.getElementById('dt86cust')||box;anchor.insertAdjacentHTML('afterend',L.rowHtml(r.i))}}}catch(e){console.warn('[dt86Link] row',e)}
+return out};
+console.log('%c[BUILD 86.3] dt86Link ready','color:#fff;background:#2F7D52;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt86Link] failed to start — links work as in build 86.2',e)}})();
+
+</script>
+<script id="dt87Icons">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87 · dt87Icons — line icons for the app's chrome (no CDN, works offline)
+   Icons: Tabler Icons outline set, MIT License, (c) 2020-2024 Paweł Kuna.
+   Only chrome is touched (tabs, headers, cards made by build 87). Customer text,
+   inputs and ticket fields are never changed.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var P={"layout-dashboard":"<path d=\"M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/><path d=\"M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/>","calendar":"<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M11 15h1\"/><path d=\"M12 15v3\"/>","calendar-event":"<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M16 3l0 4\"/><path d=\"M8 3l0 4\"/><path d=\"M4 11l16 0\"/><path d=\"M8 15h2v2h-2z\"/>","truck":"<path d=\"M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5\"/>","route":"<path d=\"M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4z\"/><path d=\"M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5\"/>","alert-triangle":"<path d=\"M12 9v4\"/><path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z\"/><path d=\"M12 16h.01\"/>","player-pause":"<path d=\"M6 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z\"/><path d=\"M14 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z\"/>","chart-bar":"<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M4 20h14\"/>","mail":"<path d=\"M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z\"/><path d=\"M3 7l9 6l9 -6\"/>","bell":"<path d=\"M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6\"/><path d=\"M9 17v1a3 3 0 0 0 6 0v-1\"/>","notes":"<path d=\"M5 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z\"/><path d=\"M9 7l6 0\"/><path d=\"M9 11l6 0\"/><path d=\"M9 15l4 0\"/>","settings":"<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\"/><path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\"/>","search":"<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\"/><path d=\"M21 21l-6 -6\"/>","circle-check":"<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\"/><path d=\"M9 12l2 2l4 -4\"/>","file-text":"<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z\"/><path d=\"M9 9l1 0\"/><path d=\"M9 13l6 0\"/><path d=\"M9 17l6 0\"/>","phone":"<path d=\"M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2\"/>","message-circle":"<path d=\"M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1\"/>","map-pin":"<path d=\"M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\"/><path d=\"M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z\"/>","camera":"<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\"/><path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\"/>","signature":"<path d=\"M3 17c3.333 -3.333 5 -6 5 -8c0 -3 -1 -3 -2 -3s-2.032 1.085 -2 3c.034 2.048 1.658 4.877 2.5 6c1.5 2 2.5 2.5 3.5 1l2 -3c.333 2.667 1.333 4 3 4c.53 0 2.639 -2 3 -2c.517 0 1.517 .667 3 2\"/>","star":"<path d=\"M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z\"/>","tool":"<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\"/>","package":"<path d=\"M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5\"/><path d=\"M12 12l8 -4.5\"/><path d=\"M12 12l0 9\"/><path d=\"M12 12l-8 -4.5\"/><path d=\"M16 5.25l-8 4.5\"/>","clipboard-list":"<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\"/><path d=\"M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z\"/><path d=\"M9 12l.01 0\"/><path d=\"M13 12l2 0\"/><path d=\"M9 16l.01 0\"/><path d=\"M13 16l2 0\"/>","user":"<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\"/>","users":"<path d=\"M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\"/><path d=\"M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/><path d=\"M21 21v-2a4 4 0 0 0 -3 -3.85\"/>","clock":"<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\"/><path d=\"M12 7v5l3 3\"/>","sun":"<path d=\"M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\"/><path d=\"M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7\"/>","moon":"<path d=\"M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z\"/>","chevron-left":"<path d=\"M15 6l-6 6l6 6\"/>","chevron-right":"<path d=\"M9 6l6 6l-6 6\"/>","x":"<path d=\"M18 6l-12 12\"/><path d=\"M6 6l12 12\"/>","dots":"<path d=\"M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/>","plus":"<path d=\"M12 5l0 14\"/><path d=\"M5 12l14 0\"/>","check":"<path d=\"M5 12l5 5l10 -10\"/>","cloud-rain":"<path d=\"M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7\"/><path d=\"M11 13v2m0 3v2m4 -5v2m0 3v2\"/>","snowflake":"<path d=\"M10 4l2 1l2 -1\"/><path d=\"M12 2v6.5l3 1.72\"/><path d=\"M17.928 6.268l.134 2.232l1.866 1.232\"/><path d=\"M20.66 7l-5.629 3.25l.01 3.458\"/><path d=\"M19.928 14.268l-1.866 1.232l-.134 2.232\"/><path d=\"M20.66 17l-5.629 -3.25l-2.99 1.738\"/><path d=\"M14 20l-2 -1l-2 1\"/><path d=\"M12 22v-6.5l-3 -1.72\"/><path d=\"M6.072 17.732l-.134 -2.232l-1.866 -1.232\"/><path d=\"M3.34 17l5.629 -3.25l-.01 -3.458\"/><path d=\"M4.072 9.732l1.866 -1.232l.134 -2.232\"/><path d=\"M3.34 7l5.629 3.25l2.99 -1.738\"/>","wind":"<path d=\"M5 8h8.5a2.5 2.5 0 1 0 -2.34 -3.24\"/><path d=\"M3 12h15.5a2.5 2.5 0 1 1 -2.34 3.24\"/><path d=\"M4 16h5.5a2.5 2.5 0 1 1 -2.34 3.24\"/>","link":"<path d=\"M9 15l6 -6\"/><path d=\"M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464\"/><path d=\"M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463\"/>","layout-sidebar-left-collapse":"<path d=\"M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M9 4v16\"/><path d=\"M15 10l-2 2l2 2\"/>","layout-sidebar-left-expand":"<path d=\"M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M9 4v16\"/><path d=\"M14 10l2 2l-2 2\"/>","navigation":"<path d=\"M12 18.5l7.265 2.463c.196 .077 .42 .032 .57 -.116a.548 .548 0 0 0 .134 -.572l-7.969 -17.275l-7.97 17.275c-.07 .2 -.017 .424 .135 .572c.15 .148 .374 .193 .57 .116l7.265 -2.463\"/>","home":"<path d=\"M5 12l-2 0l9 -9l9 9l-2 0\"/><path d=\"M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7\"/><path d=\"M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6\"/>","inbox":"<path d=\"M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M4 13h3l3 3h4l3 -3h3\"/>","flag":"<path d=\"M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9z\"/><path d=\"M5 21v-7\"/>","list-details":"<path d=\"M13 5h8\"/><path d=\"M13 9h5\"/><path d=\"M13 15h8\"/><path d=\"M13 19h5\"/><path d=\"M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/>","calendar-week":"<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M8 14v4\"/><path d=\"M12 14v4\"/><path d=\"M16 14v4\"/>","calendar-month":"<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M7 14h.013\"/><path d=\"M10.01 14h.005\"/><path d=\"M13.01 14h.005\"/><path d=\"M16.015 14h.005\"/><path d=\"M13.015 17h.005\"/><path d=\"M7.01 17h.005\"/><path d=\"M10.01 17h.005\"/>","grid-dots":"<path d=\"M5 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M12 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M19 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M12 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/><path d=\"M19 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\"/>","arrows-move":"<path d=\"M18 9l3 3l-3 3\"/><path d=\"M15 12h6\"/><path d=\"M6 9l-3 3l3 3\"/><path d=\"M3 12h6\"/><path d=\"M9 18l3 3l3 -3\"/><path d=\"M12 15v6\"/><path d=\"M15 6l-3 -3l-3 3\"/><path d=\"M12 3v6\"/>","cash":"<path d=\"M7 9m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z\"/><path d=\"M14 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M17 9v-2a2 2 0 0 0 -2 -2h-10a2 2 0 0 0 -2 2v6a2 2 0 0 0 2 2h2\"/>","receipt":"<path d=\"M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2\"/>","brain":"<path d=\"M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8\"/><path d=\"M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8\"/><path d=\"M17.5 16a3.5 3.5 0 0 0 0 -7h-.5\"/><path d=\"M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0\"/><path d=\"M6.5 16a3.5 3.5 0 0 1 0 -7h.5\"/><path d=\"M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10\"/>","refresh":"<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\"/><path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\"/>","eye":"<path d=\"M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6\"/>","send":"<path d=\"M10 14l11 -11\"/><path d=\"M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5\"/>","copy":"<path d=\"M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z\"/><path d=\"M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1\"/>","map-2":"<path d=\"M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5\"/><path d=\"M9 4v13\"/><path d=\"M15 7v5.5\"/><path d=\"M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879z\"/><path d=\"M19 18v.01\"/>","bolt":"<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\"/>","temperature":"<path d=\"M10 13.5a4 4 0 1 0 4 0v-8.5a2 2 0 0 0 -4 0v8.5\"/><path d=\"M10 9l4 0\"/>","filter":"<path d=\"M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z\"/>","crane":"<path d=\"M6 21h6\"/><path d=\"M9 21v-18l-6 6h18\"/><path d=\"M9 3l10 6\"/><path d=\"M17 9v4a2 2 0 1 1 -2 2\"/>","droplet":"<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z\"/>","user-plus":"<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M16 19h6\"/><path d=\"M19 16v6\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\"/>","gift":"<path d=\"M3 8m0 1a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1z\"/><path d=\"M12 8l0 13\"/><path d=\"M19 12v7a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7\"/><path d=\"M7.5 8a2.5 2.5 0 0 1 0 -5a4.8 8 0 0 1 4.5 5a4.8 8 0 0 1 4.5 -5a2.5 2.5 0 0 1 0 5\"/>","player-play":"<path d=\"M7 4v16l13 -8z\"/>","external-link":"<path d=\"M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6\"/><path d=\"M11 13l9 -9\"/><path d=\"M15 4h5v5\"/>","trash":"<path d=\"M4 7l16 0\"/><path d=\"M10 11l0 6\"/><path d=\"M14 11l0 6\"/><path d=\"M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12\"/><path d=\"M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3\"/>","pencil":"<path d=\"M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4\"/><path d=\"M13.5 6.5l4 4\"/>","photo":"<path d=\"M15 8h.01\"/><path d=\"M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z\"/><path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5\"/><path d=\"M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3\"/>","arrow-right":"<path d=\"M5 12l14 0\"/><path d=\"M13 18l6 -6\"/><path d=\"M13 6l6 6\"/>","arrow-left":"<path d=\"M5 12l14 0\"/><path d=\"M5 12l6 6\"/><path d=\"M5 12l6 -6\"/>","info-circle":"<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\"/><path d=\"M12 9h.01\"/><path d=\"M11 12h1v4h1\"/>","calendar-off":"<path d=\"M9 5h9a2 2 0 0 1 2 2v9m-.184 3.839a2 2 0 0 1 -1.816 1.161h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 1.158 -1.815\"/><path d=\"M16 3v4\"/><path d=\"M8 3v1\"/><path d=\"M4 11h7m4 0h5\"/><path d=\"M3 3l18 18\"/>","box":"<path d=\"M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5\"/><path d=\"M12 12l8 -4.5\"/><path d=\"M12 12l0 9\"/><path d=\"M12 12l-8 -4.5\"/>","truck-delivery":"<path d=\"M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M5 17h-2v-4m-1 -8h11v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5\"/><path d=\"M3 9l4 0\"/>","user-check":"<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\"/><path d=\"M15 19l2 2l4 -4\"/>","checks":"<path d=\"M7 12l5 5l10 -10\"/><path d=\"M2 12l5 5m5 -5l5 -5\"/>","current-location":"<path d=\"M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"/><path d=\"M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0 -16 0\"/><path d=\"M12 2l0 2\"/><path d=\"M12 20l0 2\"/><path d=\"M20 12l2 0\"/><path d=\"M2 12l2 0\"/>","circle-dashed":"<path d=\"M8.56 3.69a9 9 0 0 0 -2.92 1.95\"/><path d=\"M3.69 8.56a9 9 0 0 0 -.69 3.44\"/><path d=\"M3.69 15.44a9 9 0 0 0 1.95 2.92\"/><path d=\"M8.56 20.31a9 9 0 0 0 3.44 .69\"/><path d=\"M15.44 20.31a9 9 0 0 0 2.92 -1.95\"/><path d=\"M20.31 15.44a9 9 0 0 0 .69 -3.44\"/><path d=\"M20.31 8.56a9 9 0 0 0 -1.95 -2.92\"/><path d=\"M15.44 3.69a9 9 0 0 0 -3.44 -.69\"/>","progress":"<path d=\"M10 20.777a8.942 8.942 0 0 1 -2.48 -.969\"/><path d=\"M14 3.223a9.003 9.003 0 0 1 0 17.554\"/><path d=\"M4.579 17.093a8.961 8.961 0 0 1 -1.227 -2.592\"/><path d=\"M3.124 10.5c.16 -.95 .468 -1.85 .9 -2.675l.169 -.305\"/><path d=\"M6.907 4.579a8.954 8.954 0 0 1 3.093 -1.356\"/>","sun-high":"<path d=\"M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z\"/><path d=\"M6.343 17.657l-1.414 1.414\"/><path d=\"M6.343 6.343l-1.414 -1.414\"/><path d=\"M17.657 6.343l1.414 -1.414\"/><path d=\"M17.657 17.657l1.414 1.414\"/><path d=\"M4 12h-2\"/><path d=\"M12 4v-2\"/><path d=\"M20 12h2\"/><path d=\"M12 20v2\"/>","layout-grid":"<path d=\"M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M14 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/>","menu-2":"<path d=\"M4 6l16 0\"/><path d=\"M4 12l16 0\"/><path d=\"M4 18l16 0\"/>","clock-hour-4":"<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\"/><path d=\"M12 12l3 2\"/><path d=\"M12 7v5\"/>","map":"<path d=\"M3 7l6 -3l6 3l6 -3v13l-6 3l-6 -3l-6 3v-13\"/><path d=\"M9 4v13\"/><path d=\"M15 7v13\"/>","player-track-next":"<path d=\"M3 5v14l8 -7z\"/><path d=\"M14 5v14l8 -7z\"/>","square-check":"<path d=\"M3 3m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z\"/><path d=\"M9 12l2 2l4 -4\"/>"};
+var I=window.I87={};
+I.has=function(n){return !!P[n]};
+I.svg=function(n,size,cls){var p=P[n];if(!p)return '';size=size||18;
+return '<svg class="i87'+(cls?' '+cls:'')+'" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+p+'</svg>'};
+/* emoji at the start of a chrome label → icon */
+I.MAP={'\u{1F4C5}':'calendar','\u{1F4C6}':'calendar-event','\u{1F69A}':'truck','\u26A0\uFE0F':'alert-triangle','\u26A0':'alert-triangle','\u{1F4DD}':'notes','\u23F8\uFE0F':'player-pause','\u23F9\uFE0F':'player-pause','\u2705':'circle-check','\u{1F4C2}':'list-details',
+'\u{1F4CB}':'clipboard-list','\u{1F4F2}':'message-circle','\u{1F4CE}':'link','\u{1F517}':'link','\u2B50':'star','\u{1F9E0}':'brain','\u{1F4CD}':'map-pin','\u{1F464}':'user','\u{1F465}':'users','\u{1F4F8}':'camera','\u{1F4F7}':'camera','\u{1F3AF}':'flag','\u{1F6C1}':'droplet','\u{1F4B5}':'cash','\u{1F3D7}\uFE0F':'crane','\u{1F9F0}':'tool','\u{1F6E0}\uFE0F':'tool','\u{1F552}':'clock','\u{1F5BC}\uFE0F':'photo','\u{1F504}':'refresh','\u2709\uFE0F':'mail','\u{1F50E}':'search','\u{1F381}':'gift','\u{1F5D3}\uFE0F':'calendar-week','\u{1F514}':'bell','\u{1F4AC}':'message-circle','\u{1F69B}':'droplet','\u23F1\uFE0F':'clock','\u{1F327}\uFE0F':'cloud-rain','\u{1F5FA}\uFE0F':'map-2','\u{1F4CA}':'chart-bar','\u{1F4B0}':'cash'};
+var KEYS=Object.keys(I.MAP).sort(function(a,b){return b.length-a.length});
+I.lead=function(text){var t=String(text||'');for(var i=0;i<KEYS.length;i++){if(t.indexOf(KEYS[i])===0)return {icon:I.MAP[KEYS[i]],rest:t.slice(KEYS[i].length).replace(/^\s+/,'')}}return null};
+/* replace the leading emoji of simple labels inside root (buttons / headings only) */
+I.SAFE='button,.tkt-chip,.dt84-fc h4 .ic,.dt84-act,.dt83-act,.mbtn,.tkt-hero-acts > *';
+I.swap=function(root){if(!root||!root.querySelectorAll)return 0;var n=0;
+Array.prototype.forEach.call(root.querySelectorAll(I.SAFE),function(el){if(el.closest('input,textarea,select,.dt84-file .ib,.nb,[contenteditable]')||el.dataset.i87)return;
+var tn=el.firstChild;if(!tn||tn.nodeType!==3)return;var hit=I.lead(tn.nodeValue.replace(/^\s+/,''));if(!hit)return;
+var w=document.createElement('span');w.className='i87w';w.innerHTML=I.svg(hit.icon,16);el.insertBefore(w,tn);tn.nodeValue=' '+hit.rest;el.dataset.i87='1';n++});return n};
+}catch(e){console.error('[dt87Icons] failed',e)}})();
+
+</script>
+<script id="dt87Shell">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87 · dt87Shell — the frame of the office app (items 1–5)
+    1 status bar in two parts: the delivery's path on the left
+      (Upcoming → Delivered → Follow-up → Complete), what needs you on the right
+    2 one Attention inbox (needs action · not ready in 48 h · missing info ·
+      weather · collect today · returns) — each ticket once
+    3 each screen its own header: the greeting/KPIs only on Command
+    4 sidebar: Today · Calendar · Route · Attention · Performance, can fold to icons
+    5 ⌘K also does things ("hold", "attention", "today", "calendar"…)
+   Only wraps render functions; Settings → Classic look turns it all off.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83,X=window.dt84,I=window.I87;if(!D||!X||!I)return;var E=D.esc;
+function wrap(name,after,before){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var a=arguments;
+if(before){try{if(before.apply(this,a)===false)return}catch(e){console.warn('[dt87] before '+name,e)}}
+var r=o.apply(this,a);try{after&&after.apply(this,a)}catch(e){console.warn('[dt87] '+name,e)}return r}}
+var IDJ=function(id){return typeof _ijsv==='function'?_ijsv(id):JSON.stringify(String(id))};
+var ON=function(){return X.on()&&X.isOffice()};
+var S=window.dt87=window.dt87||{};
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+function body(){var b=document.body;var on=X.on();b.classList.toggle('dt87',on);b.classList.toggle('dt87-office',on&&X.isOffice());b.classList.toggle('dt87-tech',on&&X.isTech());
+b.classList.toggle('dt87-side-min',on&&ls('dt87_side')==='min');
+['board','table','cal','route','dash'].forEach(function(t){b.classList.toggle('dt87-t-'+t,on&&typeof tab!=='undefined'&&tab===t)});
+chromeIcons(on&&X.isOffice())}
+/* view toggle (▯▯ / ≡ / 📊) and the sidebar search get line icons; Classic look puts the originals back */
+function chromeIcons(on){[['tbDash','chart-bar'],['tbBoard','layout-grid'],['tbTable','list-details'],['.gs-srch','search']].forEach(function(x){
+var el=x[0].charAt(0)==='.'?document.querySelector(x[0]):document.getElementById(x[0]);if(!el)return;
+if(on&&!el.hasAttribute('data-o87')){el.setAttribute('data-o87',el.innerHTML);
+if(x[0]==='.gs-srch'){var k=el.querySelector('span');el.innerHTML='<em class="g87s">'+I.svg(x[1],16)+E(_L('Buscar…','Search…'))+'</em>'+(k?k.outerHTML:'')}
+else{el.innerHTML=I.svg(x[1],16);if(!el.getAttribute('aria-label'))el.setAttribute('aria-label',el.title||'')}}
+else if(!on&&el.hasAttribute('data-o87')){el.innerHTML=el.getAttribute('data-o87');el.removeAttribute('data-o87')}})}
+S.body=body;
+
+/* =====================================================================
+   1 · status bar
+   ===================================================================== */
+S.FLOW=[['upcoming','calendar',_L('Próximas','Upcoming'),_L('sin entregar','not delivered yet')],
+['action','truck',_L('Entregadas','Delivered'),_L('mandar papeles','send paperwork')],
+['delivered','phone',_L('Seguimiento','Follow-up'),_L('llamada + G.B.','call + G.B.')],
+['complete','circle-check',_L('Completas','Complete'),_L('terminadas','done')]];
+S.counts=function(){var a=AD().filter(function(r){return r.n||r.cal});var c={all:a.length};
+a.forEach(function(r){var s=st(r);c[s]=(c[s]||0)+1});return c};
+S.tabsHtml=function(){var c=S.counts(),f=typeof statusF!=='undefined'?statusF:'all';
+var flow=S.FLOW.map(function(x,i){var on=f===x[0];return (i?'<span class="t87-arr" aria-hidden="true">'+I.svg('chevron-right',16)+'</span>':'')+
+'<button type="button" class="t87-st'+(on?' on':'')+(!(c[x[0]]||0)?' zero':'')+'" data-k="'+x[0]+'" aria-pressed="'+on+'" onclick="setStatusFilter(\''+x[0]+'\')">'+I.svg(x[1],18)+'<span class="t87-tx"><span class="t87-l">'+E(x[2])+'</span><span class="t87-h">'+E(x[3])+'</span></span><span class="t87-c">'+(c[x[0]]||0)+'</span></button>'}).join('');
+var na=c.overdue||0,ho=c.hold||0;
+var ex='<button type="button" class="t87-x danger'+(f==='overdue'?' on':'')+(na?'':' zero')+'" data-k="overdue" aria-pressed="'+(f==='overdue')+'" onclick="setStatusFilter(\'overdue\')">'+I.svg('alert-triangle',16)+E(_L('Requieren acción','Needs action'))+' <b>'+na+'</b></button>'+
+'<button type="button" class="t87-x'+(f==='hold'?' on':'')+(ho?'':' zero')+'" data-k="hold" aria-pressed="'+(f==='hold')+'" onclick="setStatusFilter(\'hold\')">'+I.svg('player-pause',16)+E(_L('En hold','Hold'))+' <b>'+ho+'</b></button>'+
+'<button type="button" class="t87-all'+(f==='all'?' on':'')+'" data-k="all" aria-pressed="'+(f==='all')+'" onclick="setStatusFilter(\'all\')">'+E(_L('Todas','All'))+' '+(c.all||0)+'</button>';
+return '<div class="t87-flow" role="group" aria-label="'+E(_L('Etapa de la entrega','Delivery stage'))+'">'+flow+'</div><div class="t87-ex">'+ex+'</div>'};
+wrap('renderKPIs',function(){body();if(!ON())return;var t=document.getElementById('aspenTabs');if(!t)return;t.classList.add('t87');t.innerHTML=S.tabsHtml()});
+
+/* =====================================================================
+   2 · one Attention inbox
+   ===================================================================== */
+function du(r){var k=X.recDay(r);if(!k)return null;var p=k.split('-').map(Number),d=new Date(p[0],p[1]-1,p[2]),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
+S.REASONS=[['needs','alert-triangle',_L('Requieren acción','Needs action')],['soon','clock',_L('En 48 h y sin estar listas','Not ready, within 48 h')],
+['missing','clipboard-list',_L('Faltan datos (7 días)','Missing info (next 7 days)')],['collect','cash',_L('Por cobrar hoy','Collect today')],
+['wx','cloud-rain',_L('Alerta de clima','Weather alert')],['ret','refresh',_L('Regresos pendientes','Returns pending')]];
+S.attention=function(){var a=AD().filter(function(r){return r.n||r.cal}),map={},order=[];
+var add=function(r,k,why){var id=String(r.i);if(!map[id]){map[id]={r:r,why:[]};order.push(id)}if(!map[id].why.some(function(w){return w[0]===k}))map[id].why.push([k,why||''])};
+var up=D.upcoming?D.upcoming(7):[];var upIds={};up.forEach(function(r){upIds[String(r.i)]=1});
+a.forEach(function(r){var s=st(r),d=du(r),live=X.live(r);
+if(s==='overdue')add(r,'needs',r.needs_attention?_L('El técnico mandó una nota','The tech sent a note'):_L('No se marcó entregada','Not marked delivered'));
+if(live&&!r.dl&&d!==null&&d>=0&&d<=2&&X.ready(r).pct<100)add(r,'soon',X.ready(r).pct+'% '+_L('lista','ready'));
+if(upIds[String(r.i)]){var m=D.missing(r).filter(function(x){return x[0]!=='form'&&x[0]!=='link'});if(m.length)add(r,'missing',m.map(function(x){return x[1]}).join(', '))}
+if(live&&d===0&&+r.bl>0&&r.pst!=='paid'&&!r.co)add(r,'collect',fmt(r.bl));
+if(live&&!r.dl&&d!==null&&d>=0&&d<=7){var w=X.wxAlertsFor(r);if(w.length)add(r,'wx',w.map(function(x){return x.l}).join(', '))}
+if(r.sl&&!r.co)add(r,'ret','')});
+var out=order.map(function(id){return map[id]});
+out.sort(function(x,y){var a1=X.recDay(x.r)||'9999',b1=X.recDay(y.r)||'9999';return a1<b1?-1:a1>b1?1:0});
+return out};
+S.attnCount=function(){try{return S.attention().length}catch(e){return 0}};
+function when(r){var k=X.recDay(r);if(!k)return _L('Sin fecha','No date');var d=new Date(k+'T12:00:00');var t=new Date();t.setHours(12,0,0,0);var n=Math.round((d-t)/864e5);
+var lbl=n===0?_L('Hoy','Today'):n===1?_L('Mañana','Tomorrow'):n===-1?_L('Ayer','Yesterday'):d.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'});return lbl+(X.slot(r)?' · '+X.slot(r):'')}
+S.when=when;
+/* each delivery is listed once, under its most urgent reason; its other reasons ride along on a second line */
+S.ALSO={needs:function(n){return n},soon:function(n){return n},missing:function(n){return _L('Falta: ','Missing: ')+n},collect:function(n){return _L('Cobrar ','Collect ')+n},wx:function(n){return n},ret:function(){return _L('Regreso pendiente','Return pending')}};
+S.openAttention=function(){var items=S.attention();var by={},rank={};S.REASONS.forEach(function(rs,i){rank[rs[0]]=i});
+items.forEach(function(it){var w=it.why.slice().sort(function(a,b){return rank[a[0]]-rank[b[0]]});var first=w[0];
+var also=w.slice(1).map(function(x){return (S.ALSO[x[0]]||String)(x[1])}).filter(Boolean).join(' · ');
+(by[first[0]]=by[first[0]]||[]).push({r:it.r,note:first[1],also:also})});
+var h='<div class="a87-top">'+items.length+' '+E(_L(items.length===1?'entrega necesita tu atención':'entregas necesitan tu atención',items.length===1?'delivery needs your attention':'deliveries need your attention'))+'</div>';
+if(!items.length)h+='<div class="e87">'+I.svg('circle-check',28)+'<b>'+E(_L('Nada pendiente','Nothing waiting on you'))+'</b><span>'+E(_L('Cuando algo necesite tu atención, aparece aquí.','When something needs you, it shows up here.'))+'</span></div>';
+S.REASONS.forEach(function(rs){var list=by[rs[0]];if(!list||!list.length)return;
+h+='<section class="a87-sec"><h3>'+I.svg(rs[1],18)+E(rs[2])+' <span class="a87-n">'+list.length+'</span>'+
+(rs[0]==='missing'?'<button type="button" class="a87-more" onclick="dt83.closeSheet();dt83.todo()">'+E(_L('Ver la lista completa','Open the full list'))+'</button>':'')+
+(rs[0]==='needs'?'<button type="button" class="a87-more" onclick="dt83.closeSheet();setTab(\'board\');setStatusFilter(\'overdue\')">'+E(_L('Ver en el tablero','Show on the board'))+'</button>':'')+'</h3>'+
+list.map(function(x){var r=x.r,rd=X.ready(r),tech=r.assigned_to?X.techName(r.assigned_to):'';
+return '<div class="a87-row" role="button" tabindex="0" onclick="dt83.closeSheet();openDet('+IDJ(r.i)+')" onkeydown="if(event.key===\'Enter\')this.click()">'+
+'<span class="sz" style="--sz:'+(r.hold?'#9A8F80':(X.sizeHex(r)||'#B5A99A'))+'"></span><div class="a87-m"><b>'+E(X.niceName(r))+'</b><span>'+E(when(r))+(tech?' · '+E(tech):'')+'</span></div>'+
+(x.note||x.also?'<span class="why">'+E(x.note||'')+(x.also?'<small>'+E(x.also)+'</small>':'')+'</span>':'')+'<span class="rg">'+X.ring(rd.pct,30)+'</span></div>'}).join('')+'</section>'});
+D.sheet(_L('Atención','Attention'),h,{wide:true})};
+/* the greeting: one chip instead of three */
+wrap('renderGlassGreet',function(){body();if(!ON())return;var g=document.getElementById('glassGreet');if(!g)return;
+var head=g.querySelector('.cmd-head > div');if(!head)return;
+Array.prototype.forEach.call(g.querySelectorAll('.dt83-todochip,.dt84-greetx,.a87-chip'),function(x){x.remove()});
+var n=S.attnCount();
+head.insertAdjacentHTML('beforeend',n?'<button type="button" class="a87-chip" onclick="dt87.openAttention()">'+I.svg('alert-triangle',16)+n+' '+E(_L(n===1?'entrega necesita tu atención':'entregas necesitan tu atención',n===1?'delivery needs your attention':'deliveries need your attention'))+I.svg('chevron-right',16)+'</button>':
+'<span class="a87-chip ok">'+I.svg('circle-check',16)+E(_L('Nada pendiente','Nothing waiting on you'))+'</span>');
+var ml=g.querySelector('.cmd-metric.attn .cm-l');if(ml)ml.textContent=_L('Hoy, por resolver','Today, to resolve');var msub=g.querySelector('.cmd-metric.attn .cm-s');if(msub)msub.textContent=_L('antes de que salga el camión','before the truck leaves');
+var mA=g.querySelector('.cmd-metric.attn');if(mA&&mA.onclick&&!mA.onclick._d87){var oc=mA.onclick;mA.onclick=function(){oc.apply(this,arguments);var t=_L('Hoy, por resolver','Today, to resolve'),sh=document.querySelector('#dt83sheet .dt83-sheet');if(sh){sh.setAttribute('aria-label',t);var h=sh.querySelector('.dt83-sheet-h b');if(h)h.textContent=t}};mA.onclick._d87=1}
+sideCount()});
+
+/* =====================================================================
+   4 · sidebar
+   ===================================================================== */
+function sideCount(){var b=document.getElementById('gs_todo');if(!b)return;var n=S.attnCount();var old=document.getElementById('dt83todoN');if(old)old.classList.add('d87-off');var bn=document.getElementById('a87N');if(!bn){bn=document.createElement('span');bn.id='a87N';bn.className='gs-bell-n';b.appendChild(bn)}bn.textContent=n||'';bn.style.display=n?'':'none'}
+S.side=function(){if(!ON())return;var nav=document.querySelector('#glassSide .gs-nav');if(!nav||nav.dataset.d87)return;
+var get=function(id){return document.getElementById(id)};
+var lbl=function(b,t){if(!b)return;var tn=Array.prototype.find.call(b.childNodes,function(n){return n.nodeType===3&&n.nodeValue.trim()});if(tn)tn.nodeValue=' '+t+' ';else b.appendChild(document.createTextNode(' '+t));b.title=t;b.setAttribute('aria-label',t)};
+var bd=get('gs_board'),bc=get('gs_cal'),br=get('gs_route'),bt=get('gs_todo'),bh=get('gs_dash'),sep=nav.querySelector('.gs-sep');
+lbl(bd,_L('Hoy','Today'));lbl(bc,_L('Calendario','Calendar'));lbl(br,_L('Ruta','Route'));lbl(bh,_L('Rendimiento','Performance'));
+if(bt){lbl(bt,_L('Atención','Attention'));bt.onclick=function(){S.openAttention()}}
+[bd,bc,br,bt,bh].forEach(function(b){if(b&&sep)nav.insertBefore(b,sep)});
+Array.prototype.forEach.call(nav.querySelectorAll('button'),function(b){if(!b.title){var t=(b.textContent||'').replace(/\d+$/,'').trim();if(t){b.title=t;b.setAttribute('aria-label',t)}}});
+var me=document.querySelector('#glassSide .gs-me');
+if(me&&!document.getElementById('gs87fold')){var f=document.createElement('button');f.id='gs87fold';f.type='button';f.className='gs87-fold';
+var paint=function(){var min=document.body.classList.contains('dt87-side-min');f.innerHTML=I.svg(min?'layout-sidebar-left-expand':'layout-sidebar-left-collapse',18)+'<span>'+E(min?_L('Abrir menú','Expand menu'):_L('Encoger menú','Collapse menu'))+'</span>';f.title=min?_L('Abrir menú','Expand menu'):_L('Encoger menú','Collapse menu')};
+f.onclick=function(){var min=!document.body.classList.contains('dt87-side-min');ls('dt87_side',min?'min':null);document.body.classList.toggle('dt87-side-min',min);paint()};paint();me.parentNode.insertBefore(f,me)}
+nav.dataset.d87='1';sideCount()};
+
+/* =====================================================================
+   3 · headers per screen + 5 · ⌘K actions
+   ===================================================================== */
+wrap('setTab',function(){body();if(ON()){try{S.side()}catch(e){}}});
+S.ACTIONS=[
+{k:['hold','pausa','pause'],l:_L('Abrir las entregas en hold','Open deliveries on hold'),i:'player-pause',go:function(){setTab('board');setStatusFilter('hold')}},
+{k:['atenc','attent','pendien','urgent'],l:_L('Abrir Atención','Open Attention'),i:'alert-triangle',go:function(){S.openAttention()}},
+{k:['hoy','today','command','tablero','board'],l:_L('Ir a Hoy','Go to Today'),i:'layout-dashboard',go:function(){setTab('board')}},
+{k:['calen','cal','schedule','agenda','mes','month'],l:_L('Abrir el calendario','Open the calendar'),i:'calendar',go:function(){setTab('cal')}},
+{k:['semana','week','crews','equipos'],l:_L('Calendario por técnico (semana)','Calendar by crew (week)'),i:'calendar-week',go:function(){setTab('cal');try{setCalView('lanes')}catch(e){}}},
+{k:['ruta','route','mapa','map'],l:_L('Abrir la ruta','Open the route'),i:'route',go:function(){setTab('route')}},
+{k:['rend','perf','dash','número','numbers'],l:_L('Abrir rendimiento','Open performance'),i:'chart-bar',go:function(){setTab('dash')}},
+{k:['entreg','deliver','paper','papel'],l:_L('Entregadas: mandar papeles','Delivered: send paperwork'),i:'truck',go:function(){setTab('board');setStatusFilter('action')}},
+{k:['segui','follow','llamar','call'],l:_L('Seguimiento: llamada + G.B.','Follow-up: call + G.B.'),i:'phone',go:function(){setTab('board');setStatusFilter('delivered')}},
+{k:['ajust','settings','config'],l:_L('Abrir ajustes','Open settings'),i:'settings',go:function(){openGlassSettings()}}];
+S.actionsFor=function(q){q=String(q||'').toLowerCase().trim();if(q.length<2)return [];return S.ACTIONS.filter(function(a){return a.k.some(function(k){return k.indexOf(q)===0||q.indexOf(k)===0})}).slice(0,3)};
+S.runAction=function(i){var a=S._acts&&S._acts[i];if(!a)return;try{closeGK()}catch(e){}setTimeout(function(){a.go()},80)};
+wrap('gkFilter',function(){if(!ON())return;var inp=document.getElementById('gk_in'),res=document.getElementById('gk_res');if(!inp||!res)return;
+var acts=S.actionsFor(inp.value);S._acts=acts;if(!acts.length)return;
+var h=acts.map(function(a,i){return '<div class="gk-row gk87" onclick="dt87.runAction('+i+')"><div class="gi87">'+I.svg(a.i,18)+'</div><div><div class="n">'+E(a.l)+'</div><div class="s">'+E(_L('Acción','Action'))+'</div></div><div class="m">'+I.svg('arrow-right',16)+'</div></div>'}).join('');
+var hint=res.querySelector('.gk-hint');if(hint&&/Sin resultados|No results/.test(hint.textContent))hint.remove();
+res.insertAdjacentHTML('afterbegin',h);if(typeof gkPaint==='function')gkPaint()});
+wrap('openGK',function(){if(!ON())return;var i=document.getElementById('gk_in');if(i)i.placeholder=_L('Busca una entrega o escribe "hold", "atención", "semana"…','Find a delivery, or type "hold", "attention", "week"…')});
+
+/* start */
+var boot=function(){body();if(ON()){try{S.side()}catch(e){}try{renderKPIs()}catch(e){}try{renderGlassGreet()}catch(e){}}};
+if(typeof currentUser!=='undefined'&&currentUser)setTimeout(boot,0);
+wrap('renderAll',function(){body();if(ON()){try{S.side()}catch(e){}sideCount()}});
+console.log('%c[BUILD 87] dt87Shell ready','color:#fff;background:#E54B25;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt87Shell] failed to start — the app keeps its build 86 look',e)}})();
+
+</script>
+<script id="dt87Office">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87 · dt87Office — cards and the ticket (items 6–11)
+    6 delivery card: date first, one readiness bar, tech, one next action
+    7 the board grouped by day (Today · Tomorrow · This week · Later …), sticky headers
+    8 one meaning per color: the left stripe is the SIZE color only (Google colors);
+      the stage is a neutral chip; red only for "needs action", gray for hold
+    9 ticket header: friendly date, Review and the brain in a ⋯ menu,
+      Complete only once the spa is delivered
+   10 one "What's missing" strip; the right card is the summary
+   11 fields read like text until you touch them (CSS + placeholders only)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83,X=window.dt84,I=window.I87,S=window.dt87;if(!D||!X||!I||!S)return;var E=D.esc;
+function wrap(name,after,before){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var a=arguments;
+if(before){try{if(before.apply(this,a)===false)return}catch(e){console.warn('[dt87] before '+name,e)}}
+var r=o.apply(this,a);try{after&&after.apply(this,a)}catch(e){console.warn('[dt87] '+name,e)}return r}}
+var IDJ=function(id){return typeof _ijsv==='function'?_ijsv(id):JSON.stringify(String(id))};
+var ON=function(){return X.on()&&X.isOffice()};
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+var O=S.office={};
+
+/* ---------- 6 · the card ---------- */
+var STAGE={upcoming:_L('Próxima','Upcoming'),overdue:_L('Requiere acción','Needs action'),action:_L('Entregada','Delivered'),delivered:_L('Seguimiento','Follow-up'),hold:_L('En hold','On hold'),complete:_L('Completa','Complete')};
+O.stage=function(s){return STAGE[s]||s};
+function du(r){var k=X.recDay(r);if(!k)return null;var p=k.split('-').map(Number),d=new Date(p[0],p[1]-1,p[2]),t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/864e5)}
+O.card=function(r){var s=st(r),rd=X.ready(r),sz=r.hold?'var(--hold87)':(X.sizeHex(r)||'var(--line87)');var tech=r.assigned_to?X.techName(r.assigned_to):'';var d=du(r);
+var model=String(r.sp||'').trim(),city=X.city(r),due=+r.bl>0&&r.pst!=='paid'&&!r.co;
+var miss=rd.items.filter(function(x){return !x.ok}).map(function(x){return x.l});
+var nxt='';try{nxt=commandNextAction(r,s)}catch(e){}
+var whenCls=d===0?' today':(d!==null&&d<0&&!r.dl&&!r.co&&!r.hold?' late':'');
+var chips=[];if(X.sizeLabel(r))chips.push('<span class="k sz"><i style="background:'+sz+'"></i>'+E(X.sizeLabel(r))+'</span>');
+if(r.crane)chips.push('<span class="k">'+I.svg('crane',14)+E(_L('Grúa','Crane'))+'</span>');if(r.water_truck)chips.push('<span class="k">'+I.svg('droplet',14)+E(_L('Agua','Water'))+'</span>');
+if(r.extra_person)chips.push('<span class="k">'+I.svg('user-plus',14)+'+1</span>');if(due)chips.push('<span class="k due">'+I.svg('cash',14)+fmt(r.bl)+'</span>');
+if(r.sl&&!r.co)chips.push('<span class="k">'+I.svg('refresh',14)+E(_L('Regreso','Return'))+'</span>');
+var badges='';try{badges=staleHoldBadge(r)+gcalSyncBadge(r)}catch(e){}
+var done=r.dl||r.co;
+return '<article class="c87 s-'+s+(r.needs_attention?' attn':'')+(r.hold?' hold':'')+'" style="--sz:'+sz+'" tabindex="0" role="button" onclick="openDet('+IDJ(r.i)+')" onkeydown="if(event.key===\'Enter\')openDet('+IDJ(r.i)+')">'+
+'<div class="top"><span class="when'+whenCls+'">'+I.svg('calendar',14)+E(S.when(r))+'</span><span class="stg s-'+s+'">'+E(O.stage(s))+'</span></div>'+
+(r.needs_attention?'<div class="att">'+I.svg('bell',14)+E(_L('El técnico mandó una nota','The tech sent a note'))+'</div>':'')+
+'<div class="nm"><b'+(!r.n&&r.cal?' class="pend"':'')+'>'+E(X.niceName(r))+'</b><span>'+E([city,model,r.sn?'SN '+r.sn:''].filter(Boolean).join(' · ')||_L('Sin datos todavía','No details yet'))+'</span></div>'+
+(chips.length?'<div class="ks">'+chips.join('')+'</div>':'')+(badges?'<div class="bbd">'+badges+'</div>':'')+
+(done?'':'<div class="rd" title="'+E(miss.length?_L('Falta: ','Missing: ')+miss.join(', '):_L('Lista','Ready'))+'"><div class="bar"><i style="width:'+rd.pct+'%"></i></div><span><b>'+rd.pct+'%</b> '+E(miss.length?_L('falta ','missing ')+miss.slice(0,2).join(', ')+(miss.length>2?' +'+(miss.length-2):''):_L('lista para entregar','ready to deliver'))+'</span></div>')+
+'<div class="ft">'+(tech?'<span class="tech"><span class="av" style="--tc:'+X.techColor(r.assigned_to)+'">'+E(X.initials(tech))+'</span>'+E(tech)+'</span>':'<span class="tech none">'+I.svg('user',14)+E(_L('Sin técnico','No tech yet'))+'</span>')+
+(nxt?'<span class="nx">'+E(nxt)+I.svg('chevron-right',14)+'</span>':'')+'</div></article>'};
+
+/* ---------- 7 · grouped by day ---------- */
+O.bucket=function(r){var d=du(r);if(d===null)return ['nodate',_L('Sin fecha','No date')];
+if(d===0)return ['today',_L('Hoy','Today')];if(d===1)return ['tom',_L('Mañana','Tomorrow')];if(d>1&&d<7)return ['week',_L('Esta semana','This week')];if(d>=7&&d<14)return ['next',_L('La próxima semana','Next week')];if(d>=14)return ['later',_L('Más adelante','Later')];
+if(d===-1)return ['yday',_L('Ayer','Yesterday')];if(d>=-7)return ['last',_L('Últimos 7 días','Last 7 days')];return ['old',_L('Antes','Earlier')]};
+O.grouped=function(){return ls('dt87_grp')!=='off'};
+O.boardHtml=function(list){if(!list.length)return '<div class="e87">'+I.svg('inbox',30)+'<b>'+E(_L('No hay entregas aquí','No deliveries here'))+'</b><span>'+E(_L('Prueba otra etapa arriba, o "Todas".','Try another stage above, or "All".'))+'</span></div>';
+if(!O.grouped())return '<div class="b87">'+list.map(O.card).join('')+'</div>';
+var h='',cur=null,buf=[];var flush=function(){if(!cur)return;h+='<section class="g87"><h3 class="g87h b-'+cur[0]+'">'+E(cur[1])+'<span>'+buf.length+'</span></h3><div class="b87">'+buf.map(O.card).join('')+'</div></section>';buf=[]};
+list.forEach(function(r){var b=O.bucket(r);if(!cur||cur[0]!==b[0]){flush();cur=b}buf.push(r)});flush();return h};
+O.toggleGroup=function(){ls('dt87_grp',O.grouped()?'off':null);try{render()}catch(e){}};
+wrap('renderBoard',null,function(){if(!ON())return true;try{var b=document.getElementById('board');if(!b)return true;b.innerHTML=O.boardHtml(fil());b.classList.add('d87');grpBtn();return false}catch(e){console.error('[dt87] board — falling back',e);return true}});
+function grpBtn(){var f=document.querySelector('.filters');if(!f||document.getElementById('d87grp'))return;var b=document.createElement('button');b.id='d87grp';b.type='button';b.className='d87-grp';
+b.onclick=O.toggleGroup;f.appendChild(b);paintGrp()}
+function paintGrp(){var b=document.getElementById('d87grp');if(!b)return;var on=O.grouped();b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);b.innerHTML=I.svg('calendar-week',16)+E(_L('Por día','By day'))}
+wrap('render',function(){if(!ON())return;paintGrp();I.swap(document.querySelector('.filters'))});
+
+/* ---------- 9–11 · the ticket ---------- */
+function friendly(r){var k=X.recDay(r);if(!k)return _L('Sin fecha','No date');var d=new Date(k+'T12:00:00');return d.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'})+(X.slot(r)?' · '+X.slot(r):'')}
+O.menu=function(btn){var m=document.getElementById('t87menu');if(m){m.remove();return}
+var acts=document.querySelector('#md .tkt-hero-acts');if(!acts)return;var items=acts.querySelectorAll('[data-m87]');if(!items.length)return;
+m=document.createElement('div');m.id='t87menu';m.className='t87-menu';m.setAttribute('role','menu');
+Array.prototype.forEach.call(items,function(src){var b=document.createElement('button');b.type='button';b.setAttribute('role','menuitem');b.innerHTML=src.dataset.m87;b.onclick=function(){m.remove();src.click()};m.appendChild(b)});
+var rc=btn.getBoundingClientRect();m.style.top=(rc.bottom+6)+'px';m.style.right=Math.max(8,innerWidth-rc.right)+'px';document.body.appendChild(m);
+setTimeout(function(){var off=function(e){if(!m.contains(e.target)&&e.target!==btn){m.remove();document.removeEventListener('click',off,true)}};document.addEventListener('click',off,true)},0)};
+O.ticket=function(){var md=document.getElementById('md');if(!md||!md.classList.contains('mdl-ticket'))return;var r=typeof curRec!=='undefined'&&curRec?(findRecById(curRec.i)||curRec):null;if(!r)return;
+md.classList.add('t87');
+var sub=md.querySelector('.tkt-hero-sub');if(sub&&!sub.dataset.d87){sub.title=sub.textContent.trim();sub.innerHTML='<span>'+I.svg('calendar',14)+E(friendly(r))+'</span>'+(r.sp?'<span>'+I.svg('droplet',14)+E(r.sp)+'</span>':'')+(r.sn?'<span>SN '+E(r.sn)+'</span>':'')+(r.assigned_to?'<span>'+I.svg('truck',14)+E(X.techName(r.assigned_to))+'</span>':'');sub.dataset.d87='1'}
+var acts=md.querySelector('.tkt-hero-acts');if(acts&&!acts.dataset.d87){
+Array.prototype.forEach.call(acts.children,function(b){var oc=b.getAttribute('onclick')||'';
+if(/openBrainModal/.test(oc)){b.dataset.m87=I.svg('brain',16)+E(_L('Historial del cliente','Customer brain'));b.classList.add('m87h')}
+else if(/deliveryAskReview/.test(oc)){b.dataset.m87=I.svg('star',16)+E(_L('Pedir reseña de Google','Ask for a Google review'));b.classList.add('m87h')}
+else if(/putOnHold|resumeHold|takeOffHold|unHold/.test(oc)){b.classList.add('t87-hold');var t=Array.prototype.find.call(b.childNodes,function(n){return n.nodeType===3});if(t){var hit=I.lead(t.nodeValue.trim());if(hit||/hold|resume/i.test(t.nodeValue)){b.innerHTML=I.svg(/resume|reanud/i.test(b.textContent)?'player-play':'player-pause',16)+'<span>'+E((hit?hit.rest:t.nodeValue).replace(/^[^A-Za-zÁÉÍÓÚáéíóúñÑ]+/,''))+'</span>'}}}
+else if(b.classList.contains('mbtn-complete')){if(!r.dl)b.classList.add('m87h-hide');else if(b.classList.contains('disabled')){b.classList.add('t87-cmp-off');b.innerHTML=I.svg('circle-check',16)+'<span>'+E(_L('Completar','Complete'))+'</span>'}else{b.classList.add('t87-cmp');b.innerHTML=I.svg('circle-check',16)+'<span>'+E(_L('Completar','Complete'))+'</span>'}}});
+var more=document.createElement('button');more.type='button';more.className='t87-more';more.setAttribute('aria-label',_L('Más acciones','More actions'));more.title=_L('Más acciones','More actions');more.innerHTML=I.svg('dots',18);more.onclick=function(e){e.stopPropagation();O.menu(more)};
+var x=acts.querySelector('.xbtn');if(x)acts.insertBefore(more,x);else acts.appendChild(more);acts.dataset.d87='1'}
+var nx=md.querySelector('.dt83-next-acts');if(nx&&!nx.dataset.d87){nx.classList.add('t87-miss');var b=nx.querySelector('b');if(b)b.innerHTML=I.svg('flag',16)+E(_L('Lo que falta','What’s missing'));
+var need=nx.querySelector('.dt83-need');if(need){var t=need.textContent.replace(/^\s*(Falta|Missing):\s*/i,'');var parts=t.split(/\s*,\s*/).filter(Boolean);need.innerHTML=parts.map(function(p){return '<span class="mk">'+E(p)+'</span>'}).join('')}
+I.swap(nx);nx.dataset.d87='1'}
+Array.prototype.forEach.call(md.querySelectorAll('.dt83-step .s'),function(x){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(x.textContent.trim());if(m)x.textContent=new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'})});
+var rdy=md.querySelector('.dt84-fc.ready');if(rdy)rdy.classList.add('t87-sum');
+I.swap(md.querySelector('.tkt-hero'));Array.prototype.forEach.call(md.querySelectorAll('.tkt-chip'),function(c){var t=c.firstChild;if(t&&t.nodeType===3&&!c.dataset.d87){var hit=I.lead(t.nodeValue.trim());if(hit){c.innerHTML=I.svg(hit.icon,14)+E(hit.rest)+c.innerHTML.replace(/^[^<]*/,'')}c.dataset.d87='1'}});Array.prototype.forEach.call(md.querySelectorAll('.dt84-fc h4'),function(h){var ic=h.querySelector('.ic');if(ic&&!ic.dataset.d87){var hit=I.lead(ic.textContent.trim());if(hit){ic.innerHTML=I.svg(hit.icon,16)}ic.dataset.d87='1'}});
+Array.prototype.forEach.call(md.querySelectorAll('.dt84-file .ib input:not([type=checkbox]):not([type=file]):not([type=date]):not([type=time]),.dt84-file .ib textarea,.dt84-file .nb textarea'),function(el){if(!el.placeholder)el.placeholder=_L('Agregar…','Add…')})};
+wrap('renderModal',function(){if(!ON())return;try{O.ticket()}catch(e){console.warn('[dt87] ticket',e)}});
+console.log('%c[BUILD 87] dt87Office ready','color:#fff;background:#E54B25;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt87Office] failed to start — the board and ticket keep their build 86 look',e)}})();
+
+</script>
+<script id="dt87Cal">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87 · dt87Cal — the calendar, bigger and clearer (items 12–15)
+   12 the current month starts on THIS week (5 weeks ahead), full width;
+      "Whole month" shows it the old way; other months are normal months
+   13 cards: AM/PM first, name, tech initial, ready ring; today marked; each day
+      shows its load as a small bar (n of capacity) and the weather
+   14 side drawer: deliveries with no date (drag one onto a day) and on hold
+      (open them; they can't be dragged — Resume first, same rule as always)
+   15 crews (week by technician) bigger and full width (CSS)
+   Calendar rules are untouched: drops go through the existing calCellDrop,
+   which refuses past days, delivered and held tickets, and only writes to
+   Google for linked events with an allowed color.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83,X=window.dt84,I=window.I87,S=window.dt87;if(!D||!X||!I||!S||!X._cal)return;var E=D.esc,C=X._cal;
+function wrap(name,after,before){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var a=arguments;
+if(before){try{if(before.apply(this,a)===false)return}catch(e){console.warn('[dt87] before '+name,e)}}
+var r=o.apply(this,a);try{after&&after.apply(this,a)}catch(e){console.warn('[dt87] '+name,e)}return r}}
+var IDJ=function(id){return typeof _ijsv==='function'?_ijsv(id):JSON.stringify(String(id))};
+var ON=function(){return X.on()&&X.isOffice()};
+var K=X.dayKey;var CA=S.cal={whole:false};
+
+/* ---------- 13 · day header: weather + load bar ---------- */
+var WXI=function(w){if(!w)return '';var c=+w.code;var n=c>=95?'bolt':(c>=71&&c<=77)?'snowflake':((c>=51&&c<=67)||(c>=80&&c<=82))?'cloud-rain':c>=1&&c<=3?'sun':c===0?'sun':'cloud-rain';if(c>=45&&c<=48)n='wind';return I.svg(n,14)};
+CA.head=function(k,list){var w=X.wx(k),ld=X.load(k),cap=X.cap(),n=ld.n||0,max=cap.day||4;
+var al=w?w.alerts.filter(function(a){return a.k!=='wind'||list.some(function(e){return e.r.crane})}):[];
+var seg='';for(var i=0;i<max;i++)seg+='<i class="'+(i<n?'f':'')+'"></i>';
+return (w?'<span class="wx87" title="'+E(Math.round(w.tmax)+'° / '+Math.round(w.tmin)+'°')+'">'+WXI(w)+Math.round(w.tmax)+'°</span>':'')+
+al.map(function(a){return '<button type="button" class="al87 '+a.k+'" onclick="event.stopPropagation();dt84.weather(\''+k+'\')">'+E(a.l)+'</button>'}).join('')+
+(n?'<span class="ld87'+(n>=max?' full':'')+(n>max?' over':'')+'" title="'+E(n+' / '+max+' '+_L('entregas (cupo)','deliveries (capacity)'))+'"><span class="bar">'+seg+'</span><b>'+n+'/'+max+'</b></span>':'')};
+
+/* ---------- 12 · month from this week ---------- */
+CA.rolling=function(){var t=new Date();return !CA.whole&&calDate.getFullYear()===t.getFullYear()&&calDate.getMonth()===t.getMonth()};
+CA.month=function(){var y=calDate.getFullYear(),m=calDate.getMonth(),t=new Date();t.setHours(0,0,0,0);var roll=CA.rolling();
+var start,weeks;if(roll){start=new Date(t);start.setDate(t.getDate()-t.getDay());weeks=5}
+else{var first=new Date(y,m,1);start=new Date(first);start.setDate(1-first.getDay());var last=new Date(y,m+1,0);weeks=Math.ceil((first.getDay()+last.getDate())/7)}
+var end=new Date(start);end.setDate(start.getDate()+weeks*7-1);
+var fmtD=function(d,yr){return d.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{month:'short',day:'numeric',year:yr?'numeric':undefined})};
+document.getElementById('calTitle').textContent=roll?fmtD(start)+' – '+fmtD(end,true):MNAMES[m]+' '+y;
+var ev=C.byDay(C.events());var tk=C.todayK();var disp=document.body.classList.contains('dt84-dispatch');var lim=disp?99:5;
+var h='<div class="dt84-month m87'+(disp?' disp':'')+(roll?' roll':'')+'" style="--rows:'+weeks+'">';
+DAYNAMES.forEach(function(d){h+='<div class="dh">'+d+'</div>'});
+for(var i=0;i<weeks*7;i++){var d=new Date(start);d.setDate(start.getDate()+i);var k=K(d);var list=ev[k]||[];var other=!roll&&d.getMonth()!==m;var dd=d.getDate();
+var lab=(dd===1||i===0)?d.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{month:'short'})+' '+dd:String(dd);
+h+='<div class="dc'+(k===tk?' today':'')+(C.isPast(k)?' past':'')+(other?' other':'')+(d.getDay()===0?' sun':'')+'" data-k="'+k+'" onclick="calDate=new Date('+d.getFullYear()+','+d.getMonth()+','+dd+');setCalView(\'day\')" ondragover="calCellDragOver(event)" ondragleave="calCellDragLeave(event)" ondrop="dt87.cal.drop(event,\''+k+'\')">'+
+'<div class="hd"><span class="dn">'+E(lab)+(k===tk?'<em>'+E(_L('Hoy','Today'))+'</em>':'')+'</span>'+CA.head(k,list)+'</div><div class="evs">';
+list.slice(0,lim).forEach(function(e){h+=C.card(e)});
+if(list.length>lim)h+='<button type="button" class="more" onclick="event.stopPropagation();calDate=new Date('+d.getFullYear()+','+d.getMonth()+','+dd+');setCalView(\'day\')">+'+(list.length-lim)+' '+_L('más','more')+'</button>';
+h+='</div></div>'}
+document.getElementById('calBody').innerHTML=h+'</div>';CA.bar();CA.drawer()};
+/* the drop still goes through calCellDrop (all its protections); the cell's inline blue highlight is cleared */
+CA.drop=function(ev,k){try{calCellDrop(ev,k)}finally{try{ev.currentTarget.style.background=''}catch(e){}}};
+
+/* ---------- toolbar: From this week | Whole month · drawer toggle ---------- */
+CA.bar=function(){var v=document.querySelector('#calWrap .cal-views');if(!v)return;var host=document.getElementById('c87bar');
+if(!host){host=document.createElement('div');host.id='c87bar';host.className='c87-bar';v.parentNode.insertBefore(host,v.nextSibling)}
+var t=new Date(),cur=calDate.getFullYear()===t.getFullYear()&&calDate.getMonth()===t.getMonth();
+host.innerHTML=(calView==='month'&&cur?'<div class="c87-seg" role="group"><button type="button" class="'+(!CA.whole?'on':'')+'" aria-pressed="'+!CA.whole+'" onclick="dt87.cal.setWhole(false)">'+E(_L('Desde esta semana','From this week'))+'</button><button type="button" class="'+(CA.whole?'on':'')+'" aria-pressed="'+CA.whole+'" onclick="dt87.cal.setWhole(true)">'+E(_L('Mes completo','Whole month'))+'</button></div>':'')+
+'<button type="button" class="c87-dr'+(CA.open?' on':'')+'" aria-pressed="'+!!CA.open+'" onclick="dt87.cal.toggleDrawer()">'+I.svg('calendar-off',16)+E(_L('Sin fecha / hold','No date / hold'))+' <b>'+CA.parked().length+'</b></button>'};
+CA.setWhole=function(w){CA.whole=!!w;try{renderCalendar()}catch(e){}};
+
+/* ---------- 14 · drawer ---------- */
+CA.open=false;
+CA.parked=function(){return AD().filter(function(r){if(!(r.n||r.cal)||r.co||r.dl)return false;return r.hold||!r.dd})};
+CA.toggleDrawer=function(){CA.open=!CA.open;try{renderCalendar()}catch(e){}};
+CA.drawer=function(){var wrapEl=document.getElementById('calWrap');if(!wrapEl)return;var dr=document.getElementById('c87drawer');
+wrapEl.classList.toggle('c87-open',!!CA.open&&calView==='month');
+if(!CA.open||calView!=='month'){if(dr)dr.remove();return}
+if(!dr){dr=document.createElement('aside');dr.id='c87drawer';dr.className='c87-drawer';var body=document.getElementById('calBody');body.parentNode.insertBefore(dr,body)}
+var list=CA.parked(),nod=list.filter(function(r){return !r.hold}),hold=list.filter(function(r){return r.hold});
+var row=function(r){var drag=!r.hold&&(!r.gcalId||C.canDrag(r))?' draggable="true" ondragstart="calEvDragStart(event,'+IDJ(r.i)+')" ondragend="calEvDragEnd(event)"':'';
+return '<div class="c87-p'+(r.hold?' hold':'')+'"'+drag+' onclick="openDet('+IDJ(r.i)+')" title="'+E(r.hold?_L('En hold: ábrelo y usa Resume para darle fecha','On hold: open it and use Resume to give it a date'):_L('Arrástralo a un día','Drag it onto a day'))+'">'+
+'<span class="sz" style="background:'+(r.hold?'var(--hold87)':(X.sizeHex(r)||'var(--line87)'))+'"></span><div><b>'+E(X.niceName(r))+'</b><span>'+E(r.hold?(r.hold_prev_dd?_L('Era ','Was ')+String(r.hold_prev_dd).split(' ')[0]:_L('En hold','On hold')):(r.sp||_L('Sin fecha','No date')))+'</span></div>'+(drag?I.svg('arrows-move',16):'')+'</div>'};
+dr.innerHTML='<div class="c87-dh"><b>'+E(_L('Sin fecha','No date'))+'</b><span>'+nod.length+'</span></div>'+(nod.length?nod.map(row).join(''):'<div class="c87-e">'+E(_L('Todo tiene fecha.','Everything has a date.'))+'</div>')+
+'<div class="c87-dh"><b>'+E(_L('En hold','On hold'))+'</b><span>'+hold.length+'</span></div>'+(hold.length?hold.map(row).join(''):'<div class="c87-e">'+E(_L('Nada en hold.','Nothing on hold.'))+'</div>')+
+'<div class="c87-tip">'+I.svg('info-circle',14)+E(_L('Arrastra una entrega sin fecha a un día. Las que están en hold se reanudan desde su ticket.','Drag an undated delivery onto a day. Held ones are resumed from their ticket.'))+'</div>'};
+
+wrap('renderCalMonth',null,function(){if(!ON())return true;try{CA.month();return false}catch(e){console.error('[dt87] month — build 86 month',e);return true}});
+wrap('renderCalendar',function(){if(!ON())return;try{CA.bar();if(calView!=='month'){var d=document.getElementById('c87drawer');if(d)d.remove();var w=document.getElementById('calWrap');if(w)w.classList.remove('c87-open')}
+document.getElementById('calWrap').classList.add('c87');I.swap(document.querySelector('#calWrap .cal-views'));I.swap(document.querySelector('#calWrap .dt84-tools'))}catch(e){console.warn('[dt87] cal bar',e)}});
+/* "Today" (calNav(0)) brings back the 5 weeks from this week */
+wrap('calNav',null,function(dir){if(dir===0)CA.whole=false});
+console.log('%c[BUILD 87] dt87Cal ready','color:#fff;background:#E54B25;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt87Cal] failed to start — the calendar keeps its build 86 look',e)}})();
+
+</script>
+<script id="dt87Tech">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87 · dt87Tech — the technician's phone (items 16–19)
+   16 home: "Your next stop" in big (name, address, time, Navigate / On my way);
+      the date shows once (the week strip), not twice
+   17 detail: friendly date, no raw calendar title, address big, model + serial
+   18 the delivery as steps on top (Load · On my way · Arrive · Photos · Check ·
+      Signature · Deliver) and the next step always above the bottom bar
+   19 Sun mode: bigger text and more contrast for working outside
+   Reads the same fields route mode uses (dt85.steps); writes nothing new.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83,X=window.dt84,I=window.I87,S=window.dt87;if(!D||!X||!I||!S)return;var E=D.esc;
+function wrap(name,after,before){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var a=arguments;
+if(before){try{if(before.apply(this,a)===false)return}catch(e){console.warn('[dt87] before '+name,e)}}
+var r=o.apply(this,a);try{after&&after.apply(this,a)}catch(e){console.warn('[dt87] '+name,e)}return r}}
+var IDJ=function(id){return typeof _ijsv==='function'?_ijsv(id):JSON.stringify(String(id))};
+var ON=function(){return X.on()&&X.isTech()};
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+var T=S.tech={};
+function dayK(){return typeof techDate!=='undefined'?D.dayKey(techDate):D.dayKey(new Date())}
+function friendly(r){var k=X.recDay(r);if(!k)return _L('Sin fecha','No date');var d=new Date(k+'T12:00:00');var t=new Date();t.setHours(12,0,0,0);var n=Math.round((d-t)/864e5);
+var w=n===0?_L('Hoy','Today'):n===1?_L('Mañana','Tomorrow'):d.toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'short',month:'short',day:'numeric'});return w+(X.slot(r)?' · '+X.slot(r):'')}
+function addr(r){return String(r.st||'').trim().split('\n')}
+function sun(){var on=ls('dt87_sun')==='1';document.body.classList.toggle('dt87-sun',on&&ON());return on}
+T.toggleSun=function(){ls('dt87_sun',sun()?null:'1');sun();paintSunBtn()};
+function paintSunBtn(){var b=document.getElementById('t87sun');if(!b)return;var on=document.body.classList.contains('dt87-sun');b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);b.innerHTML=I.svg(on?'sun-high':'sun',20);var t=on?_L('Modo sol: sí','Sun mode: on'):_L('Modo sol (más contraste)','Sun mode (more contrast)');b.title=t;b.setAttribute('aria-label',t)}
+
+/* ---------- 16 · home ---------- */
+T.next=function(){var Y=window.dt85;var k=dayK();var list=Y&&Y.stops?Y.stops(k):[];var todayK=D.dayKey(new Date());if(k<todayK)return null;
+return list.find(function(r){return !r.dl})||null};
+T.heroHtml=function(r,total,left){var a=addr(r),onway=!!r.onway&&!r.arrived_at,arrived=!!r.arrived_at;var id=IDJ(r.i);
+var steps=window.dt85&&dt85.steps?dt85.steps(r):[];
+return '<section class="n87" aria-label="'+E(_L('Tu siguiente parada','Your next stop'))+'"><div class="n87-k">'+I.svg('flag',16)+E(_L('Tu siguiente parada','Your next stop'))+'<span>'+(total-left+1)+' '+E(_L('de','of'))+' '+total+'</span></div>'+
+'<div class="n87-nm" onclick="techOpenDetail('+id+')"><b>'+E(X.niceName(r))+'</b><span>'+E(friendly(r))+(r.sp?' · '+E(r.sp):'')+'</span></div>'+
+(a[0]?'<div class="n87-ad" onclick="techOpenMaps('+id+')">'+I.svg('map-pin',18)+'<div><b>'+E(a[0])+'</b>'+(a[1]?'<span>'+E(a.slice(1).join(', '))+'</span>':'')+'</div></div>':'<div class="n87-ad none">'+I.svg('map-pin',18)+E(_L('Sin dirección · llama a la oficina','No address · call the office'))+'</div>')+
+'<div class="n87-bt">'+(a[0]?'<button type="button" class="b2" onclick="techOpenMaps('+id+')">'+I.svg('navigation',18)+E(_L('Navegar','Navigate'))+'</button>':'')+
+(arrived?'<button type="button" class="b1" onclick="techOpenDetail('+id+')">'+I.svg('camera',18)+E(_L('Fotos y entregar','Photos and deliver'))+'</button>':
+onway?'<button type="button" class="b1" onclick="dt85.arrive('+id+')">'+I.svg('current-location',18)+E(_L('Ya llegué','I’m here'))+'</button>':
+(r.ph?'<button type="button" class="b1" onclick="techOnMyWay('+id+')">'+I.svg('truck',18)+E(_L('Voy en camino','On my way'))+'</button>':'<button type="button" class="b1" onclick="techOpenDetail('+id+')">'+I.svg('arrow-right',18)+E(_L('Abrir','Open'))+'</button>'))+'</div></section>'};
+T.home=function(){try{S.body&&S.body()}catch(e){}if(!ON())return;var list=document.getElementById('tech-list');if(!list)return;sun();
+document.body.classList.add('t87-home');
+var top=list.querySelector('.dt83-top');
+if(top&&!document.getElementById('t87date')){var d=document.createElement('div');d.id='t87date';d.className='t87-date';top.parentNode.insertBefore(d,top)}
+var dl=document.getElementById('t87date');if(dl){var t=new Date();t.setHours(0,0,0,0);var isT=typeof techDate!=='undefined'&&techDate.getTime()===t.getTime();
+dl.innerHTML='<b>'+E((typeof techDate!=='undefined'?techDate:t).toLocaleDateString(APP_LANG==='es'?'es-US':'en-US',{weekday:'long',month:'long',day:'numeric'}))+'</b>'+(isT?'<span class="td">'+E(_L('Hoy','Today'))+'</span>':'<button type="button" onclick="techDate=new Date();techDate.setHours(0,0,0,0);renderTechList()">'+E(_L('Ir a hoy','Go to today'))+'</button>')+
+'<button type="button" id="t87sun" class="t87-sun" onclick="dt87.tech.toggleSun()"></button>';paintSunBtn()}
+var old=document.getElementById('n87');if(old)old.remove();
+var r=T.next();if(!r)return;var Y=window.dt85;var all=Y&&Y.stops?Y.stops(dayK()):[];var left=all.filter(function(x){return !x.dl}).length;
+var tmp=document.createElement('div');tmp.innerHTML=T.heroHtml(r,all.length,left);var hero=tmp.firstChild;hero.id='n87';
+var wk=list.querySelector('.dt83-week');var anchor=wk||top;if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(hero,anchor.nextSibling);else list.insertBefore(hero,list.firstChild);
+I.swap(list.querySelector('.dt83-toprow'))};
+wrap('renderTechList',function(){try{T.home()}catch(e){console.warn('[dt87] tech home',e)}});
+
+/* ---------- 17–18 · detail ---------- */
+T.SHORT={load:_L('Cargar','Load'),onway:_L('En camino','On the way'),arrive:_L('Llegar','Arrive'),photos:_L('Fotos','Photos'),qc:_L('Revisión','Check'),sign:_L('Firma','Signature'),pay:_L('Cobro','Payment'),done:_L('Entregar','Deliver')};
+T.NEXT={load:_L('Súbelo al camión','Load it on the truck'),onway:_L('Avísale que vas en camino','Text them you’re on the way'),arrive:_L('Toca cuando llegues','Tap when you arrive'),photos:_L('Toma las fotos','Take the photos'),qc:_L('Revisa la instalación','Check the install'),sign:_L('Firma del cliente','Customer signature'),pay:_L('Cobro','Payment'),done:_L('Desliza para entregar','Swipe to deliver')};
+T.STEP_I={load:'package',onway:'truck',arrive:'current-location',photos:'camera',qc:'checks',sign:'signature',pay:'cash',done:'circle-check'};
+T.steps=function(r){var Y=window.dt85;var s=Y&&Y.steps?Y.steps(r).slice():[];var lc=r.load_check;s.unshift({k:'load',es:'Cargado en el camión',en:'Loaded on the truck',done:!!(lc&&lc.at)||!!r.dl||!!r.onway||!!r.arrived_at,opt:true});return s};
+T.go=function(id,k){var r=findRecById(id);if(!r)return;var Y=window.dt85;
+if(k==='load'&&Y&&Y.load)return Y.load(X.recDay(r));
+if(k==='onway')return techOnMyWay(id);
+if(k==='arrive'&&Y&&Y.arrive)return Y.arrive(id);
+if(k==='photos'){var s=document.getElementById('dt83slots');if(s)s.scrollIntoView({behavior:'smooth',block:'start'});return}
+if(k==='sign'&&typeof techSignature==='function')return techSignature(id);
+if(k==='done'){var w=document.getElementById('td2sw');if(w){w.scrollIntoView({behavior:'smooth',block:'end'});w.classList.add('t87-pulse');setTimeout(function(){w.classList.remove('t87-pulse')},1600)}return}
+if(Y&&Y.route)return Y.route(true,X.recDay(r))};
+T.detail=function(id){if(!ON())return;var td=document.getElementById('tech-detail');if(!td||td.classList.contains('hidden'))return;var r=findRecById(id);if(!r)return;sun();
+var ib=td.querySelector('.td2-ib');if(ib&&!ib.dataset.d87){ib.innerHTML=I.svg('calendar',16)+E(friendly(r));ib.dataset.d87='1'}
+var raw=td.querySelector('.dt83-rawt');if(raw)raw.classList.add('t87-hide');
+var imm=td.querySelector('.td2-imm');
+if(imm&&!imm.querySelector('.t87-spec')){var spec=[r.sp,r.sn?'SN '+r.sn:''].filter(Boolean).join(' · ');if(spec)imm.querySelector('h2').insertAdjacentHTML('afterend','<div class="t87-spec">'+I.svg('droplet',16)+E(spec)+'</div>')}
+var steps=T.steps(r),cur=-1;for(var i=0;i<steps.length;i++){if(!steps[i].done&&!steps[i].skipped){cur=i;break}}
+var bar='<nav class="t87-steps" aria-label="'+E(_L('Pasos de la entrega','Delivery steps'))+'">'+steps.map(function(s,i){return '<button type="button" class="'+(s.done?'done':i===cur?'cur':'')+'" onclick="dt87.tech.go('+IDJ(r.i)+',\''+s.k+'\')" title="'+E(_L(s.es,s.en))+'"><span class="t87-d">'+(s.done?I.svg('check',14):I.svg(T.STEP_I[s.k]||'circle-dashed',14))+'</span><span class="t87-sl">'+E(T.SHORT[s.k]||_L(s.es,s.en).split(' ')[0])+'</span></button>'}).join('')+'</nav>';
+var old=td.querySelector('.t87-steps');if(old)old.remove();var inner=td.querySelector('.td2-inner');if(inner)inner.insertAdjacentHTML('afterbegin',bar);
+var dock=td.querySelector('.td2-dock');var nx=td.querySelector('.t87-next');if(nx)nx.remove();
+if(dock&&cur>=0&&!r.dl){var s=steps[cur];dock.insertAdjacentHTML('afterbegin','<button type="button" class="t87-next" onclick="dt87.tech.go('+IDJ(r.i)+',\''+s.k+'\')"><span class="k">'+E(_L('Siguiente','Next'))+'</span>'+I.svg(T.STEP_I[s.k]||'arrow-right',18)+'<b>'+E(T.NEXT[s.k]||_L(s.es,s.en))+'</b>'+I.svg('chevron-right',18)+'</button>')}
+var ac=td.querySelector('.tech-addr-card');if(ac)ac.classList.add('t87-addr')};
+wrap('techOpenDetail',function(id){try{T.detail(id)}catch(e){console.warn('[dt87] tech detail',e)}});
+console.log('%c[BUILD 87] dt87Tech ready','color:#fff;background:#E54B25;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt87Tech] failed to start — the tech view keeps its build 86 look',e)}})();
 
 </script>
 <!-- ════════ /BUILD 84 BLOCKS ════════ -->
