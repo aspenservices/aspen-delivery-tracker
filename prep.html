@@ -98,7 +98,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--aspen-orange)}
 
 <!-- Sin SDK de Firebase, a proposito. Ver la nota de la cabecera. -->
 <script>
-var PORTAL_BUILD='87-live';
+var PORTAL_BUILD='87.2-live';
 console.log('%c[PORTAL] Aspen Delivery Prep build '+PORTAL_BUILD,'color:#fff;background:#e67e2e;padding:2px 6px;border-radius:3px');
 
 var PORTAL_GET_FN  ="https://us-central1-aspen-delivery-tracker.cloudfunctions.net/portalGet";
@@ -635,5 +635,85 @@ console.log('[PORTAL] build 86 additions ready');
 
 </script>
 <!-- ════════ /BUILD 86 PORTAL ════════ -->
+<!-- ════════ BUILD 87 PORTAL ════════ -->
+<!-- Who does what: Aspen brings / you provide. Delete this block to go back to the build-87 page. -->
+<style id="p87css">
+/* BUILD 87.1 · customer page: who does what (light only, like the rest of the page) */
+.p87-roles{background:var(--surface);border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.p87-roles .h{font-weight:800;font-size:15px;color:var(--ink-strong);margin-bottom:10px}
+.p87-roles .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.p87-roles .col{border-radius:12px;padding:10px 12px;min-width:0}
+.p87-roles .col.aspen{background:#eef5f8;border:1px solid #cfe2ea}
+.p87-roles .col.you{background:#fff6ec;border:1px solid #f6d3ad}
+.p87-roles .ch{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.p87-roles .aspen .ch{color:var(--aspen-deep)}
+.p87-roles .you .ch{color:#9a4a12}
+.p87-roles ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.p87-roles li{position:relative;padding-left:20px;font-size:13.5px;line-height:1.35;color:var(--ink-strong)}
+.p87-roles li:before{content:"";position:absolute;left:2px;top:5px;width:9px;height:9px;border-radius:50%}
+.p87-roles .aspen li:before{background:var(--aspen-deep)}
+.p87-roles .you li:before{background:var(--aspen-orange)}
+.p87-roles li b{display:block;font-weight:700}
+.p87-roles li span{display:block;font-size:12.5px;color:var(--ink-slate);margin-top:1px}
+@media (max-width:420px){.p87-roles .cols{grid-template-columns:1fr}}
+
+</style>
+<script id="p87js">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87.1 · customer page: who does what
+   Aspen Spas brings the spa, the crew (plus an extra person when needed), the spa dolly
+   and the tools to unload the spa and set it in place. The customer provides a flat,
+   level pad, the electrical materials, the water truck and the crane when the job needs
+   them, and the payment.
+   · "Your crew" no longer lists the water truck or the crane, and no longer shows the water
+     truck and the extra crew member to every customer (the server sends them as the text "false")
+   · a "Who does what" card before delivery day (form and status pages)
+   · the form and the summary call the pad and the electrical items "your part"
+   Delete this block to go back to build 87.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var esc=window._iesc||function(s){return String(s==null?'':s)};
+var P87=window.P87={};
+/* the server sends water and extra as TEXT (portalClean turns false into "false"), so a plain
+   if(p.water) was true for every customer. Read them as yes/no here. */
+P87.yes=function(v){if(v===true)return true;if(!v)return false;var s=String(v).trim().toLowerCase();return !(s===''||s==='false'||s==='0'||s==='no'||s==='null'||s==='undefined')};
+P87.fix=function(p){p=p||{};return Object.assign({},p,{water:P87.yes(p.water),extra:P87.yes(p.extra),crane:P87.yes(p.crane)})};
+function li(t,s){return '<li><b>'+esc(t)+'</b>'+(s?'<span>'+esc(s)+'</span>':'')+'</li>'}
+P87.rolesHtml=function(it){var p=P87.fix(it&&it.pinfo);var spa=String(p.spa||it.spa||'').trim();var tech=String(p.tech||'').trim().split(' ')[0];
+var aspen=li('Your spa',spa)+
+li('The delivery crew',(tech?tech+' leads the delivery':'')+(p.extra?(tech?', with an extra crew member':'Including an extra crew member'):''))+
+li('The spa dolly and the tools','To unload your spa and set it in place.');
+var you=li('A flat, level pad','Solid, flat and level where the spa will sit, with a clear path to it.')+
+li('The electrical materials','15 ft of conduit / whip cable and the adapters to connect the spa.')+
+(p.water?li('The water truck','You arrange the water truck to fill the spa.'):'')+
+(p.crane?li('The crane','You arrange the crane to lift the spa into place.'):'')+
+((typeof p.bl==='number'&&p.bl>0)?li('The payment','The remaining balance: '+(typeof fmt==='function'?fmt(p.bl):'$'+p.bl)+'.'):'');
+return '<div class="p87-roles" id="p87roles"><div class="h">\u{1F91D} Who does what</div><div class="cols">'+
+'<div class="col aspen"><div class="ch">Aspen Spas brings</div><ul>'+aspen+'</ul></div>'+
+'<div class="col you"><div class="ch">You provide</div><ul>'+you+'</ul></div></div></div>'};
+/* status (form + after sending): no water truck or crane under "Your crew"; the roles card closes the status block */
+var _status=window._portalStatusHtml;
+if(typeof _status==='function')window._portalStatusHtml=function(it){var p=(it&&it.pinfo)||{};
+var q=Object.assign({},it,{pinfo:Object.assign(P87.fix(p),{water:false,crane:false})});
+var h=_status(q);try{if(!p.dl&&!p.co){var card=P87.rolesHtml(it);var k=h.lastIndexOf('</div>');h=(/^<div id="pStatus">/.test(h)&&k>0)?h.slice(0,k)+card+h.slice(k):h+card}}catch(e){console.warn('[P87] roles',e)}
+return h};
+/* the form: same words as the card */
+var SWAP=[
+['Please complete the items below so the crew is fully prepared. It only takes a couple of minutes.','Below is what Aspen Spas brings and what you need to have ready. Please confirm your part and send the photos. It takes a couple of minutes.'],
+['&#128208; Level surface','&#128208; Your part: a flat, level pad'],
+['is <b>solid and level</b>, with nothing in the way.','is <b>solid, flat and level</b>, with nothing in the way.'],
+['&#128268; Wiring (WIP)','&#128268; Your part: the electrical materials'],
+['Please have ready before delivery: <b>15 ft of conduit / whip cable</b>','You provide the electrical materials. Have them ready before delivery day: <b>15 ft of conduit / whip cable</b>']];
+P87.SWAP=SWAP;
+var _form=window._portalFormHtml;
+if(typeof _form==='function')window._portalFormHtml=function(it){var h=_form(it);SWAP.forEach(function(s){h=h.split(s[0]).join(s[1])});return h};
+var SUM=[['Pad is level &amp; clear:','Flat, level pad (your part):'],['WIP ready (15ft conduit + adapters):','Electrical materials ready (your part):']];
+P87.SUM=SUM;
+var _sum=window._irespSummary;
+if(typeof _sum==='function')window._irespSummary=function(it){var h=_sum(it);SUM.forEach(function(s){h=h.split(s[0]).join(s[1])});return h};
+}catch(e){console.warn('[P87]',e)}})();
+
+</script>
+<!-- ════════ /BUILD 87 PORTAL ════════ -->
 </body>
 </html>
