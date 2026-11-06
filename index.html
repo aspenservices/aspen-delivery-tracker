@@ -2183,8 +2183,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026110302;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.11.03 (build 87.2) — 87.1 + la grúa y el pago también van en lo que pone el cliente; Aspen lleva el spa, el equipo, el dolly y las herramientas'; // human-readable label (shown in console)
+const APP_BUILD   = 2026110602;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.11.06 (build 89) — el ticket en dos lados: el cliente y lo que mandó a la izquierda, la entrega a la derecha, el historial en un panel'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -15441,6 +15441,196 @@ body.dt87 .a87-row .why small{display:block;font-size:12px;font-weight:600;color
 /* 87 · "By day" only groups the Today cards, so it shows only there */
 body.dt87-office:not(.dt87-t-board) #d87grp{display:none!important}
 
+/* BUILD 88 · Water Care Guide — overlay (full screen on a phone, centred panel on desktop) */
+.wc88{position:fixed;inset:0;z-index:99990;display:none;font-family:inherit;color:var(--text-primary,#1F1A16)}
+.wc88.show{display:block}
+body.wc88-open{overflow:hidden}
+.wc88-bk{position:absolute;inset:0;background:rgba(26,20,16,.45)}
+.wc88-p{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg-cream,#F7F3EE);overflow:hidden}
+@media (min-width:761px){.wc88-p{inset:auto;top:4vh;bottom:4vh;left:50%;width:560px;max-width:calc(100vw - 32px);transform:translateX(-50%);border-radius:18px;box-shadow:0 18px 60px rgba(26,20,16,.35)}}
+.wc88-h{flex-shrink:0;background:var(--surface,#fff);border-bottom:1px solid var(--border-soft,#E7DED3);padding:calc(10px + env(safe-area-inset-top,0px)) 12px 12px}
+.wc88-hr{display:flex;align-items:center;gap:8px}
+.wc88-ht{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.wc88-ht h2{margin:0;font-size:19px;line-height:1.25;font-weight:800;text-wrap:balance}
+.wc88-sub{font-size:12.5px;color:var(--text-secondary,#6B5E52);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc88-ib,.wc88-lang{flex-shrink:0;min-width:44px;height:44px;border-radius:12px;border:1px solid var(--border-soft,#E7DED3);background:var(--surface,#fff);color:var(--text-primary,#1F1A16);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font:700 13px/1 inherit}
+.wc88-ib0{width:44px;height:44px;border-radius:12px;background:rgba(229,75,37,.10);color:var(--aspen-orange,#E54B25);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.wc88-b{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.wc88-b>*{flex-shrink:0}
+.wc88-card{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:14px;border-radius:14px;border:1px solid var(--border-soft,#E7DED3);background:var(--surface,#fff);color:inherit;cursor:pointer;font:inherit;position:relative}
+.wc88-card:hover{border-color:var(--aspen-orange,#E54B25)}
+.wc88-card.on{border:2px solid var(--aspen-orange,#E54B25);padding:13px}
+.wc88-ci{width:44px;height:44px;border-radius:12px;background:var(--surf-soft,#F3ECE4);color:var(--aspen-orange,#E54B25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wc88-ct{display:flex;flex-direction:column;gap:3px;min-width:0}
+.wc88-ct b{font-size:16px}
+.wc88-ct span{font-size:13.5px;color:var(--text-secondary,#6B5E52);line-height:1.35}
+.wc88-ct small{font-size:12.5px;color:var(--text-secondary,#6B5E52)}
+.wc88-tag{position:absolute;top:10px;right:10px;font-size:10.5px;font-weight:800;letter-spacing:.05em;color:var(--aspen-orange,#C73C18);background:rgba(229,75,37,.10);border-radius:999px;padding:2px 8px}
+.wc88-note{font-size:13.5px;line-height:1.4;padding:10px 12px;border-radius:12px;background:rgba(229,75,37,.08);border:1px solid rgba(229,75,37,.25)}
+.wc88-note.warn{background:var(--st-warning-soft,#FFF3DC);border-color:rgba(184,121,0,.3)}
+.wc88-inl{margin-left:6px;min-height:36px;padding:0 12px;border-radius:10px;border:1px solid currentColor;background:none;color:inherit;font:700 13px inherit;cursor:pointer}
+.wc88-foot,.wc88-hint{margin:0;font-size:12.5px;color:var(--text-secondary,#6B5E52);line-height:1.4}
+.wc88-hint{font-size:13.5px}
+.wc88-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;background:var(--surf-soft,#F3ECE4);border-radius:12px;padding:4px}
+.wc88-seg button,.wc88-seg2 button{height:44px;border:0;border-radius:9px;background:transparent;color:var(--text-secondary,#6B5E52);font:700 15px inherit;cursor:pointer}
+.wc88-seg button.on,.wc88-seg2 button.on{background:var(--surface,#fff);color:var(--text-primary,#1F1A16);box-shadow:0 1px 3px rgba(26,20,16,.15)}
+.wc88-seg2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.wc88-seg2 button{border:1px solid var(--border-soft,#E7DED3);background:var(--surface,#fff)}
+.wc88-seg2 button.on{border:2px solid var(--aspen-orange,#E54B25)}
+.wc88-seg2 button.on.bad{border-color:var(--st-danger,#C0392B);color:var(--st-danger,#A33B23)}
+.wc88-list{background:var(--surface,#fff);border:1px solid var(--border-soft,#E7DED3);border-radius:14px;overflow:hidden}
+.wc88-lg{padding:8px 14px;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary,#6B5E52);background:var(--surf-soft,#F3ECE4)}
+.wc88-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:46px;padding:10px 14px;border:0;border-top:1px solid var(--border-soft,#EFE7DE);background:none;color:inherit;font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.wc88-row:first-child{border-top:0}
+.wc88-row span:first-child{display:inline-flex;align-items:center;gap:8px}
+.wc88-row.on{background:rgba(229,75,37,.08);box-shadow:inset 3px 0 0 var(--aspen-orange,#E54B25);font-weight:700}
+.wc88-g{display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary,#6B5E52);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wc88-lb{font-size:13px;font-weight:700;color:var(--text-secondary,#6B5E52)}
+.wc88-in{height:44px;box-sizing:border-box;width:100%;border:1px solid var(--border-soft,#D9CEC2);border-radius:12px;padding:0 12px;font:600 16px inherit;background:var(--surface,#fff);color:inherit;font-variant-numeric:tabular-nums}
+.wc88-go{height:52px;border-radius:14px;border:0;background:var(--text-primary,#1F1A16);color:var(--surface,#fff);font:800 16px inherit;cursor:pointer;margin-top:4px}
+.wc88-go:disabled{opacity:.4;cursor:default}
+.wc88-link{display:flex;align-items:center;gap:8px;justify-content:center;min-height:46px;border-radius:12px;border:1px dashed var(--border-soft,#D9CEC2);background:none;color:inherit;font:700 14px inherit;cursor:pointer}
+.wc88-f{display:grid;grid-template-columns:1fr 92px;gap:4px 10px;align-items:center;background:var(--surface,#fff);border:1px solid var(--border-soft,#E7DED3);border-radius:12px;padding:10px 12px}
+.wc88-f label{font-weight:800;font-size:15px}
+.wc88-f .wc88-in{grid-row:span 2;grid-column:2;text-align:center}
+.wc88-st{font-size:13px;font-weight:700;color:var(--text-secondary,#6B5E52)}
+.wc88-st.ok{color:var(--st-success,#1F7A47)}
+.wc88-st.warn{color:#8A5300}
+.wc88-st.bad{color:var(--st-danger,#A33B23)}
+.wc88-yn{grid-template-columns:1fr}
+.wc88-q{font-weight:800;font-size:14.5px;line-height:1.3}
+.wc88-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.wc88-step{display:flex;gap:12px;background:var(--surface,#fff);border:1px solid var(--border-soft,#E7DED3);border-radius:14px;padding:12px 14px}
+.wc88-step.ok .wc88-n{background:var(--st-success,#1F7A47)}
+.wc88-n{width:30px;height:30px;border-radius:50%;background:var(--text-primary,#1F1A16);color:var(--surface,#fff);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0}
+.wc88-sb{display:flex;flex-direction:column;gap:4px;min-width:0}
+.wc88-stt{font-size:16px;line-height:1.3}
+.wc88-dose{font-size:15px;font-weight:800;color:var(--aspen-orange,#C73C18)}
+.wc88-why{font-size:13.5px;color:var(--text-secondary,#6B5E52);line-height:1.4}
+.wc88-src{align-self:flex-start;font-size:12px;color:var(--text-secondary,#6B5E52);background:var(--surf-soft,#F3ECE4);border-radius:999px;padding:3px 9px;line-height:1.3}
+.wc88-wait{display:flex;align-items:center;gap:8px;padding:0 6px;font-size:13.5px;font-weight:800;color:#8A5300}
+.wc88-day{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary,#6B5E52);margin-top:4px}
+.wc88-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px}
+.wc88-sec{min-height:48px;border-radius:12px;border:1px solid var(--text-primary,#1F1A16);background:none;color:inherit;font:700 14px inherit;cursor:pointer;padding:6px 10px}
+.wc88-empty{padding:18px;text-align:center;border-radius:14px;background:var(--surface,#fff);border:1px solid var(--border-soft,#E7DED3);font-size:15px;line-height:1.4}
+.wc88-chips{display:flex;flex-wrap:wrap;gap:8px}
+.wc88-chip{min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid var(--border-soft,#E7DED3);background:var(--surface,#fff);color:inherit;font:700 14px inherit;cursor:pointer;text-align:left}
+.wc88-chip:hover{border-color:var(--aspen-orange,#E54B25)}
+.wc88-h3{margin:0;font-size:17px}
+.wc88-checks{margin:0;padding:0 0 0 0;list-style:none;counter-reset:c;display:flex;flex-direction:column;gap:8px}
+.wc88-checks li{counter-increment:c;position:relative;background:var(--surface,#fff);border:1px solid var(--border-soft,#E7DED3);border-radius:12px;padding:12px 14px 12px 50px;font-size:14.5px;line-height:1.45}
+.wc88-checks li:before{content:counter(c);position:absolute;left:12px;top:11px;width:26px;height:26px;border-radius:50%;background:var(--text-primary,#1F1A16);color:var(--surface,#fff);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.wc88-src2{margin:0;font-size:12.5px;color:var(--text-secondary,#6B5E52)}
+.wc88 button:focus-visible,.wc88 input:focus-visible{outline:3px solid var(--aspen-orange,#E54B25);outline-offset:2px}
+/* entry points */
+.dt85-entry .t88-wc-row{flex:0 0 46px;width:46px;min-width:46px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.t88-wc-row svg,.t88-wc-ic svg{color:var(--aspen-orange,#E54B25)}
+.t88-wc-ic{flex-shrink:0;width:44px;height:44px;border-radius:12px;border:1px solid var(--border-soft,#E7DED3);background:var(--surface,#fff);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.t88-wc{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;margin:8px 0 4px;padding:0 14px;border-radius:12px;border:1px solid var(--border-soft,#E7DED3);background:var(--surface,#fff);color:var(--text-primary,#1F1A16);font:700 15px inherit;cursor:pointer;text-align:left}
+.t88-wc span{flex:1}
+.t88-wc svg:first-child{color:var(--aspen-orange,#E54B25)}
+#gs88wc svg{flex-shrink:0}
+body.dt87 .tkt-hero-acts .t88-wcbtn{display:none}
+@media (prefers-reduced-motion:no-preference){.wc88.show .wc88-p{animation:wc88in .18s ease-out}}
+@keyframes wc88in{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+@media (min-width:761px){@keyframes wc88in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translateX(-50%)}}}
+
+/* ═══════════ BUILD 89 · dt89Ticket — the ticket in two sides ═══════════ */
+/* wider and a little taller window when the two sides are on (desktop) */
+@media (min-width:761px){
+body.dt84 #md.mdl-ticket.t89{width:min(1500px,calc(100vw - 64px))!important;max-width:none!important;max-height:94vh!important}
+}
+/* one band: the 5 steps inline + What's missing */
+#md.t89 .dt83-steps{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:8px 20px}
+#md.t89 .dt83-steprow{flex:0 1 auto;align-items:center;gap:0;overflow:visible;flex-wrap:wrap;row-gap:6px}
+#md.t89 .dt83-step{flex:0 0 auto;min-width:0;flex-direction:row;align-items:center;gap:6px;padding-left:34px;text-align:left}
+#md.t89 .dt83-step:first-child{padding-left:0}
+#md.t89 .dt83-step::before{top:50%;left:5px;width:22px;height:2px;margin-top:-1px}
+#md.t89 .dt83-step .dot{width:22px;height:22px;font-size:11px;flex-shrink:0}
+#md.t89 .dt83-step.cur .dot{box-shadow:0 0 0 3px color-mix(in srgb,var(--or87) 18%,transparent)}
+#md.t89 .dt83-step .l{font-size:13px}
+#md.t89 .dt83-step .s{font-size:12px;max-width:120px}
+#md.t89 .dt83-next-acts.t87-miss{flex:1 1 360px;margin:0;padding:6px 10px}
+/* the History button in the header (same look as Hold) */
+#md.t89 .tkt-hero-acts .t89-hbtn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+#md.t89 .tkt-hero-acts .t89-hbtn:hover{background:rgba(255,255,255,.14)}
+#md.t89 .tkt-hero-acts .t89-hbtn.on{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.6)}
+#md.t89 .tkt-hero-acts .t89-hbtn .n{min-width:18px;padding:0 6px;border-radius:999px;background:#F7F1E8;color:#18140F;font-size:12px;line-height:18px;text-align:center}
+#md.t89 .tkt-hero-acts .t89-hbtn:focus-visible{outline:3px solid var(--or87);outline-offset:2px}
+/* the file: banners on top, then the two sides */
+#md.t89 .dt84-file.t89f{display:flex;flex-direction:column;gap:14px;position:relative;padding:14px 16px 8px}
+#md.t89 .t89-ban{display:flex;flex-direction:column;gap:8px}
+#md.t89 .t89-side{display:flex;flex-direction:column;gap:14px;min-width:0}
+#md.t89 .t89-sh{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:0 4px}
+#md.t89 .t89-sh h3{margin:0;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--or87)}
+#md.t89 .t89-sh span{font-size:13.5px;color:var(--mute87)}
+@media (min-width:1100px){
+body.dt84 #md.mdl-ticket.t89{height:94vh}
+body.dt84 #md.t89>.dt84-file.t89f{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);align-items:stretch;gap:0 0;padding:0;overflow:hidden}
+#md.t89 .t89-ban{grid-column:1 / -1;grid-row:1;padding:12px 18px 0}
+#md.t89 .t89-side{grid-row:2;align-self:stretch;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 18px 20px;scrollbar-gutter:stable}
+#md.t89 .t89-cust{grid-column:1;border-right:1px solid var(--line87)}
+#md.t89 .t89-del{grid-column:2}
+}
+/* contact: name full width, email + phones side by side */
+#md.t89 .dt84-fc.who{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;align-items:start}
+#md.t89 .dt84-fc.who>h4,#md.t89 .dt84-fc.who>.t89-full{grid-column:1 / -1}
+/* address & site: fields left, map right */
+#md.t89 .t89-addr{display:flex;flex-wrap:wrap;gap:4px 16px}
+#md.t89 .t89-addr>h4{flex:1 1 100%}
+#md.t89 .t89-al{flex:1 1 260px;min-width:0}
+#md.t89 .t89-ar{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:8px}
+#md.t89 .t89-ar .sat{min-height:170px}
+/* what the customer sent: one card */
+#md.t89 .t89-sent-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 10px}
+#md.t89 .t89-sent-top>h4{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dt84-mute)}
+#md.t89 .t89-sent-top>h4 .ic{display:inline-flex;color:var(--or87)}
+#md.t89 .t89-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:700;background:var(--soft87);color:var(--mute87);border:1px solid var(--line87)}
+#md.t89 .t89-pill:empty{display:none}
+#md.t89 .t89-pill.ok{background:color-mix(in srgb,var(--ok87) 12%,var(--card87));color:color-mix(in srgb,var(--ok87) 70%,var(--ink87));border-color:color-mix(in srgb,var(--ok87) 30%,transparent)}
+#md.t89 .t89-pill.warn{background:color-mix(in srgb,var(--bad87) 10%,var(--card87));color:color-mix(in srgb,var(--bad87) 75%,var(--ink87));border-color:color-mix(in srgb,var(--bad87) 30%,transparent)}
+#md.t89 .t89-pill.wait{background:color-mix(in srgb,var(--warn87) 12%,var(--card87));color:color-mix(in srgb,var(--warn87) 45%,var(--ink87));border-color:color-mix(in srgb,var(--warn87) 30%,transparent)}
+#md.t89 .t89-tiles:empty{display:none}
+#md.t89 .t89-ans{margin:0 0 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+#md.t89 .t89-ans>div{background:var(--soft87);border-radius:10px;padding:8px 12px;min-width:0}
+#md.t89 .t89-ans dt{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mute87)}
+#md.t89 .t89-ans dd{margin:2px 0 0;font-size:14.5px;font-weight:700;color:var(--ink87);overflow-wrap:anywhere}
+#md.t89 .t89-sent .dt84-fc.t89-in{border:0!important;box-shadow:none!important;background:none!important;padding:0!important;border-radius:0!important}
+#md.t89 .t89-sent .dt84-fc.cphotos>h4{display:none}
+#md.t89 .t89-sent .dt84-fc.cphotos .pg{margin:0 0 10px}
+#md.t89 .t89-sent .t89-foot{margin-top:6px!important;padding-top:12px!important;border-top:1px solid var(--line87)!important}
+#md.t89 .t89-sent .t89-foot>h4.t89-lh{margin:0 0 6px;font-size:11px}
+/* the link box: its answers and photos are shown above, so they are not repeated here */
+#md.t89 .t89-sent .t89-foot .cs>.ct{display:none!important}
+#md.t89 .t89-sent .t89-foot .cs div[style*="line-height:1.6"]{display:none!important}
+#md.t89 .t89-sent .t89-foot .cs div[style*="--st-success"][style*="font-weight:700"]{display:none!important}
+/* compact grids inside the delivery cards */
+#md.t89 .t89-g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+#md.t89 .t89-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
+#md.t89 .t89-cs{gap:10px 14px;align-items:start}
+#md.t89 .t89-ags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+#md.t89 .t89-acc{margin-top:8px}
+/* the history drawer */
+#md.t89 .t89-hist{position:absolute;top:0;right:0;bottom:0;width:min(440px,100%);z-index:6;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px;background:var(--card87);border-left:1px solid var(--line87);box-shadow:-14px 0 32px rgba(26,20,16,.16);overflow-y:auto;overscroll-behavior:contain}
+#md.t89 .t89-hist[hidden]{display:none}
+#md.t89 .t89-hh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#md.t89 .t89-hh h3{margin:0;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink87)}
+#md.t89 .t89-hh h3 svg{color:var(--or87)}
+#md.t89 .t89-hx{width:40px;height:40px;border-radius:10px;border:1px solid var(--line87);background:var(--card87);color:var(--ink87);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+#md.t89 .t89-hx:focus-visible{outline:3px solid var(--or87);outline-offset:2px}
+#md.t89 .t89-hist .dt84-fc.tl{border:0!important;box-shadow:none!important;background:none!important;padding:0!important}
+#md.t89 .t89-hist .dt84-fc.tl>h4{display:none}
+@media (min-width:1100px){#md.t89 .t89-hist{grid-row:1 / -1}}
+@media (max-width:1099px){#md.t89 .t89-hist{position:fixed;top:0;bottom:0;right:0;width:min(440px,100vw);z-index:100000}}
+@media (max-width:620px){
+#md.t89 .t89-g3,#md.t89 .t89-g2,#md.t89 .t89-ags,#md.t89 .dt84-fc.who{grid-template-columns:minmax(0,1fr)}
+#md.t89 .dt83-steprow{gap:6px 14px}
+#md.t89 .dt83-step{padding-left:0}
+#md.t89 .dt83-step::before{display:none}
+}
+@media (prefers-reduced-motion:no-preference){#md.t89 .t89-hist:not([hidden]){animation:t89in .18s var(--ease87,ease-out)}}
+@keyframes t89in{from{transform:translateX(16px);opacity:.4}to{transform:none;opacity:1}}
+
 </style>
 <script id="dt84Core">
 /* ═══════════════════════════════════════════════════════════════════════
@@ -17296,6 +17486,556 @@ var ac=td.querySelector('.tech-addr-card');if(ac)ac.classList.add('t87-addr')};
 wrap('techOpenDetail',function(id){try{T.detail(id)}catch(e){console.warn('[dt87] tech detail',e)}});
 console.log('%c[BUILD 87] dt87Tech ready','color:#fff;background:#E54B25;padding:2px 6px;border-radius:3px');
 }catch(e){console.error('[dt87Tech] failed to start — the tech view keeps its build 86 look',e)}})();
+
+</script>
+<script id="dt87Docs">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 87.3-87.4 · Email PW: water-care documents by Start Up
+   @ease ............ 2025 start-up (as before) + 2026 Quick Reference Guide + Tutorial for Beginners
+   chlorine ......... 2026 Quick Reference Guide + Tutorial for Beginners
+                      (any Start Up option with "chlor" or "cloro"; the office adds it as a custom option)
+   Blu Fusion ....... First-2-Weeks start-up (hot tub OR swim spa version) + salt system flow chart
+                      + conductivity test + Tru Blu dosage chart. The 2023 start-up is no longer sent.
+   The new files live in pdf-assets-extra.js (next to index.html), loaded with ?v=<APP_BUILD>
+   so a phone never uses an old copy. Delete this block to go back to build 87.2.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D7=window.dt87Docs={};
+D7.EASE=['2026_ease_Quick_Reference_Guide.pdf','2026_ease_Tutorial_for_Beginners.pdf'];
+D7.BLU_OLD=['2024_Blu_Fusion_Conductivity_Test.pdf','2023_Salt_System_Flow_Chart.pdf','2023_Blu_Fusion_Start_Up.pdf'];
+D7.blu=function(swim){return [swim?'Swim_Spa_Start_Up_-_BluFusion_-_First_2_Weeks.pdf':'Hot_Tub_Start_Up_-_BluFusion_-_First_2_Weeks.pdf',
+'2023_Salt_System_Flow_Chart.pdf','2024_Blu_Fusion_Conductivity_Test.pdf','Tru_Blu_Dosage_Chart.pdf']};
+D7.ready=new Promise(function(res){D7._done=res});
+D7.load=function(){if(window.ASPEN_PDF_EXTRA_LOADED){D7._done(true);return}if(document.getElementById('pdfExtra87'))return;
+var s=document.createElement('script');s.id='pdfExtra87';s.async=true;
+s.src='pdf-assets-extra.js?v='+encodeURIComponent(typeof APP_BUILD!=='undefined'?APP_BUILD:'0');
+s.onload=function(){D7._done(true)};
+s.onerror=function(){console.warn('[87 docs] pdf-assets-extra.js is not uploaded next to index.html');D7._done(false)};document.head.appendChild(s)};
+D7.load();
+D7.isChlorine=function(r){var su=String((r&&r.su)||'');return /chlor|cloro/i.test(su)&&!/@\s*ease|tru-?blu|blu\s*fusion|pristine|bromine/i.test(su)};
+var _san=window.emailPw_sanitizerSystem;
+if(typeof _san==='function')window.emailPw_sanitizerSystem=function(r){if(D7.isChlorine(r))return 'chlorine';return _san.apply(this,arguments)};
+function pdf(n){return {name:n,source:'asset',mime:'application/pdf'}}
+var _list=window.emailPw_buildAttachmentList;
+if(typeof _list==='function')window.emailPw_buildAttachmentList=function(r){var list=_list.apply(this,arguments);var s=window.emailPw_sanitizerSystem(r);
+if(s==='ease'||s==='chlorine')D7.EASE.forEach(function(n){if(!list.some(function(a){return a.name===n}))list.push(pdf(n))});
+else if(s==='blufusion'){list=list.filter(function(a){return !(a.source==='asset'&&D7.BLU_OLD.indexOf(a.name)>=0)});
+D7.blu(typeof emailPw_isSwim==='function'&&emailPw_isSwim(r)).forEach(function(n){list.push(pdf(n))})}
+return list};
+var _body=window.emailPw_defaultBody;
+if(typeof _body==='function')window.emailPw_defaultBody=function(r){var b=_body.apply(this,arguments);var s=window.emailPw_sanitizerSystem(r);
+if(s==='ease')b=b.replace(/(  • Start-up and water chemistry guide for your [^\n]*\n)/,'$1  • @ease Quick Reference Guide and Water Chemistry Guide for Beginners\n');
+else if(s==='chlorine')b=b.replace(/  • Start-up and water chemistry guide for your [^\n]*\n/,'  • Water chemistry Quick Reference Guide and Guide for Beginners\n');
+else if(s==='blufusion')b=b.replace(/  • Start-up and water chemistry guide for your [^\n]*\n/,'  • Blu Fusion start-up guide for your first two weeks\n  • Salt system flow chart, conductivity test and Tru Blu dosage chart\n');
+return b};
+/* a missing new file names pdf-assets-extra.js, not pdf-assets.js */
+D7.NEW=D7.EASE.concat(['Hot_Tub_Start_Up_-_BluFusion_-_First_2_Weeks.pdf','Swim_Spa_Start_Up_-_BluFusion_-_First_2_Weeks.pdf','Tru_Blu_Dosage_Chart.pdf']);
+var _fetch=window.emailPw_fetchAssetBase64;
+if(typeof _fetch==='function')window.emailPw_fetchAssetBase64=function(n){var self=this,args=arguments,has=function(){return !!(window.ASPEN_PDF_LIBRARY&&window.ASPEN_PDF_LIBRARY[n])};
+if(D7.NEW.indexOf(n)<0||has())return _fetch.apply(self,args);
+/* still downloading (slow signal): wait for it, up to 20 s */
+return Promise.race([D7.ready,new Promise(function(r){setTimeout(r,20000)})]).then(function(){if(has())return _fetch.apply(self,args);
+throw new Error('missing: upload pdf-assets-extra.js next to index.html')})};
+var _modal=window.openEmailPwModal;
+if(typeof _modal==='function')window.openEmailPwModal=function(r){var out=_modal.apply(this,arguments);
+try{if(window.emailPw_sanitizerSystem(r)==='chlorine'){var md=document.getElementById('md');
+Array.prototype.forEach.call(md?md.querySelectorAll('span'):[],function(sp){if(sp.textContent==='Water care: '&&sp.nextElementSibling)sp.nextElementSibling.textContent='Chlorine'})}}catch(e){}
+return out};
+}catch(e){console.warn('[87 docs]',e)}})();
+
+</script>
+<script id="dt88Water">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 88 · Water Care Guide (Guía del agua)
+   A step-by-step guide to balance a tub's water for FROG @ease, Blu Fusion and
+   Pristine Blue, by spa or swim spa and the model's gallons. Bilingual ES/EN.
+   In the technician view (home + ticket) and in the office desktop (sidebar,
+   ⌘K, the ticket's ⋯ menu). Every number comes from an Aspen guide (the newest
+   one of each system) or from the ProTeam doses of the TECH-TICKETS Water
+   Balance tool; each step says which. Delete this block to go back to build 87.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var W=window.WC88={};
+function T(es,en){return {es:es,en:en}}
+W.lang=null;
+function lg(){return W.lang||(typeof APP_LANG!=='undefined'?APP_LANG:'en')}
+function L(o){if(o==null)return '';if(typeof o!=='object')return String(o);return lg()==='es'?o.es:o.en}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
+/* ───────────── models and gallons (Max Spa Volume, from the Water Balance tool) ───────────── */
+W.MODELS=[
+{k:'Arcadia',g:525,u:'spa',grp:T("8' · 6 a 7 personas","8' · 6 to 7 people")},
+{k:'Pinnacle',g:525,u:'spa',grp:T("8' · 6 a 7 personas","8' · 6 to 7 people")},
+{k:'Alpine',g:475,u:'spa',grp:T("8' · 6 a 7 personas","8' · 6 to 7 people")},
+{k:'Monarch',g:425,u:'spa',grp:T("7' · 5 a 6 personas","7' · 5 to 6 people")},
+{k:'Eldorado',g:425,u:'spa',grp:T("7' · 5 a 6 personas","7' · 5 to 6 people")},
+{k:'Pioneer',g:300,u:'spa',grp:T('Pequeños · 4 a 5 personas','Small · 4 to 5 people')},
+{k:'Quattro',g:300,u:'spa',grp:T('Pequeños · 4 a 5 personas','Small · 4 to 5 people')},
+{k:'Colorado',g:300,u:'spa',grp:T('Pequeños · 4 a 5 personas','Small · 4 to 5 people')},
+{k:'Cassian',g:null,u:'spa',grp:T('Luxe','Luxe')},
+{k:'Avalanche',g:null,u:'spa',grp:T('Luxe','Luxe')},
+{k:'13 PARTY',g:1625,u:'swim',grp:T('Swim spas','Swim spas'),lb:"13' Swim / Party"},
+{k:'16 SWIM',g:2000,u:'swim',grp:T('Swim spas','Swim spas'),lb:"16' Swim"}];
+function modelOf(sp){var s=String(sp||'').trim().toLowerCase().replace(/\s+/g,' ');if(!s)return null;
+for(var i=0;i<W.MODELS.length;i++){var k=W.MODELS[i].k.toLowerCase();if(s===k||s.indexOf(k+',')===0||s.indexOf(k+' ')===0)return W.MODELS[i]}return null}
+W.modelOf=modelOf;
+W.galFor=function(sp){var m=modelOf(sp);return m?m.g:null};
+W.unitFor=function(sp){var m=modelOf(sp);if(m)return m.u;return /swim|party/i.test(String(sp||''))?'swim':'spa'};
+W.sysFor=function(r){var s=null;try{s=typeof emailPw_sanitizerSystem==='function'?emailPw_sanitizerSystem(r||{}):null}catch(e){}
+return s==='ease'?'ease':s==='blufusion'?'blu':s==='pristine'?'pristine':null};
+
+/* ───────────── doses (ProTeam rules copied from the Water Balance tool) ───────────── */
+function frac(n){var w=Math.floor(n+1e-9),r=Math.round((n-w)*4)/4,f={0:'',0.25:'¼',0.5:'½',0.75:'¾'}[r];if(r===1){w++;f=''}
+return w===0?(f||'0'):(f?w+' '+f:''+w)}
+function fracT(n){var w=Math.floor(n+1e-9),r=Math.round((n-w)*2)/2;if(r===1){w++;r=0}return (w?String(w):'')+(r?'½':'')||'0'}
+function oz(o){var q=Math.round(o*4)/4;if(q<0.25)q=0.25;var t=fracT(q*2);return {q:q,es:frac(q)+' oz ('+t+(q*2<=1?' cda':' cdas')+')',en:frac(q)+' oz ('+t+' Tbsp)',short:frac(q)+' oz'}}
+W.oz=oz;
+function lb(x){return (Math.round(x*10)/10).toFixed(1).replace(/\.0$/,'')+' lb'}
+W.truBlu=function(gal,ppm){return gal/100*1.2*Math.max(0,1750-ppm)/1750};
+
+/* ───────────── each system's numbers (the newest Aspen guide of each one) ───────────── */
+var G={
+ease:T('Guía rápida @ease 2026','2026 @ease Quick Reference Guide'),
+easeS:T('Arranque @ease 2025','2025 @ease Water Chemistry Start Up'),
+bluSpa:T('Guía Blu Fusion de spa, primeras 2 semanas','Blu Fusion hot tub guide, first 2 weeks'),
+bluSwim:T('Guía Blu Fusion de swim spa, primeras 2 semanas','Blu Fusion swim spa guide, first 2 weeks'),
+flow:T('Flow Chart de Blu Fusion','Blu Fusion Flow Chart'),
+cond:T('Prueba de conductividad Blu Fusion','Blu Fusion Conductivity Test'),
+chart:T('Tabla de dosis Tru Blu','Tru Blu Dosage Chart'),
+pb:T('Guía Pristine Blue de swim spa','Pristine Blue swim spa guide'),
+pro:T('ProTeam (Water Balance)','ProTeam (Water Balance)')};
+W.G=G;
+var LBL={ph:T('pH','pH'),alk:T('Alcalinidad','Alkalinity'),hard:T('Dureza','Hardness'),br:T('Bromo','Bromine'),salt:T('Sal (panel)','Salt (panel)')};
+var R={
+ease:{ph:[7.2,7.8],alk:[80,120],hard:[150,400]},
+blu:{ph:[7.2,7.6],alk:[80,120],hard:[150,250],br:[2,6],salt:[1600,1700]},
+pristine:{ph:[7.2,7.6],alk:[50,90],hard:[100,400]}};
+W.SYS={
+ease:{name:'FROG @ease',d:T('Cartucho mineral (azul) + SmartChlor (gris). Desinfecta con cloro.','Mineral cartridge (blue) + SmartChlor (grey). Sanitizes with chlorine.'),strips:T('Tiras: las de la caja @ease','Strips: the ones in the @ease box'),wait:T('Espera 30 min con las bombas prendidas y vuelve a medir','Wait 30 min with the pumps on and test again'),waitSrc:G.pro},
+blu:{name:'Blu Fusion',d:T('Sal Tru Blu en el agua; la celda genera bromo.','Tru Blu salt in the water; the cell makes bromine.'),strips:T('Tiras: Insta-Test (bote rojo) + la sal del panel','Strips: Insta-Test (red bottle) + the salt on the panel'),wait:T('Espera 3–4 h y vuelve a medir','Wait 3–4 h and test again')},
+pristine:{name:'Pristine Blue',d:T('Pristine Blue + Di-Chlor (Pristine Extra) y shock sin cloro.','Pristine Blue + Di-Chlor (Pristine Extra) and non-chlorine shock.'),strips:T('Tiras: 5-in-1 + el kit de 2 partes de Pristine','Strips: 5-in-1 + the Pristine 2-part test kit'),wait:T('Deja circular unas 4 h y vuelve a medir','Let it circulate about 4 h and test again')}};
+W.engine={};
+W.engine.ranges=function(sys){var r=R[sys]||{},o={};Object.keys(r).forEach(function(k){o[k]={lo:r[k][0],hi:r[k][1],label:LBL[k],unit:k==='ph'?'':'ppm'}});return o};
+function guide(sys,unit){return sys==='ease'?G.ease:sys==='pristine'?G.pb:(unit==='swim'?G.bluSwim:G.bluSpa)}
+function num(v){if(v===''||v==null)return null;var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n}
+function rng(lo,hi,u){return lo+'–'+hi+(u?' '+u:'')}
+
+/* status of one reading, for the chips on the readings screen */
+W.engine.status=function(sys,k,v){var n=num(v);if(n===null)return null;var r=(R[sys]||{})[k];
+if(k==='salt'){if(n<1500)return {s:'warn',t:T('Bajo · meta 1600–1700 ppm','Low · target 1600–1700 ppm')};if(n>2500)return {s:'bad',t:T('Muy alto · más de 2500','Too high · over 2500')};
+if(n>1700)return {s:'ok',t:T('Un poco alto · no eches sal','A bit high · add no salt')};if(n<1600)return {s:'ok',t:T('Bien · solo se echa sal debajo de 1500','OK · add salt only under 1500')};return {s:'ok',t:T('Bien · 1600–1700 ppm','OK · 1600–1700 ppm')}}
+if(!r)return null;var u=k==='ph'?'':'ppm';
+if(n<r[0])return {s:'warn',t:T('Bajo · meta '+rng(r[0],r[1],u),'Low · target '+rng(r[0],r[1],u))};
+if(n>r[1])return {s:k==='ph'&&n<=8.0?'warn':'bad',t:T('Alto · meta '+rng(r[0],r[1],u),'High · target '+rng(r[0],r[1],u))};
+return {s:'ok',t:T('Bien · '+rng(r[0],r[1],u),'OK · '+rng(r[0],r[1],u))}};
+
+/* ───────────── the plan: readings → steps in order ───────────── */
+W.engine.plan=function(sys,unit,gal,rd){rd=rd||{};var r=R[sys]||R.blu,g=parseFloat(gal),hasG=g>0,swim=unit==='swim',gd=guide(sys,unit),wt=(W.SYS[sys]||W.SYS.blu).wait;
+var steps=[],ph=num(rd.ph),alk=num(rd.alk),hard=num(rd.hard),br=num(rd.br),salt=num(rd.salt);
+var src=function(extra){return T('Dosis: ProTeam · meta: '+gd.es+(extra?' · '+extra.es:''),'Dose: ProTeam · target: '+gd.en+(extra?' · '+extra.en:''))};
+var phS=null,alkS=null;
+if(ph!==null&&(ph<r.ph[0]||ph>r.ph[1])){
+ if(ph<r.ph[0]){var m=ph<6.8?2:1,d=oz(g/500*1*m);
+  phS={k:'ph',sev:'warn',title:T('Sube el pH a '+rng(r.ph[0],r.ph[1]),'Raise the pH to '+rng(r.ph[0],r.ph[1])),dose:hasG?T('pH Increaser · '+d.es,'pH Increaser · '+d.en):null,
+  why:T((m===2?'pH muy bajo: dosis doble. ':'')+'Con las bombas prendidas y la tapa abierta. Si no llega, repite.',(m===2?'Very low pH: double dose. ':'')+'With the pumps on and the cover off. Repeat if it does not get there.'),src:src()}}
+ else{var m2=ph>8.0?2:1,d2=oz(g/500*0.25*m2),am=swim&&sys==='blu';
+  phS={k:'ph',sev:ph>8.0?'bad':'warn',title:T('Baja el pH a '+rng(r.ph[0],r.ph[1]),'Lower the pH to '+rng(r.ph[0],r.ph[1])),
+  dose:hasG?(am?T('Acid Magic, diluido en una cubeta de 1 galón (la guía no da la cantidad: sigue la etiqueta)','Acid Magic, diluted in a 1-gallon bucket (the guide gives no amount: follow the label)'):T('pH Decreaser · '+d2.es,'pH Decreaser · '+d2.en)):null,
+  why:T((m2===2?'pH muy alto: dosis doble. ':'')+(sys==='blu'?'La tira solo lee hasta 9.0: si no se mueve, sigue bajándolo hasta 7.2. ':'')+'Con las bombas prendidas y la tapa abierta.',(m2===2?'Very high pH: double dose. ':'')+(sys==='blu'?'The strip only reads up to 9.0: if it does not move, keep lowering it to 7.2. ':'')+'With the pumps on and the cover off.'),
+  src:am?T(gd.es+', día 2',gd.en+', day 2'):src()}}
+ phS.wait=wt}
+if(alk!==null&&(alk<r.alk[0]||alk>r.alk[1])){
+ if(alk<r.alk[0]){var need=r.alk[0]-alk,d3=oz(need/10*(g/200)*0.5);
+  alkS={k:'alk',sev:'warn',title:T('Sube la alcalinidad a '+r.alk[0]+' ppm','Raise the alkalinity to '+r.alk[0]+' ppm'),dose:hasG?T('Alkalinity Up · '+d3.es,'Alkalinity Up · '+d3.en):null,
+  why:T('De '+alk+' a '+r.alk[0]+' ppm. Échalo con las bombas prendidas.','From '+alk+' to '+r.alk[0]+' ppm. Add it with the pumps on.'),src:src()}}
+ else alkS={k:'alk',sev:'bad',title:T('Baja la alcalinidad a '+r.alk[1]+' ppm o menos','Lower the alkalinity to '+r.alk[1]+' ppm or less'),dose:null,
+  why:T('No hay producto que la baje directo: usa pH Decreaser (o Acid Magic) en dosis pequeñas, o drena un poco y rellena.','No product lowers it directly: use pH Decreaser (or Acid Magic) in small doses, or partly drain and refill.'),src:T('Meta: '+gd.es,'Target: '+gd.en)};
+ alkS.wait=wt}
+/* order: with pH high and alkalinity low, pH first; otherwise alkalinity first (Blu Fusion guide, day 2) */
+if(phS&&alkS&&ph>r.ph[1]&&alk<r.alk[0]){phS.why=T('pH alto con alcalinidad baja: primero el pH, después la alcalinidad. '+phS.why.es,'High pH with low alkalinity: pH first, then alkalinity. '+phS.why.en);steps.push(phS,alkS)}
+else{if(alkS)steps.push(alkS);if(phS)steps.push(phS)}
+if(hard!==null&&(hard<r.hard[0]||hard>r.hard[1])){
+ if(hard<r.hard[0]){var d4=oz((r.hard[0]-hard)/10*(g/500)*1);steps.push({k:'hard',sev:'warn',title:T('Sube la dureza a '+r.hard[0]+' ppm','Raise the hardness to '+r.hard[0]+' ppm'),dose:hasG?T('Calcium Up · '+d4.es,'Calcium Up · '+d4.en):null,
+  why:T('Con dureza baja el agua corroe. Échalo con las bombas prendidas.','Low hardness makes the water corrosive. Add it with the pumps on.'),src:src()})}
+ else steps.push({k:'hard',sev:'bad',title:T('La dureza está alta','The hardness is high'),dose:null,why:T('No se baja con químico: drena un poco y rellena con agua más blanda, con el prefiltro Marvel X10.','No chemical lowers it: partly drain and refill with softer water, through the Marvel X10 prefilter.'),src:T('Meta: '+gd.es,'Target: '+gd.en)})}
+if(sys==='blu'){
+ if(rd.phos==='yes')steps.push({k:'phos',sev:'warn',title:T('Quita los fosfatos','Remove the phosphates'),dose:T(swim?'Phos-Away Quart · 4 oz (o Pint: 1 a 3 botellas)':'Phos-Away Quart · 1 oz (o Pint: ½ a 1 botella)',swim?'Phos-Away Quart · 4 oz (or Pint: 1 to 3 bottles)':'Phos-Away Quart · 1 oz (or Pint: ½ to 1 bottle)'),
+  why:T('Tienen que quedar en 0; "bajo" no sirve. El agua puede verse turbia 1 a 3 días.','They must be 0; "low" is not good enough. The water may look cloudy for 1 to 3 days.'),src:T(gd.es+', día 1',gd.en+', day 1')});
+ if(salt!==null&&salt<1500)steps.push({k:'salt',sev:'warn',title:T('Sube la sal','Raise the salt'),dose:hasG?T('Tru Blu · '+lb(W.truBlu(g,salt)),'Tru Blu · '+lb(W.truBlu(g,salt))):null,
+  why:T('Con '+salt+' ppm. Échala con todas las bombas prendidas. Solo se echa sal si está debajo de 1500.','At '+salt+' ppm. Add it with all pumps on. Add salt only when it is under 1500.'),src:G.chart});
+ else if(salt!==null&&salt>2500)steps.push({k:'salt',sev:'bad',title:T('Demasiada sal: drena una parte y rellena','Too much salt: drain part and refill'),dose:null,
+  why:T('Arriba de 2500 ppm la celda no trabaja.','Over 2500 ppm the cell does not work.'),src:G.flow});
+ if(br!==null){var out=swim?8:5,tt,dd,ww,sv;
+  if(br<2){sv='warn';tt=T('Bromo bajo: revisa la salida del Blu Fusion','Low bromine: check the Blu Fusion output');dd=T('Salida: '+out+' al arranque; súbela 1 o 2 puntos si se usa mucho','Output: '+out+' at start-up; raise it 1 or 2 points with heavy use');
+   ww=T('Primero pH, alcalinidad, sal y fosfatos en rango. La celda tarda 24–48 h en empezar y 7–10 días en estabilizarse. Mide cada 2 días; meta 2–6 ppm.','First get pH, alkalinity, salt and phosphates in range. The cell takes 24–48 h to start and 7–10 days to settle. Test every 2 days; target 2–6 ppm.')}
+  else if(br>6){sv='warn';tt=T('Bromo alto: baja la salida','High bromine: lower the output');dd=T('Baja la salida 1 o 2 puntos','Lower the output 1 or 2 points');ww=T('Si casi no se usa, o con bomba de circulación de 24 h, baja la salida. Meta 2–6 ppm.','With little use, or with a 24-hour circulation pump, lower the output. Target 2–6 ppm.')}
+  else{sv='ok';tt=T('Bromo bien ('+br+' ppm)','Bromine OK ('+br+' ppm)');dd=T('Salida: '+out+' al arranque; ajústala 1 o 2 puntos según el uso','Output: '+out+' at start-up; adjust it 1 or 2 points to the use');ww=T('Meta 2–6 ppm. Antes de una fiesta, súbelo a 6.','Target 2–6 ppm. Before a party, raise it to 6.')}
+  steps.push({k:'output',sev:sv,title:tt,dose:dd,why:ww,src:T(gd.es+', día 3 · '+G.flow.es,gd.en+', day 3 · '+G.flow.en)})}}
+if(sys==='ease'&&(rd.clear===true||rd.clear===false||rd.product===true||rd.product===false)){var bal=!phS&&!alkS;
+ if(rd.product===false)steps.push({k:'smartchlor',sev:'warn',title:T('Cambia el cartucho SmartChlor (gris)','Replace the SmartChlor cartridge (grey)'),dose:null,why:T('Dura 3–4 semanas. El dial va en 1 en todas las tinas. Después de 4 SmartChlor, drena y cambia también el mineral (azul).','It lasts 3–4 weeks. The dial goes on 1 for every tub. After 4 SmartChlor, drain and replace the mineral (blue) too.'),src:G.ease});
+ else if(rd.clear===false)steps.push({k:'smartchlor',sev:'warn',title:T('Agua turbia: echa Jump-Start','Cloudy water: add Jump-Start'),dose:T('Jump-Start · ½ oz','Jump-Start · ½ oz'),why:T('Con la tapa abierta y las bombas 20 min. Después de mucho uso también sirve Oxidizing Shock o Di-Chlor.','With the cover off and the pumps on for 20 min. After heavy use, Oxidizing Shock or Di-Chlor also work.'),src:G.easeS});
+ else steps.push({k:'smartchlor',sev:'ok',title:bal?T('Ignora la lectura de SmartChlor de la tira','Ignore the SmartChlor reading on the strip'):T('Después de balancear: ignora la lectura de SmartChlor','After balancing: ignore the SmartChlor reading'),dose:null,why:T('Con pH y alcalinidad en rango, el agua clara y producto en el cartucho gris, no hace falta echar nada más.','With pH and alkalinity in range, clear water and product left in the grey cartridge, nothing else is needed.'),src:G.ease})}
+if(!hasG)steps.forEach(function(s){s.dose=null});
+return {steps:steps,needGal:!hasG}};
+
+/* ───────────── start-up, day by day ───────────── */
+function S(day,k,title,dose,why,src){return {day:day,k:k,title:title,dose:dose||null,why:why||null,src:src}}
+function pbOz(o,g){var base=o+' oz';return g>0?T(base+' por cada 2,000 gal → '+oz(o*g/2000).es,base+' per 2,000 gal → '+oz(o*g/2000).en):T(base+' por cada 2,000 gal (escribe los galones)',base+' per 2,000 gal (type the gallons)')}
+W.engine.startup=function(sys,unit,gal){var g=parseFloat(gal)||0,swim=unit==='swim',out=[];
+var D1=T('Día 1','Day 1'),D2=T('Día 2','Day 2'),D3=T('Día 3','Day 3'),D45=T('Días 4 y 5','Days 4 and 5'),D610=T('Días 6 a 10','Days 6 to 10'),ON=T('Después','After that'),NX=T('Al día siguiente','The next day');
+if(sys==='ease'){
+ out.push(S(D1,'fill',T('Llena la tina completa antes de prenderla','Fill the tub completely before turning on the power'),null,T('Con agua de pozo o dura, usa el prefiltro Marvel X10 en la manguera.','With well or hard water, use the Marvel X10 prefilter on the hose.'),G.easeS));
+ out.push(S(D1,'balance',T('Balancea pH y alcalinidad','Balance pH and alkalinity'),T('pH 7.2–7.8 · alcalinidad 80–120 ppm · dureza 150–400 ppm','pH 7.2–7.8 · alkalinity 80–120 ppm · hardness 150–400 ppm'),T('Usa "Balancear con la tira" para las cantidades.','Use "Balance with the strip" for the amounts.'),G.ease));
+ out.push(S(D1,'jump',T('Echa Jump-Start','Add Jump-Start'),T('Jump-Start · ½ oz (¼ del sobre)','Jump-Start · ½ oz (¼ of the packet)'),T('Con las bombas prendidas y la tapa abierta.','With the pumps on and the cover off.'),G.easeS));
+ out.push(S(D1,'ball',T('Pon el @ease completo en el agua, con el dial en 1','Put the complete @ease in the water, dial on 1'),null,T('El dial va en 1 en todas las tinas, sin importar los galones. Trabaja con el agua a 94 °F o más.','The dial goes on 1 for every tub, whatever the gallons. It works with the water at 94 °F or warmer.'),G.easeS));
+ out.push(S(ON,'routine',T('Mide 2 veces por semana','Test twice a week'),T('SmartChlor (gris): 3–4 semanas · Mineral (azul): 3–4 meses, o después de 4 SmartChlor','SmartChlor (grey): 3–4 weeks · Mineral (blue): 3–4 months, or after 4 SmartChlor'),T('Enjuaga los filtros 2 veces al mes. Después de mucho uso, Oxidizing Shock o Di-Chlor.','Rinse the filters twice a month. After heavy use, Oxidizing Shock or Di-Chlor.'),G.ease))}
+else if(sys==='blu'){var gd=swim?G.bluSwim:G.bluSpa,big=g>1800;
+ var salt=swim?(big?24:19):(g===300?3.5:g===425?5:g===525?6:(g>0?Math.round(g/100*1.2*10)/10:null));
+ out.push(S(D1,'fill',T('Llena la tina','Fill the tub'),null,T(swim?'En swim spa, o con agua de pozo, conviene traer el agua en camión. Si no, usa el prefiltro Marvel X10.':'Con agua de pozo, conviene traer el agua en camión. Si no, usa el prefiltro Marvel X10.',swim?'For a swim spa, or with well water, have the water hauled in. Otherwise use the Marvel X10 prefilter.':'With well water, have the water hauled in. Otherwise use the Marvel X10 prefilter.'),gd));
+ out.push(S(D1,'temp',T('Pon el agua a 92 °F','Set the water to 92 °F'),null,null,gd));
+ out.push(S(D1,'metal',T('Atrapa los metales','Sequester the metals'),T('Haviland Salt Support Stain & Scale · '+(swim?(big?'3.5 oz':'2.5 oz'):'1 oz'),'Haviland Salt Support Stain & Scale · '+(swim?(big?'3.5 oz':'2.5 oz'):'1 oz')),T('Nunca uses uno con ácido fosfórico.','Never use one with phosphoric acid.'),gd));
+ out.push(S(D1,'phos',T('Fosfatos a 0','Phosphates to 0'),T('Sobre True Start; si hace falta, Phos-Away Quart '+(swim?'4 oz':'1 oz')+' (o Pint: '+(swim?'1 a 3 botellas':'½ a 1 botella')+')','True Start packet; if needed, Phos-Away Quart '+(swim?'4 oz':'1 oz')+' (or Pint: '+(swim?'1 to 3 bottles':'½ to 1 bottle')+')'),T('Mide el agua de la tina y la de la manguera con las tiras de fosfato (bote blanco alto).','Test the tub water and the hose water with the phosphate strips (tall white bottle).'),gd));
+ out.push(S(D1,'salt',T('Echa la sal cuando llegue a 92 °F','Add the salt once it reaches 92 °F'),salt!==null?T('Tru Blu · '+lb(salt),'Tru Blu · '+lb(salt)):T('Escribe los galones para la cantidad','Type the gallons for the amount'),T('Directo al agua, con todas las bombas prendidas.','Straight into the water, with all pumps on.'),(swim||g===300||g===425||g===525)?gd:G.chart));
+ out.push(S(D2,'balance',T('Balancea pH, alcalinidad y dureza','Balance pH, alkalinity and hardness'),T('pH 7.2–7.6 · alcalinidad 80 (hasta 120) · dureza 150–250 ppm','pH 7.2–7.6 · alkalinity 80 (up to 120) · hardness 150–250 ppm'),T('Con pH alto y alcalinidad baja, primero el pH; si no, primero la alcalinidad. Espera 3–4 h entre medidas.','With high pH and low alkalinity, pH first; otherwise alkalinity first. Wait 3–4 h between tests.'),gd));
+ if(!swim)out.push(S(D2,'shock',T('Arranca el bromo con Oxidizing Shock','Kick-start the bromine with Oxidizing Shock'),T('½ de Oxidizing Shock (la guía no dice la unidad)','½ of Oxidizing Shock (the guide gives no unit)'),T('Con la tapa abierta y las bombas prendidas; deja la tapa abierta 20 min.','With the cover off and the pumps on; leave the cover off for 20 min.'),gd));
+ out.push(S(D3,'output',T('Pon la salida del Blu Fusion en '+(swim?8:5),'Set the Blu Fusion output to '+(swim?8:5)),T('Bromo 2–6 ppm · mide cada 2 días','Bromine 2–6 ppm · test every 2 days'),T('La celda tarda 24–48 h en empezar y 7–10 días en estabilizarse.','The cell takes 24–48 h to start and 7–10 days to settle.'),gd));
+ out.push(S(D45,'filters',T('Enjuaga los filtros','Rinse the filters'),null,T('Pueden juntar lo del secuestrante y el removedor de fosfatos. Mide pH, alcalinidad, bromo y dureza.','They may collect the sequestrant and the phosphate remover. Test pH, alkalinity, bromine and hardness.'),gd));
+ out.push(S(D610,'check',T('Revisa sal, fosfatos y salida','Check salt, phosphates and output'),T('Sal 1600–1700 ppm · fosfatos 0','Salt 1600–1700 ppm · phosphates 0'),T('Si la usaron estos días, puede necesitar más salida.','If it was used these days, it may need more output.'),gd));
+ out.push(S(ON,'routine',T('De ahí en adelante','From then on'),T('pH, alcalinidad y dureza 2 veces por semana · sal y fosfatos 1 vez al mes','pH, alkalinity and hardness twice a week · salt and phosphates once a month'),T('Filtros: enjuagar 2 veces al mes y cambiar cada 12–18 meses. Celda: limpiar 1 vez al año con vinagre; dura 3 años. Agua: '+(swim?'hasta 3 años':'hasta 1 año')+'.','Filters: rinse twice a month, replace every 12–18 months. Cell: clean yearly with vinegar; it lasts 3 years. Water: '+(swim?'up to 3 years':'up to 1 year')+'.'),gd))}
+else if(sys==='pristine'){var gd2=G.pb;
+ if(g!==2000)out.push(S(D1,'scale',T(g>0?'Cantidades ajustadas a '+g+' gal':'Escribe los galones para ajustar las cantidades',g>0?'Amounts adjusted to '+g+' gal':'Type the gallons to adjust the amounts'),null,T('La guía de Pristine Blue da las dosis para un swim spa de 2,000 gal.','The Pristine Blue guide gives the doses for a 2,000-gal swim spa.'),gd2));
+ out.push(S(D1,'fill',T('Llena la tina','Fill the tub'),null,T('Con agua dura o de pozo, usa el prefiltro X10.','With hard or well water, use the X10 prefilter.'),gd2));
+ out.push(S(D1,'balance',T('Balancea con las tiras 5-in-1','Balance with the 5-in-1 strips'),T('Dureza 100–400 · alcalinidad 50–90 · pH 7.2–7.6','Hardness 100–400 · alkalinity 50–90 · pH 7.2–7.6'),null,gd2));
+ out.push(S(D1,'chlor',T('Echa Di-Chlor o Pristine Extra','Add Di-Chlor or Pristine Extra'),pbOz(4,g),T('Deja circular unas 4 h.','Let it circulate about 4 h.'),gd2));
+ out.push(S(NX,'pristine',T('Limpia los filtros y echa los 5 productos','Clean the filters and add the 5 products'),pbOz(4,g),T('De cada uno: Pristine Check (atrapa el calcio), Pristine Power (shock sin cloro), Pristine Extra (Di-Chlor), Pristine Clean (contra el sarro) y Pristine Blue (alguicida). Deja circular varias horas.','Of each: Pristine Check (holds calcium), Pristine Power (non-chlorine shock), Pristine Extra (Di-Chlor), Pristine Clean (scale inhibitor) and Pristine Blue (algaecide). Let it circulate for several hours.'),gd2));
+ out.push(S(ON,'routine',T('Cada 2 semanas','Every 2 weeks'),pbOz(2,g),T('De Pristine Extra / Di-Chlor y de shock sin cloro (MPS). Mide pH y alcalinidad, y el Pristine Blue con el kit de 2 partes y su calculador deslizante. 1 fl oz = 30 ml.','Of Pristine Extra / Di-Chlor and of non-chlorine shock (MPS). Test pH and alkalinity, and the Pristine Blue with the 2-part kit and its sliding calculator. 1 fl oz = 30 ml.'),gd2))}
+return out};
+
+/* ───────────── problems: ordered checks ───────────── */
+W.engine.problems=function(sys){
+if(sys==='blu')return [
+{k:'br_low',title:T('El bromo está bajo','The bromine is low'),checks:[
+T('¿pH y alcalinidad en rango? Si no, la celda no rinde: arréglalos primero.','pH and alkalinity in range? If not, the cell will not keep up: fix them first.'),
+T('¿Sal entre 1600 y 1700 ppm? Solo se echa sal debajo de 1500. Más sal no da más bromo.','Salt between 1600 and 1700 ppm? Add salt only under 1500. More salt does not make more bromine.'),
+T('¿Fosfatos en 0? Cualquier lectura arriba de 0 no sirve.','Phosphates at 0? Any reading above 0 is not good enough.'),
+T('¿La salida es la correcta? Con mucho uso, súbela 1 o 2 puntos. Antes de una fiesta, sube el bromo a 6.','Is the output right? With heavy use, raise it 1 or 2 points. Before a party, raise the bromine to 6.'),
+T('¿El panel está apagado? Es normal fuera de los ciclos de filtro: la celda solo trabaja mientras filtra.','Is the panel off? Normal outside the filter cycles: the cell only works while it filters.'),
+T('Prueba de conductividad: desbloquea el panel, deja apretados + y − juntos 5 segundos y lee el número. De 1.0 a 1.4 (ideal 1.2) la celda está bien y el problema es el agua. Fuera de ese rango, revisa la celda.','Conductivity test: unlock the panel, hold + and − together for 5 seconds and read the number. From 1.0 to 1.4 (1.2 is ideal) the cell is fine and the problem is the water. Outside that range, check the cell.')],
+src:T('Preguntas de la guía Blu Fusion · Flow Chart · Prueba de conductividad','Blu Fusion guide FAQ · Flow Chart · Conductivity Test')},
+{k:'panel_off',title:T('El panel de sal está apagado','The salt panel is off'),checks:[T('Es normal: el sistema va con los ciclos de filtro. Si filtra 2 ciclos de 4 h, solo genera esas 8 h y fuera de ellas no muestra nada.','That is normal: the system runs with the filter cycles. With 2 cycles of 4 h it only generates during those 8 h and shows nothing outside them.')],src:T('Preguntas de la guía Blu Fusion','Blu Fusion guide FAQ')},
+{k:'ph_stuck',title:T('El pH o la alcalinidad no bajan','The pH or alkalinity will not come down'),checks:[
+T('La tira solo lee el pH hasta 9.0. El pH real puede ser más alto: lo que echas sí trabaja aunque la tira no cambie. Sigue bajándolo hasta 7.2.','The strip only reads pH up to 9.0. The real pH may be higher: what you add is working even if the strip does not change. Keep lowering it to 7.2.'),
+T('Espera 3–4 h entre medidas.','Wait 3–4 h between tests.'),
+T('En swim spa o con agua de pozo usa Acid Magic en lugar de pH Decreaser, diluido en una cubeta de 1 galón.','On a swim spa or with well water, use Acid Magic instead of pH Decreaser, diluted in a 1-gallon bucket.'),
+T('Con pH alto y alcalinidad baja, baja primero el pH.','With high pH and low alkalinity, lower the pH first.')],src:T('Guía Blu Fusion, día 2','Blu Fusion guide, day 2')},
+{k:'cloudy',title:T('Agua turbia después de Phos-Away','Cloudy water after Phos-Away'),checks:[
+T('Es normal un día o algo así. Los fosfatos tardan 1 a 3 días en salir.','It is normal for a day or so. Phosphates take 1 to 3 days to clear.'),
+T('A veces sale una mancha negra en la línea del agua y los filtros se oscurecen.','Sometimes a black ring shows at the water line and the filters darken.'),
+T('Enjuaga los filtros con la manguera.','Rinse the filters with the hose.')],src:T('Guía Blu Fusion, días 1 a 5','Blu Fusion guide, days 1 to 5')},
+{k:'party',title:T('Van a usarla mucho (fiesta)','Heavy use coming (a party)'),checks:[
+T('Antes: sube el bromo a 6.','Before: raise the bromine to 6.'),
+T('Después: ¼ a ½ oz de Oxidizing Shock (Shock and Swim) cuando salgan todos.','After: ¼ to ½ oz of Oxidizing Shock (Shock and Swim) once everyone is out.')],src:T('Preguntas de la guía Blu Fusion','Blu Fusion guide FAQ')},
+{k:'water',title:T('¿Cuándo cambiar el agua y la celda?','When to change the water and the cell?'),checks:[
+T('Agua: spa hasta 1 año; swim spa hasta 3 años, según el uso.','Water: spa up to 1 year; swim spa up to 3 years, depending on use.'),
+T('Celda: limpiarla 1 vez al año con vinagre y agua. Se cambia cada 3 años (tiene 3 años de garantía).','Cell: clean it once a year with vinegar and water. Replace it every 3 years (3-year warranty).'),
+T('El pH en 7.2–7.6 es lo que más la cuida.','Keeping pH at 7.2–7.6 is what protects it most.')],src:T('Preguntas de la guía Blu Fusion','Blu Fusion guide FAQ')}];
+if(sys==='ease')return [
+{k:'flipped',title:T('El @ease se volteó','The @ease flipped over'),checks:[
+T('Se voltea cuando está vacío y también cuando solo está bajo.','It flips when it is empty and also when it is only low.'),
+T('Separa la mitad azul de la gris, deja salir el agua y sacude la gris.','Separate the blue and grey halves, let the water drain and shake the grey one.'),
+T('Si suena o se siente producto, déjalo trabajar. Si está vacía, cambia el SmartChlor.','If you hear or feel product, keep it going. If it is empty, replace the SmartChlor.')],src:G.easeS},
+{k:'strip_low',title:T('La tira marca SmartChlor bajo','The strip shows low SmartChlor'),checks:[
+T('Si el pH y la alcalinidad están bien, el agua está clara y el cartucho gris todavía tiene producto, ignora esa lectura.','If pH and alkalinity are right, the water is clear and the grey cartridge still has product, ignore that reading.')],src:G.ease},
+{k:'cloudy',title:T('Agua turbia o después de mucho uso','Cloudy water or after heavy use'),checks:[
+T('Jump-Start ½ oz, Oxidizing Shock o Di-Chlor, con la tapa abierta y las bombas 20 min.','Jump-Start ½ oz, Oxidizing Shock or Di-Chlor, with the cover off and the pumps on for 20 min.'),
+T('Sky Blue Clarifier unos días antes de limpiar los filtros.','Sky Blue Clarifier a few days before cleaning the filters.'),
+T('Enjuaga los filtros 2 veces al mes.','Rinse the filters twice a month.')],src:G.easeS},
+{k:'cold',title:T('El agua está fría','The water is cold'),checks:[T('El @ease trabaja con el agua a 94 °F o más.','The @ease works with the water at 94 °F or warmer.')],src:G.ease},
+{k:'foam',title:T('Espuma','Foam'),checks:[T('Foam Fighter la quita rápido, pero solo por un rato.','Foam Fighter removes it fast, but only for a while.'),T('Para grasa y la línea del agua: Scum Star o Natural Clean.','For oils and the water line: Scum Star or Natural Clean.')],src:G.easeS},
+{k:'scale',title:T('Sarro o metales','Scale or metals'),checks:[T('Metal Magic quita metales como hierro y cobre y evita el sarro.','Metal Magic removes metals like iron and copper and prevents scale.'),T('Al llenar, usa el prefiltro Marvel X10.','When filling, use the Marvel X10 prefilter.')],src:G.easeS},
+{k:'drain',title:T('¿Cuándo drenar?','When to drain?'),checks:[T('Después de 4 cartuchos SmartChlor (la mitad que viene en el kit + los 3 de la caja): drena y cambia el mineral y el SmartChlor.','After 4 SmartChlor cartridges (the half in the starter kit + the 3 in the box): drain and replace the mineral and the SmartChlor.')],src:G.easeS}];
+if(sys==='pristine')return [
+{k:'cloudy',title:T('Agua turbia o con color','Cloudy or discolored water'),checks:[T('Pristine Power: 2 oz por cada 2,000 gal, cuando haga falta. Quita lo orgánico.','Pristine Power: 2 oz per 2,000 gal, as needed. It removes organics.'),T('Limpia o enjuaga los filtros.','Clean or rinse the filters.')],src:G.pb},
+{k:'routine',title:T('Mantenimiento cada 2 semanas','Every-2-weeks maintenance'),checks:[T('2 oz de Pristine Extra / Di-Chlor y 2 oz de shock sin cloro (MPS) por cada 2,000 gal.','2 oz of Pristine Extra / Di-Chlor and 2 oz of non-chlorine shock (MPS) per 2,000 gal.'),T('Mide pH y alcalinidad.','Test pH and alkalinity.'),T('Mide el Pristine Blue con el kit de 2 partes y usa su calculador deslizante para la dosis. 1 fl oz = 30 ml.','Test the Pristine Blue with the 2-part kit and use its sliding calculator for the dose. 1 fl oz = 30 ml.')],src:G.pb},
+{k:'hard_water',title:T('Agua dura o de pozo','Hard or well water'),checks:[T('Al llenar, usa el prefiltro X10.','When filling, use the X10 prefilter.'),T('Pristine Check atrapa el calcio (4 oz por cada 2,000 gal al arranque).','Pristine Check holds the calcium (4 oz per 2,000 gal at start-up).')],src:G.pb}];
+return []};
+
+/* ───────────── the guides (PDFs already in the app) ───────────── */
+W.DOCS={
+ease:[['2026_ease_Quick_Reference_Guide.pdf',T('Guía rápida @ease 2026','2026 @ease Quick Reference Guide')],['2026_ease_Tutorial_for_Beginners.pdf',T('Tutorial @ease para principiantes','@ease Tutorial for Beginners')],['2025_Water_Chemistry_Start_Up_-__ease.pdf',T('Arranque @ease 2025','2025 @ease Start Up')]],
+blu:[['Hot_Tub_Start_Up_-_BluFusion_-_First_2_Weeks.pdf',T('Blu Fusion spa: primeras 2 semanas','Blu Fusion hot tub: first 2 weeks')],['Swim_Spa_Start_Up_-_BluFusion_-_First_2_Weeks.pdf',T('Blu Fusion swim spa: primeras 2 semanas','Blu Fusion swim spa: first 2 weeks')],['2023_Salt_System_Flow_Chart.pdf',T('Flow Chart de la sal','Salt System Flow Chart')],['2024_Blu_Fusion_Conductivity_Test.pdf',T('Prueba de conductividad','Conductivity Test')],['Tru_Blu_Dosage_Chart.pdf',T('Tabla de dosis Tru Blu','Tru Blu Dosage Chart')]],
+pristine:[['2022_Pristine_Blue_Start_Up_-_SWIM_SPA.pdf',T('Pristine Blue para swim spa','Pristine Blue for swim spas')]]};
+
+/* ═════════════ screens ═════════════ */
+var I=window.I87||{svg:function(){return ''}};
+function ic(n,s){try{return I.svg(n,s||18)}catch(e){return ''}}
+var st=W.st={s:'sys',sys:null,unit:'spa',model:null,gal:'',rd:{},prob:null,rec:null,hist:[]};
+try{var last=JSON.parse(localStorage.getItem('dt88_wc_last')||'null');if(last&&W.SYS[last.sys]){st.sys=last.sys;st.unit=last.unit==='swim'?'swim':'spa';st.gal=last.gal||''}}catch(e){}
+function save(){try{localStorage.setItem('dt88_wc_last',JSON.stringify({sys:st.sys,unit:st.unit,gal:st.gal}))}catch(e){}}
+function root(){var r=document.getElementById('wc88');if(r)return r;
+r=document.createElement('div');r.id='wc88';r.className='wc88';r.setAttribute('role','dialog');r.setAttribute('aria-modal','true');r.setAttribute('aria-labelledby','wc88t');
+r.innerHTML='<div class="wc88-bk" data-a="close"></div><div class="wc88-p"><div class="wc88-h"></div><div class="wc88-b"></div></div>';
+document.body.appendChild(r);
+r.addEventListener('click',onClick);r.addEventListener('input',onInput);
+return r}
+/* Esc closes it wherever the focus is (redraws move the focus out of the dialog) */
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('wc88-open')){e.stopPropagation();e.preventDefault();W.close()}},true);
+function sysLine(){var p=[];if(st.sys)p.push(W.SYS[st.sys].name);if(st.model)p.push(st.model.lb||st.model.k);else p.push(st.unit==='swim'?'Swim spa':'Spa');if(parseFloat(st.gal)>0)p.push(st.gal+' gal');return p.join(' · ')}
+var TITLES={sys:T('¿Qué sistema tiene la tina?','Which system does the tub have?'),tub:T('¿Qué tina es?','Which tub is it?'),task:T('¿Qué vas a hacer?','What are you doing?'),read:T('¿Qué marca la tira?','What does the strip show?'),plan:T('El plan, en este orden','The plan, in this order'),start:T('Arranque, día por día','Start-up, day by day'),prob:T('¿Qué ves en la tina?','What do you see in the tub?'),probd:T('Revisa en este orden','Check in this order'),docs:T('Las guías (PDF)','The guides (PDF)')};
+function head(){var back=st.hist.length?'<button type="button" class="wc88-ib" data-a="back" aria-label="'+esc(L(T('Atrás','Back')))+'">'+ic('arrow-left',20)+'</button>':'<span class="wc88-ib0" aria-hidden="true">'+ic('droplet',20)+'</span>';
+var sub=st.s==='sys'?L(T('Guía del agua · Aspen Service','Water care guide · Aspen Service')):sysLine();
+return '<div class="wc88-hr">'+back+'<div class="wc88-ht"><span class="wc88-sub">'+esc(sub)+'</span><h2 id="wc88t">'+esc(L(st.s==='prob'&&st.prob?TITLES.probd:TITLES[st.s]))+'</h2></div>'+
+'<button type="button" class="wc88-lang" data-a="lang" aria-label="'+esc(lg()==='es'?'Switch to English':'Cambiar a español')+'">'+(lg()==='es'?'EN':'ES')+'</button>'+
+'<button type="button" class="wc88-ib" data-a="close" aria-label="'+esc(L(T('Cerrar','Close')))+'">'+ic('x',20)+'</button></div>'}
+function card(a,v,icon,title,sub,small,on){return '<button type="button" class="wc88-card'+(on?' on':'')+'" data-a="'+a+'" data-v="'+esc(v)+'"><span class="wc88-ci">'+ic(icon,22)+'</span><span class="wc88-ct"><b>'+esc(title)+'</b>'+(sub?'<span>'+esc(sub)+'</span>':'')+(small?'<small>'+esc(small)+'</small>':'')+'</span>'+(on?'<span class="wc88-tag">'+esc(L(T('DEL TICKET','FROM THE TICKET')))+'</span>':'')+'</button>'}
+function banner(){if(!st.rec)return '';var nm=String(st.rec.n||'').trim();return '<div class="wc88-note">'+(nm?esc(L(T('Desde el ticket de ','From the ticket of ')))+'<b>'+esc(nm)+'</b>':esc(L(T('Desde este ticket','From this ticket'))))+(st.fromTicket?': '+esc(L(T('ya viene ','already set to ')))+'<b>'+esc(sysLine())+'</b>.':'. '+esc(L(T('El Start Up del ticket no dice el sistema: elígelo.','The ticket\'s Start Up does not say the system: choose it.'))))+'</div>'}
+function scrSys(){var h=banner();['ease','blu','pristine'].forEach(function(k){var s=W.SYS[k];h+=card('sys',k,k==='blu'?'droplet':k==='ease'?'circle-dashed':'droplet',s.name,L(s.d),L(s.strips),st.fromTicket&&st.sys===k)});
+return h+'<p class="wc88-foot">'+esc(L(T('Cada paso dice de qué guía de Aspen sale. Las guías completas están al final de cada plan.','Every step says which Aspen guide it comes from. The full guides are at the end of each plan.')))+'</p>'}
+function scrTub(){var h='<div class="wc88-seg" role="group" aria-label="'+esc(L(T('Tipo de tina','Tub type')))+'"><button type="button" data-a="unit" data-v="spa" class="'+(st.unit==='spa'?'on':'')+'" aria-pressed="'+(st.unit==='spa')+'">Spa</button><button type="button" data-a="unit" data-v="swim" class="'+(st.unit==='swim'?'on':'')+'" aria-pressed="'+(st.unit==='swim')+'">Swim spa</button></div><div class="wc88-list">';
+var lastG='';W.MODELS.filter(function(m){return m.u===st.unit}).forEach(function(m){var gk=L(m.grp);if(gk!==lastG){h+='<div class="wc88-lg">'+esc(gk)+'</div>';lastG=gk}
+var on=st.model&&st.model.k===m.k;h+='<button type="button" class="wc88-row'+(on?' on':'')+'" data-a="model" data-v="'+esc(m.k)+'"><span>'+esc(m.lb||m.k)+'</span><span class="wc88-g">'+(m.g?m.g+' gal':esc(L(T('escribe los galones','type the gallons'))))+(on?ic('check',18):'')+'</span></button>'});
+h+='</div><label class="wc88-lb" for="wc88gal">'+esc(L(T('Galones de esta tina','Gallons of this tub')))+'</label><input id="wc88gal" class="wc88-in" inputmode="numeric" data-g="1" value="'+esc(st.gal)+'" placeholder="'+esc(L(T('Ej. 400','E.g. 400')))+'">';
+return h+'<button type="button" class="wc88-go" data-a="next" '+(parseFloat(st.gal)>0?'':'disabled')+'>'+esc(L(T('Siguiente','Next')))+'</button>'}
+function scrTask(){var h=(st.fromTicket?banner():'')+card('task','start','calendar-event',L(T('Arranque','Start-up')),L(T('Tina nueva o recién llenada, día por día.','New or freshly filled tub, day by day.')),'')+
+card('task','read','list-details',L(T('Balancear con la tira','Balance with the strip')),L(T('Pones lo que marca la tira y te da los pasos en orden, con cuánto echar.','Enter what the strip shows and get the steps in order, with how much to add.')),'')+
+card('task','prob','alert-triangle',L(T('Tengo un problema','I have a problem')),L(T('Elige lo que ves en la tina.','Choose what you see in the tub.')),'');
+return h+'<button type="button" class="wc88-link" data-a="go" data-v="docs">'+ic('file-text',18)+esc(L(T('Ver las guías (PDF)','See the guides (PDF)')))+'</button>'}
+function field(k,label,dec){var v=st.rd[k]==null?'':st.rd[k],s=W.engine.status(st.sys,k,v);
+return '<div class="wc88-f"><label for="wc88r_'+k+'">'+esc(L(label))+'</label><input id="wc88r_'+k+'" class="wc88-in" inputmode="'+(dec?'decimal':'numeric')+'" data-r="'+k+'" value="'+esc(v)+'"><span class="wc88-st '+(s?s.s:'')+'" id="wc88s_'+k+'">'+esc(s?L(s.t):L(T('Sin lectura','No reading')))+'</span></div>'}
+function yn(k,label,yes,no){var v=st.rd[k];return '<div class="wc88-f wc88-yn"><span class="wc88-q">'+esc(L(label))+'</span><div class="wc88-seg2" role="group" aria-label="'+esc(L(label))+'"><button type="button" data-a="yn" data-k="'+k+'" data-v="1" class="'+(v===true?'on':'')+'" aria-pressed="'+(v===true)+'">'+esc(L(yes))+'</button><button type="button" data-a="yn" data-k="'+k+'" data-v="0" class="'+(v===false?'on':'')+'" aria-pressed="'+(v===false)+'">'+esc(L(no))+'</button></div></div>'}
+function scrRead(){var s=W.SYS[st.sys],h='<p class="wc88-hint">'+esc(L(s.strips))+'. '+esc(L(T('Bombas apagadas, la tira de plano y sin sacudirla.','Pumps off, strip held flat, do not shake it.')))+'</p>';
+h+=field('ph',LBL.ph,true)+field('alk',LBL.alk)+field('hard',LBL.hard);
+if(st.sys==='blu'){h+=field('br',LBL.br,true)+field('salt',LBL.salt);
+ var pv=st.rd.phos;h+='<div class="wc88-f wc88-yn"><span class="wc88-q">'+esc(L(T('Fosfatos (tira blanca)','Phosphates (white strip)')))+'</span><div class="wc88-seg2" role="group"><button type="button" data-a="phos" data-v="0" class="'+(pv==='0'?'on':'')+'" aria-pressed="'+(pv==='0')+'">'+esc(L(T('En 0','At 0')))+'</button><button type="button" data-a="phos" data-v="yes" class="'+(pv==='yes'?'on bad':'')+'" aria-pressed="'+(pv==='yes')+'">'+esc(L(T('Hay fosfatos','Phosphates present')))+'</button></div></div>'}
+if(st.sys==='ease'){h+=yn('clear',T('¿El agua está clara?','Is the water clear?'),T('Sí','Yes'),T('No','No'))+yn('product',T('¿El cartucho gris todavía tiene producto? (sepáralo y sacúdelo)','Does the grey cartridge still have product? (separate it and shake it)'),T('Sí','Yes'),T('Vacío','Empty'))}
+if(st.sys==='pristine')h+='<p class="wc88-hint">'+esc(L(T('El Pristine Blue se mide aparte con el kit de 2 partes y su calculador deslizante.','Pristine Blue is tested separately with the 2-part kit and its sliding calculator.')))+'</p>';
+return h+'<button type="button" class="wc88-go" data-a="go" data-v="plan">'+esc(L(T('Ver el plan','See the plan')))+'</button>'}
+function stepHtml(s,i){return '<li class="wc88-step '+(s.sev||'')+'"><span class="wc88-n">'+(i+1)+'</span><div class="wc88-sb"><b class="wc88-stt">'+esc(L(s.title))+'</b>'+(s.dose?'<span class="wc88-dose">'+esc(L(s.dose))+'</span>':'')+(s.why?'<span class="wc88-why">'+esc(L(s.why))+'</span>':'')+'<span class="wc88-src">'+esc(L(s.src))+'</span></div></li>'+
+(s.wait?'<li class="wc88-wait">'+ic('clock',18)+esc(L(s.wait))+'</li>':'')}
+function scrPlan(){var p=W.engine.plan(st.sys,st.unit,st.gal,st.rd),h='';
+if(p.needGal)h+='<div class="wc88-note warn">'+esc(L(T('Escribe los galones para ver cuánto echar.','Type the gallons to see how much to add.')))+' <button type="button" class="wc88-inl" data-a="go" data-v="tub">'+esc(L(T('Poner galones','Set gallons')))+'</button></div>';
+var any=Object.keys(st.rd).some(function(k){return st.rd[k]!==''&&st.rd[k]!=null});
+if(!p.steps.length)h+='<div class="wc88-empty">'+esc(any?L(T('Todo está en rango. Vuelve a medir en 2 o 3 días.','Everything is in range. Test again in 2 or 3 days.')):L(T('Escribe al menos una lectura de la tira.','Enter at least one strip reading.')))+'</div>';
+else h+='<ol class="wc88-steps">'+p.steps.map(stepHtml).join('')+'</ol>';
+h+='<div class="wc88-2"><button type="button" class="wc88-sec" data-a="go" data-v="prob">'+esc(L(T('Tengo un problema','I have a problem')))+'</button><button type="button" class="wc88-sec" data-a="go" data-v="docs">'+esc(L(T('Ver las guías (PDF)','See the guides (PDF)')))+'</button></div>';
+return h+'<p class="wc88-foot">'+esc(L(T('Cucharadas al ras. Lee también la etiqueta del producto.','Level tablespoons. Also read the product label.')))+'</p>'}
+function scrStart(){var s=W.engine.startup(st.sys,st.unit,st.gal),h='',day='',n=0;
+s.forEach(function(x){var d=L(x.day);if(d!==day){if(day)h+='</ol>';h+='<div class="wc88-day">'+esc(d)+'</div><ol class="wc88-steps">';day=d}h+=stepHtml(x,n++)});if(day)h+='</ol>';
+return h+'<div class="wc88-2"><button type="button" class="wc88-sec" data-a="task" data-v="read">'+esc(L(T('Balancear con la tira','Balance with the strip')))+'</button><button type="button" class="wc88-sec" data-a="go" data-v="docs">'+esc(L(T('Ver las guías (PDF)','See the guides (PDF)')))+'</button></div>'}
+function scrProb(){var list=W.engine.problems(st.sys);
+if(st.prob){var p=list.filter(function(x){return x.k===st.prob})[0];if(p)return '<h3 class="wc88-h3">'+esc(L(p.title))+'</h3><ol class="wc88-checks">'+p.checks.map(function(c){return '<li>'+esc(L(c))+'</li>'}).join('')+'</ol><p class="wc88-src2">'+esc(L(T('Sale de: ','From: '))+L(p.src))+'</p>'+
+'<div class="wc88-2"><button type="button" class="wc88-sec" data-a="task" data-v="read">'+esc(L(T('Balancear con la tira','Balance with the strip')))+'</button><button type="button" class="wc88-sec" data-a="go" data-v="docs">'+esc(L(T('Ver las guías (PDF)','See the guides (PDF)')))+'</button></div>'}
+return '<div class="wc88-chips">'+list.map(function(p){return '<button type="button" class="wc88-chip" data-a="prob" data-v="'+esc(p.k)+'">'+esc(L(p.title))+'</button>'}).join('')+'</div>'}
+function scrDocs(){var d=(W.DOCS[st.sys]||[]).filter(function(x){return st.sys!=='blu'||!/^(Hot_Tub|Swim_Spa)_Start/.test(x[0])||(st.unit==='swim'?/^Swim/.test(x[0]):/^Hot/.test(x[0]))});
+return '<div class="wc88-list">'+d.map(function(x){return '<button type="button" class="wc88-row" data-a="pdf" data-v="'+esc(x[0])+'"><span>'+ic('file-text',18)+' '+esc(L(x[1]))+'</span><span class="wc88-g">PDF</span></button>'}).join('')+'</div><p class="wc88-foot">'+esc(L(T('Se abren en otra pestaña. Funcionan sin señal.','They open in another tab. They work without signal.')))+'</p>'}
+var SCR={sys:scrSys,tub:scrTub,task:scrTask,read:scrRead,plan:scrPlan,start:scrStart,prob:scrProb,docs:scrDocs};
+function draw(){var r=root();r.querySelector('.wc88-h').innerHTML=head();var b=r.querySelector('.wc88-b');b.innerHTML=(SCR[st.s]||scrSys)();b.scrollTop=0;r.dataset.s=st.s}
+W.go=function(s){if(s!==st.s){st.hist.push({s:st.s,prob:st.prob})}st.s=s;if(s!=='prob')st.prob=null;draw()};
+function toast(t){try{if(typeof showToast==='function')showToast(t);else console.log(t)}catch(e){}}
+W.pdf=function(name){var L0=window.ASPEN_PDF_LIBRARY||{},b64=L0[name];
+var go=function(b){try{var bin=atob(b),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);var url=URL.createObjectURL(new Blob([u],{type:'application/pdf'}));
+var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},60000);W._lastPdf=name}catch(e){toast(L(T('No se pudo abrir el PDF','Could not open the PDF')))}};
+if(b64)return go(b64);
+var D7=window.dt87Docs;if(D7&&D7.ready){D7.load&&D7.load();Promise.race([D7.ready,new Promise(function(r){setTimeout(r,20000)})]).then(function(){var x=(window.ASPEN_PDF_LIBRARY||{})[name];if(x)go(x);else toast(L(T('Esa guía no está cargada todavía','That guide is not loaded yet')))})}
+else toast(L(T('Esa guía no está cargada todavía','That guide is not loaded yet')))};
+function onClick(e){var t=e.target.closest('[data-a]');if(!t)return;var a=t.dataset.a,v=t.dataset.v;
+if(a==='close')return W.close();
+if(a==='back'){var h=st.hist.pop();if(h){st.s=h.s;st.prob=h.prob;draw()}return}
+if(a==='lang'){W.lang=lg()==='es'?'en':'es';return draw()}
+if(a==='sys'){st.sys=v;st.fromTicket=false;save();return W.go(parseFloat(st.gal)>0?'task':'tub')}
+if(a==='unit'){if(st.unit!==v){st.unit=v;st.model=null;st.gal=''}save();return draw()}
+if(a==='model'){var m=W.MODELS.filter(function(x){return x.k===v})[0];st.model=m;st.gal=m&&m.g?String(m.g):'';save();draw();if(!st.gal){var g=document.getElementById('wc88gal');if(g)g.focus()}return}
+if(a==='next'){if(parseFloat(st.gal)>0){save();W.go('task')}return}
+if(a==='task'){return W.go(v==='start'?'start':v==='read'?'read':'prob')}
+if(a==='go')return W.go(v);
+if(a==='prob'){st.hist.push({s:st.s,prob:st.prob});st.prob=v;st.s='prob';return draw()}
+if(a==='yn'){st.rd[t.dataset.k]=v==='1';return redrawKeep()}
+if(a==='phos'){st.rd.phos=st.rd.phos===v?'':v;return redrawKeep()}
+if(a==='pdf')return W.pdf(v)}
+function redrawKeep(){var b=root().querySelector('.wc88-b'),y=b.scrollTop;draw();b.scrollTop=y}
+function onInput(e){var t=e.target;
+if(t.dataset.g){st.gal=t.value.replace(/[^\d.]/g,'');var go=root().querySelector('[data-a="next"]');if(go)go.disabled=!(parseFloat(st.gal)>0);if(st.model&&st.model.g&&String(st.model.g)!==st.gal){st.model=null}save();return}
+if(t.dataset.r){var k=t.dataset.r;st.rd[k]=t.value;var s=W.engine.status(st.sys,k,t.value),c=document.getElementById('wc88s_'+k);if(c){c.className='wc88-st '+(s?s.s:'');c.textContent=s?L(s.t):L(T('Sin lectura','No reading'))}}}
+W.open=function(o){o=o||{};var r=root();st.hist=[];st.rd={};st.prob=null;st.rec=null;st.fromTicket=false;
+if(o.rec){st.rec=o.rec;var sys=W.sysFor(o.rec),m=modelOf(o.rec.sp);st.unit=W.unitFor(o.rec.sp)||st.unit;st.model=m;st.gal=m&&m.g?String(m.g):'';
+ if(sys){st.sys=sys;st.fromTicket=true;st.s=parseFloat(st.gal)>0?'task':'tub';if(st.s!=='sys')st.hist=[{s:'sys'}]}else{st.sys=null;st.s='sys'}}
+else{if(o.sys)st.sys=o.sys;if(o.unit)st.unit=o.unit;if(o.gal)st.gal=String(o.gal);if(st.model&&(st.model.u!==st.unit||(st.model.g&&String(st.model.g)!==String(st.gal))))st.model=null;st.s='sys'}
+document.body.classList.add('wc88-open');draw();r.classList.add('show');
+setTimeout(function(){var f=r.querySelector('.wc88-b button,.wc88-b input');try{(f||r.querySelector('[data-a="close"].wc88-ib')).focus({preventScroll:true})}catch(e){}},30)};
+W.openFor=function(id){var rec=null;try{rec=typeof findRecById==='function'?findRecById(id):null}catch(e){}W.open(rec?{rec:rec}:{})};
+W.close=function(){var r=document.getElementById('wc88');if(r)r.classList.remove('show');document.body.classList.remove('wc88-open')};
+
+/* ═════════════ entry points ═════════════ */
+function wrap(name,after){var f=window[name];if(typeof f!=='function'||f._wc88)return;var g=function(){var res=f.apply(this,arguments);try{after.apply(this,arguments)}catch(e){console.warn('[WC88]',name,e)}return res};g._wc88=1;window[name]=g}
+var LBL_OPEN=T('Guía del agua','Water care guide');
+/* technician home: a button next to the date (build 87) or in the date bar (Classic look) */
+/* technician home: a third button in the Route mode / Load sheet row; on a day with no stops that row is not
+   there, so it goes inside the "no deliveries" message (next to the date it squeezed the date) */
+function techHome(){var row=document.querySelector('#tech-list .dt85-entry'),empty=row?null:document.querySelector('#tech-list .tech-empty'),host=row||empty;if(!host)return;
+var ex=document.getElementById('t88wc');if(ex){if(ex.parentNode===host)return;ex.remove()}
+var b=document.createElement('button');b.type='button';b.id='t88wc';b.className=row?'dt85-ls t88-wc-row':'t88-wc';b.setAttribute('aria-label',L(LBL_OPEN));b.title=L(LBL_OPEN);
+b.innerHTML=ic('droplet',20)+(row?'':'<span>'+esc(L(LBL_OPEN))+'</span>'+ic('chevron-right',16));b.onclick=function(){W.open()};host.appendChild(b)}
+/* technician ticket: "Balance the water" under the tub info, already set for that tub */
+function techDetail(id){var td=document.getElementById('tech-detail');if(!td||td.classList.contains('hidden'))return;var old=td.querySelector('.t88-wc');if(old)old.remove();
+var host=td.querySelector('.t87-spec')||td.querySelector('.td2-imm h2');if(!host)return;
+host.insertAdjacentHTML('afterend','<button type="button" class="t88-wc">'+ic('droplet',18)+'<span>'+esc(L(T('Balancear el agua','Balance the water')))+'</span>'+ic('chevron-right',16)+'</button>');
+var b=td.querySelector('.t88-wc');if(b)b.onclick=function(){W.openFor(id)}}
+wrap('renderTechList',function(){techHome()});
+wrap('techOpenDetail',function(id){setTimeout(function(){techDetail(id)},0)});
+/* office: sidebar item, ⌘K action, the ticket's ⋯ menu */
+function side(){if(document.getElementById('gs88wc'))return;var nav=document.querySelector('#glassSide .gs-nav');if(!nav)return;var sep=nav.querySelector('.gs-sep');
+var b=document.createElement('button');b.id='gs88wc';b.type='button';b.title=L(LBL_OPEN);b.setAttribute('aria-label',L(LBL_OPEN));b.innerHTML=ic('droplet',18)+' '+esc(L(LBL_OPEN));b.onclick=function(){W.open()};
+if(sep)nav.insertBefore(b,sep);else nav.appendChild(b)}
+wrap('renderAll',side);wrap('setTab',side);
+try{var S7=window.dt87;if(S7&&S7.ACTIONS)S7.ACTIONS.push({k:['agua','water','quim','chem','balan','ph','sal','salt','bromo','bromine','pristine','ease','blu'],l:L(LBL_OPEN),i:'droplet',go:function(){W.open()}})}catch(e){}
+wrap('renderModal',function(){var md=document.getElementById('md');if(!md||!md.classList.contains('mdl-ticket'))return;var acts=md.querySelector('.tkt-hero-acts');if(!acts||acts.querySelector('[data-wc88]'))return;
+var r=typeof curRec!=='undefined'&&curRec?curRec:null;if(!r)return;
+var b=document.createElement('button');b.type='button';b.className='btn bs bsm m87h t88-wcbtn';b.setAttribute('data-wc88','1');b.dataset.m87=ic('droplet',16)+esc(L(T('Guía del agua de esta tina','Water care guide for this tub')));b.innerHTML=ic('droplet',16)+' '+esc(L(LBL_OPEN));b.onclick=function(){W.openFor(r.i)};acts.appendChild(b)});
+setTimeout(function(){try{side()}catch(e){}try{techHome()}catch(e){}},0);
+}catch(e){console.warn('[WC88]',e)}})();
+
+</script>
+<script id="dt89Ticket">
+/* ═══════════════════════════════════════════════════════════════════════
+   BUILD 89 · dt89Ticket — the ticket in two sides (option A, approved 6 nov)
+   LEFT  "The customer": contact · address & site · WHAT THE CUSTOMER SENT
+         (answers + photos with ✓/✕ + the link tools, in ONE card)
+   RIGHT "The delivery": ready · date & crew · the spa & what goes with it ·
+         money · paperwork · tech photos & notes · service · more
+   History (timeline + notes) opens as a drawer from a button in the header.
+   Only MOVES the elements build 84 already placed: ids, handlers and saving
+   are untouched. Any error → the ticket is drawn again with the build-88 layout.
+   Off on one device: localStorage.dt89_off='1' (Classic look also turns it off).
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){try{
+var D=window.dt83,X=window.dt84,I=window.I87;if(!D||!X||!I)return;var E=D.esc;
+var Z=window.dt89={};
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+var ON=function(){return X.on()&&X.isOffice()&&ls('dt89_off')!=='1'};
+Z.on=ON;
+function wrap(name,after){var o=window[name];if(typeof o!=='function')return;
+window[name]=function(){var r=o.apply(this,arguments);try{after&&after.apply(this,arguments)}catch(e){console.warn('[dt89] '+name,e)}return r}}
+function svg(n,s){return I.svg(n,s||16)}
+function el(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e}
+function mv(node,to){if(node&&to&&node!==to&&!node.contains(to))to.appendChild(node);return node}
+function fieldOf(id){var x=document.getElementById(id);return x?(x.closest('.ib,.nb')||x):null}
+function card(title,icon,cls){var c=el('section','dt84-fc t89c '+cls);c.innerHTML='<h4><span class="ic" data-d87="1">'+svg(icon)+'</span>'+E(title)+'</h4>';return c}
+function retitle(c,title){if(!c)return;var h=c.querySelector(':scope>h4');if(!h)return;Array.prototype.slice.call(h.childNodes).forEach(function(n){if(n.nodeType===3)n.remove()});h.appendChild(document.createTextNode(title))}
+// move every child of a build-84 card (except its title) into another box, then drop the empty card
+function absorb(src,to){if(!src||!to)return;Array.prototype.slice.call(src.children).forEach(function(ch){if(ch.tagName==='H4')return;to.appendChild(ch)});src.remove()}
+function group(cls,nodes){var g=el('div',cls);nodes.forEach(function(n){if(n)g.appendChild(n)});return g.children.length?g:null}
+function rec(){return typeof curRec!=='undefined'&&curRec?(findRecById(curRec.i)||curRec):null}
+
+/* ---------- history: collapse "Customer photo approved" runs ---------- */
+function isAppr(e){return !!e&&e.kind==='activity'&&/^customer photo approved$/i.test(String(e.title||'').trim())}
+Z.collapse=function(list){var out=[],g=null;
+(Array.isArray(list)?list:[]).forEach(function(e){
+if(isAppr(e)){if(g&&g.who===e.who&&Math.abs(g._last-(+e.ts))<7200000){g._n++;g._last=+e.ts;return}
+g=Object.assign({},e,{_n:1,_last:+e.ts});out.push(g);return}
+g=null;out.push(e)});
+out.forEach(function(x){if(!x||typeof x!=='object')return;if(x._n>1){x.title=_L(x._n+' fotos del cliente aprobadas',x._n+' customer photos approved');x.kind='customer'}delete x._last;delete x._n});
+return out};
+var _tl=X.timeline;if(typeof _tl==='function')X.timeline=function(){var a=_tl.apply(this,arguments);try{return Z.collapse(a)}catch(e){return a}};
+
+/* ---------- "What the customer sent": status pill + answer tiles ---------- */
+function photoCount(r){var tot=0,ok=0,no=0;var pr=(r&&r.photo_review)||{};
+try{X.photoGroups(r).forEach(function(g){(g.urls||[]).forEach(function(u){tot++;var s=pr[X.hash(u)];if(s&&s.ok)ok++;else if(s&&s.ok===false)no++})})}catch(e){}
+return {tot:tot,ok:ok,no:no}}
+function niceTs(ts){try{return new Date(+ts).toLocaleString(APP_LANG==='es'?'es-US':'en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}}
+Z.pill=function(r){var it=(typeof INTAKE!=='undefined'&&INTAKE)?INTAKE[r.i]:null;var c=photoCount(r);
+var ph=c.tot?' · '+(c.no?_L(c.no+' por repetir',c.no+' to redo'):_L(c.ok+' de '+c.tot+' fotos aprobadas',c.ok+' of '+c.tot+' photos approved')):'';
+if(it&&it.submitted)return {k:(c.no?'warn':(c.ok===c.tot?'ok':'wait')),t:_L('Lo mandó ','Sent ')+(it.submittedAt?niceTs(it.submittedAt):'')+ph};
+if(it&&it.token)return {k:'wait',t:_L('Link enviado · esperando al cliente','Link sent · waiting for the customer')+ph};
+return {k:'none',t:(c.tot?_L(c.tot+' fotos',c.tot+' photos'):_L('Sin link del cliente todavía','No customer link yet'))}};
+Z.tiles=function(r){var it=(typeof INTAKE!=='undefined'&&INTAKE)?INTAKE[r.i]:null;if(!it||!it.submitted)return '';var rp=it.resp||{};var t=[];
+var yn=function(v){return v?_L('Sí','Yes'):'No'};
+if(rp.payment)t.push([_L('Pago','Payment'),typeof _ipayLabel==='function'?_ipayLabel(rp.payment):rp.payment]);
+if(typeof rp.levelOk!=='undefined')t.push([_L('Base nivelada y despejada','Pad level & clear'),yn(rp.levelOk)]);
+if(typeof rp.wipOk!=='undefined')t.push([_L('WIP listo (15 ft + adaptadores)','WIP ready (15 ft + adapters)'),yn(rp.wipOk)]);
+if(rp.notes)t.push([_L('Su nota','Their note'),'“'+String(rp.notes)+'”']);
+return t.length?'<dl class="t89-ans">'+t.map(function(x){return '<div><dt>'+E(x[0])+'</dt><dd>'+E(x[1])+'</dd></div>'}).join('')+'</dl>':''};
+Z.paintSent=function(){var md=document.getElementById('md');var r=rec();if(!md||!r)return;var c=md.querySelector('.t89-sent');if(!c)return;
+var p=Z.pill(r);var pe=c.querySelector('.t89-pill');if(pe){pe.className='t89-pill '+p.k;pe.innerHTML=(p.k==='ok'?svg('circle-check',14):'')+E(p.t)}
+var te=c.querySelector('.t89-tiles');if(te)te.innerHTML=Z.tiles(r)};
+var _rv=X.reviewPhoto;if(typeof _rv==='function')X.reviewPhoto=function(){var a=_rv.apply(this,arguments);setTimeout(function(){try{Z.paintSent()}catch(e){}},160);return a};
+wrap('refreshIntakeBox',function(){Z.paintSent()});
+
+/* ---------- history drawer ---------- */
+Z.histOpen=function(){return ls('dt89_hist')==='1'};
+Z.count=function(){var r=rec();if(!r)return 0;try{return X.timeline(r).length}catch(e){return 0}};
+Z.paintCount=function(){var b=document.getElementById('t89hbtn');if(!b)return;var n=Z.count();var s=b.querySelector('.n');if(s)s.textContent=n>99?'99+':String(n)};
+Z.hist=function(open){var md=document.getElementById('md');if(!md)return;var a=md.querySelector('#t89hist'),b=document.getElementById('t89hbtn');if(!a)return;
+if(open===undefined)open=a.hidden;a.hidden=!open;md.classList.toggle('t89-hopen',open);ls('dt89_hist',open?'1':null);
+if(b){b.setAttribute('aria-expanded',open?'true':'false');b.classList.toggle('on',open)}
+if(open){var ta=a.querySelector('#dt84note');setTimeout(function(){try{(ta||a).focus({preventScroll:true})}catch(e){}},30)}else if(b){try{b.focus({preventScroll:true})}catch(e){}}};
+var _an=X.addNote;if(typeof _an==='function')X.addNote=function(){var a=_an.apply(this,arguments);setTimeout(function(){try{Z.paintCount()}catch(e){}},200);return a};
+window.addEventListener('keydown',function(e){if(e.key!=='Escape')return;var md=document.getElementById('md');if(!md||!md.classList.contains('t89-hopen'))return;var a=md.querySelector('#t89hist');if(!a||a.hidden)return;
+e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();Z.hist(false)},true);
+
+/* ---------- the re-layout ---------- */
+function layout(){var md=document.getElementById('md');if(!md)return;md.classList.remove('t89','t89-hopen');
+if(!ON()||!md.classList.contains('mdl-ticket'))return;var file=md.querySelector('.dt84-file');var r=rec();if(!file||!r||file.classList.contains('t89f'))return;
+var F=function(cls){return file.querySelector('.dt84-fc.'+cls)};
+var cust=el('section','t89-side t89-cust'),del=el('section','t89-side t89-del');
+cust.setAttribute('aria-label',_L('El cliente','The customer'));del.setAttribute('aria-label',_L('La entrega','The delivery'));
+cust.innerHTML='<div class="t89-sh"><h3>'+E(_L('El cliente','The customer'))+'</h3><span>'+E(_L('Quién es y todo lo que nos mandó','Who they are and everything they sent us'))+'</span></div>';
+del.innerHTML='<div class="t89-sh"><h3>'+E(_L('La entrega','The delivery'))+'</h3><span>'+E(_L('Cuándo, qué va y qué falta','When, what goes and what is left to do'))+'</span></div>';
+var hist=el('aside','t89-hist');hist.id='t89hist';hist.hidden=true;hist.setAttribute('aria-label',_L('Historial','History'));hist.tabIndex=-1;
+hist.innerHTML='<div class="t89-hh"><h3>'+svg('clock',17)+E(_L('Historial','History'))+'</h3><button type="button" class="t89-hx" aria-label="'+E(_L('Cerrar historial','Close history'))+'" onclick="dt89.hist(false)">'+svg('x',16)+'</button></div>';
+// the new boxes go into the (attached) file FIRST, so a moved field is never outside the page
+var bwrap=el('div','t89-ban');file.appendChild(bwrap);file.appendChild(cust);file.appendChild(del);file.appendChild(hist);
+// ── LEFT · contact
+var who=F('who');if(who){retitle(who,_L('Contacto','Contact'));var nf=fieldOf('e_n');if(nf)nf.classList.add('t89-full');var chip=document.getElementById('dt83namechip');if(chip)chip.classList.add('t89-full');cust.appendChild(who)}
+// ── LEFT · address & site (address + instructions + notes for delivery + the map)
+var addr=card(_L('Dirección y sitio','Address & site'),'map-pin','t89-addr');var al=el('div','t89-al'),ar=el('div','t89-ar');addr.appendChild(al);addr.appendChild(ar);
+mv(fieldOf('e_st'),al);var notes=F('notes');absorb(notes,al);var site=F('site');absorb(site,ar);if(!ar.children.length)ar.remove();
+if(al.children.length||addr.querySelector('.t89-ar'))cust.appendChild(addr);
+// ── LEFT · what the customer sent (one card)
+var sent=card(_L('Lo que mandó el cliente','What the customer sent'),'camera','t89-sent');
+var hd=sent.querySelector(':scope>h4');var top=el('div','t89-sent-top');sent.insertBefore(top,hd);top.appendChild(hd);top.insertAdjacentHTML('beforeend','<span class="t89-pill"></span>');
+sent.appendChild(el('div','t89-tiles'));
+var cph=F('cphotos');if(cph){cph.classList.add('t89-in');sent.appendChild(cph)}
+var lk=F('link');if(lk){lk.classList.add('t89-in','t89-foot');var lh=lk.querySelector(':scope>h4');if(lh)lh.classList.add('t89-lh');sent.appendChild(lk)}
+cust.appendChild(sent);
+// ── RIGHT · readiness summary stays first
+var rd=F('ready');if(rd)del.appendChild(rd);
+// ── RIGHT · date & crew (+ needs, calendar color, linked event)
+var sch=F('sched');if(!sch){sch=card(_L('Fecha y equipo','Date & crew'),'truck','sched')}
+var g2=group('t89-g2',[fieldOf('e_dd_date'),fieldOf('e_assigned')]);var h4s=sch.querySelector(':scope>h4');if(g2){if(h4s)h4s.after(g2);else sch.prepend(g2)}
+absorb(F('req'),sch);absorb(F('calev'),sch);del.appendChild(sch);
+// ── RIGHT · the spa & what goes with it (+ accessories)
+var spa=F('spa');if(!spa){spa=card(_L('El spa','The spa'),'droplet','spa')}retitle(spa,_L('El spa y lo que lleva','The spa & what goes with it'));
+var g3=group('t89-g3',[fieldOf('e_spa_base'),fieldOf('e_spa_series'),fieldOf('e_sn')]);var h4p=spa.querySelector(':scope>h4');if(g3){if(h4p)h4p.after(g3);else spa.prepend(g3)}
+var acc=F('acc');if(acc){var ab=el('div','t89-acc');absorb(acc,ab);var ags=Array.prototype.slice.call(ab.querySelectorAll(':scope>.ag'));if(ags.length){var ag=el('div','t89-ags');ags[0].before(ag);ags.forEach(function(x){ag.appendChild(x)})}spa.appendChild(ab)}
+del.appendChild(spa);
+// ── RIGHT · money
+var money=F('money');if(money){var m3=group('t89-g3',[fieldOf('e_pr'),fieldOf('e_py'),(function(){var b=Array.prototype.find.call(money.querySelectorAll('.ib'),function(x){return /Balance\s*\(auto\)/i.test(x.textContent||'')});return b||null})()]);var h4m=money.querySelector(':scope>h4');if(m3){if(h4m)h4m.after(m3);else money.prepend(m3)}del.appendChild(money)}
+// ── RIGHT · paperwork
+var prep=F('prep');if(prep){retitle(prep,_L('Papeles','Paperwork'));var css=Array.prototype.slice.call(prep.querySelectorAll(':scope>.cs'));if(css.length>1){var pg=el('div','t89-g2 t89-cs');css[0].before(pg);css.forEach(function(x){pg.appendChild(x)})}del.appendChild(prep)}
+// ── RIGHT · tech photos & notes, service, anything else
+var ev=F('evid');if(ev){retitle(ev,_L('Fotos y notas del técnico','Tech photos & notes'));del.appendChild(ev)}
+['svc','more'].forEach(function(k){var c=F(k);if(c)del.appendChild(c)});
+// anything build 84 placed that we did not name: keep it, last on the right
+Array.prototype.slice.call(file.querySelectorAll(':scope>.col>.dt84-fc')).forEach(function(c){if(c.classList.contains('tl'))return;del.appendChild(c)});
+// ── banners on top, full width
+var ban=file.querySelector('.dt84-banners');if(ban&&ban.children.length)bwrap.appendChild(ban);if(!bwrap.children.length)bwrap.remove();
+// ── history drawer
+var tl=F('tl');
+if(tl){tl.classList.add('t89-in');hist.appendChild(tl)}
+// ── swap in: everything above was moved inside the attached file, so nothing is ever detached
+Array.prototype.slice.call(file.querySelectorAll(':scope>.col')).forEach(function(c){if(!c.querySelector('input,textarea,select,button,img,.dt84-fc'))c.remove()});
+var left=file.querySelectorAll(':scope>.col');if(left.length){Array.prototype.forEach.call(left,function(c){Array.prototype.slice.call(c.children).forEach(function(ch){del.appendChild(ch)});c.remove()})}
+file.classList.add('t89f');
+// ── header: History button with its count
+var acts=md.querySelector('.tkt-hero-acts');if(acts&&!document.getElementById('t89hbtn')){var hb=el('button','t89-hbtn');hb.type='button';hb.id='t89hbtn';hb.setAttribute('aria-controls','t89hist');hb.setAttribute('aria-expanded','false');
+hb.innerHTML=svg('clock',16)+'<span>'+E(_L('Historial','History'))+'</span><span class="n">0</span>';hb.onclick=function(e){e.stopPropagation();Z.hist()};
+var more=acts.querySelector('.t87-more');var hold=acts.querySelector('.t87-hold');var before=hold||more||acts.querySelector('.xbtn');if(before)acts.insertBefore(hb,before);else acts.appendChild(hb)}
+md.classList.add('t89');Z.paintSent();Z.paintCount();if(Z.histOpen())Z.hist(true)}
+var _skip=false;
+wrap('renderModal',function(){if(_skip)return;try{layout()}catch(e){console.error('[dt89] two-sided ticket failed — drawing the build-88 layout',e);_skip=true;try{var md=document.getElementById('md');if(md)md.classList.remove('t89','t89-hopen');renderModal()}finally{_skip=false}}});
+Z.layout=layout;
+console.log('%c[BUILD 89] dt89Ticket ready','color:#fff;background:#E54B25;padding:2px 6px;border-radius:3px');
+}catch(e){console.error('[dt89Ticket] failed to start — the ticket keeps its build 88 layout',e)}})();
 
 </script>
 <!-- ════════ /BUILD 84 BLOCKS ════════ -->

@@ -8,7 +8,7 @@
  * normally need to — index.html is network-first, so new deploys are picked up automatically
  * while online. Bumping just clears the offline fallback copy.
  */
-const CACHE_VERSION = 'aspen-delivery-v29'; // 2026-11-03 - build 87.2
+const CACHE_VERSION = 'aspen-delivery-v33'; // 2026-11-06 - build 89
 const CACHE_PREFIX = 'aspen-delivery-';
 const APP_SHELL = './index.html';
 
