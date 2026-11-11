@@ -2183,8 +2183,8 @@ const db=firebase.database();
 // Every other open client is listening and, on seeing a higher build, force-reloads
 // itself with a cache-busting URL so it pulls the fresh file from GitHub Pages. This
 // guarantees every user is on the newest version without anyone re-uploading anything.
-const APP_BUILD   = 2026110602;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
-const APP_VERSION = 'v2026.11.06 (build 89) — el ticket en dos lados: el cliente y lo que mandó a la izquierda, la entrega a la derecha, el historial en un panel'; // human-readable label (shown in console)
+const APP_BUILD   = 2026111101;            // ⬆️ INCREASE THIS NUMBER EVERY TIME YOU DEPLOY
+const APP_VERSION = 'v2026.11.11 (build 89.1) — Paid deja el balance en $0 siempre y el técnico solo ve Pagado; los botones de pago se iluminan otra vez al tocarlos'; // human-readable label (shown in console)
 console.log('%c[VERSION] Aspen Delivery Tracker '+APP_VERSION+' — build '+APP_BUILD,'color:#fff;background:#D4772C;padding:2px 8px;border-radius:4px;font-weight:700');
 const dbAppMeta=db.ref('app_meta/build');
 
@@ -2968,7 +2968,7 @@ if(r.pst){
 let _pc={paid:['','&#128181; Pagado'],check:['','&#128221; Cobrar cheque'],financed:['','&#128179; Financiado'],cash:['cash','&#128176; Cobrar efectivo']}[r.pst];
 if(_pc)_chips+='<div class="td2-chip '+_pc[0]+'">'+_pc[1]+'</div>';
 }
-if(r.bl>0)_chips+='<div class="td2-chip bal">&#9888; '+fmt(r.bl)+'</div>';
+if(r.bl>0&&r.pst!=='paid')_chips+='<div class="td2-chip bal">&#9888; '+fmt(r.bl)+'</div>'; /* BUGFIX 89.1: Paid shows only "Paid" */
 if(r.crane)_chips+='<div class="td2-chip">&#127959;&#65039; Gr&uacute;a</div>';
 if(r.extra_person)_chips+='<div class="td2-chip">&#128101; +1 persona</div>';
 if(r.water_truck)_chips+='<div class="td2-chip">&#128666; Agua</div>';
@@ -6347,7 +6347,7 @@ var tech=r.assigned_to&&USERS[r.assigned_to]?USERS[r.assigned_to].name:'Unassign
 var slot=String(r.dd||'').toLowerCase();var slotLbl=slot.indexOf('am')>=0?'AM':(slot.indexOf('pm')>=0?'PM':'All day');
 var addr1=encodeURIComponent(r.st.replace(/\n/g,' '));
 var stopUrl='https://www.google.com/maps/search/?api=1&query='+addr1;
-var pay=r.bl>0?'<span class="rt2-pay due">'+fmt(r.bl)+' due</span>':'<span class="rt2-pay paid">Paid</span>';
+var pay=(r.bl>0&&r.pst!=='paid')?'<span class="rt2-pay due">'+fmt(r.bl)+' due</span>':'<span class="rt2-pay paid">Paid</span>'; /* BUGFIX 89.1 */
 var ret=(r.sl&&!r.co)?'<span class="rt2-ret">\uD83D\uDD04 Return</span>':'';
 h+='<div class="rt2-stop '+s+'" onclick="openDet('+r.i+')">'+
 '<div class="rt2-num">'+(i+1)+'</div>'+
@@ -8207,11 +8207,7 @@ actBtns+='<button onclick="deliveryAskReview('+r.i+')" title="Text the customer 
 actBtns+='<button onclick="putOnHold('+r.i+')" title="Pause this delivery — info is preserved" style="background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:700;padding:9px 13px;border-radius:9px;cursor:pointer;font-size:12px;white-space:nowrap">&#9208; Hold</button>';}
 let _ini=(esc(r.n).split(/[ ,]+/).filter(Boolean).slice(0,2).map(function(w){return w.charAt(0)}).join('')||'?').toUpperCase();
 let _chips='';
-if(r.pst==='cash')_chips+='<span class="tkt-chip cash">&#128176; Cobrar '+fmt(r.bl)+' efectivo</span>';
-else if(r.pst==='check')_chips+='<span class="tkt-chip pay">&#128221; Cobrar cheque</span>';
-else if(r.pst==='paid')_chips+='<span class="tkt-chip paid">&#10003; Pagado</span>';
-else if(r.pst==='financed')_chips+='<span class="tkt-chip pay">&#128179; Financiado</span>';
-else if(r.bl>0)_chips+='<span class="tkt-chip cash">&#128176; Balance '+fmt(r.bl)+'</span>';
+_chips+=_heroPayChipHtml(r);
 if(r.crane)_chips+='<span class="tkt-chip req">&#128679; Gr&uacute;a</span>';
 if(r.extra_person)_chips+='<span class="tkt-chip req">&#128101; +1 persona</span>';
 if(r.water_truck)_chips+='<span class="tkt-chip req">&#128666; Water Truck</span>';
@@ -8257,8 +8253,10 @@ h+='<div class="ib"><label>SPA MODEL</label><select id="e_spa_base">'+opt(SPA_BA
 h+='<div class="ib"><label>SERIES</label><select id="e_spa_series">'+opt(SPA_SERIES,((r.sp||"").split(",")[1]||"").trim())+'</select></div>';
 h+='</div><div class="ig">'+ib("SN","e_sn",r.sn||"")+'<div class="ib"><label>Phones <span style="font-weight:400;color:var(--text-tertiary);font-size:10px">(one per line — add wife/spouse, etc.)</span></label><textarea id="e_ph" rows="2" style="font-family:inherit">'+escHtml(r.ph||'')+'</textarea></div></div><div class="ig">';
 h+='<div class="ib"><label>Email</label><input id="e_em" type="email" value="'+String(r.em||'').replace(/"/g,'&quot;')+'"></div>'+'<div class="ib"><label>Sales Price</label><input id="e_pr" type="text" inputmode="decimal" value="'+(r.pr||0)+'"></div></div><div class="ig">';
-h+='<div class="ib"><label>Payment</label><input id="e_py" type="text" inputmode="decimal" value="'+(r.py||0)+'"></div>';
-h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(r.bl>0?'var(--st-danger)':'var(--st-success)')+'">'+fmt(r.bl)+'</span></div></div>';
+/* BUGFIX 89.1: a Paid ticket shows Payment = Sales price and Balance $0 — exactly what Save stores. */
+let _pyShow=r.pst==='paid'?(r.pr||0):(r.py||0),_blShow=r.pst==='paid'?0:r.bl;
+h+='<div class="ib"><label>Payment</label><input id="e_py" type="text" inputmode="decimal" value="'+_pyShow+'"></div>';
+h+='<div class="ib"><label>Balance (auto)</label><span style="font-size:14px;font-weight:700;color:'+(_blShow>0?'var(--st-danger)':'var(--st-success)')+'">'+fmt(_blShow)+'</span></div></div>';
 h+='<span id="tksec_money" class="tksec"></span>';
 // Payment Status pills — one-click status indicator for the financial state of this delivery.
 // Values: paid (green) | check (orange) | financed (neutral) | cash (red, urgent)
@@ -9424,6 +9422,25 @@ renderKPIs();renderCtxHdr();
    silently re-zeroed the balance. Refresh the display on BOTH transitions. */
 if(key==='pf'){updatePaymentDisplayInPlace(curRec)}}
 
+// Payment chip of the ticket header (one place, used by renderModal and by togglePaymentStatus).
+function _heroPayChipHtml(r){
+if(r.pst==='cash')return '<span class="tkt-chip cash">&#128176; Cobrar '+fmt(r.bl)+' efectivo</span>';
+if(r.pst==='check')return '<span class="tkt-chip pay">&#128221; Cobrar cheque</span>';
+if(r.pst==='paid')return '<span class="tkt-chip paid">&#10003; Pagado</span>';
+if(r.pst==='financed')return '<span class="tkt-chip pay">&#128179; Financiado</span>';
+if(r.bl>0)return '<span class="tkt-chip cash">&#128176; Balance '+fmt(r.bl)+'</span>';
+return '';}
+/* BUGFIX 89.1: the header chip kept "Balance $X" after clicking Paid until Save — redraw it in place. */
+function _refreshHeroPayChip(r){
+let hero=document.querySelector('#md .tkt-hero');if(!hero||!r)return;
+let box=hero.querySelector('.tkt-hero-chips');
+let old=box?box.querySelector('.tkt-chip.cash,.tkt-chip.pay,.tkt-chip.paid'):null;if(old)old.remove();
+let html=_heroPayChipHtml(r);if(!html){if(box&&!box.children.length)box.remove();return}
+if(!box){box=document.createElement('div');box.className='tkt-hero-chips';hero.appendChild(box)}
+box.insertAdjacentHTML('afterbegin',html);
+let c=box.firstElementChild;
+try{if(window.I87&&I87.lead&&I87.svg&&c&&c.firstChild&&c.firstChild.nodeType===3){let hit=I87.lead(c.firstChild.nodeValue.trim());if(hit)c.innerHTML=I87.svg(hit.icon,14)+escHtml(hit.rest);c.dataset.d87='1'}}catch(_e){}
+}
 // Update the Payment input + Balance span inside the open modal without re-rendering.
 // Called whenever py / bl change programmatically (toggling Pay Full, marking Paid, etc).
 function updatePaymentDisplayInPlace(r){
@@ -9460,21 +9477,30 @@ curRec.pst=next;
 // Build the updates object. If we're transitioning INTO 'paid', also flip pf=true
 // and reset py=pr / bl=0 so the checklist + money match reality.
 let extraUpdates={pst:next};
-let alsoFlippedPF=false;
-if(next==='paid'&&!curRec.pf){
+let alsoFlippedPF=false,moneyChanged=false;
+/* BUGFIX 89.1 (2026-11-11): Paid ALWAYS means balance $0. It used to zero the balance only when
+   Pay Full was still off — but the customer's link answer (store / card / check) already turns
+   Pay Full on, so on those tickets Paid left the old balance and the tech saw "Paid" + "⚠ $X". */
+if(next==='paid'){
+alsoFlippedPF=!curRec.pf;
 curRec.pf=true;
 curRec.py=Number(curRec.pr||0);
 curRec.bl=0;
 extraUpdates.pf=true;
 extraUpdates.py=Number(curRec.pr||0);
 extraUpdates.bl=0;
-alsoFlippedPF=true;
+moneyChanged=true;
 }
 let ai=ADDED.findIndex(x=>x.i===id||String(x.i)===String(id));
 if(ai>=0){Object.assign(ADDED[ai],extraUpdates);rememberAddedEdit(ADDED[ai]);saveA()}
 else{if(!EDITS[id])EDITS[id]={};Object.assign(EDITS[id],extraUpdates);rememberEditsEdit(id,EDITS[id]);saveE()}
 // Update buttons in place without full modal re-render (snappier UX)
-let row=document.querySelector('.pst-row');
+/* BUGFIX 89.1: was document.querySelector('.pst-row') = the FIRST pill row on the page. Since build 89
+   the Delivery-requirements row sits above Money, so the lookup got the crane/extra/water row, crashed
+   on def.color and nothing after it ran (pill not lit, Payment/Balance not refreshed → Save wrote the
+   old balance back, board and calendar not updated). Find the row that holds the payment pills. */
+let _pstBtn=document.querySelector('#md .pst-pill[data-pst]')||document.querySelector('.pst-pill[data-pst]');
+let row=_pstBtn?_pstBtn.closest('.pst-row'):null;
 if(row){
 let pstDef=[
 {k:'paid',color:'var(--st-success)'},
@@ -9485,6 +9511,7 @@ let pstDef=[
 row.querySelectorAll('.pst-pill').forEach(btn=>{
 let bk=btn.getAttribute('data-pst');
 let def=pstDef.find(p=>p.k===bk);
+if(!def)return;
 let active=next===bk;
 btn.classList.toggle('pst-active',active);
 if(active){btn.style.cssText='background:'+def.color+';color:#fff;border-color:'+def.color}
@@ -9500,8 +9527,9 @@ let dot=pfBtn.querySelector('.cd');
 if(dot)dot.className='cd on';
 pfBtn.className='ci on';
 }
-updatePaymentDisplayInPlace(curRec);
 }
+if(moneyChanged)updatePaymentDisplayInPlace(curRec);
+try{_refreshHeroPayChip(curRec)}catch(_e){}
 // Update the card in the background list too
 renderBoard();
 showToast(next?'Payment status: '+next+(alsoFlippedPF?' · Pay Full auto-marked':''):'Payment status cleared');
@@ -9576,6 +9604,8 @@ function gatherEdits(){
 /* Money fields are type=text (app rule): strip "$", commas and spaces before parsing so "$8,500" doesn't silently become 0. */
 let _money=function(id){return parseFloat(String(document.getElementById(id).value||'').replace(/[^0-9.\-]/g,''))||0};
 let pr=_money("e_pr"),py=_money("e_py");
+/* BUGFIX 89.1: Paid means paid — Payment = Sales price and Balance 0, whatever the Payment box says. */
+if(curRec&&curRec.pst==='paid')py=pr;
 let sB=document.getElementById("e_spa_base").value,sS=document.getElementById("e_spa_series").value;
 let getV=function(id){let el=document.getElementById(id);return el?(el.value||'').trim()||null:null};
 let result={n:document.getElementById("e_n").value.trim(),cal:getV('e_cal'),dd:(function(){let dv=document.getElementById("e_dd_date"),sv=document.getElementById("e_dd_slot");if(!dv||!dv.value)return null;let slot=sv?sv.value:'am';let label={'am':' am','pm':' pm','allday':' all day'}[slot]||' am';return dv.value+(label||'')})(),
